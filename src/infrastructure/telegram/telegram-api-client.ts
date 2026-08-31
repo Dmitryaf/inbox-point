@@ -18,6 +18,33 @@ const forumTopicSchema = z.object({
   name: z.string(),
 });
 
+const botIdentitySchema = z.object({
+  id: z.number().int(),
+  is_bot: z.literal(true),
+});
+
+const operatorChatSchema = z.object({
+  id: z.number().int(),
+  is_forum: z.boolean().optional(),
+  type: z.enum(['private', 'group', 'supergroup', 'channel']),
+});
+
+const botMembershipSchema = z.object({
+  can_manage_topics: z.boolean().optional(),
+  status: z.enum([
+    'creator',
+    'administrator',
+    'member',
+    'restricted',
+    'left',
+    'kicked',
+  ]),
+});
+
+const webhookInfoSchema = z.object({
+  url: z.string(),
+});
+
 export interface GetUpdatesOptions {
   offset?: number;
   signal?: AbortSignal;
@@ -113,6 +140,54 @@ export class TelegramApiClient implements TelegramGateway {
       options.signal,
     );
     return { messageId: message.message_id };
+  }
+
+  public async verifySetup(operatorChatId: number): Promise<void> {
+    const bot = await this.call('getMe', {}, botIdentitySchema);
+    const chat = await this.call(
+      'getChat',
+      { chat_id: operatorChatId },
+      operatorChatSchema,
+    );
+    if (chat.type !== 'supergroup') {
+      throw new Error(
+        'Telegram setup validation failed: operator chat must be a supergroup',
+      );
+    }
+    if (chat.is_forum !== true) {
+      throw new Error(
+        'Telegram setup validation failed: Topics are not enabled in the operator group',
+      );
+    }
+
+    const membership = await this.call(
+      'getChatMember',
+      { chat_id: operatorChatId, user_id: bot.id },
+      botMembershipSchema,
+    );
+    if (
+      membership.status !== 'creator' &&
+      membership.status !== 'administrator'
+    ) {
+      throw new Error(
+        'Telegram setup validation failed: the bot must be an operator group administrator',
+      );
+    }
+    if (
+      membership.status === 'administrator' &&
+      membership.can_manage_topics !== true
+    ) {
+      throw new Error(
+        'Telegram setup validation failed: the bot requires can_manage_topics',
+      );
+    }
+
+    const webhook = await this.call('getWebhookInfo', {}, webhookInfoSchema);
+    if (webhook.url.length > 0) {
+      throw new Error(
+        'Telegram setup validation failed: remove the configured webhook before using long polling',
+      );
+    }
   }
 
   private async call<Result>(

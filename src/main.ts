@@ -13,6 +13,7 @@ async function start(): Promise<void> {
   const app = createApp(config);
   const repository = new SqliteSupportRepository(config.databasePath);
   const abortController = new AbortController();
+  let poller: TelegramPoller | undefined;
   let pollerPromise: Promise<void> | undefined;
   let closing = false;
 
@@ -36,10 +37,9 @@ async function start(): Promise<void> {
   process.once('SIGTERM', () => void close('SIGTERM'));
 
   try {
-    await app.listen({ host: config.host, port: config.port });
-
     if (config.telegram) {
       const gateway = new TelegramApiClient(config.telegram.botToken);
+      await gateway.verifySetup(config.telegram.operatorChatId);
       const telegramChannel = new TelegramClientChannel(gateway);
       const operatorInbox = new TelegramTopicsInbox(
         gateway,
@@ -54,12 +54,16 @@ async function start(): Promise<void> {
         handoffService,
         config.telegram.operatorChatId,
       );
-      const poller = new TelegramPoller(
+      poller = new TelegramPoller(
         gateway,
         router,
         config.telegram.pollTimeoutSeconds,
       );
+    }
 
+    await app.listen({ host: config.host, port: config.port });
+
+    if (poller) {
       pollerPromise = poller.run(abortController.signal);
       void pollerPromise.catch((error: unknown) => {
         if (!abortController.signal.aborted) {
