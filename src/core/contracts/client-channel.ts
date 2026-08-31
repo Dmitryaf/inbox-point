@@ -1,7 +1,4 @@
-import type {
-  ClientChannelKind,
-  SupportMessage,
-} from '@/core/model/support-message.js';
+import type { ClientChannelKind } from '@/core/model/support-message.js';
 
 export interface OutgoingClientMessage {
   conversationId: string;
@@ -13,6 +10,5 @@ export interface OutgoingClientMessage {
 export interface ClientChannel {
   readonly kind: ClientChannelKind;
 
-  receive(message: SupportMessage): Promise<void>;
-  send(message: OutgoingClientMessage): Promise<void>;
+  send(message: OutgoingClientMessage): Promise<{ externalMessageId: string }>;
 }

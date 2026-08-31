@@ -10,7 +10,27 @@ const runtimeConfigSchema = z.object({
     .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
     .default('info'),
   DATABASE_PATH: z.string().min(1).default('./data/messenger-handoff.sqlite'),
+  TELEGRAM_BOT_TOKEN: optionalEnvironmentValue(z.string().min(20)),
+  TELEGRAM_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
+  TELEGRAM_OPERATOR_CHAT_ID: optionalEnvironmentValue(
+    z.coerce.number().int().safe().negative(),
+  ),
+  TELEGRAM_POLL_TIMEOUT_SECONDS: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(50)
+    .default(30),
 });
+
+export interface TelegramRuntimeConfig {
+  botToken: string;
+  operatorChatId: number;
+  pollTimeoutSeconds: number;
+}
 
 export interface RuntimeConfig {
   databasePath: string;
@@ -18,6 +38,7 @@ export interface RuntimeConfig {
   logLevel: 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace' | 'silent';
   nodeEnv: 'development' | 'test' | 'production';
   port: number;
+  telegram?: TelegramRuntimeConfig;
 }
 
 export function loadRuntimeConfig(
@@ -33,11 +54,36 @@ export function loadRuntimeConfig(
     throw new Error(`Invalid runtime configuration: ${details}`);
   }
 
+  if (
+    result.data.TELEGRAM_ENABLED &&
+    (!result.data.TELEGRAM_BOT_TOKEN ||
+      result.data.TELEGRAM_OPERATOR_CHAT_ID === undefined)
+  ) {
+    throw new Error(
+      'Invalid runtime configuration: Telegram requires TELEGRAM_BOT_TOKEN and TELEGRAM_OPERATOR_CHAT_ID',
+    );
+  }
+
   return {
     databasePath: result.data.DATABASE_PATH,
     host: result.data.HOST,
     logLevel: result.data.LOG_LEVEL,
     nodeEnv: result.data.NODE_ENV,
     port: result.data.PORT,
+    ...(result.data.TELEGRAM_ENABLED
+      ? {
+          telegram: {
+            botToken: result.data.TELEGRAM_BOT_TOKEN!,
+            operatorChatId: result.data.TELEGRAM_OPERATOR_CHAT_ID!,
+            pollTimeoutSeconds: result.data.TELEGRAM_POLL_TIMEOUT_SECONDS,
+          },
+        }
+      : {}),
   };
+}
+
+function optionalEnvironmentValue<Output>(schema: z.ZodType<Output>) {
+  return z
+    .preprocess((value) => (value === '' ? undefined : value), schema)
+    .optional();
 }
