@@ -1,0 +1,11 @@
+.ai-rules/
+.env
+.env.*
+.git/
+.github/
+.local/
+AGENTS.md
+coverage/
+data/
+dist/
+node_modules/

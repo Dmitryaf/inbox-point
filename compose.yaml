@@ -1,0 +1,15 @@
+services:
+  app:
+    build:
+      context: .
+    environment:
+      DATABASE_PATH: /app/data/messenger-handoff.sqlite
+      HOST: 0.0.0.0
+      LOG_LEVEL: info
+      NODE_ENV: production
+      PORT: 3000
+    ports:
+      - '${PORT:-3000}:3000'
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data
