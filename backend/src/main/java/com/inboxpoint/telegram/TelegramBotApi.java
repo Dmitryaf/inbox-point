@@ -36,6 +36,42 @@ final class TelegramBotApi {
         this.requestTimeout = requestTimeout;
     }
 
+    long verifySetup(long operatorChatId) throws RequestFailed, InterruptedException {
+        var bot = call("getMe", JSON.createObjectNode(), requestTimeout, false);
+        var botId = bot.path("id");
+        var enabled = JSON.getNodeFactory().booleanNode(true);
+        if (!isIdentifier(botId) || botId.longValue() == 0 || !enabled.equals(bot.path("is_bot"))) {
+            throw invalidResponse("getMe", false);
+        }
+        var chat = call("getChat", JSON.createObjectNode().put("chat_id", operatorChatId), requestTimeout, false);
+        var chatId = chat.path("id");
+        if (!chatId.isIntegralNumber() || !chatId.canConvertToLong() || chatId.longValue() != operatorChatId) {
+            throw invalidResponse("getChat", false);
+        }
+        if (!"supergroup".equals(chat.path("type").asString("")) || !enabled.equals(chat.path("is_forum"))) {
+            throw new RequestFailed("Telegram operator chat must be a supergroup with Topics enabled", false);
+        }
+
+        var membership = call("getChatMember", JSON.createObjectNode().put("chat_id", operatorChatId)
+                .put("user_id", botId.longValue()), requestTimeout, false);
+        var role = membership.path("status").asString("");
+        if (!"creator".equals(role) && !"administrator".equals(role)) {
+            throw new RequestFailed("Telegram bot must be an operator group administrator", false);
+        }
+        if ("administrator".equals(role) && !enabled.equals(membership.path("can_manage_topics"))) {
+            throw new RequestFailed("Telegram bot requires can_manage_topics", false);
+        }
+
+        var webhook = call("getWebhookInfo", JSON.createObjectNode(), requestTimeout, false).path("url");
+        if (!webhook.isString()) {
+            throw invalidResponse("getWebhookInfo", false);
+        }
+        if (!webhook.asString().isEmpty()) {
+            throw new RequestFailed("Telegram webhook must be removed before long polling", false);
+        }
+        return botId.longValue();
+    }
+
     List<JsonNode> getUpdates(Long offset, int timeoutSeconds) throws RequestFailed, InterruptedException {
         var payload = JSON.createObjectNode().put("timeout", timeoutSeconds);
         payload.putArray("allowed_updates").add("message");

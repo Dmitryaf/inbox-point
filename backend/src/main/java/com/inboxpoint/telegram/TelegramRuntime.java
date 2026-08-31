@@ -24,7 +24,7 @@ final class TelegramRuntime {
     }
 
     @EventListener(ApplicationReadyEvent.class)
-    void start() {
+    void start() throws IOException, InterruptedException {
         if (!environment.getProperty("TELEGRAM_ENABLED", Boolean.class, false)) {
             return;
         }
@@ -36,7 +36,16 @@ final class TelegramRuntime {
         }
         var database = Path.of(environment.getProperty("DATABASE_PATH", "./data/messenger-handoff.sqlite"));
         var origin = URI.create(environment.getProperty("inboxpoint.telegram.api-origin", "https://api.telegram.org"));
+        verifyConnection(origin, token, group);
         poller = Thread.ofVirtual().name("telegram-handoff").start(() -> poll(database, origin, token, group, timeout));
+    }
+
+    static void verifyConnection(URI origin, String token, long group)
+            throws IOException, InterruptedException {
+        var timeout = Duration.ofSeconds(8);
+        try (var transport = TelegramHttpTransport.open("", timeout)) {
+            new TelegramBotApi(transport, origin, token, timeout).verifySetup(group);
+        }
     }
 
     @PreDestroy
