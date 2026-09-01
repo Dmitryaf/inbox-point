@@ -9,6 +9,7 @@ import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 
 import com.inboxpoint.persistence.LocalJsonFile;
 import jakarta.annotation.PreDestroy;
@@ -20,7 +21,7 @@ import org.springframework.stereotype.Component;
 import tools.jackson.databind.json.JsonMapper;
 
 @Component
-final class TelegramRuntime {
+public final class TelegramRuntime {
     private static final String NONE = "none";
     private static final String ENVIRONMENT = "environment";
     private static final String LOCAL = "local";
@@ -31,6 +32,7 @@ final class TelegramRuntime {
     private final Path settingsFile;
     private final URI origin;
     private Thread poller;
+    private Thread deliveries;
     private String source = NONE;
 
     TelegramRuntime(Environment environment) {
@@ -66,7 +68,7 @@ final class TelegramRuntime {
     }
 
     synchronized Status status() {
-        var running = poller != null && poller.isAlive();
+        var running = poller != null && poller.isAlive() && deliveries.isAlive();
         return new Status(running, running || ENVIRONMENT.equals(source), source);
     }
 
@@ -116,6 +118,25 @@ final class TelegramRuntime {
         }
         poller = Thread.ofVirtual().name("telegram-handoff")
                 .start(() -> poll(database, origin, settings.token(), settings.group(), settings.timeout()));
+        deliveries = Thread.ofVirtual().name("telegram-deliveries").start(() -> deliver(settings.token()));
+    }
+
+    public Map<String, Long> deliveryCounts() throws IOException, SQLException {
+        try (var store = new TelegramStore(database)) {
+            var summary = store.summary();
+            return Map.of("pending", summary.pending(), "sent", summary.sent(), "failed", summary.failed());
+        }
+    }
+
+    private void deliver(String token) {
+        try (var store = new TelegramStore(database); var transport = TelegramHttpTransport.open("", API_TIMEOUT)) {
+            var api = new TelegramBotApi(transport, origin, token, API_TIMEOUT);
+            new TelegramDeliveryWorker(store, api, Clock.systemUTC()).run();
+        } catch (InterruptedException stopping) {
+            Thread.currentThread().interrupt();
+        } catch (IOException | SQLException failure) {
+            LoggerFactory.getLogger(TelegramRuntime.class).warn("Telegram delivery worker stopped");
+        }
     }
 
     static void verifyConnection(URI origin, String token, long group) throws IOException, InterruptedException {
@@ -126,9 +147,15 @@ final class TelegramRuntime {
 
     @PreDestroy
     synchronized void stop() throws InterruptedException {
+        if (deliveries != null) {
+            deliveries.interrupt();
+        }
         if (poller != null) {
             poller.interrupt();
             poller.join(Duration.ofSeconds(2));
+        }
+        if (deliveries != null) {
+            deliveries.join(Duration.ofSeconds(2));
         }
     }
 

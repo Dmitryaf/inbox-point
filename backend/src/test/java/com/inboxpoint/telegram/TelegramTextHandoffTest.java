@@ -34,6 +34,7 @@ class TelegramTextHandoffTest {
             var reply = update(3, -100123, "supergroup", 42, "Answer");
             handoff.process(reply);
             handoff.process(reply);
+            new TelegramDeliveryWorker(store, api, Clock.systemUTC()).runOnce();
             handoff.process(update(4, -100123, "supergroup", 42, "/close"));
             handoff.process(update(5, -100123, "supergroup", 42, "Closed reply"));
             assertThat(store.activeRequest(123)).isNull();

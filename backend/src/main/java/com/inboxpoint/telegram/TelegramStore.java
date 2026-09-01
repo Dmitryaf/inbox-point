@@ -8,6 +8,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import org.sqlite.SQLiteConfig;
@@ -33,7 +35,10 @@ final class TelegramStore implements AutoCloseable {
                 if (!command.isBlank()) {
                     statement.execute(command);
                 }
+
             }
+            ensureColumn("operator_message_id");
+            ensureColumn("next_attempt_at");
         } catch (IOException | SQLException failure) {
             try {
                 connection.close();
@@ -44,10 +49,27 @@ final class TelegramStore implements AutoCloseable {
         }
     }
 
+    private void ensureColumn(String name) throws SQLException {
+        try (var statement = prepare("SELECT 1 FROM pragma_table_info('deliveries') WHERE name = ?", name);
+                var columns = statement.executeQuery()) {
+            if (columns.next()) {
+                return;
+            }
+        }
+        try (var statement = connection.createStatement()) {
+            statement.execute("ALTER TABLE deliveries ADD COLUMN " + name + " TEXT");
+        }
+    }
+
     record Request(String id, long conversation, long topic, boolean active) { }
 
     Request activeRequest(long conversation) throws SQLException {
         return request("external_conversation_id = ? AND status = 'active'", conversation);
+    }
+
+    Request latestRequest(long conversation) throws SQLException {
+        return request("external_conversation_id = ? ORDER BY julianday(created_at) DESC, rowid DESC LIMIT 1",
+                conversation);
     }
 
     Request byTopic(long topic) throws SQLException {
@@ -87,25 +109,76 @@ final class TelegramStore implements AutoCloseable {
         update("DELETE FROM processed_events WHERE source = ? AND external_event_id = ?", source, event);
     }
 
-    void link(String requestId, String direction, long customerMessage, long operatorMessage, Instant now)
+    void link(String requestId, String direction, long customerMessage, String operatorMessage, Instant now)
             throws SQLException {
         update("""
                 INSERT INTO message_links
                     (id, request_id, direction, client_message_id, operator_message_id, created_at)
                 VALUES (?, ?, ?, ?, ?, ?)
-                """, UUID.randomUUID().toString(), requestId, direction, Long.toString(customerMessage),
-                Long.toString(operatorMessage), now.toString());
+                """, UUID.randomUUID().toString(), requestId, direction, Long.toString(customerMessage), operatorMessage, now.toString());
     }
 
-    String queue(Request request, String event, String text, Instant now) throws SQLException {
-        var key = "operator:" + event;
+    void queue(Request request, String event, long message, String text, Instant now) throws SQLException {
         update("""
                 INSERT OR IGNORE INTO deliveries
-                    (id, request_id, idempotency_key, channel, external_conversation_id, text, status, created_at)
-                VALUES (?, ?, ?, 'telegram', ?, ?, 'pending', ?)
-                """, UUID.randomUUID().toString(), request.id(), key, Long.toString(request.conversation()),
-                text, now.toString());
-        return key;
+                    (id, request_id, idempotency_key, operator_message_id, channel,
+                    external_conversation_id, text, status, created_at, next_attempt_at)
+                VALUES (?, ?, ?, ?, 'telegram', ?, ?, 'pending', ?, ?)
+                """, UUID.randomUUID().toString(), request.id(), "operator:" + event, Long.toString(message),
+                Long.toString(request.conversation()), text, now.toString(), now.toString());
+    }
+
+    record Pending(String key, String request, String operatorMessage, long conversation, String text, int attempts) { }
+
+    List<Pending> pending(Instant now) throws SQLException {
+        try (var statement = prepare("""
+                SELECT idempotency_key, request_id, COALESCE(operator_message_id, idempotency_key),
+                    external_conversation_id, text, attempts
+                FROM deliveries
+                WHERE status = 'pending' AND channel = 'telegram' AND julianday(COALESCE(next_attempt_at, created_at))
+                    <= julianday(?) ORDER BY julianday(created_at), id LIMIT 25
+                """, now.toString()); var rows = statement.executeQuery()) {
+            var result = new ArrayList<Pending>();
+            while (rows.next()) {
+                result.add(new Pending(rows.getString(1), rows.getString(2), rows.getString(3), rows.getLong(4),
+                        rows.getString(5), rows.getInt(6)));
+            }
+            return result;
+        }
+    }
+
+    void schedule(String key, Instant next) throws SQLException {
+        update("""
+                UPDATE deliveries SET attempts = attempts + 1, next_attempt_at = ?, last_error = ?
+                WHERE idempotency_key = ? AND status = 'pending'
+                """, next.toString(), "Telegram delivery rejected", key);
+    }
+
+    void complete(Pending item, long sent, Instant now) throws SQLException {
+        connection.setAutoCommit(false);
+        try {
+            deliver(item.key(), sent, now);
+            link(item.request(), "operator_to_client", sent, item.operatorMessage(), now);
+            connection.commit();
+        } catch (SQLException failure) {
+            connection.rollback();
+            throw failure;
+        } finally {
+            connection.setAutoCommit(true);
+        }
+    }
+
+    record DeliverySummary(long pending, long sent, long failed) { }
+
+    DeliverySummary summary() throws SQLException {
+        try (var statement = connection.createStatement(); var row = statement.executeQuery("""
+                SELECT COUNT(*) FILTER (WHERE status = 'pending'),
+                    COUNT(*) FILTER (WHERE status = 'sent'), COUNT(*) FILTER (WHERE status = 'failed')
+                FROM deliveries
+                """)) {
+            row.next();
+            return new DeliverySummary(row.getLong(1), row.getLong(2), row.getLong(3));
+        }
     }
 
     void deliver(String key, long message, Instant now) throws SQLException {

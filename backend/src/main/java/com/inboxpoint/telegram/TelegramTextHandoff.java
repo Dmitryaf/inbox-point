@@ -71,7 +71,7 @@ final class TelegramTextHandoff {
         if (request != null) {
             try {
                 var sent = api.sendMessage(operatorGroup, request.topic(), "Customer:\n\n" + text);
-                store.link(request.id(), "client_to_operator", message, sent, clock.instant());
+                store.link(request.id(), "client_to_operator", message, Long.toString(sent), clock.instant());
                 return;
             } catch (TelegramBotApi.RequestFailed failure) {
                 if (failure.topicProblem() != TelegramBotApi.TopicProblem.MISSING
@@ -79,6 +79,21 @@ final class TelegramTextHandoff {
                     throw failure;
                 }
                 store.changeStatus(request.id(), false, clock.instant());
+            }
+        }
+        var latest = store.latestRequest(chat);
+        if (latest != null && (request == null || !latest.id().equals(request.id()))) {
+            try {
+                api.reopenTopic(operatorGroup, latest.topic());
+                var sent = api.sendMessage(operatorGroup, latest.topic(), "Customer:\n\n" + text);
+                store.changeStatus(latest.id(), true, clock.instant());
+                store.link(latest.id(), "client_to_operator", message, Long.toString(sent), clock.instant());
+                return;
+            } catch (TelegramBotApi.RequestFailed failure) {
+                if (failure.topicProblem() != TelegramBotApi.TopicProblem.MISSING
+                        && failure.topicProblem() != TelegramBotApi.TopicProblem.CLOSED) {
+                    throw failure;
+                }
             }
         }
         var name = (sender.path("first_name").asString("") + " " + sender.path("last_name").asString(""))
@@ -95,7 +110,7 @@ final class TelegramTextHandoff {
         var body = "New Telegram request\nCustomer: " + name + "\nRequest: " + request.id() + "\n\n" + text
                 + "\n\nReply here to answer the customer. Use /close to close the request.";
         var sent = api.sendMessage(operatorGroup, request.topic(), body);
-        store.link(request.id(), "client_to_operator", message, sent, clock.instant());
+        store.link(request.id(), "client_to_operator", message, Long.toString(sent), clock.instant());
     }
 
     private void reconcileTopic(long topic, String event, boolean active) throws SQLException {
@@ -131,15 +146,7 @@ final class TelegramTextHandoff {
             }
             default -> {
                 if (request.active()) {
-                    var key = store.queue(request, event, text, clock.instant());
-                    try {
-                        var sent = api.sendMessage(request.conversation(), null, text);
-                        store.deliver(key, sent, clock.instant());
-                        store.link(request.id(), "operator_to_client", sent, message, clock.instant());
-                    } catch (TelegramBotApi.RequestFailed failure) {
-                        store.failed(key);
-                        throw failure;
-                    }
+                    store.queue(request, event, message, text, clock.instant());
                 }
             }
         }
