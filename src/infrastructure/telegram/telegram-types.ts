@@ -16,6 +16,8 @@ const telegramChatSchema = z.object({
 export const telegramMessageSchema = z.object({
   chat: telegramChatSchema,
   date: z.number().int(),
+  forum_topic_closed: z.object({}).optional(),
+  forum_topic_reopened: z.object({}).optional(),
   from: telegramUserSchema.optional(),
   message_id: z.number().int(),
   message_thread_id: z.number().int().optional(),

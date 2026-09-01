@@ -1,5 +1,12 @@
 import type { SupportMessage } from '@/core/model/support-message.js';
 
+export class OperatorConversationUnavailableError extends Error {
+  public constructor() {
+    super('The operator conversation is unavailable');
+    this.name = 'OperatorConversationUnavailableError';
+  }
+}
+
 export interface OpenOperatorRequest {
   requestId: string;
   source: SupportMessage;

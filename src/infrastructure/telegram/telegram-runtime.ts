@@ -3,6 +3,7 @@ import { HandoffService } from '@/core/application/handoff-service.js';
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
 import { TelegramApiClient } from '@/infrastructure/telegram/telegram-api-client.js';
 import { TelegramClientChannel } from '@/infrastructure/telegram/telegram-client-channel.js';
+import { TelegramClientMenu } from '@/infrastructure/telegram/telegram-client-menu.js';
 import { TelegramPoller } from '@/infrastructure/telegram/telegram-poller.js';
 import { TelegramTopicsInbox } from '@/infrastructure/telegram/telegram-topics-inbox.js';
 import { TelegramUpdateRouter } from '@/infrastructure/telegram/telegram-update-router.js';
@@ -44,8 +45,13 @@ export class TelegramRuntime implements TelegramRuntimeControl {
     });
     const poller = new TelegramPoller(
       gateway,
-      new TelegramUpdateRouter(handoffService, config.operatorChatId),
+      new TelegramUpdateRouter(
+        handoffService,
+        config.operatorChatId,
+        new TelegramClientMenu(gateway, this.repository, config.operatorChatId),
+      ),
       config.pollTimeoutSeconds,
+      (error) => this.logger.error(error, 'Telegram update failed; retrying'),
     );
     const abortController = new AbortController();
     this.abortController = abortController;

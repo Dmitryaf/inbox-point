@@ -1,7 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
 import type { ClientChannel } from '@/core/contracts/client-channel.js';
-import type { OperatorInbox } from '@/core/contracts/operator-inbox.js';
+import {
+  OperatorConversationUnavailableError,
+  type OperatorInbox,
+} from '@/core/contracts/operator-inbox.js';
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
 import type { OperatorMessage } from '@/core/model/operator-message.js';
 import type { SupportMessage } from '@/core/model/support-message.js';
@@ -45,47 +48,58 @@ export class HandoffService {
         );
 
         if (existingRequest) {
-          const relayed = await this.operatorInbox.relayCustomerMessage(
-            existingRequest.operatorTopicId,
-            message,
-          );
-          this.repository.addMessageLink({
-            clientMessageId: message.externalMessageId,
-            createdAt: this.clock(),
-            direction: 'client_to_operator',
-            id: this.createId(),
-            operatorMessageId: relayed.operatorMessageId,
-            requestId: existingRequest.id,
-          });
-          return;
+          try {
+            const relayed = await this.operatorInbox.relayCustomerMessage(
+              existingRequest.operatorTopicId,
+              message,
+            );
+            this.repository.addMessageLink({
+              clientMessageId: message.externalMessageId,
+              createdAt: this.clock(),
+              direction: 'client_to_operator',
+              id: this.createId(),
+              operatorMessageId: relayed.operatorMessageId,
+              requestId: existingRequest.id,
+            });
+            return;
+          } catch (error: unknown) {
+            if (!(error instanceof OperatorConversationUnavailableError)) {
+              throw error;
+            }
+            this.repository.closeRequest(existingRequest.id, this.clock());
+          }
         }
 
-        const requestId = this.createId();
-        const opened = await this.operatorInbox.openRequest({
-          requestId,
-          source: message,
-          title: createTopicTitle(message.displayName),
-        });
-        const createdAt = this.clock();
-
-        this.repository.createRequest({
-          channel: message.channel,
-          conversationId: message.conversationId,
-          createdAt,
-          id: requestId,
-          operatorTopicId: opened.topicId,
-          status: 'active',
-        });
-        this.repository.addMessageLink({
-          clientMessageId: message.externalMessageId,
-          createdAt,
-          direction: 'client_to_operator',
-          id: this.createId(),
-          operatorMessageId: opened.operatorMessageId,
-          requestId,
-        });
+        await this.openClientRequest(message);
       },
     );
+  }
+
+  private async openClientRequest(message: SupportMessage): Promise<void> {
+    const requestId = this.createId();
+    const opened = await this.operatorInbox.openRequest({
+      requestId,
+      source: message,
+      title: createTopicTitle(message.displayName),
+    });
+    const createdAt = this.clock();
+
+    this.repository.createRequest({
+      channel: message.channel,
+      conversationId: message.conversationId,
+      createdAt,
+      id: requestId,
+      operatorTopicId: opened.topicId,
+      status: 'active',
+    });
+    this.repository.addMessageLink({
+      clientMessageId: message.externalMessageId,
+      createdAt,
+      direction: 'client_to_operator',
+      id: this.createId(),
+      operatorMessageId: opened.operatorMessageId,
+      requestId,
+    });
   }
 
   public async handleOperatorMessage(
@@ -158,6 +172,33 @@ export class HandoffService {
         this.repository.markDeliveryFailed(deliveryId, safeErrorMessage(error));
         throw error;
       }
+    });
+  }
+
+  public async handleOperatorTopicClosed(
+    externalEventId: string,
+    operatorTopicId: string,
+    occurredAt: Date,
+  ): Promise<void> {
+    await this.handleEvent('operator:telegram', externalEventId, () => {
+      const request = this.repository.findRequestByTopicId(operatorTopicId);
+      if (request) {
+        this.repository.closeRequest(request.id, occurredAt);
+      }
+      return Promise.resolve();
+    });
+  }
+
+  public async handleOperatorTopicReopened(
+    externalEventId: string,
+    operatorTopicId: string,
+  ): Promise<void> {
+    await this.handleEvent('operator:telegram', externalEventId, () => {
+      const request = this.repository.findRequestByTopicId(operatorTopicId);
+      if (request) {
+        this.repository.reopenRequest(request.id);
+      }
+      return Promise.resolve();
     });
   }
 

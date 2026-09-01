@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
-import { TelegramApiClient } from './telegram-api-client.js';
+import {
+  isUnavailableForumTopicError,
+  TelegramApiClient,
+} from './telegram-api-client.js';
 
 const syntheticToken = '123456789:synthetic-api-client-token';
 
@@ -12,6 +15,66 @@ const requestPayloadSchema = z.object({
 });
 
 describe('TelegramApiClient', () => {
+  it('recognizes errors for closed and deleted forum topics', () => {
+    expect(
+      isUnavailableForumTopicError(
+        new Error(
+          'Telegram API sendMessage failed: Bad Request: message thread not found',
+        ),
+      ),
+    ).toBe(true);
+    expect(
+      isUnavailableForumTopicError(
+        new Error('Telegram API sendMessage failed: TOPIC_CLOSED'),
+      ),
+    ).toBe(true);
+  });
+
+  it('sends a reply keyboard with a client message', async () => {
+    const fetchMock = vi.fn(
+      (
+        input: string | URL | Request,
+        init?: RequestInit,
+      ): Promise<Response> => {
+        void input;
+        void init;
+        return Promise.resolve(
+          Response.json({
+            ok: true,
+            result: {
+              chat: { id: 101, type: 'private' },
+              date: 1_788_177_600,
+              message_id: 55,
+            },
+          }),
+        );
+      },
+    );
+    const client = new TelegramApiClient(syntheticToken, fetchMock);
+
+    await client.sendMessage({
+      chatId: 101,
+      replyMarkup: {
+        keyboard: [[{ text: 'Расписание' }]],
+        resize_keyboard: true,
+      },
+      text: 'Выберите действие',
+    });
+
+    const request = fetchMock.mock.calls[0]?.[1];
+    if (typeof request?.body !== 'string') {
+      throw new Error('Expected a JSON request body');
+    }
+    expect(JSON.parse(request.body)).toMatchObject({
+      chat_id: 101,
+      reply_markup: {
+        keyboard: [[{ text: 'Расписание' }]],
+        resize_keyboard: true,
+      },
+      text: 'Выберите действие',
+    });
+  });
+
   it('discovers Telegram groups from recent updates', async () => {
     const fetchMock = vi.fn(() =>
       Promise.resolve(

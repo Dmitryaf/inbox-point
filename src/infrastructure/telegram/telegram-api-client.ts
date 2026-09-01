@@ -73,8 +73,23 @@ export interface GetUpdatesOptions {
 export interface SendMessageOptions {
   chatId: number;
   messageThreadId?: number;
+  replyMarkup?: TelegramReplyMarkup;
   signal?: AbortSignal;
   text: string;
+}
+
+export type TelegramReplyMarkup =
+  TelegramRemoveKeyboard | TelegramReplyKeyboard;
+
+export interface TelegramRemoveKeyboard {
+  remove_keyboard: true;
+}
+
+export interface TelegramReplyKeyboard {
+  input_field_placeholder?: string;
+  is_persistent?: true;
+  keyboard: readonly (readonly { text: string }[])[];
+  resize_keyboard: true;
 }
 
 export interface TelegramGateway {
@@ -184,6 +199,9 @@ export class TelegramApiClient implements TelegramGateway {
         ...(options.messageThreadId === undefined
           ? {}
           : { message_thread_id: options.messageThreadId }),
+        ...(options.replyMarkup === undefined
+          ? {}
+          : { reply_markup: options.replyMarkup }),
         text: options.text,
       },
       telegramMessageSchema,
@@ -290,4 +308,16 @@ export class TelegramApiClient implements TelegramGateway {
 
 function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'AbortError';
+}
+
+export function isUnavailableForumTopicError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  const message = error.message.toLowerCase();
+  return (
+    message.includes('topic_closed') ||
+    message.includes('topic_id_invalid') ||
+    message.includes('message thread not found')
+  );
 }

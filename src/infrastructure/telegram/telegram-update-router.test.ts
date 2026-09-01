@@ -4,6 +4,10 @@ import type { OperatorMessage } from '@/core/model/operator-message.js';
 import type { SupportMessage } from '@/core/model/support-message.js';
 
 import type { TelegramUpdate } from './telegram-types.js';
+import type {
+  TelegramClientMenuHandler,
+  TelegramMenuMessage,
+} from './telegram-client-menu.js';
 import {
   TelegramUpdateRouter,
   type TelegramUpdateHandler,
@@ -18,6 +22,7 @@ class RecordingHandler implements TelegramUpdateHandler {
     eventId: string;
     message: OperatorMessage;
   }[] = [];
+  public readonly topicEvents: string[] = [];
 
   public handleClientMessage(
     eventId: string,
@@ -33,6 +38,34 @@ class RecordingHandler implements TelegramUpdateHandler {
   ): Promise<void> {
     this.operatorMessages.push({ eventId, message });
     return Promise.resolve();
+  }
+
+  public handleOperatorTopicClosed(
+    externalEventId: string,
+    operatorTopicId: string,
+    occurredAt: Date,
+  ): Promise<void> {
+    this.topicEvents.push(
+      `closed:${externalEventId}:${operatorTopicId}:${occurredAt.toISOString()}`,
+    );
+    return Promise.resolve();
+  }
+
+  public handleOperatorTopicReopened(
+    externalEventId: string,
+    operatorTopicId: string,
+  ): Promise<void> {
+    this.topicEvents.push(`reopened:${externalEventId}:${operatorTopicId}`);
+    return Promise.resolve();
+  }
+}
+
+class RecordingMenu implements TelegramClientMenuHandler {
+  public readonly messages: TelegramMenuMessage[] = [];
+
+  public handle(message: TelegramMenuMessage): Promise<boolean> {
+    this.messages.push(message);
+    return Promise.resolve(true);
   }
 }
 
@@ -65,6 +98,26 @@ describe('TelegramUpdateRouter', () => {
       },
     ]);
     expect(handler.operatorMessages).toHaveLength(0);
+  });
+
+  it('stops routing when the client menu handles a private message', async () => {
+    const handler = new RecordingHandler();
+    const menu = new RecordingMenu();
+    const router = new TelegramUpdateRouter(handler, -1_001, menu);
+
+    await router.route(
+      createUpdate({
+        chatId: 101,
+        chatType: 'private',
+        firstName: 'Test',
+        text: '/start',
+      }),
+    );
+
+    expect(menu.messages).toEqual([
+      { chatId: 101, externalEventId: '77', text: '/start' },
+    ]);
+    expect(handler.clientMessages).toHaveLength(0);
   });
 
   it('routes only human text from an operator topic', async () => {
@@ -113,6 +166,19 @@ describe('TelegramUpdateRouter', () => {
     ]);
     expect(handler.clientMessages).toHaveLength(0);
   });
+
+  it('routes topic lifecycle service messages without human text', async () => {
+    const handler = new RecordingHandler();
+    const router = new TelegramUpdateRouter(handler, -1_001);
+
+    await router.route(createTopicServiceUpdate({ forum_topic_closed: {} }));
+    await router.route(createTopicServiceUpdate({ forum_topic_reopened: {} }));
+
+    expect(handler.topicEvents).toEqual([
+      'closed:77:900:2026-08-31T12:00:00.000Z',
+      'reopened:77:900',
+    ]);
+  });
 });
 
 interface UpdateOverrides {
@@ -141,6 +207,24 @@ function createUpdate(overrides: UpdateOverrides): TelegramUpdate {
         ? {}
         : { message_thread_id: overrides.messageThreadId }),
       text: overrides.text,
+    },
+    update_id: 77,
+  };
+}
+
+function createTopicServiceUpdate(
+  event: Pick<
+    NonNullable<TelegramUpdate['message']>,
+    'forum_topic_closed' | 'forum_topic_reopened'
+  >,
+): TelegramUpdate {
+  return {
+    message: {
+      chat: { id: -1_001, type: 'supergroup' },
+      date: 1_788_177_600,
+      ...event,
+      message_id: 55,
+      message_thread_id: 900,
     },
     update_id: 77,
   };

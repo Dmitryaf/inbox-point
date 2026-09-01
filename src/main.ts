@@ -15,7 +15,7 @@ async function start(): Promise<void> {
     resolve(dirname(config.databasePath), 'telegram-settings.json'),
   );
   const telegramRuntime = new TelegramRuntime(repository, {
-    error: (error, message) => app.log.error({ error }, message),
+    error: (error, message) => app.log.error({ err: error }, message),
   });
   let closing = false;
 
@@ -39,7 +39,10 @@ async function start(): Promise<void> {
       try {
         storedTelegram = await settingsStore.load();
       } catch (error: unknown) {
-        app.log.error({ error }, 'Ignoring invalid local Telegram settings');
+        app.log.error(
+          { err: error },
+          'Ignoring invalid local Telegram settings',
+        );
       }
     }
     const source = config.telegram
@@ -62,7 +65,7 @@ async function start(): Promise<void> {
           throw error;
         }
         app.log.error(
-          { error },
+          { err: error },
           'Saved Telegram connection could not be restored',
         );
       }

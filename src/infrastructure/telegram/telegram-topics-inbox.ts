@@ -2,9 +2,13 @@ import type {
   OpenOperatorRequest,
   OperatorInbox,
 } from '@/core/contracts/operator-inbox.js';
+import { OperatorConversationUnavailableError } from '@/core/contracts/operator-inbox.js';
 import type { SupportMessage } from '@/core/model/support-message.js';
 
-import type { TelegramGateway } from './telegram-api-client.js';
+import {
+  isUnavailableForumTopicError,
+  type TelegramGateway,
+} from './telegram-api-client.js';
 
 export class TelegramTopicsInbox implements OperatorInbox {
   public constructor(
@@ -42,12 +46,19 @@ export class TelegramTopicsInbox implements OperatorInbox {
     operatorTopicId: string,
     message: SupportMessage,
   ): Promise<{ operatorMessageId: string }> {
-    const sent = await this.gateway.sendMessage({
-      chatId: this.operatorChatId,
-      messageThreadId: Number(operatorTopicId),
-      text: `Customer:\n\n${message.text}`,
-    });
-    return { operatorMessageId: String(sent.messageId) };
+    try {
+      const sent = await this.gateway.sendMessage({
+        chatId: this.operatorChatId,
+        messageThreadId: Number(operatorTopicId),
+        text: `Клиент:\n\n${message.text}`,
+      });
+      return { operatorMessageId: String(sent.messageId) };
+    } catch (error: unknown) {
+      if (isUnavailableForumTopicError(error)) {
+        throw new OperatorConversationUnavailableError();
+      }
+      throw error;
+    }
   }
 
   public async reopenRequest(operatorTopicId: string): Promise<void> {
@@ -60,12 +71,13 @@ export class TelegramTopicsInbox implements OperatorInbox {
 
 function formatInitialMessage(request: OpenOperatorRequest): string {
   return [
-    'New Telegram request',
-    `Customer: ${request.source.displayName}`,
-    `Request: ${request.requestId}`,
+    'Новое обращение из Telegram',
+    `Клиент: ${request.source.displayName}`,
     '',
+    'Вопрос:',
     request.source.text,
     '',
-    'Reply here to answer the customer. Use /close to close the request.',
+    'Ответьте сообщением в этой теме.',
+    'Чтобы закрыть обращение, отправьте /close.',
   ].join('\n');
 }
