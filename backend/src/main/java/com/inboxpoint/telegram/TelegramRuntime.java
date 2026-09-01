@@ -136,20 +136,7 @@ final class TelegramRuntime {
         try (var store = new TelegramStore(database); var transport = TelegramHttpTransport.open("", API_TIMEOUT)) {
             var api = new TelegramBotApi(transport, origin, token, API_TIMEOUT);
             var handoff = new TelegramTextHandoff(group, store, api, Clock.systemUTC());
-            Long next = null;
-            while (!Thread.currentThread().isInterrupted()) {
-                try {
-                    for (var update : api.getUpdates(next, timeout)) {
-                        handoff.process(update);
-                        var newOffset = update.path("update_id").asLong() + 1;
-                        next = next == null ? newOffset : Math.max(next, newOffset);
-                    }
-                    Thread.sleep(100);
-                } catch (TelegramBotApi.RequestFailed failure) {
-                    LoggerFactory.getLogger(TelegramRuntime.class).warn("Telegram polling or relay failed");
-                    Thread.sleep(1000);
-                }
-            }
+            new TelegramPoller(api, handoff, timeout).run();
         } catch (InterruptedException stopping) {
             Thread.currentThread().interrupt();
         } catch (IOException | SQLException failure) {
