@@ -24,11 +24,24 @@ const runtimeConfigSchema = z.object({
     .min(1)
     .max(50)
     .default(30),
+  VK_ACCESS_TOKEN: optionalEnvironmentValue(z.string().min(20)),
+  VK_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
+  VK_GROUP_ID: optionalEnvironmentValue(z.coerce.number().int().positive()),
+  VK_POLL_TIMEOUT_SECONDS: z.coerce.number().int().min(1).max(50).default(25),
 });
 
 export interface TelegramRuntimeConfig {
   botToken: string;
   operatorChatId: number;
+  pollTimeoutSeconds: number;
+}
+
+export interface VkRuntimeConfig {
+  accessToken: string;
+  groupId: number;
   pollTimeoutSeconds: number;
 }
 
@@ -39,6 +52,7 @@ export interface RuntimeConfig {
   nodeEnv: 'development' | 'test' | 'production';
   port: number;
   telegram?: TelegramRuntimeConfig;
+  vk?: VkRuntimeConfig;
 }
 
 export function loadRuntimeConfig(
@@ -64,6 +78,15 @@ export function loadRuntimeConfig(
     );
   }
 
+  if (
+    result.data.VK_ENABLED &&
+    (!result.data.VK_ACCESS_TOKEN || result.data.VK_GROUP_ID === undefined)
+  ) {
+    throw new Error(
+      'Invalid runtime configuration: VK requires VK_ACCESS_TOKEN and VK_GROUP_ID',
+    );
+  }
+
   return {
     databasePath: result.data.DATABASE_PATH,
     host: result.data.HOST,
@@ -76,6 +99,15 @@ export function loadRuntimeConfig(
             botToken: result.data.TELEGRAM_BOT_TOKEN!,
             operatorChatId: result.data.TELEGRAM_OPERATOR_CHAT_ID!,
             pollTimeoutSeconds: result.data.TELEGRAM_POLL_TIMEOUT_SECONDS,
+          },
+        }
+      : {}),
+    ...(result.data.VK_ENABLED
+      ? {
+          vk: {
+            accessToken: result.data.VK_ACCESS_TOKEN!,
+            groupId: result.data.VK_GROUP_ID!,
+            pollTimeoutSeconds: result.data.VK_POLL_TIMEOUT_SECONDS,
           },
         }
       : {}),

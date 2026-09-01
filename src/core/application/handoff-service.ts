@@ -104,7 +104,7 @@ export class HandoffService {
     const opened = await this.operatorInbox.openRequest({
       requestId,
       source: message,
-      title: createTopicTitle(message.displayName),
+      title: createTopicTitle(message.channel, message.displayName),
     });
     const createdAt = this.clock();
 
@@ -243,10 +243,14 @@ export class HandoffService {
   }
 }
 
-function createTopicTitle(displayName: string): string {
+function createTopicTitle(
+  channel: SupportMessage['channel'],
+  displayName: string,
+): string {
   const normalized = displayName.replaceAll(/\s+/g, ' ').trim();
   const suffix = normalized.length > 0 ? normalized : 'Customer';
-  return `TG - ${suffix}`.slice(0, 128);
+  const prefix = channel === 'telegram' ? 'TG' : 'VK';
+  return `${prefix} - ${suffix}`.slice(0, 128);
 }
 
 function parseOperatorCommand(text: string): 'close' | 'reopen' | undefined {

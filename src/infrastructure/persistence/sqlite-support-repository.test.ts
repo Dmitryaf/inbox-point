@@ -46,6 +46,11 @@ describe('SqliteSupportRepository', () => {
       requestId: 'request-1',
       text: 'Answer',
     });
+    first.markDeliveryRetry(
+      'delivery-1',
+      'Temporary network failure',
+      new Date('2026-08-31T12:08:00.000Z'),
+    );
     expect(first.getDeliverySummary()).toEqual({ failed: 0, pending: 1 });
     first.closeRequest('request-1', new Date('2026-08-31T12:05:00.000Z'));
     first.close();
@@ -65,10 +70,13 @@ describe('SqliteSupportRepository', () => {
       ),
     ).toBe(false);
     expect(
+      second.findPendingDeliveries(new Date('2026-08-31T12:07:00.000Z'), 10),
+    ).toHaveLength(0);
+    expect(
       second.findPendingDeliveries(new Date('2026-08-31T12:10:00.000Z'), 10),
     ).toEqual([
       expect.objectContaining({
-        attempts: 0,
+        attempts: 1,
         id: 'delivery-1',
         operatorMessageId: 'operator-message-1',
         text: 'Answer',

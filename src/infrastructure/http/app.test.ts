@@ -89,6 +89,10 @@ describe('HTTP service status', () => {
     );
 
     const local = await app.inject({ method: 'GET', url: '/setup' });
+    const styles = await app.inject({
+      method: 'GET',
+      url: '/setup/style.css',
+    });
     const remote = await app.inject({
       method: 'GET',
       remoteAddress: '192.0.2.10',
@@ -97,7 +101,131 @@ describe('HTTP service status', () => {
 
     expect(local.statusCode).toBe(200);
     expect(local.body).toContain('Подключение Telegram');
+    expect(local.body).toContain('Доставка ответов');
+    expect(local.body).toContain('Резервная копия');
+    expect(local.headers['content-security-policy']).toContain('style-src');
     expect(local.headers['cache-control']).toBe('no-store');
+    expect(styles.statusCode).toBe(200);
+    expect(styles.headers['content-type']).toContain('text/css');
     expect(remote.statusCode).toBe(404);
+  });
+
+  it('returns sanitized delivery failures only on loopback', async () => {
+    const app = createApp(config);
+    const retriedDeliveries: string[] = [];
+    apps.add(app);
+    registerSetupRoutes(
+      app,
+      new TelegramSetupController(
+        {
+          running: true,
+          start: () => Promise.resolve(),
+          stop: () => Promise.resolve(),
+        },
+        {
+          load: () => Promise.resolve(undefined),
+          save: () => Promise.resolve(),
+        },
+        'local',
+      ),
+      {
+        findFailedDeliveries: () => [
+          {
+            attempts: 5,
+            channel: 'telegram',
+            createdAt: new Date('2026-09-01T12:00:00.000Z'),
+            id: 'delivery-1',
+            lastError:
+              'Telegram API sendMessage failed: Forbidden: bot was blocked; private answer',
+          },
+        ],
+        getDeliverySummary: () => ({ failed: 1, pending: 2 }),
+        retryFailedDelivery: (deliveryId) => {
+          if (
+            deliveryId !== 'delivery-1' ||
+            retriedDeliveries.includes(deliveryId)
+          ) {
+            return false;
+          }
+          retriedDeliveries.push(deliveryId);
+          return true;
+        },
+      },
+      {
+        createBackup: () =>
+          Promise.resolve({
+            createdAt: new Date('2026-09-01T12:30:00.000Z'),
+            fileName: 'messenger-handoff-backup.sqlite',
+            path: 'C:\\private\\messenger-handoff-backup.sqlite',
+          }),
+      },
+    );
+
+    const local = await app.inject({
+      method: 'GET',
+      url: '/api/setup/deliveries',
+    });
+    const remote = await app.inject({
+      method: 'GET',
+      remoteAddress: '192.0.2.10',
+      url: '/api/setup/deliveries',
+    });
+    const retry = await app.inject({
+      method: 'POST',
+      payload: { deliveryId: 'delivery-1' },
+      url: '/api/setup/deliveries/retry',
+    });
+    const repeatedRetry = await app.inject({
+      method: 'POST',
+      payload: { deliveryId: 'delivery-1' },
+      url: '/api/setup/deliveries/retry',
+    });
+    const remoteRetry = await app.inject({
+      method: 'POST',
+      payload: { deliveryId: 'delivery-1' },
+      remoteAddress: '192.0.2.10',
+      url: '/api/setup/deliveries/retry',
+    });
+    const backup = await app.inject({
+      method: 'POST',
+      payload: {},
+      url: '/api/setup/backups',
+    });
+    const remoteBackup = await app.inject({
+      method: 'POST',
+      payload: {},
+      remoteAddress: '192.0.2.10',
+      url: '/api/setup/backups',
+    });
+
+    expect(local.statusCode).toBe(200);
+    expect(local.json()).toEqual({
+      failures: [
+        {
+          attempts: 5,
+          channel: 'Telegram',
+          createdAt: '2026-09-01T12:00:00.000Z',
+          id: 'delivery-1',
+          reason:
+            'Бот не может написать клиенту. Возможно, клиент заблокировал бота.',
+        },
+      ],
+      summary: { failed: 1, pending: 2 },
+    });
+    expect(local.body).not.toContain('private answer');
+    expect(local.body).not.toContain('Forbidden');
+    expect(retry.statusCode).toBe(200);
+    expect(retry.json()).toEqual({ queued: true });
+    expect(retriedDeliveries).toEqual(['delivery-1']);
+    expect(repeatedRetry.statusCode).toBe(409);
+    expect(backup.statusCode).toBe(200);
+    expect(backup.json()).toEqual({
+      createdAt: '2026-09-01T12:30:00.000Z',
+      fileName: 'messenger-handoff-backup.sqlite',
+    });
+    expect(backup.body).not.toContain('C:\\private');
+    expect(remote.statusCode).toBe(404);
+    expect(remoteRetry.statusCode).toBe(404);
+    expect(remoteBackup.statusCode).toBe(404);
   });
 });

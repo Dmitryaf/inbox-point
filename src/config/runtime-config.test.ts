@@ -57,4 +57,31 @@ describe('loadRuntimeConfig', () => {
     );
     expect(load).not.toThrowError(new RegExp(token));
   });
+
+  it('enables VK only with the required community credentials', () => {
+    expect(
+      loadRuntimeConfig({
+        VK_ACCESS_TOKEN: 'synthetic-vk-community-access-token',
+        VK_ENABLED: 'true',
+        VK_GROUP_ID: '42',
+        VK_POLL_TIMEOUT_SECONDS: '20',
+      }),
+    ).toMatchObject({
+      vk: {
+        accessToken: 'synthetic-vk-community-access-token',
+        groupId: 42,
+        pollTimeoutSeconds: 20,
+      },
+    });
+  });
+
+  it('rejects enabled VK without exposing a configured token', () => {
+    const token = 'must-not-appear-vk-community-token';
+    const load = (): void => {
+      loadRuntimeConfig({ VK_ACCESS_TOKEN: token, VK_ENABLED: 'true' });
+    };
+
+    expect(load).toThrowError('VK requires VK_ACCESS_TOKEN and VK_GROUP_ID');
+    expect(load).not.toThrowError(new RegExp(token));
+  });
 });

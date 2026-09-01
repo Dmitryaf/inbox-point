@@ -7,6 +7,7 @@ import type {
   SupportRepository,
 } from '@/core/contracts/support-repository.js';
 import type {
+  FailedDelivery,
   MessageLink,
   PendingDelivery,
   QueuedDelivery,
@@ -36,6 +37,14 @@ interface DeliveryRow {
   reply_to_external_message_id: string | null;
   request_id: string;
   text: string;
+}
+
+interface FailedDeliveryRow {
+  attempts: number;
+  channel: ClientChannelKind;
+  created_at: string;
+  id: string;
+  last_error: string | null;
 }
 
 export class SqliteSupportRepository implements SupportRepository {
@@ -234,6 +243,26 @@ export class SqliteSupportRepository implements SupportRepository {
     return row ? mapRequest(row) : undefined;
   }
 
+  public findFailedDeliveries(limit: number): readonly FailedDelivery[] {
+    const rows = this.database
+      .prepare(
+        `SELECT id, channel, attempts, last_error, created_at
+         FROM deliveries
+         WHERE status = 'failed'
+         ORDER BY created_at DESC, id DESC
+         LIMIT ?`,
+      )
+      .all(limit) as unknown as FailedDeliveryRow[];
+
+    return rows.map((row) => ({
+      attempts: row.attempts,
+      channel: row.channel,
+      createdAt: new Date(row.created_at),
+      id: row.id,
+      lastError: row.last_error ?? 'Unknown delivery error',
+    }));
+  }
+
   public findLatestRequest(
     channel: ClientChannelKind,
     conversationId: string,
@@ -300,13 +329,30 @@ export class SqliteSupportRepository implements SupportRepository {
   ): readonly QueuedDelivery[] {
     const rows = this.database
       .prepare(
-        `SELECT id, request_id, idempotency_key, operator_message_id,
-          channel, external_conversation_id, text,
-          reply_to_external_message_id, attempts, created_at
-         FROM deliveries
-         WHERE status = 'pending'
-           AND COALESCE(next_attempt_at, created_at) <= ?
-         ORDER BY created_at, id
+        `SELECT delivery.id, delivery.request_id, delivery.idempotency_key,
+          delivery.operator_message_id, delivery.channel,
+          delivery.external_conversation_id, delivery.text,
+          delivery.reply_to_external_message_id, delivery.attempts,
+          delivery.created_at
+         FROM deliveries AS delivery
+         WHERE delivery.status = 'pending'
+           AND COALESCE(delivery.next_attempt_at, delivery.created_at) <= ?
+           AND NOT EXISTS (
+             SELECT 1
+             FROM deliveries AS earlier
+             WHERE earlier.status = 'pending'
+               AND earlier.channel = delivery.channel
+               AND earlier.external_conversation_id =
+                 delivery.external_conversation_id
+               AND (
+                 earlier.created_at < delivery.created_at
+                 OR (
+                   earlier.created_at = delivery.created_at
+                   AND earlier.rowid < delivery.rowid
+                 )
+               )
+           )
+         ORDER BY delivery.created_at, delivery.rowid
          LIMIT ?`,
       )
       .all(availableBefore.toISOString(), limit) as unknown as DeliveryRow[];
@@ -372,6 +418,23 @@ export class SqliteSupportRepository implements SupportRepository {
          WHERE id = ?`,
       )
       .run(requestId);
+  }
+
+  public retryFailedDelivery(deliveryId: string, retryAt: Date): boolean {
+    const result = this.database
+      .prepare(
+        `UPDATE deliveries
+         SET status = 'pending',
+             attempts = 0,
+             external_message_id = NULL,
+             last_error = NULL,
+             next_attempt_at = ?,
+             sent_at = NULL
+         WHERE id = ? AND status = 'failed'`,
+      )
+      .run(retryAt.toISOString(), deliveryId);
+
+    return Number(result.changes) === 1;
   }
 
   private migrate(): void {

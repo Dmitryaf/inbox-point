@@ -1,7 +1,9 @@
 import type { TelegramRuntimeConfig } from '@/config/runtime-config.js';
 import { DeliveryWorker } from '@/core/application/delivery-worker.js';
 import { HandoffService } from '@/core/application/handoff-service.js';
+import type { ClientChannel } from '@/core/contracts/client-channel.js';
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
+import type { SupportMessage } from '@/core/model/support-message.js';
 import { TelegramApiClient } from '@/infrastructure/telegram/telegram-api-client.js';
 import { TelegramClientChannel } from '@/infrastructure/telegram/telegram-client-channel.js';
 import { TelegramClientMenu } from '@/infrastructure/telegram/telegram-client-menu.js';
@@ -22,6 +24,8 @@ export interface TelegramRuntimeControl {
 export class TelegramRuntime implements TelegramRuntimeControl {
   private abortController: AbortController | undefined;
   private deliveryPromise: Promise<void> | undefined;
+  private deliveryWorker: DeliveryWorker | undefined;
+  private handoffService: HandoffService | undefined;
   private pollerPromise: Promise<void> | undefined;
 
   public constructor(
@@ -68,6 +72,8 @@ export class TelegramRuntime implements TelegramRuntimeControl {
     );
     const abortController = new AbortController();
     this.abortController = abortController;
+    this.deliveryWorker = deliveryWorker;
+    this.handoffService = handoffService;
     this.deliveryPromise = deliveryWorker.run(abortController.signal);
     this.pollerPromise = poller.run(abortController.signal);
     void this.deliveryPromise.catch((error: unknown) => {
@@ -85,12 +91,31 @@ export class TelegramRuntime implements TelegramRuntimeControl {
     });
   }
 
+  public async handleClientMessage(
+    externalEventId: string,
+    message: SupportMessage,
+  ): Promise<void> {
+    if (!this.handoffService) {
+      throw new Error('Telegram operator workspace is not connected');
+    }
+    await this.handoffService.handleClientMessage(externalEventId, message);
+  }
+
+  public registerClientChannel(channel: ClientChannel): void {
+    if (!this.deliveryWorker) {
+      throw new Error('Telegram operator workspace is not connected');
+    }
+    this.deliveryWorker.registerChannel(channel);
+  }
+
   public async stop(): Promise<void> {
     const abortController = this.abortController;
     const deliveryPromise = this.deliveryPromise;
     const pollerPromise = this.pollerPromise;
     this.abortController = undefined;
     this.deliveryPromise = undefined;
+    this.deliveryWorker = undefined;
+    this.handoffService = undefined;
     this.pollerPromise = undefined;
     abortController?.abort();
     await Promise.all([

@@ -21,7 +21,7 @@ export interface DeliveryFailureContext {
 }
 
 export class DeliveryWorker {
-  private readonly channels: ReadonlyMap<string, ClientChannel>;
+  private readonly channels: Map<string, ClientChannel>;
   private readonly clock: () => Date;
   private readonly createId: () => string;
   private readonly maxAttempts: number;
@@ -42,6 +42,10 @@ export class DeliveryWorker {
     this.onError = dependencies.onError ?? (() => undefined);
     this.repository = dependencies.repository;
     this.retryBaseDelayMs = dependencies.retryBaseDelayMs ?? 5_000;
+  }
+
+  public registerChannel(channel: ClientChannel): void {
+    this.channels.set(channel.kind, channel);
   }
 
   public async processPending(): Promise<number> {

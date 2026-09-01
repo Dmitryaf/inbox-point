@@ -1,0 +1,75 @@
+import type { VkRuntimeConfig } from '@/config/runtime-config.js';
+import type { ClientChannel } from '@/core/contracts/client-channel.js';
+import type { SupportMessage } from '@/core/model/support-message.js';
+
+import { VkApiClient } from './vk-api-client.js';
+import { VkClientChannel } from './vk-client-channel.js';
+import { VkPoller } from './vk-poller.js';
+import { VkUpdateRouter } from './vk-update-router.js';
+
+export interface VkRuntimeLogger {
+  error(error: unknown, message: string): void;
+}
+
+export interface VkHandoffHost {
+  handleClientMessage(
+    externalEventId: string,
+    message: SupportMessage,
+  ): Promise<void>;
+  registerClientChannel(channel: ClientChannel): void;
+}
+
+export class VkRuntime {
+  private abortController: AbortController | undefined;
+  private pollerPromise: Promise<void> | undefined;
+
+  public constructor(
+    private readonly handoffHost: VkHandoffHost,
+    private readonly logger: VkRuntimeLogger,
+  ) {}
+
+  public get running(): boolean {
+    return this.abortController !== undefined;
+  }
+
+  public async start(config: VkRuntimeConfig): Promise<void> {
+    if (this.running) {
+      throw new Error('VK is already connected');
+    }
+    const gateway = new VkApiClient(config.accessToken);
+    await gateway.getLongPollServer(config.groupId);
+    this.handoffHost.registerClientChannel(new VkClientChannel(gateway));
+    const poller = new VkPoller(
+      gateway,
+      config.groupId,
+      new VkUpdateRouter(this.handoffHost, gateway),
+      config.pollTimeoutSeconds,
+      (error) => this.logger.error(error, 'VK update failed; retrying'),
+    );
+    const abortController = new AbortController();
+    this.abortController = abortController;
+    this.pollerPromise = poller.run(abortController.signal);
+    void this.pollerPromise.catch((error: unknown) => {
+      if (!abortController.signal.aborted) {
+        this.logger.error(error, 'VK poller stopped unexpectedly');
+      }
+    });
+  }
+
+  public async stop(): Promise<void> {
+    const abortController = this.abortController;
+    const pollerPromise = this.pollerPromise;
+    this.abortController = undefined;
+    this.pollerPromise = undefined;
+    abortController?.abort();
+    await pollerPromise?.catch((error: unknown) => {
+      if (!isAbortError(error)) {
+        this.logger.error(error, 'VK poller stopped during shutdown');
+      }
+    });
+  }
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === 'AbortError';
+}

@@ -1,4 +1,5 @@
 import type {
+  FailedDelivery,
   MessageLink,
   PendingDelivery,
   QueuedDelivery,
@@ -28,6 +29,7 @@ export interface SupportRepository {
     channel: ClientChannelKind,
     conversationId: string,
   ): SupportRequest | undefined;
+  findFailedDeliveries(limit: number): readonly FailedDelivery[];
   findLatestRequest(
     channel: ClientChannelKind,
     conversationId: string,
@@ -46,4 +48,5 @@ export interface SupportRepository {
   ): void;
   releaseEvent(source: string, externalEventId: string): void;
   reopenRequest(requestId: string): void;
+  retryFailedDelivery(deliveryId: string, retryAt: Date): boolean;
 }

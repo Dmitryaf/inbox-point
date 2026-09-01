@@ -38,3 +38,11 @@ export interface PendingDelivery {
 export interface QueuedDelivery extends PendingDelivery {
   attempts: number;
 }
+
+export interface FailedDelivery {
+  attempts: number;
+  channel: ClientChannelKind;
+  createdAt: Date;
+  id: string;
+  lastError: string;
+}

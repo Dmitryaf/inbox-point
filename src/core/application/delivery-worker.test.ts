@@ -99,6 +99,57 @@ describe('DeliveryWorker', () => {
     expect(channel.sent).toHaveLength(2);
     expect(repository.findPendingDeliveries(now, 10)).toHaveLength(0);
     expect(repository.getDeliverySummary()).toEqual({ failed: 1, pending: 0 });
+    expect(repository.findFailedDeliveries(10)).toEqual([
+      expect.objectContaining({
+        attempts: 2,
+        channel: 'telegram',
+        id: 'delivery-1',
+        lastError: 'Temporary channel failure',
+      }),
+    ]);
+
+    channel.failuresRemaining = 0;
+    expect(repository.retryFailedDelivery('delivery-1', now)).toBe(true);
+    expect(repository.getDeliverySummary()).toEqual({ failed: 0, pending: 1 });
+    await worker.processPending();
+
+    expect(channel.sent).toHaveLength(3);
+    expect(repository.getDeliverySummary()).toEqual({ failed: 0, pending: 0 });
+    expect(repository.retryFailedDelivery('delivery-1', now)).toBe(false);
+  });
+
+  it('preserves reply order while the first delivery is retrying', async () => {
+    enqueueDelivery(repository, {
+      id: 'delivery-1',
+      idempotencyKey: 'operator:update-1',
+      operatorMessageId: 'operator-message-1',
+      text: 'First answer',
+    });
+    enqueueDelivery(repository, {
+      id: 'delivery-2',
+      idempotencyKey: 'operator:update-2',
+      operatorMessageId: 'operator-message-2',
+      text: 'Second answer',
+    });
+    channel.failuresRemaining = 1;
+    const worker = createWorker(repository, channel, () => now);
+
+    expect(await worker.processPending()).toBe(1);
+    expect(await worker.processPending()).toBe(0);
+    expect(channel.sent.map((message) => message.text)).toEqual([
+      'First answer',
+    ]);
+
+    now = new Date(now.getTime() + 1_000);
+    expect(await worker.processPending()).toBe(1);
+    expect(await worker.processPending()).toBe(1);
+
+    expect(channel.sent.map((message) => message.text)).toEqual([
+      'First answer',
+      'First answer',
+      'Second answer',
+    ]);
+    expect(repository.getDeliverySummary()).toEqual({ failed: 0, pending: 0 });
   });
 });
 
@@ -119,15 +170,23 @@ function createWorker(
   });
 }
 
-function enqueueDelivery(repository: SqliteSupportRepository): void {
+function enqueueDelivery(
+  repository: SqliteSupportRepository,
+  delivery: {
+    id?: string;
+    idempotencyKey?: string;
+    operatorMessageId?: string;
+    text?: string;
+  } = {},
+): void {
   repository.enqueueDelivery({
     channel: 'telegram',
     conversationId: '101',
     createdAt: new Date('2026-08-31T12:01:00.000Z'),
-    id: 'delivery-1',
-    idempotencyKey: 'operator:update-2',
-    operatorMessageId: 'operator-message-1',
+    id: delivery.id ?? 'delivery-1',
+    idempotencyKey: delivery.idempotencyKey ?? 'operator:update-2',
+    operatorMessageId: delivery.operatorMessageId ?? 'operator-message-1',
     requestId: 'request-1',
-    text: 'Answer',
+    text: delivery.text ?? 'Answer',
   });
 }

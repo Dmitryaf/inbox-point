@@ -77,8 +77,9 @@ export class TelegramTopicsInbox implements OperatorInbox {
 }
 
 function formatInitialMessage(request: OpenOperatorRequest): string {
+  const channelName = request.source.channel === 'telegram' ? 'Telegram' : 'VK';
   return [
-    'Новое обращение из Telegram',
+    `Новое обращение из ${channelName}`,
     `Клиент: ${request.source.displayName}`,
     '',
     'Вопрос:',

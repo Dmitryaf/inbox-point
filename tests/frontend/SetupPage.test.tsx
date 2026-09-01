@@ -7,7 +7,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { SetupPage } from '../../frontend/src/SetupPage';
+import { TelegramSetup as SetupPage } from '../../frontend/src/SetupPage';
 
 const token = 'synthetic-test-token-0000000000';
 const chat = { id: -100001, title: 'Учебная группа', isForum: true };
