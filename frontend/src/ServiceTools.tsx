@@ -62,6 +62,10 @@ export function VkSetup() {
       <div id="vk-wizard" hidden={connected !== false}>
         <ol>
           <li>
+            Откройте «Сообщения → Настройки для бота» и включите «Возможности
+            ботов».
+          </li>
+          <li>
             В управлении сообществом откройте «Работа с API» и включите Long
             Poll API.
           </li>

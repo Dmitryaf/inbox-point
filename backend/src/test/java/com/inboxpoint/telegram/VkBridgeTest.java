@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.inboxpoint.vk.VkChannel;
 import com.sun.net.httpserver.HttpServer;
+import com.inboxpoint.content.ClientInformation;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import tools.jackson.databind.JsonNode;
@@ -48,7 +49,8 @@ class VkBridgeTest {
                         "synthetic-vk-test-token");
                 var store = new TelegramStore(directory.resolve("channels.sqlite"))) {
             var api = new TelegramBotApi(http, bot.origin(), TelegramTestServer.TOKEN, Duration.ofSeconds(3));
-            var handoff = new TelegramTextHandoff(-100123, store, api, Clock.systemUTC());
+            var handoff = new TelegramTextHandoff(-100123, store, api, Clock.systemUTC(),
+                    new ClientInformation(directory.resolve("settings.sqlite").toString()));
             handoff.processVk("vk-1", 123, 22, "VK customer", "Question in VK");
             handoff.processVk("vk-1", 123, 22, "VK customer", "Question in VK");
             handoff.process(update(1, 123, 0, "Question in Telegram"));

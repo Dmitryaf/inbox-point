@@ -5,23 +5,27 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 
+import com.inboxpoint.content.ClientInformation;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
+import static com.inboxpoint.content.ClientInformation.ADDRESS;
+import static com.inboxpoint.content.ClientInformation.ASK;
+import static com.inboxpoint.content.ClientInformation.PRICES;
+import static com.inboxpoint.content.ClientInformation.RESET;
+import static com.inboxpoint.content.ClientInformation.SCHEDULE;
+
 final class TelegramClientMenu {
-    private static final String SCHEDULE = "Расписание";
-    private static final String PRICES = "Цены";
-    private static final String ADDRESS = "Адрес";
-    private static final String ASK = "Задать вопрос преподавателю";
-    private static final String RESET = "Начать новый вопрос";
     private static final String SOURCE = "telegram:menu";
     private static final JsonNode KEYBOARD = keyboard();
 
     private final TelegramStore store;
     private final TelegramBotApi api;
     private final long group;
+    private final ClientInformation information;
 
-    TelegramClientMenu(TelegramStore store, TelegramBotApi api, long group) {
+    TelegramClientMenu(TelegramStore store, TelegramBotApi api, long group, ClientInformation information) {
+        this.information = information;
         this.store = store;
         this.api = api;
         this.group = group;
@@ -53,15 +57,10 @@ final class TelegramClientMenu {
         return true;
     }
 
-    private static String response(String text, boolean active) {
-        var unavailable = switch (text) {
-            case SCHEDULE -> "Расписание пока не добавлено.";
-            case PRICES -> "Цены пока не добавлены.";
-            case ADDRESS -> "Адрес пока не добавлен.";
-            default -> null;
-        };
-        if (unavailable != null) {
-            return unavailable + " Вы можете задать вопрос преподавателю.";
+    private String response(String text, boolean active) {
+        var answer = information.resolve(text);
+        if (answer != null) {
+            return answer;
         }
         if (RESET.equals(text)) {
             return active ? "Предыдущий разговор завершён. Выберите нужный раздел." : "Выберите нужный раздел.";

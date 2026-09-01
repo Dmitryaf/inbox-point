@@ -6,6 +6,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.inboxpoint.content.ClientInformation;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import tools.jackson.databind.JsonNode;
@@ -35,7 +36,8 @@ class TelegramMenuTest {
         }); var http = HttpClient.newHttpClient();
                 var store = new TelegramStore(directory.resolve("menu.sqlite"))) {
             var api = new TelegramBotApi(http, server.origin(), TelegramTestServer.TOKEN, Duration.ofSeconds(3));
-            var handoff = new TelegramTextHandoff(-100123, store, api, Clock.systemUTC());
+            var handoff = new TelegramTextHandoff(-100123, store, api, Clock.systemUTC(),
+                    new ClientInformation(directory.resolve("settings.sqlite").toString()));
             handoff.process(update(1, "/start"));
             handoff.process(update(1, "/start"));
             assertThat(store.activeRequest(123)).isNull();

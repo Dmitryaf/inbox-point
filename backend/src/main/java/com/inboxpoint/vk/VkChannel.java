@@ -6,6 +6,8 @@ import java.net.http.HttpClient;
 import java.sql.SQLException;
 import java.time.Duration;
 
+import tools.jackson.databind.JsonNode;
+
 public final class VkChannel implements AutoCloseable {
     private static final long FIRST_GROUP_CHAT = 2_000_000_000L;
     private final HttpClient http;
@@ -23,7 +25,11 @@ public final class VkChannel implements AutoCloseable {
     }
 
     public long send(long peer, String text, String key) throws IOException, InterruptedException {
-        return Long.parseLong(api.send(peer, text, key, null));
+        return send(peer, text, key, null);
+    }
+
+    public long send(long peer, String text, String key, JsonNode keyboard) throws IOException, InterruptedException {
+        return Long.parseLong(api.send(peer, text, key, keyboard));
     }
 
     public void check(long group) throws IOException, InterruptedException {

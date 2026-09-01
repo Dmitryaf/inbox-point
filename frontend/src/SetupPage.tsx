@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { request } from './setup-api';
 import { VkSetup, DeliveryPanel, BackupPanel } from './ServiceTools';
+import { ContentSetup } from './ContentSetup';
 
 interface OperatorChat {
   id: number;
@@ -14,6 +15,7 @@ export function SetupPage() {
       <h1>Messenger Handoff</h1>
       <TelegramSetup />
       <VkSetup />
+      <ContentSetup />
       <DeliveryPanel />
       <BackupPanel />
     </main>

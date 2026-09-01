@@ -3,6 +3,7 @@ package com.inboxpoint.telegram;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import com.inboxpoint.content.ClientInformation;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.mock.env.MockEnvironment;
@@ -32,7 +33,8 @@ class TelegramSetupTest {
             var environment = new MockEnvironment()
                     .withProperty("DATABASE_PATH", directory.resolve("setup.sqlite").toString())
                     .withProperty("inboxpoint.telegram.api-origin", server.origin().toString());
-            var runtime = new TelegramRuntime(environment);
+            var runtime = new TelegramRuntime(environment,
+                    new ClientInformation(directory.resolve("setup.sqlite").toString()));
             try {
                 runtime.start();
                 assertThat(runtime.status().connected()).isFalse();
@@ -48,7 +50,8 @@ class TelegramSetupTest {
             } finally {
                 runtime.stop();
             }
-            var restored = new TelegramRuntime(environment);
+            var restored = new TelegramRuntime(environment,
+                    new ClientInformation(directory.resolve("setup.sqlite").toString()));
             try {
                 restored.start();
                 assertThat(restored.status()).isEqualTo(new TelegramRuntime.Status(true, true, "local"));

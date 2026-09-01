@@ -5,6 +5,7 @@ import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Duration;
 
+import com.inboxpoint.content.ClientInformation;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import tools.jackson.databind.JsonNode;
@@ -26,7 +27,8 @@ class TelegramTextHandoffTest {
         }); var client = HttpClient.newHttpClient();
                 var store = new TelegramStore(directory.resolve("telegram.sqlite"))) {
             var api = new TelegramBotApi(client, server.origin(), TelegramTestServer.TOKEN, Duration.ofSeconds(3));
-            var handoff = new TelegramTextHandoff(-100123, store, api, Clock.systemUTC());
+            var handoff = new TelegramTextHandoff(-100123, store, api, Clock.systemUTC(),
+                    new ClientInformation(directory.resolve("settings.sqlite").toString()));
             var question = update(1, 123, "private", 0, "Question");
             handoff.process(question);
             handoff.process(question);

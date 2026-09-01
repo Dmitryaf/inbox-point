@@ -13,6 +13,7 @@ import java.util.UUID;
 import java.util.List;
 import java.util.Map;
 
+import com.inboxpoint.content.ClientInformation;
 import com.inboxpoint.persistence.LocalJsonFile;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.LoggerFactory;
@@ -30,6 +31,7 @@ public final class TelegramRuntime {
     private static final Duration API_TIMEOUT = Duration.ofSeconds(8);
 
     private final Environment environment;
+    private final ClientInformation information;
     private final Path database;
     private final Path settingsFile;
     private final URI origin;
@@ -39,7 +41,8 @@ public final class TelegramRuntime {
     private volatile Settings live;
     private String source = NONE;
 
-    TelegramRuntime(Environment environment) {
+    TelegramRuntime(Environment environment, ClientInformation information) {
+        this.information = information;
         this.environment = environment;
         database = Path.of(environment.getProperty("DATABASE_PATH", "./data/messenger-handoff.sqlite"));
         settingsFile = database.toAbsolutePath().resolveSibling("telegram-settings.json");
@@ -144,7 +147,11 @@ public final class TelegramRuntime {
         var telegram = live;
         try (var store = new TelegramStore(database); var transport = TelegramHttpTransport.open("", API_TIMEOUT)) {
             var api = new TelegramBotApi(transport, origin, telegram.token(), API_TIMEOUT);
-            new TelegramTextHandoff(telegram.group(), store, api, Clock.systemUTC()).processVk(event, peer, message, name, text);
+            var menu = new VkClientMenu(information, vk.channel());
+            if (!menu.handle(store, event, peer, text)) {
+                new TelegramTextHandoff(telegram.group(), store, api, Clock.systemUTC(), information)
+                        .processVk(event, peer, message, name, text);
+            }
         }
     }
 
@@ -209,10 +216,10 @@ public final class TelegramRuntime {
         }
     }
 
-    private static void poll(Path database, URI origin, String token, long group, int timeout) {
+    private void poll(Path database, URI origin, String token, long group, int timeout) {
         try (var store = new TelegramStore(database); var transport = TelegramHttpTransport.open("", API_TIMEOUT)) {
             var api = new TelegramBotApi(transport, origin, token, API_TIMEOUT);
-            var handoff = new TelegramTextHandoff(group, store, api, Clock.systemUTC());
+            var handoff = new TelegramTextHandoff(group, store, api, Clock.systemUTC(), information);
             new TelegramPoller(api, handoff, timeout).run();
         } catch (InterruptedException stopping) {
             Thread.currentThread().interrupt();

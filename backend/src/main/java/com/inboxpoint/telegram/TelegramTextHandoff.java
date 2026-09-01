@@ -6,6 +6,7 @@ import java.time.Clock;
 import java.util.Locale;
 import java.util.UUID;
 
+import com.inboxpoint.content.ClientInformation;
 import tools.jackson.databind.JsonNode;
 
 final class TelegramTextHandoff {
@@ -17,12 +18,12 @@ final class TelegramTextHandoff {
     private final Clock clock;
     private final TelegramClientMenu menu;
 
-    TelegramTextHandoff(long operatorGroup, TelegramStore store, TelegramBotApi api, Clock clock) {
+    TelegramTextHandoff(long operatorGroup, TelegramStore store, TelegramBotApi api, Clock clock, ClientInformation information) {
         this.operatorGroup = operatorGroup;
         this.store = store;
         this.api = api;
         this.clock = clock;
-        this.menu = new TelegramClientMenu(store, api, operatorGroup);
+        this.menu = new TelegramClientMenu(store, api, operatorGroup, information);
     }
 
     void process(JsonNode update) throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
