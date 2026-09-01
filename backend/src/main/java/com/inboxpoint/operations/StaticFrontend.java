@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.util.Map;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +17,8 @@ import org.springframework.web.bind.annotation.RestController;
 final class StaticFrontend {
     private static final Map<String, Asset> ASSETS = Map.of(
             "/", new Asset("index.html", "text/html;charset=UTF-8"),
+            "/setup", new Asset("index.html", "text/html;charset=UTF-8"),
+            "/setup/app.js", new Asset("app.js", "text/javascript;charset=UTF-8"),
             "/app.js", new Asset("app.js", "text/javascript;charset=UTF-8"),
             "/style.css", new Asset("style.css", "text/css;charset=UTF-8"));
 
@@ -25,9 +28,17 @@ final class StaticFrontend {
         frontend = Path.of(directory);
     }
 
-    @GetMapping({"/", "/app.js", "/style.css"})
-    ResponseEntity<byte[]> serve(HttpServletRequest request) throws IOException {
-        var asset = ASSETS.get(request.getRequestURI());
+    @GetMapping({"/", "/app.js", "/style.css", "/setup", "/setup/app.js"})
+    ResponseEntity<byte[]> serve(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        var route = request.getRequestURI();
+        if (route.startsWith("/setup")) {
+            if (!LocalSetupAccess.allow(request, response)) {
+                return ResponseEntity.notFound().build();
+            }
+            response.setHeader("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; "
+                    + "connect-src 'self'; frame-ancestors 'none'");
+        }
+        var asset = ASSETS.get(route);
         var file = frontend.resolve(asset.file());
         if (!Files.isRegularFile(file)) {
             return ResponseEntity.notFound().build();

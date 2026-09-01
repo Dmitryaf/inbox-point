@@ -1,8 +1,17 @@
 import { useEffect, useState } from 'react';
+import { SetupPage } from './SetupPage';
 
 type Status = 'loading' | 'ready' | 'error';
 
 export function App() {
+  return window.location.pathname.startsWith('/setup') ? (
+    <SetupPage />
+  ) : (
+    <ServiceStatus />
+  );
+}
+
+function ServiceStatus() {
   const [status, setStatus] = useState<Status>('loading');
   const [attempt, setAttempt] = useState(0);
 

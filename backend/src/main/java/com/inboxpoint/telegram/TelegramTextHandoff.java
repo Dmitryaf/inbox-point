@@ -8,6 +8,8 @@ import java.util.UUID;
 import tools.jackson.databind.JsonNode;
 
 final class TelegramTextHandoff {
+    record OperatorChat(long id, boolean isForum, String title, String type) { }
+
     private final long operatorGroup;
     private final TelegramStore store;
     private final TelegramBotApi api;

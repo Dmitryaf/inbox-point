@@ -72,6 +72,28 @@ final class TelegramBotApi {
         return botId.longValue();
     }
 
+    List<TelegramTextHandoff.OperatorChat> discoverChats() throws RequestFailed, InterruptedException {
+        var payload = JSON.createObjectNode().put("timeout", 0);
+        payload.putArray("allowed_updates").add("message").add("my_chat_member");
+        var updates = call("getUpdates", payload, requestTimeout, false);
+        if (!updates.isArray()) {
+            throw invalidResponse("getUpdates", false);
+        }
+        var byId = new LinkedHashMap<Long, TelegramTextHandoff.OperatorChat>();
+        for (var update : updates) {
+            var chat = update.has("my_chat_member") ? update.at("/my_chat_member/chat") : update.at("/message/chat");
+            var type = chat.path("type").asString("");
+            var id = chat.path("id");
+            if (("group".equals(type) || "supergroup".equals(type)) && id.isIntegralNumber()
+                    && id.canConvertToLong() && id.longValue() < 0 && id.longValue() >= -MAX_SAFE_INTEGER) {
+                var title = chat.path("title").asString("Telegram group " + id.longValue());
+                var isForum = JSON.getNodeFactory().booleanNode(true).equals(chat.path("is_forum"));
+                byId.put(id.longValue(), new TelegramTextHandoff.OperatorChat(id.longValue(), isForum, title, type));
+            }
+        }
+        return byId.values().stream().sorted(Comparator.comparing(TelegramTextHandoff.OperatorChat::title)).toList();
+    }
+
     List<JsonNode> getUpdates(Long offset, int timeoutSeconds) throws RequestFailed, InterruptedException {
         var payload = JSON.createObjectNode().put("timeout", timeoutSeconds);
         payload.putArray("allowed_updates").add("message");
