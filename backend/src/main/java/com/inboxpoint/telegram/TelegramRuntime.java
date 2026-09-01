@@ -8,6 +8,8 @@ import java.nio.file.Path;
 import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
+import java.util.UUID;
 import java.util.List;
 import java.util.Map;
 
@@ -33,6 +35,8 @@ public final class TelegramRuntime {
     private final URI origin;
     private Thread poller;
     private Thread deliveries;
+    private final VkSetup vk;
+    private volatile Settings live;
     private String source = NONE;
 
     TelegramRuntime(Environment environment) {
@@ -40,6 +44,7 @@ public final class TelegramRuntime {
         database = Path.of(environment.getProperty("DATABASE_PATH", "./data/messenger-handoff.sqlite"));
         settingsFile = database.toAbsolutePath().resolveSibling("telegram-settings.json");
         origin = URI.create(environment.getProperty("inboxpoint.telegram.api-origin", "https://api.telegram.org"));
+        vk = new VkSetup(environment, database);
     }
 
     @EventListener(ApplicationReadyEvent.class)
@@ -116,9 +121,53 @@ public final class TelegramRuntime {
                         .put("pollTimeoutSeconds", settings.timeout()));
             }
         }
+        live = settings;
         poller = Thread.ofVirtual().name("telegram-handoff")
                 .start(() -> poll(database, origin, settings.token(), settings.group(), settings.timeout()));
         deliveries = Thread.ofVirtual().name("telegram-deliveries").start(() -> deliver(settings.token()));
+        vk.restore(this::receiveVk);
+    }
+
+    Status vkStatus() {
+        return vk.status();
+    }
+
+    synchronized void connectVk(String token, String community) throws IOException, InterruptedException {
+        if (!status().connected()) {
+            throw new IllegalStateException("Сначала подключите Telegram.");
+        }
+        vk.connect(token, community, this::receiveVk);
+    }
+
+    private void receiveVk(String event, long peer, long message, String name, String text)
+            throws IOException, SQLException, InterruptedException {
+        var telegram = live;
+        try (var store = new TelegramStore(database); var transport = TelegramHttpTransport.open("", API_TIMEOUT)) {
+            var api = new TelegramBotApi(transport, origin, telegram.token(), API_TIMEOUT);
+            new TelegramTextHandoff(telegram.group(), store, api, Clock.systemUTC()).processVk(event, peer, message, name, text);
+        }
+    }
+
+    Map<String, ?> deliveryStatus() throws IOException, SQLException {
+        try (var store = new TelegramStore(database)) {
+            return Map.of("summary", store.summary(), "failures", store.failures());
+        }
+    }
+
+    boolean retry(String id) throws IOException, SQLException {
+        try (var store = new TelegramStore(database)) {
+            return store.retry(id, Instant.now());
+        }
+    }
+
+    Map<String, String> backup() throws IOException, SQLException {
+        var createdAt = Instant.now();
+        var name = "messenger-handoff-" + createdAt.toString().replace(':', '-') + "-" + UUID.randomUUID() + ".sqlite";
+        var folder = database.toAbsolutePath().resolveSibling("backups");
+        try (var store = new TelegramStore(database)) {
+            store.backup(folder.resolve(name));
+        }
+        return Map.of("fileName", name, "createdAt", createdAt.toString());
     }
 
     public Map<String, Long> deliveryCounts() throws IOException, SQLException {
@@ -131,7 +180,7 @@ public final class TelegramRuntime {
     private void deliver(String token) {
         try (var store = new TelegramStore(database); var transport = TelegramHttpTransport.open("", API_TIMEOUT)) {
             var api = new TelegramBotApi(transport, origin, token, API_TIMEOUT);
-            new TelegramDeliveryWorker(store, api, Clock.systemUTC()).run();
+            new TelegramDeliveryWorker(store, api, Clock.systemUTC(), vk::channel).run();
         } catch (InterruptedException stopping) {
             Thread.currentThread().interrupt();
         } catch (IOException | SQLException failure) {
@@ -147,6 +196,7 @@ public final class TelegramRuntime {
 
     @PreDestroy
     synchronized void stop() throws InterruptedException {
+        vk.stop();
         if (deliveries != null) {
             deliveries.interrupt();
         }

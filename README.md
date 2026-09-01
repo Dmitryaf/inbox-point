@@ -30,7 +30,9 @@ npm install
 npm run dev
 ```
 
-The service status is available at `http://127.0.0.1:3000/health`.
+The local setup, delivery status, and backup controls are available at
+`http://127.0.0.1:3000/setup`. The service status is available at
+`http://127.0.0.1:3000/health`.
 
 Run all project checks with:
 
@@ -40,7 +42,9 @@ npm run check
 
 ## Status
 
-The development foundation is available. Telegram and VK integrations are not implemented yet.
+Telegram and VK text handoff, topic recovery, durable reply delivery, local
+connection setup, and verified SQLite backups are implemented. Editable
+information sections and production deployment are not implemented yet.
 
 ## License
 

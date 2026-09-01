@@ -1,8 +1,12 @@
 package com.inboxpoint.telegram;
 
+import java.io.IOException;
 import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Duration;
+import java.util.function.Supplier;
+
+import com.inboxpoint.vk.VkChannel;
 
 final class TelegramDeliveryWorker {
     private static final int ATTEMPT_LIMIT = 5;
@@ -10,8 +14,14 @@ final class TelegramDeliveryWorker {
     private final TelegramStore store;
     private final TelegramBotApi api;
     private final Clock clock;
+    private final Supplier<VkChannel> vk;
 
     TelegramDeliveryWorker(TelegramStore store, TelegramBotApi api, Clock clock) {
+        this(store, api, clock, () -> null);
+    }
+
+    TelegramDeliveryWorker(TelegramStore store, TelegramBotApi api, Clock clock, Supplier<VkChannel> vk) {
+        this.vk = vk;
         this.store = store;
         this.api = api;
         this.clock = clock;
@@ -25,14 +35,18 @@ final class TelegramDeliveryWorker {
     }
 
     int runOnce() throws SQLException, InterruptedException {
-        var submitted = store.pending(clock.instant());
+        var vkChannel = vk.get();
+        var submitted = store.pending(clock.instant(), vkChannel != null);
         for (var item : submitted) {
             long sent;
             try {
-                sent = api.sendMessage(item.conversation(), null, item.text());
-            } catch (TelegramBotApi.RequestFailed failure) {
-                if (failure.outcomeUnknown() || item.attempts() + 1 >= ATTEMPT_LIMIT) {
-                    store.failed(item.key());
+                sent = "vk".equals(item.channel())
+                        ? vkChannel.send(item.conversation(), item.text(), item.key())
+                        : api.sendMessage(item.conversation(), null, item.text());
+            } catch (IOException failure) {
+                var uncertain = failure instanceof TelegramBotApi.RequestFailed telegram && telegram.outcomeUnknown();
+                if (uncertain || item.attempts() + 1 >= ATTEMPT_LIMIT) {
+                    store.failed(item.key(), uncertain);
                 } else {
                     long delay = Math.min(5L << item.attempts(), 300);
                     store.schedule(item.key(), clock.instant().plusSeconds(delay));

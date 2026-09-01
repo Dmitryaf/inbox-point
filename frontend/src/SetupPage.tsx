@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { request } from './setup-api';
+import { VkSetup, DeliveryPanel, BackupPanel } from './ServiceTools';
 
 interface OperatorChat {
   id: number;
@@ -6,32 +8,19 @@ interface OperatorChat {
   isForum: boolean;
 }
 
-async function request<T>(
-  path: string,
-  body?: unknown,
-  signal?: AbortSignal,
-): Promise<T> {
-  const response = await fetch(path, {
-    method: body === undefined ? 'GET' : 'POST',
-    ...(body === undefined
-      ? {}
-      : {
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(body),
-        }),
-    ...(signal ? { signal } : {}),
-  });
-  const value = (await response.json()) as T & { message?: unknown };
-  if (!response.ok)
-    throw new Error(
-      typeof value.message === 'string'
-        ? value.message
-        : 'Не удалось выполнить действие.',
-    );
-  return value;
+export function SetupPage() {
+  return (
+    <main>
+      <h1>Messenger Handoff</h1>
+      <TelegramSetup />
+      <VkSetup />
+      <DeliveryPanel />
+      <BackupPanel />
+    </main>
+  );
 }
 
-export function SetupPage() {
+export function TelegramSetup() {
   const [connected, setConnected] = useState<boolean | undefined>();
   const [token, setToken] = useState('');
   const [chats, setChats] = useState<OperatorChat[]>([]);
@@ -107,9 +96,9 @@ export function SetupPage() {
   }
 
   return (
-    <main>
-      <h1>Подключение Telegram</h1>
-      <section id="wizard" hidden={connected !== false}>
+    <section aria-label="Подключение Telegram">
+      <h2>Подключение Telegram</h2>
+      <div id="wizard" hidden={connected !== false}>
         <ol>
           <li>Создайте закрытую группу и включите темы.</li>
           <li>Добавьте бота администратором с правом управлять темами.</li>
@@ -150,10 +139,10 @@ export function SetupPage() {
         >
           Подключить
         </button>
-      </section>
+      </div>
       <p id="status" role="status">
         {message}
       </p>
-    </main>
+    </section>
   );
 }

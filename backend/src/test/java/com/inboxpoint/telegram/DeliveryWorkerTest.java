@@ -33,7 +33,7 @@ class DeliveryWorkerTest {
         }); var client = HttpClient.newHttpClient()) {
             var api = new TelegramBotApi(client, server.origin(), TelegramTestServer.TOKEN, Duration.ofSeconds(3));
             try (var store = new TelegramStore(database)) {
-                var request = new TelegramStore.Request("question", 123, 42, true);
+                var request = new TelegramStore.Request("question", 123, 42, true, "telegram");
                 store.open(request, submitted);
                 store.queue(request, "reply", 702, "Answer", submitted);
                 var worker = new TelegramDeliveryWorker(store, api, Clock.fixed(submitted, ZoneOffset.UTC));

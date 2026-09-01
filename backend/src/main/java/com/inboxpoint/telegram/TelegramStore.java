@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -61,36 +62,42 @@ final class TelegramStore implements AutoCloseable {
         }
     }
 
-    record Request(String id, long conversation, long topic, boolean active) { }
+    record Request(String id, long conversation, long topic, boolean active, String channel) { }
 
     Request activeRequest(long conversation) throws SQLException {
-        return request("external_conversation_id = ? AND status = 'active'", conversation);
+        return activeRequest("telegram", conversation);
     }
 
-    Request latestRequest(long conversation) throws SQLException {
-        return request("external_conversation_id = ? ORDER BY julianday(created_at) DESC, rowid DESC LIMIT 1",
-                conversation);
+    Request activeRequest(String channel, long conversation) throws SQLException {
+        return request("channel = ? AND external_conversation_id = ? AND status = 'active'",
+                channel, Long.toString(conversation));
+    }
+
+    Request latestRequest(String channel, long conversation) throws SQLException {
+        return request("channel = ? AND external_conversation_id = ? ORDER BY julianday(created_at) DESC, rowid DESC LIMIT 1",
+                channel, Long.toString(conversation));
     }
 
     Request byTopic(long topic) throws SQLException {
-        return request("operator_topic_id = ?", topic);
+        return request("operator_topic_id = ?", Long.toString(topic));
     }
 
-    private Request request(String predicate, long value) throws SQLException {
+    private Request request(String predicate, Object... values) throws SQLException {
         try (var statement = prepare("""
-                SELECT id, external_conversation_id, operator_topic_id, status
-                FROM support_requests WHERE channel = 'telegram' AND
-                """ + " " + predicate, Long.toString(value)); var rows = statement.executeQuery()) {
+                SELECT id, external_conversation_id, operator_topic_id, status, channel
+                FROM support_requests WHERE
+                """ + " " + predicate, values); var rows = statement.executeQuery()) {
             return rows.next() ? new Request(rows.getString("id"), rows.getLong("external_conversation_id"),
-                    rows.getLong("operator_topic_id"), "active".equals(rows.getString("status"))) : null;
+                    rows.getLong("operator_topic_id"), "active".equals(rows.getString("status")),
+                    rows.getString("channel")) : null;
         }
     }
 
     void open(Request request, Instant now) throws SQLException {
         update("""
                 INSERT INTO support_requests (id, channel, external_conversation_id, operator_topic_id, status, created_at)
-                VALUES (?, 'telegram', ?, ?, 'active', ?)
-                """, request.id(), Long.toString(request.conversation()), Long.toString(request.topic()), now.toString());
+                VALUES (?, ?, ?, ?, 'active', ?)
+                """, request.id(), request.channel(), Long.toString(request.conversation()), Long.toString(request.topic()), now.toString());
     }
 
     void changeStatus(String id, boolean active, Instant now) throws SQLException {
@@ -109,13 +116,13 @@ final class TelegramStore implements AutoCloseable {
         update("DELETE FROM processed_events WHERE source = ? AND external_event_id = ?", source, event);
     }
 
-    void link(String requestId, String direction, long customerMessage, String operatorMessage, Instant now)
+    void link(String requestId, String direction, String customerMessage, String operatorMessage, Instant now)
             throws SQLException {
         update("""
                 INSERT INTO message_links
                     (id, request_id, direction, client_message_id, operator_message_id, created_at)
                 VALUES (?, ?, ?, ?, ?, ?)
-                """, UUID.randomUUID().toString(), requestId, direction, Long.toString(customerMessage), operatorMessage, now.toString());
+                """, UUID.randomUUID().toString(), requestId, direction, customerMessage, operatorMessage, now.toString());
     }
 
     void queue(Request request, String event, long message, String text, Instant now) throws SQLException {
@@ -123,25 +130,25 @@ final class TelegramStore implements AutoCloseable {
                 INSERT OR IGNORE INTO deliveries
                     (id, request_id, idempotency_key, operator_message_id, channel,
                     external_conversation_id, text, status, created_at, next_attempt_at)
-                VALUES (?, ?, ?, ?, 'telegram', ?, ?, 'pending', ?, ?)
-                """, UUID.randomUUID().toString(), request.id(), "operator:" + event, Long.toString(message),
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+                """, UUID.randomUUID().toString(), request.id(), "operator:" + event, Long.toString(message), request.channel(),
                 Long.toString(request.conversation()), text, now.toString(), now.toString());
     }
 
-    record Pending(String key, String request, String operatorMessage, long conversation, String text, int attempts) { }
+    record Pending(String key, String request, String operatorMessage, long conversation, String text, int attempts, String channel) { }
 
-    List<Pending> pending(Instant now) throws SQLException {
+    List<Pending> pending(Instant now, boolean vkAvailable) throws SQLException {
         try (var statement = prepare("""
                 SELECT idempotency_key, request_id, COALESCE(operator_message_id, idempotency_key),
-                    external_conversation_id, text, attempts
+                    external_conversation_id, text, attempts, channel
                 FROM deliveries
-                WHERE status = 'pending' AND channel = 'telegram' AND julianday(COALESCE(next_attempt_at, created_at))
+                WHERE status = 'pending' AND (channel = 'telegram' OR ?) AND julianday(COALESCE(next_attempt_at, created_at))
                     <= julianday(?) ORDER BY julianday(created_at), id LIMIT 25
-                """, now.toString()); var rows = statement.executeQuery()) {
+                """, vkAvailable, now.toString()); var rows = statement.executeQuery()) {
             var result = new ArrayList<Pending>();
             while (rows.next()) {
                 result.add(new Pending(rows.getString(1), rows.getString(2), rows.getString(3), rows.getLong(4),
-                        rows.getString(5), rows.getInt(6)));
+                        rows.getString(5), rows.getInt(6), rows.getString(7)));
             }
             return result;
         }
@@ -158,7 +165,7 @@ final class TelegramStore implements AutoCloseable {
         connection.setAutoCommit(false);
         try {
             deliver(item.key(), sent, now);
-            link(item.request(), "operator_to_client", sent, item.operatorMessage(), now);
+            link(item.request(), "operator_to_client", Long.toString(sent), item.operatorMessage(), now);
             connection.commit();
         } catch (SQLException failure) {
             connection.rollback();
@@ -188,9 +195,57 @@ final class TelegramStore implements AutoCloseable {
                 """, Long.toString(message), now.toString(), key);
     }
 
-    void failed(String key) throws SQLException {
+    void failed(String key, boolean uncertain) throws SQLException {
         update("UPDATE deliveries SET status = 'failed', attempts = attempts + 1, last_error = ? WHERE idempotency_key = ?",
-                "Telegram delivery failed", key);
+                uncertain ? "Uncertain Telegram result" : "Platform rejected delivery", key);
+    }
+
+    record PublicFailure(String id, String channel, int attempts, String createdAt, String reason) { }
+
+    List<PublicFailure> failures() throws SQLException {
+        try (var statement = connection.createStatement(); var rows = statement.executeQuery("""
+                SELECT id, channel, attempts, created_at, last_error FROM deliveries
+                WHERE status = 'failed' ORDER BY julianday(created_at) DESC, id LIMIT 20
+                """)) {
+            var result = new ArrayList<PublicFailure>();
+            while (rows.next()) {
+                var reason = "Uncertain Telegram result".equals(rows.getString("last_error"))
+                        ? "Итог отправки неизвестен. Проверьте диалог клиента."
+                        : "Ответ не доставлен. Проверьте доступ к каналу и повторите отправку.";
+                result.add(new PublicFailure(rows.getString("id"), "telegram".equals(rows.getString("channel"))
+                        ? "Telegram" : "VK", rows.getInt("attempts"), rows.getString("created_at"), reason));
+            }
+            return result;
+        }
+    }
+
+    boolean retry(String id, Instant now) throws SQLException {
+        return update("""
+                UPDATE deliveries SET status = 'pending', attempts = 0, next_attempt_at = ?, last_error = NULL
+                WHERE id = ? AND status = 'failed' AND (last_error IS NULL OR last_error <> 'Uncertain Telegram result')
+                """, now.toString(), id) == 1;
+    }
+
+    void backup(Path destination) throws IOException, SQLException {
+        Files.createDirectories(destination.toAbsolutePath().getParent());
+        var temporary = destination.resolveSibling(destination.getFileName() + ".tmp");
+        try {
+            try (var copy = prepare("VACUUM INTO ?", temporary.toString())) {
+                copy.execute();
+            }
+            var config = new SQLiteConfig();
+            config.setReadOnly(true);
+            try (var saved = config.createConnection("jdbc:sqlite:" + temporary);
+                    var check = saved.createStatement();
+                    var result = check.executeQuery("PRAGMA quick_check")) {
+                if (!result.next() || !"ok".equals(result.getString(1))) {
+                    throw new SQLException("SQLite backup integrity verification failed");
+                }
+            }
+            Files.move(temporary, destination, StandardCopyOption.ATOMIC_MOVE);
+        } finally {
+            Files.deleteIfExists(temporary);
+        }
     }
 
     private PreparedStatement prepare(String sql, Object... values) throws SQLException {

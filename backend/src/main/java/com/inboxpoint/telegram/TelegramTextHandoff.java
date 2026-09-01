@@ -1,5 +1,6 @@
 package com.inboxpoint.telegram;
 
+import java.io.IOException;
 import java.sql.SQLException;
 import java.time.Clock;
 import java.util.Locale;
@@ -55,7 +56,7 @@ final class TelegramTextHandoff {
             if (operator) {
                 relayReply(topic, externalMessage, text, event);
             } else {
-                relayQuestion(chat, externalMessage, text, sender);
+                relayQuestion("telegram", chat, Long.toString(externalMessage), text, displayName(sender));
             }
         } catch (TelegramBotApi.RequestFailed failure) {
             if (!failure.outcomeUnknown()) {
@@ -65,9 +66,31 @@ final class TelegramTextHandoff {
         }
     }
 
-    private void relayQuestion(long chat, long message, String text, JsonNode sender)
+    void processVk(String event, long peer, long message, String name, String text)
+            throws SQLException, InterruptedException, IOException {
+        if (!store.claim("client:vk", event, clock.instant())) {
+            return;
+        }
+        try {
+            relayQuestion("vk", peer, peer + ":" + message, text, name);
+        } catch (TelegramBotApi.RequestFailed failure) {
+            if (!failure.outcomeUnknown()) {
+                store.release("client:vk", event);
+            }
+            throw failure;
+        }
+    }
+
+    private static String displayName(JsonNode sender) {
+        var name = (sender.path("first_name").asString("") + " " + sender.path("last_name").asString(""))
+                .strip().replaceAll("\\s+", " ");
+        var username = sender.path("username").asString("");
+        return !name.isEmpty() ? name : username.isEmpty() ? "Customer" : "@" + username;
+    }
+
+    private void relayQuestion(String channel, long chat, String message, String text, String name)
             throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
-        var request = store.activeRequest(chat);
+        var request = store.activeRequest(channel, chat);
         if (request != null) {
             try {
                 var sent = api.sendMessage(operatorGroup, request.topic(), "Customer:\n\n" + text);
@@ -81,7 +104,7 @@ final class TelegramTextHandoff {
                 store.changeStatus(request.id(), false, clock.instant());
             }
         }
-        var latest = store.latestRequest(chat);
+        var latest = store.latestRequest(channel, chat);
         if (latest != null && (request == null || !latest.id().equals(request.id()))) {
             try {
                 api.reopenTopic(operatorGroup, latest.topic());
@@ -96,18 +119,13 @@ final class TelegramTextHandoff {
                 }
             }
         }
-        var name = (sender.path("first_name").asString("") + " " + sender.path("last_name").asString(""))
-                .strip().replaceAll("\\s+", " ");
-        if (name.isEmpty()) {
-            var username = sender.path("username").asString("");
-            name = username.isEmpty() ? "Customer" : "@" + username;
-        }
-        var title = "TG - " + name;
+        var platform = "telegram".equals(channel) ? "Telegram" : "VK";
+        var title = ("telegram".equals(channel) ? "TG" : "VK") + " - " + name;
         title = title.substring(0, title.offsetByCodePoints(0, Math.min(128, title.codePointCount(0, title.length()))));
         request = new TelegramStore.Request(UUID.randomUUID().toString(), chat,
-                api.createForumTopic(operatorGroup, title), true);
+                api.createForumTopic(operatorGroup, title), true, channel);
         store.open(request, clock.instant());
-        var body = "New Telegram request\nCustomer: " + name + "\nRequest: " + request.id() + "\n\n" + text
+        var body = "New " + platform + " request\nCustomer: " + name + "\nRequest: " + request.id() + "\n\n" + text
                 + "\n\nReply here to answer the customer. Use /close to close the request.";
         var sent = api.sendMessage(operatorGroup, request.topic(), body);
         store.link(request.id(), "client_to_operator", message, Long.toString(sent), clock.instant());
@@ -119,7 +137,7 @@ final class TelegramTextHandoff {
         }
         var request = store.byTopic(topic);
         if (request != null && request.active() != active
-                && (!active || store.activeRequest(request.conversation()) == null)) {
+                && (!active || store.activeRequest(request.channel(), request.conversation()) == null)) {
             store.changeStatus(request.id(), active, clock.instant());
         }
     }
@@ -139,7 +157,7 @@ final class TelegramTextHandoff {
                 }
             }
             case "/reopen" -> {
-                if (!request.active() && store.activeRequest(request.conversation()) == null) {
+                if (!request.active() && store.activeRequest(request.channel(), request.conversation()) == null) {
                     api.reopenTopic(operatorGroup, topic);
                     store.changeStatus(request.id(), true, clock.instant());
                 }

@@ -27,7 +27,8 @@ final class TelegramSetupController {
     @GetMapping("/status")
     ResponseEntity<?> status(HttpServletRequest request, HttpServletResponse response) {
         return LocalSetupAccess.allow(request, response)
-                ? ResponseEntity.ok(runtime.status()) : error(404, "Not found");
+                ? ResponseEntity.ok(Map.of("connected", runtime.status().connected(), "locked", runtime.status().locked(),
+                        "source", runtime.status().source(), "vk", runtime.vkStatus())) : error(404, "Not found");
     }
 
     @PostMapping("/telegram/discover")
@@ -63,6 +64,62 @@ final class TelegramSetupController {
         } catch (InterruptedException stopped) {
             Thread.currentThread().interrupt();
             return error(503, "Подключение прервано. Попробуйте снова.");
+        }
+    }
+
+    @PostMapping("/vk/connect")
+    ResponseEntity<?> connectVk(@RequestBody JsonNode input, HttpServletRequest request, HttpServletResponse response) {
+        if (!LocalSetupAccess.allow(request, response)) {
+            return error(404, "Not found");
+        }
+        try {
+            runtime.connectVk(input.path("accessToken").asString(""), input.path("community").asString(""));
+            return ResponseEntity.ok(Map.of("connected", true));
+        } catch (IOException failure) {
+            return error(400, "Не удалось подключить VK. Проверьте токен, сообщество и настройки сообщений.");
+        } catch (IllegalStateException | IllegalArgumentException failure) {
+            return error(400, failure.getMessage());
+        } catch (InterruptedException stopped) {
+            Thread.currentThread().interrupt();
+            return error(503, "Подключение прервано. Попробуйте снова.");
+        }
+    }
+
+    @GetMapping("/deliveries")
+    ResponseEntity<?> deliveries(HttpServletRequest request, HttpServletResponse response) {
+        if (!LocalSetupAccess.allow(request, response)) {
+            return error(404, "Not found");
+        }
+        try {
+            return ResponseEntity.ok(runtime.deliveryStatus());
+        } catch (IOException | SQLException failure) {
+            return error(503, "Не удалось проверить доставку.");
+        }
+    }
+
+    @PostMapping("/deliveries/retry")
+    ResponseEntity<?> retry(@RequestBody JsonNode input, HttpServletRequest request, HttpServletResponse response) {
+        if (!LocalSetupAccess.allow(request, response)) {
+            return error(404, "Not found");
+        }
+        try {
+            return runtime.retry(input.path("deliveryId").asString(""))
+                    ? ResponseEntity.ok(Map.of("queued", true))
+                    : error(409, "Ответ недоступен для повторной отправки. Обновите страницу.");
+        } catch (IOException | SQLException failure) {
+            return error(503, "Не удалось повторить отправку.");
+        }
+    }
+
+    @PostMapping("/backups")
+    ResponseEntity<?> backup(HttpServletRequest request, HttpServletResponse response) {
+        if (!LocalSetupAccess.allow(request, response)) {
+            return error(404, "Not found");
+        }
+        try {
+            return ResponseEntity.ok(runtime.backup());
+        } catch (IOException | SQLException failure) {
+            return error(503, "Не удалось создать резервную копию.");
         }
     }
 
