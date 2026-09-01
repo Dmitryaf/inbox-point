@@ -17,7 +17,6 @@ import static com.inboxpoint.content.ClientInformation.SCHEDULE;
 
 final class TelegramClientMenu {
     private static final String SOURCE = "telegram:menu";
-    private static final JsonNode KEYBOARD = keyboard();
 
     private final TelegramStore store;
     private final TelegramBotApi api;
@@ -47,7 +46,7 @@ final class TelegramClientMenu {
                 api.closeTopic(group, active.topic());
                 store.changeStatus(active.id(), false, now);
             }
-            api.sendMessage(chat, null, response, KEYBOARD);
+            api.sendMessage(chat, null, response, keyboard(information.sections()));
         } catch (TelegramBotApi.RequestFailed failure) {
             if (!failure.outcomeUnknown()) {
                 store.release(SOURCE, event);
@@ -83,7 +82,7 @@ final class TelegramClientMenu {
         return null;
     }
 
-    private static JsonNode keyboard() {
+    private static JsonNode keyboard(List<ClientInformation.Section> sections) {
         var markup = JsonMapper.shared().createObjectNode().put("resize_keyboard", true)
                 .put("is_persistent", true).put("input_field_placeholder", "Выберите действие");
         var rows = markup.putArray("keyboard");
@@ -92,6 +91,9 @@ final class TelegramClientMenu {
             for (var button : buttons) {
                 row.addObject().put("text", button);
             }
+        }
+        for (var section : sections) {
+            rows.addArray().addObject().put("text", section.label());
         }
         return markup;
     }

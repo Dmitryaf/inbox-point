@@ -14,6 +14,21 @@ class ClientInformationTest {
     Path directory;
 
     @Test
+    void restoresCustomSectionsAndRejectsConflictingLabels() throws Exception {
+        var database = directory.resolve("custom.sqlite").toString();
+        var information = new ClientInformation(database);
+        var input = JsonMapper.shared().createObjectNode();
+        input.putArray("customSections").addObject().put("label", "  Правила  ").put("text", "  Возьмите форму  ");
+        information.save(input);
+        assertThat(information.resolve("Правила")).isEqualTo("Возьмите форму");
+        assertThat(new ClientInformation(database).sections())
+                .containsExactly(new ClientInformation.Section("Правила", "Возьмите форму"));
+        input.withArray("customSections").addObject().put("label", "РАСПИСАНИЕ").put("text", "Conflict");
+        assertThatThrownBy(() -> information.save(input)).isInstanceOf(IllegalArgumentException.class);
+        assertThat(information.sections()).hasSize(1);
+    }
+
+    @Test
     void publishesTrimmedAnswersOnlyOnSuccessfulSaveAndRestoresThemAfterRestart() throws Exception {
         var database = directory.resolve("inbox.sqlite").toString();
         var catalog = new ClientInformation(database);

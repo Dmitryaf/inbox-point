@@ -17,7 +17,6 @@ import static com.inboxpoint.content.ClientInformation.PRICES;
 import static com.inboxpoint.content.ClientInformation.SCHEDULE;
 
 final class VkClientMenu {
-    private static final JsonNode KEYBOARD = keyboard();
 
     private final ClientInformation information;
     private final VkChannel api;
@@ -39,7 +38,7 @@ final class VkClientMenu {
             return true;
         }
         try {
-            api.send(peer, answer, "vk-menu:" + event, KEYBOARD);
+            api.send(peer, answer, "vk-menu:" + event, keyboard(information.sections()));
             return true;
         } catch (IOException failure) {
             store.release("vk:menu", event);
@@ -68,7 +67,7 @@ final class VkClientMenu {
         return null;
     }
 
-    private static JsonNode keyboard() {
+    private static JsonNode keyboard(List<ClientInformation.Section> sections) {
         var layout = JsonMapper.shared().createObjectNode().put("inline", false).put("one_time", false);
         var rows = layout.putArray("buttons");
         for (var labels : List.of(List.of(SCHEDULE, PRICES), List.of(ADDRESS), List.of(ASK))) {
@@ -77,6 +76,10 @@ final class VkClientMenu {
                 row.addObject().put("color", ASK.equals(label) ? "primary" : "secondary").putObject("action")
                         .put("label", label).put("type", "text");
             }
+        }
+        for (var section : sections) {
+            rows.addArray().addObject().put("color", "secondary").putObject("action")
+                    .put("label", section.label()).put("type", "text");
         }
         return layout;
     }
