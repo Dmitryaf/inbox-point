@@ -24,11 +24,17 @@ describe('FileContentSettingsStore', () => {
 
     await expect(store.load()).resolves.toBeUndefined();
     await store.save({
+      customSections: [
+        { label: 'First visit', text: 'Arrive ten minutes early' },
+      ],
       prices: 'Single visit: 10',
       schedule: 'Monday: 19:00',
     });
 
     await expect(store.load()).resolves.toEqual({
+      customSections: [
+        { label: 'First visit', text: 'Arrive ten minutes early' },
+      ],
       prices: 'Single visit: 10',
       schedule: 'Monday: 19:00',
     });

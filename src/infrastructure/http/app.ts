@@ -3,7 +3,10 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
 import type { RuntimeConfig } from '@/config/runtime-config.js';
-import type { ClientInformationContent } from '@/core/application/client-information.js';
+import {
+  type ClientInformationContent,
+  hasValidCustomSections,
+} from '@/core/application/client-information.js';
 import type {
   DeliverySummary,
   SupportRepository,
@@ -61,6 +64,15 @@ const vkConnectSchema = z.object({
 });
 const contentSchema = z.object({
   address: z.string().max(4_000),
+  customSections: z
+    .array(
+      z.object({
+        label: z.string().max(40),
+        text: z.string().max(4_000),
+      }),
+    )
+    .max(6)
+    .default([]),
   prices: z.string().max(4_000),
   schedule: z.string().max(4_000),
 });
@@ -221,6 +233,12 @@ export function registerSetupRoutes(
       });
     }
     const content = normalizeContent(parsed.data);
+    if (!content) {
+      return reply.code(400).send({
+        message:
+          'Заполните название и текст каждой кнопки. Названия не должны повторяться.',
+      });
+    }
     try {
       await contentSetup.save(content);
       return { saved: true };
@@ -235,14 +253,25 @@ export function registerSetupRoutes(
 
 function normalizeContent(content: {
   address: string;
+  customSections: readonly { label: string; text: string }[];
   prices: string;
   schedule: string;
-}): ClientInformationContent {
+}): ClientInformationContent | undefined {
   const address = content.address.trim();
   const prices = content.prices.trim();
   const schedule = content.schedule.trim();
+  const customSections = content.customSections
+    .map((section) => ({
+      label: section.label.trim(),
+      text: section.text.trim(),
+    }))
+    .filter((section) => section.label || section.text);
+  if (!hasValidCustomSections(customSections)) {
+    return undefined;
+  }
   return {
     ...(address ? { address } : {}),
+    ...(customSections.length > 0 ? { customSections } : {}),
     ...(prices ? { prices } : {}),
     ...(schedule ? { schedule } : {}),
   };

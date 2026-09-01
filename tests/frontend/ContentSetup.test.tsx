@@ -42,6 +42,7 @@ it('loads existing values, preserves a failed draft and saves the edited fields 
       schedule: 'Понедельник',
       prices: '1500',
       address: 'Улица',
+      customSections: [],
     }),
   );
   saving.resolve(json({}));
@@ -50,7 +51,9 @@ it('loads existing values, preserves a failed draft and saves the edited fields 
   );
 });
 it('does not permit overwriting content when its initial load failed', async () => {
-  const fetchMock = vi.fn().mockRejectedValue(new Error('offline'));
+  const fetchMock = vi
+    .fn<(path: string, options?: RequestInit) => Promise<Response>>()
+    .mockRejectedValue(new Error('offline'));
   vi.stubGlobal('fetch', fetchMock);
   render(<ContentSetup />);
   await screen.findByText(
@@ -62,4 +65,54 @@ it('does not permit overwriting content when its initial load failed', async () 
   expect(button.disabled).toBe(true);
   fireEvent.click(button);
   expect(fetchMock).toHaveBeenCalledTimes(1);
+});
+it('edits and removes custom sections without losing the remaining rows and limits additions to six', async () => {
+  const fetchMock = vi
+    .fn<(path: string, options?: RequestInit) => Promise<Response>>()
+    .mockResolvedValueOnce(
+      json({
+        schedule: '',
+        prices: '',
+        address: '',
+        customSections: [
+          { label: 'Первое занятие', text: 'Начальный ответ' },
+          { label: 'Одежда', text: 'Форма' },
+        ],
+      }),
+    )
+    .mockResolvedValueOnce(json({}));
+  vi.stubGlobal('fetch', fetchMock);
+  render(<ContentSetup />);
+  await screen.findByText('Изменения применяются без перезапуска.');
+  fireEvent.change(screen.getAllByLabelText('Ответ')[1]!, {
+    target: { value: 'Удобная форма' },
+  });
+  fireEvent.click(
+    screen.getAllByRole('button', { name: 'Удалить кнопку' })[0]!,
+  );
+  expect(screen.getByLabelText<HTMLInputElement>('Название кнопки').value).toBe(
+    'Одежда',
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Сохранить информацию' }));
+  await screen.findByText(
+    'Сохранено. Новые ответы уже доступны в Telegram и VK.',
+  );
+  expect(fetchMock.mock.calls[1]?.[1]?.body).toBe(
+    JSON.stringify({
+      schedule: '',
+      prices: '',
+      address: '',
+      customSections: [{ label: 'Одежда', text: 'Удобная форма' }],
+    }),
+  );
+  const add = screen.getByRole<HTMLButtonElement>('button', {
+    name: 'Добавить кнопку',
+  });
+  for (let i = 0; i < 5; i++) fireEvent.click(add);
+  expect(add.disabled).toBe(true);
+  expect(screen.getAllByLabelText('Название кнопки')).toHaveLength(6);
+  fireEvent.click(
+    screen.getAllByRole('button', { name: 'Удалить кнопку' })[5]!,
+  );
+  expect(add.disabled).toBe(false);
 });

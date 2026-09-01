@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { DeliveryWorker } from '@/core/application/delivery-worker.js';
 import { HandoffService } from '@/core/application/handoff-service.js';
+import { ClientInformationCatalog } from '@/core/application/client-information.js';
 import type {
   OpenOperatorRequest,
   OperatorInbox,
@@ -93,6 +94,7 @@ class FakeOperatorInbox implements OperatorInbox {
 
 describe('VK handoff integration', () => {
   let gateway: FakeVkGateway;
+  let information: ClientInformationCatalog;
   let inbox: FakeOperatorInbox;
   let repository: SqliteSupportRepository;
   let router: VkUpdateRouter;
@@ -100,6 +102,7 @@ describe('VK handoff integration', () => {
 
   beforeEach(() => {
     gateway = new FakeVkGateway();
+    information = new ClientInformationCatalog();
     inbox = new FakeOperatorInbox();
     repository = new SqliteSupportRepository(':memory:');
     service = new HandoffService({
@@ -109,7 +112,7 @@ describe('VK handoff integration', () => {
     router = new VkUpdateRouter(
       service,
       gateway,
-      new VkClientMenu(gateway, repository),
+      new VkClientMenu(gateway, repository, information),
     );
   });
 
@@ -183,6 +186,34 @@ describe('VK handoff integration', () => {
     expect(inbox.relayed).toHaveLength(0);
     expect(gateway.sent.at(-1)?.text).toContain('Расписание');
     expect(gateway.sent.at(-1)?.keyboard).toBeDefined();
+  });
+
+  it('shows a custom VK button without opening an operator request', async () => {
+    information.replace({
+      customSections: [
+        {
+          label: 'Первое занятие',
+          text: 'Приходите за 10 минут до начала.',
+        },
+      ],
+    });
+
+    await router.route(createMessageEvent({ text: 'Начать' }));
+    await router.route(
+      createMessageEvent({
+        conversation_message_id: 8,
+        id: 502,
+        text: 'Первое занятие',
+      }),
+    );
+
+    expect(inbox.opened).toHaveLength(0);
+    expect(
+      gateway.sent[0]?.keyboard?.buttons
+        .flat()
+        .map((button) => button.action.label),
+    ).toContain('Первое занятие');
+    expect(gateway.sent[1]?.text).toBe('Приходите за 10 минут до начала.');
   });
 
   it('ignores outgoing, empty, and group-chat events', async () => {

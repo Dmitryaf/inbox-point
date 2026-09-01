@@ -21,19 +21,6 @@ export interface VkClientMenuHandler {
   handle(message: VkMenuMessage): Promise<boolean>;
 }
 
-export const vkMainKeyboard: VkKeyboard = {
-  buttons: [
-    [
-      createButton(scheduleButton, 'schedule'),
-      createButton(pricesButton, 'prices'),
-    ],
-    [createButton(addressButton, 'address')],
-    [createButton(teacherButton, 'teacher', 'primary')],
-  ],
-  inline: false,
-  one_time: false,
-};
-
 export class VkClientMenu implements VkClientMenuHandler {
   public constructor(
     private readonly gateway: VkGateway,
@@ -65,7 +52,7 @@ export class VkClientMenu implements VkClientMenuHandler {
         message.peerId,
         response,
         createVkRandomId('vk-menu:' + message.externalEventId),
-        vkMainKeyboard,
+        createVkMainKeyboard(this.information),
       );
       return true;
     } catch (error: unknown) {
@@ -73,6 +60,27 @@ export class VkClientMenu implements VkClientMenuHandler {
       throw error;
     }
   }
+}
+
+export function createVkMainKeyboard(
+  information: ClientInformationResolver = new ClientInformationCatalog(),
+): VkKeyboard {
+  const customRows = information
+    .getCustomSections()
+    .map((section, index) => [createButton(section.label, 'custom-' + index)]);
+  return {
+    buttons: [
+      [
+        createButton(scheduleButton, 'schedule'),
+        createButton(pricesButton, 'prices'),
+      ],
+      [createButton(addressButton, 'address')],
+      ...customRows,
+      [createButton(teacherButton, 'teacher', 'primary')],
+    ],
+    inline: false,
+    one_time: false,
+  };
 }
 
 function resolveMenuResponse(

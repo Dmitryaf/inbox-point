@@ -29,4 +29,17 @@ describe('client information', () => {
     expect(catalog.resolve(scheduleButton)).toBe('Понедельник, 19:00');
     expect(catalog.resolve(pricesButton)).toContain('пока не добавлено');
   });
+
+  it('resolves custom sections and protects its internal copy', () => {
+    const source = [
+      { label: 'Первое занятие', text: 'Приходите за 10 минут.' },
+    ];
+    const catalog = new ClientInformationCatalog({ customSections: source });
+    source[0]!.text = 'Changed outside';
+
+    expect(catalog.resolve('Первое занятие')).toBe('Приходите за 10 минут.');
+    expect(catalog.getCustomSections()).toEqual([
+      { label: 'Первое занятие', text: 'Приходите за 10 минут.' },
+    ]);
+  });
 });

@@ -3,10 +3,22 @@ import { dirname } from 'node:path';
 
 import { z } from 'zod';
 
-import type { ClientInformationContent } from '@/core/application/client-information.js';
+import {
+  type ClientInformationContent,
+  hasValidCustomSections,
+} from '@/core/application/client-information.js';
 
 const storedContentSchema = z.object({
   address: z.string().min(1).max(4_000).optional(),
+  customSections: z
+    .array(
+      z.object({
+        label: z.string().min(1).max(40),
+        text: z.string().min(1).max(4_000),
+      }),
+    )
+    .max(6)
+    .optional(),
   prices: z.string().min(1).max(4_000).optional(),
   schedule: z.string().min(1).max(4_000).optional(),
   version: z.literal(1),
@@ -35,7 +47,10 @@ export class FileContentSettingsStore implements ContentSettingsStore {
       throw new Error('The local content settings are invalid');
     }
     const result = storedContentSchema.safeParse(parsed);
-    if (!result.success) {
+    if (
+      !result.success ||
+      !hasValidCustomSections(result.data.customSections ?? [])
+    ) {
       throw new Error('The local content settings are invalid');
     }
     return pickContent(result.data);
@@ -43,6 +58,9 @@ export class FileContentSettingsStore implements ContentSettingsStore {
 
   public async save(content: ClientInformationContent): Promise<void> {
     const validated = storedContentSchema.parse({ version: 1, ...content });
+    if (!hasValidCustomSections(validated.customSections ?? [])) {
+      throw new Error('The local content settings are invalid');
+    }
     const directory = dirname(this.path);
     const temporaryPath = this.path + '.' + process.pid + '.tmp';
     await mkdir(directory, { recursive: true });
@@ -59,6 +77,13 @@ export class FileContentSettingsStore implements ContentSettingsStore {
 function pickContent(value: z.infer<typeof storedContentSchema>) {
   return {
     ...(value.address ? { address: value.address } : {}),
+    ...(value.customSections
+      ? {
+          customSections: value.customSections.map((section) => ({
+            ...section,
+          })),
+        }
+      : {}),
     ...(value.prices ? { prices: value.prices } : {}),
     ...(value.schedule ? { schedule: value.schedule } : {}),
   };

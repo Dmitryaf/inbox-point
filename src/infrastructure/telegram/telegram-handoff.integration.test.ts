@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { DeliveryWorker } from '@/core/application/delivery-worker.js';
 import { HandoffService } from '@/core/application/handoff-service.js';
+import { ClientInformationCatalog } from '@/core/application/client-information.js';
 import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-support-repository.js';
 
 import type {
@@ -88,12 +89,14 @@ class FakeTelegramGateway implements TelegramGateway {
 
 describe('Telegram handoff integration', () => {
   let gateway: FakeTelegramGateway;
+  let information: ClientInformationCatalog;
   let deliveryWorker: DeliveryWorker;
   let repository: SqliteSupportRepository;
   let router: TelegramUpdateRouter;
 
   beforeEach(() => {
     gateway = new FakeTelegramGateway();
+    information = new ClientInformationCatalog();
     repository = new SqliteSupportRepository(':memory:');
     const handoff = new HandoffService({
       createId: (() => {
@@ -110,7 +113,7 @@ describe('Telegram handoff integration', () => {
     router = new TelegramUpdateRouter(
       handoff,
       -1_001,
-      new TelegramClientMenu(gateway, repository, -1_001),
+      new TelegramClientMenu(gateway, repository, -1_001, information),
     );
   });
 
@@ -235,6 +238,30 @@ describe('Telegram handoff integration', () => {
       replyMarkup: { is_persistent: true },
       text: 'Расписание пока не добавлено. Вы можете задать вопрос преподавателю.',
     });
+  });
+
+  it('shows a custom section without opening an operator request', async () => {
+    information.replace({
+      customSections: [
+        {
+          label: 'Первое занятие',
+          text: 'Приходите за 10 минут до начала.',
+        },
+      ],
+    });
+
+    await router.route(createPrivateUpdate(1, 501, '/start'));
+    await router.route(createPrivateUpdate(2, 502, 'Первое занятие'));
+
+    expect(repository.findActiveRequest('telegram', '101')).toBeUndefined();
+    const replyMarkup = gateway.sent[0]?.replyMarkup;
+    if (!replyMarkup || !('keyboard' in replyMarkup)) {
+      throw new Error('Expected a reply keyboard');
+    }
+    expect(replyMarkup.keyboard.flat().map((button) => button.text)).toContain(
+      'Первое занятие',
+    );
+    expect(gateway.sent[1]?.text).toBe('Приходите за 10 минут до начала.');
   });
 
   it('replaces a deleted topic when the customer sends another message', async () => {

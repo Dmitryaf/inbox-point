@@ -5,12 +5,14 @@ interface Content {
   schedule: string;
   prices: string;
   address: string;
+  customSections: { label: string; text: string }[];
 }
 export function ContentSetup() {
   const [content, setContent] = useState<Content>({
     schedule: '',
     prices: '',
     address: '',
+    customSections: [],
   });
   const [message, setMessage] = useState('Загружаем сохранённые значения…');
   const [pending, setPending] = useState(false);
@@ -24,6 +26,7 @@ export function ContentSetup() {
           schedule: value.schedule ?? '',
           prices: value.prices ?? '',
           address: value.address ?? '',
+          customSections: value.customSections ?? [],
         });
         setLoaded(true);
         setMessage('Изменения применяются без перезапуска.');
@@ -72,6 +75,87 @@ export function ContentSetup() {
           />
         </label>
       ))}
+      <h3>Дополнительные кнопки</h3>
+      <p className="muted">
+        Можно добавить до шести собственных разделов, например «Первое занятие»
+        или «Что взять с собой».
+      </p>
+      <div id="custom-sections">
+        {content.customSections.map((section, index) => (
+          <div className="custom-section" key={index}>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() =>
+                setContent({
+                  ...content,
+                  customSections: content.customSections.filter(
+                    (_, position) => position !== index,
+                  ),
+                })
+              }
+            >
+              Удалить кнопку
+            </button>
+            <label>
+              Название кнопки
+              <input
+                type="text"
+                maxLength={40}
+                value={section.label}
+                disabled={pending}
+                onChange={(event) =>
+                  setContent({
+                    ...content,
+                    customSections: content.customSections.map(
+                      (item, position) =>
+                        position === index
+                          ? { ...item, label: event.currentTarget.value }
+                          : item,
+                    ),
+                  })
+                }
+              />
+            </label>
+            <label>
+              Ответ
+              <textarea
+                rows={4}
+                maxLength={4000}
+                value={section.text}
+                disabled={pending}
+                onChange={(event) =>
+                  setContent({
+                    ...content,
+                    customSections: content.customSections.map(
+                      (item, position) =>
+                        position === index
+                          ? { ...item, text: event.currentTarget.value }
+                          : item,
+                    ),
+                  })
+                }
+              />
+            </label>
+          </div>
+        ))}
+      </div>
+      <button
+        id="add-custom-section"
+        type="button"
+        disabled={!loaded || pending || content.customSections.length >= 6}
+        onClick={() =>
+          setContent({
+            ...content,
+            customSections: [
+              ...content.customSections,
+              { label: '', text: '' },
+            ],
+          })
+        }
+      >
+        Добавить кнопку
+      </button>
       <button
         id="save-content"
         type="button"

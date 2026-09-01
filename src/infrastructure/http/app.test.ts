@@ -270,6 +270,12 @@ describe('HTTP service status', () => {
       method: 'POST',
       payload: {
         address: '  ',
+        customSections: [
+          {
+            label: ' Первое занятие ',
+            text: ' Приходите за 10 минут ',
+          },
+        ],
         prices: 'Разовое посещение — 500 ₽',
         schedule: 'Понедельник — 19:00',
       },
@@ -285,10 +291,39 @@ describe('HTTP service status', () => {
       remoteAddress: '192.0.2.10',
       url: '/api/setup/content',
     });
+    const duplicateSave = await app.inject({
+      method: 'POST',
+      payload: {
+        address: '',
+        customSections: [
+          { label: 'FAQ', text: 'One' },
+          { label: 'faq', text: 'Two' },
+        ],
+        prices: '',
+        schedule: '',
+      },
+      url: '/api/setup/content',
+    });
+    const reservedSave = await app.inject({
+      method: 'POST',
+      payload: {
+        address: '',
+        customSections: [{ label: 'Расписание', text: 'Duplicate' }],
+        prices: '',
+        schedule: '',
+      },
+      url: '/api/setup/content',
+    });
 
     expect(save.statusCode).toBe(200);
     expect(saved).toEqual([
       {
+        customSections: [
+          {
+            label: 'Первое занятие',
+            text: 'Приходите за 10 минут',
+          },
+        ],
         prices: 'Разовое посещение — 500 ₽',
         schedule: 'Понедельник — 19:00',
       },
@@ -296,5 +331,8 @@ describe('HTTP service status', () => {
     expect(read.json()).toEqual(saved[0]);
     expect(catalog.resolve(scheduleButton)).toBe('Понедельник — 19:00');
     expect(remoteSave.statusCode).toBe(404);
+    expect(duplicateSave.statusCode).toBe(400);
+    expect(reservedSave.statusCode).toBe(400);
+    expect(saved).toHaveLength(1);
   });
 });

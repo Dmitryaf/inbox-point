@@ -48,6 +48,10 @@ export const setupPageHtml = `<!doctype html>
         <label>Расписание <textarea id='content-schedule' rows='5'></textarea></label>
         <label>Цены <textarea id='content-prices' rows='5'></textarea></label>
         <label>Адрес <textarea id='content-address' rows='3'></textarea></label>
+        <h3>Дополнительные кнопки</h3>
+        <p class='muted'>Можно добавить до шести собственных разделов, например «Первое занятие» или «Что взять с собой».</p>
+        <div id='custom-sections'></div>
+        <button id='add-custom-section' type='button'>Добавить кнопку</button>
         <button id='save-content'>Сохранить информацию</button>
         <p id='content-status' class='muted'>Загружаем сохранённые значения…</p>
       </section>
@@ -119,6 +123,15 @@ button {
 }
 #delivery-failures button {
   margin-left: 8px;
+}
+.custom-section {
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid #d9dee7;
+  border-radius: 8px;
+}
+.custom-section button {
+  margin-bottom: 8px;
 }
 .muted {
   color: #5f6877;

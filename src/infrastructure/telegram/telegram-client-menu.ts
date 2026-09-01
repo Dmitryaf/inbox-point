@@ -3,6 +3,7 @@ import {
   addressButton,
   ClientInformationCatalog,
   type ClientInformationResolver,
+  newQuestionButton,
   pricesButton,
   scheduleButton,
   teacherButton,
@@ -24,20 +25,6 @@ export interface TelegramMenuMessage {
 export interface TelegramClientMenuHandler {
   handle(message: TelegramMenuMessage): Promise<boolean>;
 }
-
-const newQuestionButton = 'Начать новый вопрос';
-
-const mainMenu: TelegramReplyKeyboard = {
-  input_field_placeholder: 'Выберите действие',
-  is_persistent: true,
-  keyboard: [
-    [{ text: scheduleButton }, { text: pricesButton }],
-    [{ text: addressButton }],
-    [{ text: teacherButton }],
-    [{ text: newQuestionButton }],
-  ],
-  resize_keyboard: true,
-};
 
 export class TelegramClientMenu implements TelegramClientMenuHandler {
   public constructor(
@@ -111,6 +98,7 @@ function resolveMenuResponse(
 ): MenuResponse | undefined {
   const normalized = text.trim();
   const command = parseCommand(normalized);
+  const mainMenu = createMainMenu(information);
   const informationResponse = information.resolve(normalized);
   if (informationResponse) {
     return {
@@ -177,6 +165,30 @@ function resolveMenuResponse(
     };
   }
   return undefined;
+}
+
+function createMainMenu(
+  information: ClientInformationResolver,
+): TelegramReplyKeyboard {
+  const customButtons = information
+    .getCustomSections()
+    .map((section) => ({ text: section.label }));
+  const customRows: { text: string }[][] = [];
+  for (let index = 0; index < customButtons.length; index += 2) {
+    customRows.push(customButtons.slice(index, index + 2));
+  }
+  return {
+    input_field_placeholder: 'Выберите действие',
+    is_persistent: true,
+    keyboard: [
+      [{ text: scheduleButton }, { text: pricesButton }],
+      [{ text: addressButton }],
+      ...customRows,
+      [{ text: teacherButton }],
+      [{ text: newQuestionButton }],
+    ],
+    resize_keyboard: true,
+  };
 }
 
 function parseCommand(text: string): string | undefined {

@@ -46,7 +46,9 @@ export class VkRuntime {
     }
     const gateway = new VkApiClient(config.accessToken);
     await gateway.getLongPollServer(config.groupId);
-    this.handoffHost.registerClientChannel(new VkClientChannel(gateway));
+    this.handoffHost.registerClientChannel(
+      new VkClientChannel(gateway, this.information),
+    );
     const poller = new VkPoller(
       gateway,
       config.groupId,
