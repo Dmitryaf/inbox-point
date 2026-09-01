@@ -1,7 +1,10 @@
 import { dirname, resolve } from 'node:path';
 
 import { loadRuntimeConfig } from '@/config/runtime-config.js';
+import { ClientInformationCatalog } from '@/core/application/client-information.js';
 import { createApp, registerSetupRoutes } from '@/infrastructure/http/app.js';
+import { ContentSetupController } from '@/infrastructure/http/content-setup-controller.js';
+import { FileContentSettingsStore } from '@/infrastructure/persistence/content-settings-store.js';
 import { SqliteBackupService } from '@/infrastructure/persistence/sqlite-backup-service.js';
 import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-support-repository.js';
 import { FileTelegramSettingsStore } from '@/infrastructure/persistence/telegram-settings-store.js';
@@ -16,18 +19,31 @@ async function start(): Promise<void> {
   const repository = new SqliteSupportRepository(config.databasePath);
   const backupService = new SqliteBackupService(config.databasePath);
   const app = createApp(config, () => repository.getDeliverySummary());
+  const contentSettingsStore = new FileContentSettingsStore(
+    resolve(dirname(config.databasePath), 'content-settings.json'),
+  );
+  const informationCatalog = new ClientInformationCatalog();
   const settingsStore = new FileTelegramSettingsStore(
     resolve(dirname(config.databasePath), 'telegram-settings.json'),
   );
   const vkSettingsStore = new FileVkSettingsStore(
     resolve(dirname(config.databasePath), 'vk-settings.json'),
   );
-  const telegramRuntime = new TelegramRuntime(repository, {
-    error: (error, message) => app.log.error({ err: error }, message),
-  });
-  const vkRuntime = new VkRuntime(telegramRuntime, {
-    error: (error, message) => app.log.error({ err: error }, message),
-  });
+  const telegramRuntime = new TelegramRuntime(
+    repository,
+    {
+      error: (error, message) => app.log.error({ err: error }, message),
+    },
+    informationCatalog,
+  );
+  const vkRuntime = new VkRuntime(
+    telegramRuntime,
+    repository,
+    {
+      error: (error, message) => app.log.error({ err: error }, message),
+    },
+    informationCatalog,
+  );
   let closing = false;
 
   const close = async (signal: NodeJS.Signals): Promise<void> => {
@@ -46,6 +62,11 @@ async function start(): Promise<void> {
   process.once('SIGTERM', () => void close('SIGTERM'));
 
   try {
+    try {
+      informationCatalog.replace((await contentSettingsStore.load()) ?? {});
+    } catch (error: unknown) {
+      app.log.error({ err: error }, 'Ignoring invalid local content settings');
+    }
     let storedTelegram;
     if (!config.telegram) {
       try {
@@ -77,7 +98,18 @@ async function start(): Promise<void> {
     }
     const vkSource = config.vk ? 'environment' : storedVk ? 'local' : 'none';
     const vkSetup = new VkSetupController(vkRuntime, vkSettingsStore, vkSource);
-    registerSetupRoutes(app, setup, repository, backupService, vkSetup);
+    const contentSetup = new ContentSetupController(
+      informationCatalog,
+      contentSettingsStore,
+    );
+    registerSetupRoutes(
+      app,
+      setup,
+      repository,
+      backupService,
+      vkSetup,
+      contentSetup,
+    );
     const telegramConfig = config.telegram ?? storedTelegram;
     if (telegramConfig) {
       try {

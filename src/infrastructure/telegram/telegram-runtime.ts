@@ -1,4 +1,8 @@
 import type { TelegramRuntimeConfig } from '@/config/runtime-config.js';
+import {
+  ClientInformationCatalog,
+  type ClientInformationResolver,
+} from '@/core/application/client-information.js';
 import { DeliveryWorker } from '@/core/application/delivery-worker.js';
 import { HandoffService } from '@/core/application/handoff-service.js';
 import type { ClientChannel } from '@/core/contracts/client-channel.js';
@@ -31,6 +35,7 @@ export class TelegramRuntime implements TelegramRuntimeControl {
   public constructor(
     private readonly repository: SupportRepository,
     private readonly logger: TelegramRuntimeLogger,
+    private readonly information: ClientInformationResolver = new ClientInformationCatalog(),
   ) {}
 
   public get running(): boolean {
@@ -65,7 +70,12 @@ export class TelegramRuntime implements TelegramRuntimeControl {
       new TelegramUpdateRouter(
         handoffService,
         config.operatorChatId,
-        new TelegramClientMenu(gateway, this.repository, config.operatorChatId),
+        new TelegramClientMenu(
+          gateway,
+          this.repository,
+          config.operatorChatId,
+          this.information,
+        ),
       ),
       config.pollTimeoutSeconds,
       (error) => this.logger.error(error, 'Telegram update failed; retrying'),

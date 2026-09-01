@@ -68,7 +68,33 @@ export interface VkGateway {
     peerId: number,
     text: string,
     randomId: number,
+    keyboard?: VkKeyboard,
   ): Promise<{ externalMessageId: string }>;
+}
+
+export class VkApiError extends Error {
+  public constructor(
+    public readonly code: number,
+    method: string,
+  ) {
+    super(`VK API ${method} failed with code ${code}`);
+    this.name = 'VkApiError';
+  }
+}
+
+export interface VkKeyboard {
+  buttons: readonly (readonly VkKeyboardButton[])[];
+  inline: false;
+  one_time: false;
+}
+
+export interface VkKeyboardButton {
+  action: {
+    label: string;
+    payload: string;
+    type: 'text';
+  };
+  color: 'primary' | 'secondary';
 }
 
 export class VkApiClient implements VkGateway {
@@ -155,16 +181,32 @@ export class VkApiClient implements VkGateway {
     peerId: number,
     text: string,
     randomId: number,
+    keyboard?: VkKeyboard,
   ): Promise<{ externalMessageId: string }> {
-    const result = await this.call(
-      'messages.send',
-      {
-        message: text,
-        peer_id: String(peerId),
-        random_id: String(randomId),
-      },
-      sentMessageSchema,
-    );
+    let result: z.infer<typeof sentMessageSchema>;
+    try {
+      result = await this.call(
+        'messages.send',
+        {
+          message: text,
+          peer_id: String(peerId),
+          random_id: String(randomId),
+          ...(keyboard ? { keyboard: JSON.stringify(keyboard) } : {}),
+        },
+        sentMessageSchema,
+      );
+    } catch (error: unknown) {
+      if (!keyboard || !isKeyboardUnavailableError(error)) throw error;
+      result = await this.call(
+        'messages.send',
+        {
+          message: text,
+          peer_id: String(peerId),
+          random_id: String(randomId),
+        },
+        sentMessageSchema,
+      );
+    }
     const messageId = typeof result === 'number' ? result : result.message_id;
     return { externalMessageId: String(messageId) };
   }
@@ -197,9 +239,7 @@ export class VkApiClient implements VkGateway {
     const payload: unknown = await response.json();
     const apiError = apiErrorSchema.safeParse(payload);
     if (apiError.success) {
-      throw new Error(
-        `VK API ${method} failed with code ${apiError.data.error.error_code}`,
-      );
+      throw new VkApiError(apiError.data.error.error_code, method);
     }
     const envelope = z.object({ response: schema }).safeParse(payload);
     if (!envelope.success) {
@@ -207,6 +247,12 @@ export class VkApiClient implements VkGateway {
     }
     return envelope.data.response;
   }
+}
+
+function isKeyboardUnavailableError(error: unknown): boolean {
+  return (
+    error instanceof VkApiError && (error.code === 911 || error.code === 912)
+  );
 }
 
 function normalizeCommunityReference(reference: string): string {

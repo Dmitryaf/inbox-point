@@ -1,4 +1,12 @@
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
+import {
+  addressButton,
+  ClientInformationCatalog,
+  type ClientInformationResolver,
+  pricesButton,
+  scheduleButton,
+  teacherButton,
+} from '@/core/application/client-information.js';
 
 import type {
   TelegramGateway,
@@ -17,10 +25,6 @@ export interface TelegramClientMenuHandler {
   handle(message: TelegramMenuMessage): Promise<boolean>;
 }
 
-const scheduleButton = 'Расписание';
-const pricesButton = 'Цены';
-const addressButton = 'Адрес';
-const teacherButton = 'Задать вопрос преподавателю';
 const newQuestionButton = 'Начать новый вопрос';
 
 const mainMenu: TelegramReplyKeyboard = {
@@ -40,6 +44,7 @@ export class TelegramClientMenu implements TelegramClientMenuHandler {
     private readonly gateway: TelegramGateway,
     private readonly repository: SupportRepository,
     private readonly operatorChatId: number,
+    private readonly information: ClientInformationResolver = new ClientInformationCatalog(),
   ) {}
 
   public async handle(message: TelegramMenuMessage): Promise<boolean> {
@@ -48,7 +53,11 @@ export class TelegramClientMenu implements TelegramClientMenuHandler {
       'telegram',
       conversationId,
     );
-    const response = resolveMenuResponse(message.text, Boolean(activeRequest));
+    const response = resolveMenuResponse(
+      message.text,
+      Boolean(activeRequest),
+      this.information,
+    );
     if (!response) {
       return false;
     }
@@ -98,26 +107,15 @@ interface MenuResponse {
 function resolveMenuResponse(
   text: string,
   hasActiveRequest: boolean,
+  information: ClientInformationResolver,
 ): MenuResponse | undefined {
   const normalized = text.trim();
   const command = parseCommand(normalized);
-
-  if (normalized === scheduleButton) {
+  const informationResponse = information.resolve(normalized);
+  if (informationResponse) {
     return {
       replyMarkup: mainMenu,
-      text: 'Расписание пока не добавлено. Вы можете задать вопрос преподавателю.',
-    };
-  }
-  if (normalized === pricesButton) {
-    return {
-      replyMarkup: mainMenu,
-      text: 'Цены пока не добавлены. Вы можете задать вопрос преподавателю.',
-    };
-  }
-  if (normalized === addressButton) {
-    return {
-      replyMarkup: mainMenu,
-      text: 'Адрес пока не добавлен. Вы можете задать вопрос преподавателю.',
+      text: informationResponse,
     };
   }
 

@@ -1,8 +1,13 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { RuntimeConfig } from '@/config/runtime-config.js';
+import {
+  ClientInformationCatalog,
+  scheduleButton,
+} from '@/core/application/client-information.js';
 import { TelegramSetupController } from '@/infrastructure/telegram/telegram-setup-controller.js';
 import { createApp, registerSetupRoutes } from './app.js';
+import { ContentSetupController } from './content-setup-controller.js';
 
 const config: RuntimeConfig = {
   databasePath: './data/test.sqlite',
@@ -227,5 +232,69 @@ describe('HTTP service status', () => {
     expect(remote.statusCode).toBe(404);
     expect(remoteRetry.statusCode).toBe(404);
     expect(remoteBackup.statusCode).toBe(404);
+  });
+
+  it('updates shared client information only on loopback', async () => {
+    const app = createApp(config);
+    apps.add(app);
+    const catalog = new ClientInformationCatalog();
+    const saved: unknown[] = [];
+    const contentSetup = new ContentSetupController(catalog, {
+      load: () => Promise.resolve(undefined),
+      save: (content) => {
+        saved.push(content);
+        return Promise.resolve();
+      },
+    });
+    registerSetupRoutes(
+      app,
+      new TelegramSetupController(
+        {
+          running: true,
+          start: () => Promise.resolve(),
+          stop: () => Promise.resolve(),
+        },
+        {
+          load: () => Promise.resolve(undefined),
+          save: () => Promise.resolve(),
+        },
+        'local',
+      ),
+      undefined,
+      undefined,
+      undefined,
+      contentSetup,
+    );
+
+    const save = await app.inject({
+      method: 'POST',
+      payload: {
+        address: '  ',
+        prices: 'Разовое посещение — 500 ₽',
+        schedule: 'Понедельник — 19:00',
+      },
+      url: '/api/setup/content',
+    });
+    const read = await app.inject({
+      method: 'GET',
+      url: '/api/setup/content',
+    });
+    const remoteSave = await app.inject({
+      method: 'POST',
+      payload: { address: '', prices: '', schedule: '' },
+      remoteAddress: '192.0.2.10',
+      url: '/api/setup/content',
+    });
+
+    expect(save.statusCode).toBe(200);
+    expect(saved).toEqual([
+      {
+        prices: 'Разовое посещение — 500 ₽',
+        schedule: 'Понедельник — 19:00',
+      },
+    ]);
+    expect(read.json()).toEqual(saved[0]);
+    expect(catalog.resolve(scheduleButton)).toBe('Понедельник — 19:00');
+    expect(remoteSave.statusCode).toBe(404);
   });
 });

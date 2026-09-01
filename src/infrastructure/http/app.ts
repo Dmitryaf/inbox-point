@@ -3,6 +3,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
 import type { RuntimeConfig } from '@/config/runtime-config.js';
+import type { ClientInformationContent } from '@/core/application/client-information.js';
 import type {
   DeliverySummary,
   SupportRepository,
@@ -11,6 +12,7 @@ import type { FailedDelivery } from '@/core/model/support-request.js';
 import type { SqliteBackupService } from '@/infrastructure/persistence/sqlite-backup-service.js';
 import type { TelegramSetupController } from '@/infrastructure/telegram/telegram-setup-controller.js';
 import type { VkSetupController } from '@/infrastructure/vk/vk-setup-controller.js';
+import type { ContentSetupController } from './content-setup-controller.js';
 import {
   setupPageHtml,
   setupPageScript,
@@ -57,6 +59,11 @@ const vkConnectSchema = z.object({
   accessToken: z.string().min(20).max(500),
   community: z.string().trim().min(1).max(300),
 });
+const contentSchema = z.object({
+  address: z.string().max(4_000),
+  prices: z.string().max(4_000),
+  schedule: z.string().max(4_000),
+});
 
 export function registerSetupRoutes(
   app: FastifyInstance,
@@ -67,6 +74,7 @@ export function registerSetupRoutes(
   >,
   backups?: Pick<SqliteBackupService, 'createBackup'>,
   vkSetup?: VkSetupController,
+  contentSetup?: ContentSetupController,
 ): void {
   app.addHook('onRequest', async (request, reply) => {
     if (isSetupUrl(request.url) && !isLoopback(request.ip)) {
@@ -199,6 +207,45 @@ export function registerSetupRoutes(
       return reply.code(400).send({ message: vkSetupErrorMessage(error) });
     }
   });
+  app.get('/api/setup/content', () => contentSetup?.get() ?? {});
+  app.post('/api/setup/content', async (request, reply) => {
+    if (!contentSetup) {
+      return reply
+        .code(503)
+        .send({ message: 'Редактирование информации пока недоступно.' });
+    }
+    const parsed = contentSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({
+        message: 'Каждый раздел должен быть короче 4000 символов.',
+      });
+    }
+    const content = normalizeContent(parsed.data);
+    try {
+      await contentSetup.save(content);
+      return { saved: true };
+    } catch (error: unknown) {
+      app.log.error({ err: error }, 'Content settings save failed');
+      return reply.code(500).send({
+        message: 'Не удалось сохранить информацию. Попробуйте ещё раз.',
+      });
+    }
+  });
+}
+
+function normalizeContent(content: {
+  address: string;
+  prices: string;
+  schedule: string;
+}): ClientInformationContent {
+  const address = content.address.trim();
+  const prices = content.prices.trim();
+  const schedule = content.schedule.trim();
+  return {
+    ...(address ? { address } : {}),
+    ...(prices ? { prices } : {}),
+    ...(schedule ? { schedule } : {}),
+  };
 }
 
 function createPublicDeliveryStatus(

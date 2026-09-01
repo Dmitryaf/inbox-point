@@ -1,9 +1,15 @@
 import type { VkRuntimeConfig } from '@/config/runtime-config.js';
+import {
+  ClientInformationCatalog,
+  type ClientInformationResolver,
+} from '@/core/application/client-information.js';
 import type { ClientChannel } from '@/core/contracts/client-channel.js';
+import type { SupportRepository } from '@/core/contracts/support-repository.js';
 import type { SupportMessage } from '@/core/model/support-message.js';
 
 import { VkApiClient } from './vk-api-client.js';
 import { VkClientChannel } from './vk-client-channel.js';
+import { VkClientMenu } from './vk-client-menu.js';
 import { VkPoller } from './vk-poller.js';
 import { VkUpdateRouter } from './vk-update-router.js';
 
@@ -25,7 +31,9 @@ export class VkRuntime {
 
   public constructor(
     private readonly handoffHost: VkHandoffHost,
+    private readonly repository: SupportRepository,
     private readonly logger: VkRuntimeLogger,
+    private readonly information: ClientInformationResolver = new ClientInformationCatalog(),
   ) {}
 
   public get running(): boolean {
@@ -42,7 +50,11 @@ export class VkRuntime {
     const poller = new VkPoller(
       gateway,
       config.groupId,
-      new VkUpdateRouter(this.handoffHost, gateway),
+      new VkUpdateRouter(
+        this.handoffHost,
+        gateway,
+        new VkClientMenu(gateway, this.repository, this.information),
+      ),
       config.pollTimeoutSeconds,
       (error) => this.logger.error(error, 'VK update failed; retrying'),
     );

@@ -11,16 +11,22 @@ import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-sup
 
 import type {
   VkGateway,
+  VkKeyboard,
   VkLongPollResponse,
   VkLongPollServer,
 } from './vk-api-client.js';
 import { VkClientChannel } from './vk-client-channel.js';
+import { VkClientMenu } from './vk-client-menu.js';
 import type { VkLongPollEvent } from './vk-types.js';
 import { VkUpdateRouter } from './vk-update-router.js';
 
 class FakeVkGateway implements VkGateway {
-  public readonly sent: { peerId: number; randomId: number; text: string }[] =
-    [];
+  public readonly sent: {
+    keyboard?: VkKeyboard;
+    peerId: number;
+    randomId: number;
+    text: string;
+  }[] = [];
 
   public getLongPollServer(): Promise<VkLongPollServer> {
     return Promise.resolve({
@@ -42,8 +48,14 @@ class FakeVkGateway implements VkGateway {
     peerId: number,
     text: string,
     randomId: number,
+    keyboard?: VkKeyboard,
   ): Promise<{ externalMessageId: string }> {
-    this.sent.push({ peerId, randomId, text });
+    this.sent.push({
+      ...(keyboard ? { keyboard } : {}),
+      peerId,
+      randomId,
+      text,
+    });
     return Promise.resolve({ externalMessageId: 'vk-answer-1' });
   }
 }
@@ -94,7 +106,11 @@ describe('VK handoff integration', () => {
       operatorInbox: inbox,
       repository,
     });
-    router = new VkUpdateRouter(service, gateway);
+    router = new VkUpdateRouter(
+      service,
+      gateway,
+      new VkClientMenu(gateway, repository),
+    );
   });
 
   afterEach(() => {
@@ -134,6 +150,39 @@ describe('VK handoff integration', () => {
     expect(gateway.sent[0]?.peerId).toBe(101);
     expect(gateway.sent[0]?.text).toBe('Answer to VK');
     expect(gateway.sent[0]?.randomId).toBeGreaterThan(0);
+    expect(gateway.sent[0]?.keyboard).toMatchObject({
+      inline: false,
+      one_time: false,
+    });
+  });
+
+  it('shows information buttons without opening or extending a request', async () => {
+    await router.route(createMessageEvent({ text: 'Начать' }));
+    await router.route(createMessageEvent({ text: 'Начать' }));
+
+    expect(inbox.opened).toHaveLength(0);
+    expect(gateway.sent).toHaveLength(1);
+    expect(gateway.sent[0]?.keyboard?.buttons.flat()).toHaveLength(4);
+
+    await router.route(
+      createMessageEvent({
+        conversation_message_id: 8,
+        id: 502,
+        text: 'Question from VK',
+      }),
+    );
+    await router.route(
+      createMessageEvent({
+        conversation_message_id: 9,
+        id: 503,
+        text: 'Расписание',
+      }),
+    );
+
+    expect(inbox.opened).toHaveLength(1);
+    expect(inbox.relayed).toHaveLength(0);
+    expect(gateway.sent.at(-1)?.text).toContain('Расписание');
+    expect(gateway.sent.at(-1)?.keyboard).toBeDefined();
   });
 
   it('ignores outgoing, empty, and group-chat events', async () => {
@@ -149,7 +198,7 @@ function createMessageEvent(
   overrides: Partial<VkLongPollEvent['object']['message']> = {},
 ): VkLongPollEvent {
   return {
-    event_id: 'event-1',
+    event_id: 'event-' + String(overrides.conversation_message_id ?? 7),
     group_id: 42,
     object: {
       message: {

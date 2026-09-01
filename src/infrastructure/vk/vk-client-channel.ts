@@ -1,11 +1,11 @@
-import { createHash } from 'node:crypto';
-
 import type {
   ClientChannel,
   OutgoingClientMessage,
 } from '@/core/contracts/client-channel.js';
 
 import type { VkGateway } from './vk-api-client.js';
+import { vkMainKeyboard } from './vk-client-menu.js';
+import { createVkRandomId } from './vk-random-id.js';
 
 export class VkClientChannel implements ClientChannel {
   public readonly kind = 'vk' as const;
@@ -18,15 +18,8 @@ export class VkClientChannel implements ClientChannel {
     return this.gateway.sendMessage(
       Number(message.conversationId),
       message.text,
-      createRandomId(message.idempotencyKey),
+      createVkRandomId(message.idempotencyKey),
+      vkMainKeyboard,
     );
   }
-}
-
-function createRandomId(idempotencyKey: string): number {
-  const value = createHash('sha256')
-    .update(idempotencyKey)
-    .digest()
-    .readUInt32LE(0);
-  return value & 0x7fffffff || 1;
 }

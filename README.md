@@ -43,8 +43,9 @@ npm run check
 ## Status
 
 Telegram and VK text handoff, topic recovery, durable reply delivery, local
-connection setup, and verified SQLite backups are implemented. Editable
-information sections and production deployment are not implemented yet.
+connection setup, verified SQLite backups, persistent information buttons, and
+editable schedule, price, and address sections are implemented. Custom sections
+and production deployment are not implemented yet.
 
 ## License
 

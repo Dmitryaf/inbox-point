@@ -31,7 +31,8 @@ export const setupPageHtml = `<!doctype html>
         <h2 id='vk-title'>Подключение VK</h2>
         <div id='vk-wizard' hidden>
           <ol>
-            <li>В управлении сообществом откройте «Работа с API» и включите Long Poll API.</li>
+            <li>Откройте «Сообщения → Настройки для бота» и включите «Возможности ботов».</li>
+            <li>В разделе «Работа с API» включите Long Poll API.</li>
             <li>В событиях Long Poll отметьте «Входящие сообщения».</li>
             <li>Создайте ключ доступа сообщества с правом работы с сообщениями.</li>
           </ol>
@@ -40,6 +41,15 @@ export const setupPageHtml = `<!doctype html>
           <button id='vk-connect'>Подключить VK</button>
         </div>
         <p id='vk-status'>Проверяем состояние…</p>
+      </section>
+      <section aria-labelledby='content-title'>
+        <h2 id='content-title'>Информация для клиентов</h2>
+        <p>Эти ответы одинаково отображаются в Telegram и VK. Пустой раздел будет отмечен как не заполненный.</p>
+        <label>Расписание <textarea id='content-schedule' rows='5'></textarea></label>
+        <label>Цены <textarea id='content-prices' rows='5'></textarea></label>
+        <label>Адрес <textarea id='content-address' rows='3'></textarea></label>
+        <button id='save-content'>Сохранить информацию</button>
+        <p id='content-status' class='muted'>Загружаем сохранённые значения…</p>
       </section>
       <section aria-labelledby='delivery-title'>
         <h2 id='delivery-title'>Доставка ответов</h2>
@@ -87,6 +97,12 @@ input[type='password'], input[type='text'] {
   box-sizing: border-box;
   width: 100%;
   padding: 10px;
+}
+textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px;
+  resize: vertical;
 }
 button {
   padding: 10px 14px;
