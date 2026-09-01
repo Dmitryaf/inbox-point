@@ -1,12 +1,18 @@
+import { registerFrontendRoutes } from './frontend-routes.js';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
 import type { RuntimeConfig } from '@/config/runtime-config.js';
-import { registerFrontendRoutes } from './frontend-routes.js';
+import type { DeliverySummary } from '@/core/contracts/support-repository.js';
 import type { TelegramSetupController } from '@/infrastructure/telegram/telegram-setup-controller.js';
 import { setupPageHtml, setupPageScript } from './setup-page.js';
 
-export function createApp(config: RuntimeConfig): FastifyInstance {
+export type DeliverySummaryProbe = () => DeliverySummary;
+
+export function createApp(
+  config: RuntimeConfig,
+  deliverySummary: DeliverySummaryProbe = () => ({ failed: 0, pending: 0 }),
+): FastifyInstance {
   const app = Fastify({
     logger: {
       level: config.logLevel,
@@ -14,7 +20,17 @@ export function createApp(config: RuntimeConfig): FastifyInstance {
   });
 
   app.get('/health', () => ({ status: 'ok' }));
-  app.get('/ready', () => ({ status: 'ready' }));
+  app.get('/ready', async (_request, reply) => {
+    try {
+      return {
+        deliveries: deliverySummary(),
+        status: 'ready',
+      };
+    } catch {
+      return reply.code(503).send({ status: 'not_ready' });
+    }
+  });
+
   registerFrontendRoutes(app);
 
   return app;

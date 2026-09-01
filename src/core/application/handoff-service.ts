@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
 
-import type { ClientChannel } from '@/core/contracts/client-channel.js';
 import {
   OperatorConversationUnavailableError,
   type OperatorInbox,
@@ -10,7 +9,6 @@ import type { OperatorMessage } from '@/core/model/operator-message.js';
 import type { SupportMessage } from '@/core/model/support-message.js';
 
 export interface HandoffServiceDependencies {
-  clientChannels: readonly ClientChannel[];
   clock?: () => Date;
   createId?: () => string;
   operatorInbox: OperatorInbox;
@@ -18,16 +16,12 @@ export interface HandoffServiceDependencies {
 }
 
 export class HandoffService {
-  private readonly channels: ReadonlyMap<string, ClientChannel>;
   private readonly clock: () => Date;
   private readonly createId: () => string;
   private readonly operatorInbox: OperatorInbox;
   private readonly repository: SupportRepository;
 
   public constructor(dependencies: HandoffServiceDependencies) {
-    this.channels = new Map(
-      dependencies.clientChannels.map((channel) => [channel.kind, channel]),
-    );
     this.clock = dependencies.clock ?? (() => new Date());
     this.createId = dependencies.createId ?? randomUUID;
     this.operatorInbox = dependencies.operatorInbox;
@@ -49,18 +43,7 @@ export class HandoffService {
 
         if (existingRequest) {
           try {
-            const relayed = await this.operatorInbox.relayCustomerMessage(
-              existingRequest.operatorTopicId,
-              message,
-            );
-            this.repository.addMessageLink({
-              clientMessageId: message.externalMessageId,
-              createdAt: this.clock(),
-              direction: 'client_to_operator',
-              id: this.createId(),
-              operatorMessageId: relayed.operatorMessageId,
-              requestId: existingRequest.id,
-            });
+            await this.relayClientMessage(existingRequest, message);
             return;
           } catch (error: unknown) {
             if (!(error instanceof OperatorConversationUnavailableError)) {
@@ -70,9 +53,50 @@ export class HandoffService {
           }
         }
 
+        const previousRequest = this.repository.findLatestRequest(
+          message.channel,
+          message.conversationId,
+        );
+        if (previousRequest?.status === 'closed') {
+          try {
+            await this.operatorInbox.reopenRequest(
+              previousRequest.operatorTopicId,
+            );
+            this.repository.reopenRequest(previousRequest.id);
+            await this.relayClientMessage(previousRequest, message);
+            return;
+          } catch (error: unknown) {
+            if (!(error instanceof OperatorConversationUnavailableError)) {
+              throw error;
+            }
+            this.repository.closeRequest(previousRequest.id, this.clock());
+          }
+        }
+
         await this.openClientRequest(message);
       },
     );
+  }
+
+  private async relayClientMessage(
+    request: {
+      id: string;
+      operatorTopicId: string;
+    },
+    message: SupportMessage,
+  ): Promise<void> {
+    const relayed = await this.operatorInbox.relayCustomerMessage(
+      request.operatorTopicId,
+      message,
+    );
+    this.repository.addMessageLink({
+      clientMessageId: message.externalMessageId,
+      createdAt: this.clock(),
+      direction: 'client_to_operator',
+      id: this.createId(),
+      operatorMessageId: relayed.operatorMessageId,
+      requestId: request.id,
+    });
   }
 
   private async openClientRequest(message: SupportMessage): Promise<void> {
@@ -123,6 +147,10 @@ export class HandoffService {
       }
 
       if (command === 'reopen') {
+        if (!this.canReopenRequest(request)) {
+          await this.operatorInbox.closeRequest(request.operatorTopicId);
+          return;
+        }
         await this.operatorInbox.reopenRequest(request.operatorTopicId);
         this.repository.reopenRequest(request.id);
         return;
@@ -132,46 +160,17 @@ export class HandoffService {
         return;
       }
 
-      const channel = this.channels.get(request.channel);
-      if (!channel) {
-        throw new Error(`Client channel is not configured: ${request.channel}`);
-      }
-
       const idempotencyKey = `operator:${externalEventId}`;
-      const deliveryId = this.repository.enqueueDelivery({
+      this.repository.enqueueDelivery({
         channel: request.channel,
         conversationId: request.conversationId,
         createdAt: this.clock(),
         id: this.createId(),
         idempotencyKey,
+        operatorMessageId: message.externalMessageId,
         requestId: request.id,
         text: message.text,
       });
-
-      try {
-        const delivered = await channel.send({
-          conversationId: request.conversationId,
-          idempotencyKey,
-          text: message.text,
-        });
-        const sentAt = this.clock();
-        this.repository.markDeliverySent(
-          deliveryId,
-          delivered.externalMessageId,
-          sentAt,
-        );
-        this.repository.addMessageLink({
-          clientMessageId: delivered.externalMessageId,
-          createdAt: sentAt,
-          direction: 'operator_to_client',
-          id: this.createId(),
-          operatorMessageId: message.externalMessageId,
-          requestId: request.id,
-        });
-      } catch (error: unknown) {
-        this.repository.markDeliveryFailed(deliveryId, safeErrorMessage(error));
-        throw error;
-      }
     });
   }
 
@@ -193,13 +192,32 @@ export class HandoffService {
     externalEventId: string,
     operatorTopicId: string,
   ): Promise<void> {
-    await this.handleEvent('operator:telegram', externalEventId, () => {
+    await this.handleEvent('operator:telegram', externalEventId, async () => {
       const request = this.repository.findRequestByTopicId(operatorTopicId);
       if (request) {
-        this.repository.reopenRequest(request.id);
+        if (this.canReopenRequest(request)) {
+          this.repository.reopenRequest(request.id);
+        } else {
+          await this.operatorInbox.closeRequest(request.operatorTopicId);
+        }
       }
-      return Promise.resolve();
     });
+  }
+
+  private canReopenRequest(request: {
+    channel: SupportMessage['channel'];
+    conversationId: string;
+    id: string;
+  }): boolean {
+    const latest = this.repository.findLatestRequest(
+      request.channel,
+      request.conversationId,
+    );
+    const active = this.repository.findActiveRequest(
+      request.channel,
+      request.conversationId,
+    );
+    return latest?.id === request.id && (!active || active.id === request.id);
   }
 
   private async handleEvent(
@@ -245,11 +263,4 @@ function parseOperatorCommand(text: string): 'close' | 'reopen' | undefined {
     return 'reopen';
   }
   return undefined;
-}
-
-function safeErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message.slice(0, 500);
-  }
-  return 'Unknown delivery error';
 }

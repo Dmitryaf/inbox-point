@@ -1,4 +1,5 @@
 import type { TelegramRuntimeConfig } from '@/config/runtime-config.js';
+import { DeliveryWorker } from '@/core/application/delivery-worker.js';
 import { HandoffService } from '@/core/application/handoff-service.js';
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
 import { TelegramApiClient } from '@/infrastructure/telegram/telegram-api-client.js';
@@ -20,6 +21,7 @@ export interface TelegramRuntimeControl {
 
 export class TelegramRuntime implements TelegramRuntimeControl {
   private abortController: AbortController | undefined;
+  private deliveryPromise: Promise<void> | undefined;
   private pollerPromise: Promise<void> | undefined;
 
   public constructor(
@@ -38,9 +40,20 @@ export class TelegramRuntime implements TelegramRuntimeControl {
 
     const gateway = new TelegramApiClient(config.botToken);
     await gateway.verifySetup(config.operatorChatId);
+    const clientChannel = new TelegramClientChannel(gateway);
     const handoffService = new HandoffService({
-      clientChannels: [new TelegramClientChannel(gateway)],
       operatorInbox: new TelegramTopicsInbox(gateway, config.operatorChatId),
+      repository: this.repository,
+    });
+    const deliveryWorker = new DeliveryWorker({
+      channels: [clientChannel],
+      onError: (error, context) =>
+        this.logger.error(
+          error,
+          context.final
+            ? `Telegram delivery ${context.deliveryId} failed permanently after ${context.attempt} attempts`
+            : `Telegram delivery ${context.deliveryId} failed on attempt ${context.attempt}; retrying`,
+        ),
       repository: this.repository,
     });
     const poller = new TelegramPoller(
@@ -55,7 +68,16 @@ export class TelegramRuntime implements TelegramRuntimeControl {
     );
     const abortController = new AbortController();
     this.abortController = abortController;
+    this.deliveryPromise = deliveryWorker.run(abortController.signal);
     this.pollerPromise = poller.run(abortController.signal);
+    void this.deliveryPromise.catch((error: unknown) => {
+      if (!abortController.signal.aborted) {
+        this.logger.error(
+          error,
+          'Telegram delivery worker stopped unexpectedly',
+        );
+      }
+    });
     void this.pollerPromise.catch((error: unknown) => {
       if (!abortController.signal.aborted) {
         this.logger.error(error, 'Telegram poller stopped unexpectedly');
@@ -65,15 +87,27 @@ export class TelegramRuntime implements TelegramRuntimeControl {
 
   public async stop(): Promise<void> {
     const abortController = this.abortController;
+    const deliveryPromise = this.deliveryPromise;
     const pollerPromise = this.pollerPromise;
     this.abortController = undefined;
+    this.deliveryPromise = undefined;
     this.pollerPromise = undefined;
     abortController?.abort();
-    await pollerPromise?.catch((error: unknown) => {
-      if (!isAbortError(error)) {
-        this.logger.error(error, 'Telegram poller stopped during shutdown');
-      }
-    });
+    await Promise.all([
+      deliveryPromise?.catch((error: unknown) => {
+        if (!isAbortError(error)) {
+          this.logger.error(
+            error,
+            'Telegram delivery worker stopped during shutdown',
+          );
+        }
+      }),
+      pollerPromise?.catch((error: unknown) => {
+        if (!isAbortError(error)) {
+          this.logger.error(error, 'Telegram poller stopped during shutdown');
+        }
+      }),
+    ]);
   }
 }
 

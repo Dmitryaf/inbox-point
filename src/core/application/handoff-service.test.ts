@@ -1,10 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import type {
-  ClientChannel,
-  OutgoingClientMessage,
-} from '@/core/contracts/client-channel.js';
-import type {
   OpenOperatorRequest,
   OperatorInbox,
 } from '@/core/contracts/operator-inbox.js';
@@ -12,25 +8,6 @@ import type { SupportMessage } from '@/core/model/support-message.js';
 import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-support-repository.js';
 
 import { HandoffService } from './handoff-service.js';
-
-class FakeClientChannel implements ClientChannel {
-  public failuresRemaining = 0;
-  public readonly kind = 'telegram' as const;
-  public readonly sent: OutgoingClientMessage[] = [];
-
-  public send(
-    message: OutgoingClientMessage,
-  ): Promise<{ externalMessageId: string }> {
-    this.sent.push(message);
-    if (this.failuresRemaining > 0) {
-      this.failuresRemaining -= 1;
-      return Promise.reject(new Error('Temporary channel failure'));
-    }
-    return Promise.resolve({
-      externalMessageId: `client-message-${this.sent.length}`,
-    });
-  }
-}
 
 class FakeOperatorInbox implements OperatorInbox {
   public readonly closed: string[] = [];
@@ -73,18 +50,15 @@ class FakeOperatorInbox implements OperatorInbox {
 }
 
 describe('HandoffService', () => {
-  let channel: FakeClientChannel;
   let inbox: FakeOperatorInbox;
   let repository: SqliteSupportRepository;
   let service: HandoffService;
 
   beforeEach(() => {
     let nextId = 1;
-    channel = new FakeClientChannel();
     inbox = new FakeOperatorInbox();
     repository = new SqliteSupportRepository(':memory:');
     service = new HandoffService({
-      clientChannels: [channel],
       clock: () => new Date('2026-08-31T12:00:00.000Z'),
       createId: () => `id-${nextId++}`,
       operatorInbox: inbox,
@@ -129,36 +103,73 @@ describe('HandoffService', () => {
     ]);
   });
 
-  it('delivers operator text to the originating client once', async () => {
+  it('reopens the previous topic instead of creating a duplicate', async () => {
     await service.handleClientMessage(
       'update-1',
-      createClientMessage('message-1', 'Question'),
+      createClientMessage('message-1', 'First'),
     );
-    const operatorMessage = {
+    await service.handleOperatorMessage('update-2', {
       externalMessageId: 'operator-1',
       operatorTopicId: 'topic-1',
       receivedAt: new Date('2026-08-31T12:01:00.000Z'),
-      text: 'Answer',
-    };
+      text: '/close',
+    });
 
-    await service.handleOperatorMessage('update-2', operatorMessage);
-    await service.handleOperatorMessage('update-2', operatorMessage);
+    await service.handleClientMessage(
+      'update-3',
+      createClientMessage('message-2', 'New question'),
+    );
 
-    expect(channel.sent).toEqual([
+    expect(inbox.opened).toHaveLength(1);
+    expect(inbox.reopened).toEqual(['topic-1']);
+    expect(inbox.relayed).toEqual([
       {
-        conversationId: '101',
-        idempotencyKey: 'operator:update-2',
-        text: 'Answer',
+        message: createClientMessage('message-2', 'New question'),
+        operatorTopicId: 'topic-1',
       },
     ]);
+    expect(repository.findActiveRequest('telegram', '101')).toMatchObject({
+      id: 'id-1',
+      operatorTopicId: 'topic-1',
+    });
   });
 
-  it('reuses the outbox delivery after a temporary channel failure', async () => {
+  it('keeps an older duplicate topic closed', async () => {
+    repository.createRequest({
+      channel: 'telegram',
+      closedAt: new Date('2026-08-31T11:30:00.000Z'),
+      conversationId: '101',
+      createdAt: new Date('2026-08-31T11:00:00.000Z'),
+      id: 'old-request',
+      operatorTopicId: 'old-topic',
+      status: 'closed',
+    });
+    repository.createRequest({
+      channel: 'telegram',
+      conversationId: '101',
+      createdAt: new Date('2026-08-31T12:00:00.000Z'),
+      id: 'current-request',
+      operatorTopicId: 'current-topic',
+      status: 'active',
+    });
+
+    await service.handleOperatorTopicReopened(
+      'update-old-reopened',
+      'old-topic',
+    );
+
+    expect(inbox.closed).toEqual(['old-topic']);
+    expect(repository.findRequestByTopicId('old-topic')?.status).toBe('closed');
+    expect(repository.findActiveRequest('telegram', '101')?.id).toBe(
+      'current-request',
+    );
+  });
+
+  it('enqueues operator text for the originating client once', async () => {
     await service.handleClientMessage(
       'update-1',
       createClientMessage('message-1', 'Question'),
     );
-    channel.failuresRemaining = 1;
     const operatorMessage = {
       externalMessageId: 'operator-1',
       operatorTopicId: 'topic-1',
@@ -166,16 +177,23 @@ describe('HandoffService', () => {
       text: 'Answer',
     };
 
-    await expect(
-      service.handleOperatorMessage('update-2', operatorMessage),
-    ).rejects.toThrowError('Temporary channel failure');
-    await expect(
-      service.handleOperatorMessage('update-2', operatorMessage),
-    ).resolves.toBeUndefined();
+    await service.handleOperatorMessage('update-2', operatorMessage);
+    await service.handleOperatorMessage('update-2', operatorMessage);
 
-    expect(channel.sent).toHaveLength(2);
-    expect(channel.sent[0]?.idempotencyKey).toBe('operator:update-2');
-    expect(channel.sent[1]?.idempotencyKey).toBe('operator:update-2');
+    expect(
+      repository.findPendingDeliveries(
+        new Date('2026-08-31T12:00:00.000Z'),
+        10,
+      ),
+    ).toEqual([
+      expect.objectContaining({
+        attempts: 0,
+        conversationId: '101',
+        idempotencyKey: 'operator:update-2',
+        operatorMessageId: 'operator-1',
+        text: 'Answer',
+      }),
+    ]);
   });
 
   it('closes, blocks replies, and reopens a request', async () => {
@@ -197,7 +215,12 @@ describe('HandoffService', () => {
       text: 'Blocked answer',
     });
 
-    expect(channel.sent).toHaveLength(0);
+    expect(
+      repository.findPendingDeliveries(
+        new Date('2026-08-31T12:00:00.000Z'),
+        10,
+      ),
+    ).toHaveLength(0);
     expect(inbox.closed).toEqual(['topic-1']);
     expect(repository.findRequestByTopicId('topic-1')?.status).toBe('closed');
 
@@ -215,7 +238,12 @@ describe('HandoffService', () => {
     });
 
     expect(inbox.reopened).toEqual(['topic-1']);
-    expect(channel.sent).toHaveLength(1);
+    expect(
+      repository.findPendingDeliveries(
+        new Date('2026-08-31T12:00:00.000Z'),
+        10,
+      ),
+    ).toEqual([expect.objectContaining({ text: 'Delivered answer' })]);
     expect(repository.findRequestByTopicId('topic-1')?.status).toBe('active');
   });
 });

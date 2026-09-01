@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { DeliveryWorker } from '@/core/application/delivery-worker.js';
 import { HandoffService } from '@/core/application/handoff-service.js';
 import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-support-repository.js';
 
@@ -15,6 +16,7 @@ import type { TelegramUpdate } from './telegram-types.js';
 import { TelegramUpdateRouter } from './telegram-update-router.js';
 
 class FakeTelegramGateway implements TelegramGateway {
+  public readonly reopened: number[] = [];
   public readonly sent: SendMessageOptions[] = [];
   public readonly unavailableTopics = new Set<number>();
   private nextTopicId = 900;
@@ -55,7 +57,14 @@ class FakeTelegramGateway implements TelegramGateway {
     messageThreadId: number,
   ): Promise<void> {
     void chatId;
-    void messageThreadId;
+    if (this.unavailableTopics.has(messageThreadId)) {
+      return Promise.reject(
+        new Error(
+          'Telegram API reopenForumTopic failed: Bad Request: message thread not found',
+        ),
+      );
+    }
+    this.reopened.push(messageThreadId);
     return Promise.resolve();
   }
 
@@ -79,6 +88,7 @@ class FakeTelegramGateway implements TelegramGateway {
 
 describe('Telegram handoff integration', () => {
   let gateway: FakeTelegramGateway;
+  let deliveryWorker: DeliveryWorker;
   let repository: SqliteSupportRepository;
   let router: TelegramUpdateRouter;
 
@@ -86,12 +96,15 @@ describe('Telegram handoff integration', () => {
     gateway = new FakeTelegramGateway();
     repository = new SqliteSupportRepository(':memory:');
     const handoff = new HandoffService({
-      clientChannels: [new TelegramClientChannel(gateway)],
       createId: (() => {
         let nextId = 1;
         return () => `id-${nextId++}`;
       })(),
       operatorInbox: new TelegramTopicsInbox(gateway, -1_001),
+      repository,
+    });
+    deliveryWorker = new DeliveryWorker({
+      channels: [new TelegramClientChannel(gateway)],
       repository,
     });
     router = new TelegramUpdateRouter(
@@ -135,6 +148,7 @@ describe('Telegram handoff integration', () => {
       },
       update_id: 2,
     });
+    await deliveryWorker.processPending();
 
     expect(gateway.sent).toHaveLength(2);
     expect(gateway.sent[0]).toMatchObject({
@@ -262,6 +276,43 @@ describe('Telegram handoff integration', () => {
 
     await router.route(createTopicServiceUpdate(3, 'reopened'));
     expect(repository.findActiveRequest('telegram', '101')).toBeDefined();
+  });
+
+  it('reopens a closed topic for a returning customer', async () => {
+    await router.route(createPrivateUpdate(1, 501, 'First question'));
+    await router.route(createTopicServiceUpdate(2, 'closed'));
+
+    await router.route(createPrivateUpdate(3, 502, 'New question'));
+
+    expect(gateway.reopened).toEqual([900]);
+    expect(
+      repository.findActiveRequest('telegram', '101')?.operatorTopicId,
+    ).toBe('900');
+    expect(gateway.sent).toHaveLength(2);
+    expect(gateway.sent[1]).toMatchObject({
+      chatId: -1_001,
+      messageThreadId: 900,
+    });
+    expect(gateway.sent[1]?.text).toContain('New question');
+  });
+
+  it('creates a replacement only when the closed topic was deleted', async () => {
+    await router.route(createPrivateUpdate(1, 501, 'First question'));
+    await router.route(createTopicServiceUpdate(2, 'closed'));
+    gateway.unavailableTopics.add(900);
+
+    await router.route(createPrivateUpdate(3, 502, 'New question'));
+
+    expect(gateway.reopened).toHaveLength(0);
+    expect(
+      repository.findActiveRequest('telegram', '101')?.operatorTopicId,
+    ).toBe('901');
+    expect(gateway.sent).toHaveLength(2);
+    expect(gateway.sent[1]).toMatchObject({
+      chatId: -1_001,
+      messageThreadId: 901,
+    });
+    expect(gateway.sent[1]?.text).toContain('New question');
   });
 });
 

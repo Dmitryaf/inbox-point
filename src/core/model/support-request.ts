@@ -29,7 +29,12 @@ export interface PendingDelivery {
   createdAt: Date;
   id: string;
   idempotencyKey: string;
+  operatorMessageId: string;
   replyToExternalMessageId?: string;
   requestId: string;
   text: string;
+}
+
+export interface QueuedDelivery extends PendingDelivery {
+  attempts: number;
 }

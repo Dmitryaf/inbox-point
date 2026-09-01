@@ -62,10 +62,17 @@ export class TelegramTopicsInbox implements OperatorInbox {
   }
 
   public async reopenRequest(operatorTopicId: string): Promise<void> {
-    await this.gateway.reopenForumTopic(
-      this.operatorChatId,
-      Number(operatorTopicId),
-    );
+    try {
+      await this.gateway.reopenForumTopic(
+        this.operatorChatId,
+        Number(operatorTopicId),
+      );
+    } catch (error: unknown) {
+      if (isUnavailableForumTopicError(error)) {
+        throw new OperatorConversationUnavailableError();
+      }
+      throw error;
+    }
   }
 }
 

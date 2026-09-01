@@ -36,6 +36,17 @@ describe('SqliteSupportRepository', () => {
         new Date('2026-08-31T12:00:00.000Z'),
       ),
     ).toBe(true);
+    first.enqueueDelivery({
+      channel: 'telegram',
+      conversationId: '101',
+      createdAt: new Date('2026-08-31T12:01:00.000Z'),
+      id: 'delivery-1',
+      idempotencyKey: 'operator:update-2',
+      operatorMessageId: 'operator-message-1',
+      requestId: 'request-1',
+      text: 'Answer',
+    });
+    expect(first.getDeliverySummary()).toEqual({ failed: 0, pending: 1 });
     first.closeRequest('request-1', new Date('2026-08-31T12:05:00.000Z'));
     first.close();
 
@@ -53,6 +64,71 @@ describe('SqliteSupportRepository', () => {
         new Date('2026-08-31T12:10:00.000Z'),
       ),
     ).toBe(false);
+    expect(
+      second.findPendingDeliveries(new Date('2026-08-31T12:10:00.000Z'), 10),
+    ).toEqual([
+      expect.objectContaining({
+        attempts: 0,
+        id: 'delivery-1',
+        operatorMessageId: 'operator-message-1',
+        text: 'Answer',
+      }),
+    ]);
+    expect(second.getDeliverySummary()).toEqual({ failed: 0, pending: 1 });
     second.close();
+  });
+
+  it('rolls back delivery completion when the message link cannot be stored', () => {
+    const repository = new SqliteSupportRepository(':memory:');
+    repository.createRequest({
+      channel: 'telegram',
+      conversationId: '101',
+      createdAt: new Date('2026-08-31T12:00:00.000Z'),
+      id: 'request-1',
+      operatorTopicId: 'topic-1',
+      status: 'active',
+    });
+    repository.addMessageLink({
+      clientMessageId: 'client-question-1',
+      createdAt: new Date('2026-08-31T12:00:00.000Z'),
+      direction: 'client_to_operator',
+      id: 'duplicate-link',
+      operatorMessageId: 'operator-question-1',
+      requestId: 'request-1',
+    });
+    repository.enqueueDelivery({
+      channel: 'telegram',
+      conversationId: '101',
+      createdAt: new Date('2026-08-31T12:01:00.000Z'),
+      id: 'delivery-1',
+      idempotencyKey: 'operator:update-2',
+      operatorMessageId: 'operator-answer-1',
+      requestId: 'request-1',
+      text: 'Answer',
+    });
+
+    expect(() =>
+      repository.completeDelivery(
+        'delivery-1',
+        'client-answer-1',
+        new Date('2026-08-31T12:02:00.000Z'),
+        {
+          clientMessageId: 'client-answer-1',
+          createdAt: new Date('2026-08-31T12:02:00.000Z'),
+          direction: 'operator_to_client',
+          id: 'duplicate-link',
+          operatorMessageId: 'operator-answer-1',
+          requestId: 'request-1',
+        },
+      ),
+    ).toThrow();
+    expect(
+      repository.findPendingDeliveries(
+        new Date('2026-08-31T12:03:00.000Z'),
+        10,
+      ),
+    ).toHaveLength(1);
+    expect(repository.getDeliverySummary()).toEqual({ failed: 0, pending: 1 });
+    repository.close();
   });
 });

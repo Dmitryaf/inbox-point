@@ -9,8 +9,8 @@ import { TelegramSetupController } from '@/infrastructure/telegram/telegram-setu
 
 async function start(): Promise<void> {
   const config = loadRuntimeConfig(process.env);
-  const app = createApp(config);
   const repository = new SqliteSupportRepository(config.databasePath);
+  const app = createApp(config, () => repository.getDeliverySummary());
   const settingsStore = new FileTelegramSettingsStore(
     resolve(dirname(config.databasePath), 'telegram-settings.json'),
   );
