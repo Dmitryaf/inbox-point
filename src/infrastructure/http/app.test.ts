@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { RuntimeConfig } from '@/config/runtime-config.js';
-import { createApp } from './app.js';
+import { TelegramSetupController } from '@/infrastructure/telegram/telegram-setup-controller.js';
+import { createApp, registerSetupRoutes } from './app.js';
 
 const config: RuntimeConfig = {
   databasePath: './data/test.sqlite',
@@ -44,5 +45,37 @@ describe('HTTP service status', () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({ status });
+  });
+
+  it('serves setup only on the loopback interface', async () => {
+    const app = createApp(config);
+    apps.add(app);
+    registerSetupRoutes(
+      app,
+      new TelegramSetupController(
+        {
+          running: false,
+          start: () => Promise.resolve(),
+          stop: () => Promise.resolve(),
+        },
+        {
+          load: () => Promise.resolve(undefined),
+          save: () => Promise.resolve(),
+        },
+        'none',
+      ),
+    );
+
+    const local = await app.inject({ method: 'GET', url: '/setup' });
+    const remote = await app.inject({
+      method: 'GET',
+      remoteAddress: '192.0.2.10',
+      url: '/setup',
+    });
+
+    expect(local.statusCode).toBe(200);
+    expect(local.body).toContain('Подключение Telegram');
+    expect(local.headers['cache-control']).toBe('no-store');
+    expect(remote.statusCode).toBe(404);
   });
 });

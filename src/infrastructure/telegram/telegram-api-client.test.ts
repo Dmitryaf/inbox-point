@@ -3,6 +3,8 @@ import { z } from 'zod';
 
 import { TelegramApiClient } from './telegram-api-client.js';
 
+const syntheticToken = '123456789:synthetic-api-client-token';
+
 const requestPayloadSchema = z.object({
   allowed_updates: z.array(z.string()),
   offset: z.number().optional(),
@@ -10,6 +12,39 @@ const requestPayloadSchema = z.object({
 });
 
 describe('TelegramApiClient', () => {
+  it('discovers Telegram groups from recent updates', async () => {
+    const fetchMock = vi.fn(() =>
+      Promise.resolve(
+        Response.json({
+          ok: true,
+          result: [
+            {
+              message: {
+                chat: {
+                  id: -1001,
+                  is_forum: true,
+                  title: 'Operators',
+                  type: 'supergroup',
+                },
+              },
+            },
+            {
+              my_chat_member: {
+                chat: { id: -1002, title: 'Team', type: 'group' },
+              },
+            },
+            { message: { chat: { id: 5, type: 'private' } } },
+          ],
+        }),
+      ),
+    ) as unknown as typeof fetch;
+    const client = new TelegramApiClient(syntheticToken, fetchMock);
+
+    await expect(client.discoverOperatorChats()).resolves.toEqual([
+      { id: -1001, isForum: true, title: 'Operators', type: 'supergroup' },
+      { id: -1002, isForum: false, title: 'Team', type: 'group' },
+    ]);
+  });
   it('uses the confirmed offset and validates update responses', async () => {
     const fetchMock = vi.fn(
       async (input: string | URL | Request, init?: RequestInit) => {

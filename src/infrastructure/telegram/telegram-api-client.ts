@@ -45,6 +45,25 @@ const webhookInfoSchema = z.object({
   url: z.string(),
 });
 
+const discoverableChatSchema = z.object({
+  id: z.number().int(),
+  is_forum: z.boolean().optional(),
+  title: z.string().optional(),
+  type: z.enum(['private', 'group', 'supergroup', 'channel']),
+});
+
+const discoveryUpdateSchema = z.object({
+  message: z.object({ chat: discoverableChatSchema }).optional(),
+  my_chat_member: z.object({ chat: discoverableChatSchema }).optional(),
+});
+
+export interface TelegramOperatorChat {
+  id: number;
+  isForum: boolean;
+  title: string;
+  type: 'group' | 'supergroup';
+}
+
 export interface GetUpdatesOptions {
   offset?: number;
   signal?: AbortSignal;
@@ -96,6 +115,37 @@ export class TelegramApiClient implements TelegramGateway {
       forumTopicSchema,
     );
     return { topicId: topic.message_thread_id };
+  }
+
+  public async discoverOperatorChats(): Promise<
+    readonly TelegramOperatorChat[]
+  > {
+    const updates = await this.call(
+      'getUpdates',
+      {
+        allowed_updates: ['message', 'my_chat_member'],
+        timeout: 0,
+      },
+      z.array(discoveryUpdateSchema),
+    );
+    const chats = new Map<number, TelegramOperatorChat>();
+
+    for (const update of updates) {
+      const chat = update.my_chat_member?.chat ?? update.message?.chat;
+      if (!chat || (chat.type !== 'group' && chat.type !== 'supergroup')) {
+        continue;
+      }
+      chats.set(chat.id, {
+        id: chat.id,
+        isForum: chat.is_forum === true,
+        title: chat.title ?? 'Telegram group ' + chat.id,
+        type: chat.type,
+      });
+    }
+
+    return [...chats.values()].sort((left, right) =>
+      left.title.localeCompare(right.title),
+    );
   }
 
   public async getUpdates(
