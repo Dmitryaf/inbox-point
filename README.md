@@ -11,6 +11,8 @@ Messenger Handoff is a planned self-hosted service for handling customer message
 5. The customer receives the reply in the original channel.
 
 Operators work in Telegram, while customers do not need to switch between services.
+Owners can update schedules, prices, FAQs, and custom information from a
+password-protected mobile-friendly page.
 
 ## Technology
 
@@ -33,6 +35,8 @@ npm run dev
 The local setup, delivery status, and backup controls are available at
 `http://127.0.0.1:3000/setup`. The service status is available at
 `http://127.0.0.1:3000/health`.
+Client information can be edited locally at `http://127.0.0.1:3000/manage`.
+Remote access requires a deployment password and HTTPS.
 
 Run all project checks with:
 
@@ -45,7 +49,8 @@ npm run check
 Telegram and VK text handoff, topic recovery, durable reply delivery, local
 connection setup, verified SQLite backups, persistent information buttons, and
 editable schedule, price, address, and custom information sections are
-implemented. Production deployment is not implemented yet.
+implemented. A protected content editor, readable list and FAQ formatting, and
+metadata-only change history are also available. Production deployment is not implemented yet.
 
 ## License
 

@@ -3,10 +3,6 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
 import type { RuntimeConfig } from '@/config/runtime-config.js';
-import {
-  type ClientInformationContent,
-  hasValidCustomSections,
-} from '@/core/application/client-information.js';
 import type {
   DeliverySummary,
   SupportRepository,
@@ -15,6 +11,7 @@ import type { FailedDelivery } from '@/core/model/support-request.js';
 import type { SqliteBackupService } from '@/infrastructure/persistence/sqlite-backup-service.js';
 import type { TelegramSetupController } from '@/infrastructure/telegram/telegram-setup-controller.js';
 import type { VkSetupController } from '@/infrastructure/vk/vk-setup-controller.js';
+import { contentInputSchema, normalizeContentInput } from './content-input.js';
 import type { ContentSetupController } from './content-setup-controller.js';
 import {
   setupPageHtml,
@@ -62,20 +59,6 @@ const vkConnectSchema = z.object({
   accessToken: z.string().min(20).max(500),
   community: z.string().trim().min(1).max(300),
 });
-const contentSchema = z.object({
-  address: z.string().max(4_000),
-  customSections: z
-    .array(
-      z.object({
-        label: z.string().max(40),
-        text: z.string().max(4_000),
-      }),
-    )
-    .max(6)
-    .default([]),
-  prices: z.string().max(4_000),
-  schedule: z.string().max(4_000),
-});
 
 export function registerSetupRoutes(
   app: FastifyInstance,
@@ -87,9 +70,13 @@ export function registerSetupRoutes(
   backups?: Pick<SqliteBackupService, 'createBackup'>,
   vkSetup?: VkSetupController,
   contentSetup?: ContentSetupController,
+  options: { enabled: boolean } = { enabled: true },
 ): void {
   app.addHook('onRequest', async (request, reply) => {
-    if (isSetupUrl(request.url) && !isLoopback(request.ip)) {
+    if (
+      isSetupUrl(request.url) &&
+      (!options.enabled || !isLoopback(request.ip))
+    ) {
       await reply.code(404).send({ message: 'Not found' });
     }
   });
@@ -226,17 +213,17 @@ export function registerSetupRoutes(
         .code(503)
         .send({ message: 'Редактирование информации пока недоступно.' });
     }
-    const parsed = contentSchema.safeParse(request.body);
+    const parsed = contentInputSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.code(400).send({
         message: 'Каждый раздел должен быть короче 4000 символов.',
       });
     }
-    const content = normalizeContent(parsed.data);
+    const content = normalizeContentInput(parsed.data);
     if (!content) {
       return reply.code(400).send({
         message:
-          'Заполните название и текст каждой кнопки. Названия не должны повторяться.',
+          'Проверьте названия и тексты кнопок. В FAQ после каждого вопроса должен быть ответ.',
       });
     }
     try {
@@ -249,32 +236,6 @@ export function registerSetupRoutes(
       });
     }
   });
-}
-
-function normalizeContent(content: {
-  address: string;
-  customSections: readonly { label: string; text: string }[];
-  prices: string;
-  schedule: string;
-}): ClientInformationContent | undefined {
-  const address = content.address.trim();
-  const prices = content.prices.trim();
-  const schedule = content.schedule.trim();
-  const customSections = content.customSections
-    .map((section) => ({
-      label: section.label.trim(),
-      text: section.text.trim(),
-    }))
-    .filter((section) => section.label || section.text);
-  if (!hasValidCustomSections(customSections)) {
-    return undefined;
-  }
-  return {
-    ...(address ? { address } : {}),
-    ...(customSections.length > 0 ? { customSections } : {}),
-    ...(prices ? { prices } : {}),
-    ...(schedule ? { schedule } : {}),
-  };
 }
 
 function createPublicDeliveryStatus(

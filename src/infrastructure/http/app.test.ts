@@ -115,6 +115,40 @@ describe('HTTP service status', () => {
     expect(remote.statusCode).toBe(404);
   });
 
+  it('keeps technical setup disabled in production even on loopback', async () => {
+    const app = createApp({ ...config, nodeEnv: 'production' });
+    apps.add(app);
+    registerSetupRoutes(
+      app,
+      new TelegramSetupController(
+        {
+          running: false,
+          start: () => Promise.resolve(),
+          stop: () => Promise.resolve(),
+        },
+        {
+          load: () => Promise.resolve(undefined),
+          save: () => Promise.resolve(),
+        },
+        'none',
+      ),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      { enabled: false },
+    );
+
+    const page = await app.inject({ method: 'GET', url: '/setup' });
+    const api = await app.inject({
+      method: 'GET',
+      url: '/api/setup/status',
+    });
+
+    expect(page.statusCode).toBe(404);
+    expect(api.statusCode).toBe(404);
+  });
+
   it('returns sanitized delivery failures only on loopback', async () => {
     const app = createApp(config);
     const retriedDeliveries: string[] = [];
@@ -241,6 +275,7 @@ describe('HTTP service status', () => {
     const saved: unknown[] = [];
     const contentSetup = new ContentSetupController(catalog, {
       load: () => Promise.resolve(undefined),
+      loadHistory: () => Promise.resolve([]),
       save: (content) => {
         saved.push(content);
         return Promise.resolve();
@@ -329,7 +364,9 @@ describe('HTTP service status', () => {
       },
     ]);
     expect(read.json()).toEqual(saved[0]);
-    expect(catalog.resolve(scheduleButton)).toBe('Понедельник — 19:00');
+    expect(catalog.resolve(scheduleButton)).toBe(
+      'Расписание\n\n• Понедельник — 19:00',
+    );
     expect(remoteSave.statusCode).toBe(404);
     expect(duplicateSave.statusCode).toBe(400);
     expect(reservedSave.statusCode).toBe(400);

@@ -22,12 +22,19 @@ describe('client information', () => {
     expect(catalog.resolve('У меня другой вопрос')).toBeUndefined();
   });
 
-  it('replaces unavailable values without inventing missing sections', () => {
+  it('formats list sections without inventing missing values', () => {
     const catalog = new ClientInformationCatalog();
-    catalog.replace({ schedule: 'Понедельник, 19:00' });
+    catalog.replace({
+      prices: 'Разовое занятие — 500 ₽\n- Абонемент — 3200 ₽',
+      schedule: 'Понедельник, 19:00\nПятница, 20:00',
+    });
 
-    expect(catalog.resolve(scheduleButton)).toBe('Понедельник, 19:00');
-    expect(catalog.resolve(pricesButton)).toContain('пока не добавлено');
+    expect(catalog.resolve(scheduleButton)).toBe(
+      'Расписание\n\n• Понедельник, 19:00\n• Пятница, 20:00',
+    );
+    expect(catalog.resolve(pricesButton)).toBe(
+      'Цены\n\n• Разовое занятие — 500 ₽\n• Абонемент — 3200 ₽',
+    );
   });
 
   it('resolves custom sections and protects its internal copy', () => {
@@ -41,5 +48,32 @@ describe('client information', () => {
     expect(catalog.getCustomSections()).toEqual([
       { label: 'Первое занятие', text: 'Приходите за 10 минут.' },
     ]);
+  });
+
+  it('formats FAQ pairs with visible questions and separators', () => {
+    const catalog = new ClientInformationCatalog({
+      customSections: [
+        {
+          format: 'faq',
+          label: 'FAQ',
+          text: 'Как записаться?\nНапишите преподавателю.\n\nЧто взять?\nСменную обувь.',
+        },
+      ],
+    });
+
+    expect(catalog.resolve('FAQ')).toBe(
+      'FAQ\n\n❓ Как записаться?\nНапишите преподавателю.\n\n────────\n\n❓ Что взять?\nСменную обувь.',
+    );
+  });
+
+  it('rejects an FAQ question without an answer', () => {
+    expect(
+      () =>
+        new ClientInformationCatalog({
+          customSections: [
+            { format: 'faq', label: 'FAQ', text: 'Как записаться?' },
+          ],
+        }),
+    ).toThrow('Invalid custom information sections');
   });
 });

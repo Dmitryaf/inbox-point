@@ -2,9 +2,14 @@ import type {
   ClientInformationContent,
   ClientInformationCatalog,
 } from '@/core/application/client-information.js';
-import type { ContentSettingsStore } from '@/infrastructure/persistence/content-settings-store.js';
+import type {
+  ContentChange,
+  ContentSettingsStore,
+} from '@/infrastructure/persistence/content-settings-store.js';
 
 export class ContentSetupController {
+  private saveQueue: Promise<void> = Promise.resolve();
+
   public constructor(
     private readonly catalog: ClientInformationCatalog,
     private readonly store: ContentSettingsStore,
@@ -14,8 +19,16 @@ export class ContentSetupController {
     return this.catalog.getContent();
   }
 
+  public getHistory(): Promise<readonly ContentChange[]> {
+    return this.store.loadHistory();
+  }
+
   public async save(content: ClientInformationContent): Promise<void> {
-    await this.store.save(content);
-    this.catalog.replace(content);
+    const save = this.saveQueue.then(async () => {
+      await this.store.save(content);
+      this.catalog.replace(content);
+    });
+    this.saveQueue = save.catch(() => undefined);
+    await save;
   }
 }

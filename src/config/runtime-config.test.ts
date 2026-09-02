@@ -26,6 +26,24 @@ describe('loadRuntimeConfig', () => {
     expect(load).not.toThrowError(/must-not-appear/);
   });
 
+  it('enables remote content management only with a sufficiently long password', () => {
+    expect(
+      loadRuntimeConfig({
+        CONTENT_ADMIN_PASSWORD: 'synthetic-admin-password',
+      }),
+    ).toMatchObject({
+      contentAdminPassword: 'synthetic-admin-password',
+    });
+
+    const load = (): void => {
+      loadRuntimeConfig({ CONTENT_ADMIN_PASSWORD: 'short' });
+    };
+    expect(load).toThrowError(
+      'Invalid runtime configuration: CONTENT_ADMIN_PASSWORD:',
+    );
+    expect(load).not.toThrowError(/synthetic-admin-password/);
+  });
+
   it('enables Telegram only with the required credentials', () => {
     expect(
       loadRuntimeConfig({

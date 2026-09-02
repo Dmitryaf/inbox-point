@@ -3,7 +3,9 @@ import { dirname, resolve } from 'node:path';
 import { loadRuntimeConfig } from '@/config/runtime-config.js';
 import { ClientInformationCatalog } from '@/core/application/client-information.js';
 import { createApp, registerSetupRoutes } from '@/infrastructure/http/app.js';
+import { ContentManagementAccess } from '@/infrastructure/http/content-management-access.js';
 import { ContentSetupController } from '@/infrastructure/http/content-setup-controller.js';
+import { registerManagementRoutes } from '@/infrastructure/http/manage-routes.js';
 import { FileContentSettingsStore } from '@/infrastructure/persistence/content-settings-store.js';
 import { SqliteBackupService } from '@/infrastructure/persistence/sqlite-backup-service.js';
 import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-support-repository.js';
@@ -109,6 +111,16 @@ async function start(): Promise<void> {
       backupService,
       vkSetup,
       contentSetup,
+      { enabled: config.nodeEnv !== 'production' },
+    );
+    registerManagementRoutes(
+      app,
+      contentSetup,
+      new ContentManagementAccess(config.contentAdminPassword),
+      {
+        allowLocalBypass: config.nodeEnv !== 'production',
+        secureCookies: config.nodeEnv === 'production',
+      },
     );
     const telegramConfig = config.telegram ?? storedTelegram;
     if (telegramConfig) {
@@ -139,9 +151,18 @@ async function start(): Promise<void> {
     }
 
     await app.listen({ host: config.host, port: config.port });
-    app.log.info(
-      `Open http://${config.host}:${config.port}/setup to configure the service`,
-    );
+    if (config.nodeEnv !== 'production') {
+      app.log.info(
+        `Open http://${config.host}:${config.port}/setup to configure the service`,
+      );
+    }
+    if (config.contentAdminPassword || config.nodeEnv !== 'production') {
+      app.log.info(
+        `Open http://${config.host}:${config.port}/manage to edit client information`,
+      );
+    } else {
+      app.log.warn('Remote content management is disabled');
+    }
   } catch (error: unknown) {
     await vkRuntime.stop();
     await telegramRuntime.stop();

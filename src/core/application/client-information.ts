@@ -30,6 +30,7 @@ export interface ClientInformationContent {
 }
 
 export interface CustomInformationSection {
+  format?: 'faq';
   label: string;
   text: string;
 }
@@ -63,20 +64,65 @@ export class ClientInformationCatalog implements ClientInformationResolver {
   public resolve(text: string): string | undefined {
     const normalized = text.trim();
     if (normalized === scheduleButton) {
-      return this.content.schedule ?? 'Расписание ' + unavailableSuffix;
+      return this.content.schedule
+        ? formatListResponse('Расписание', this.content.schedule)
+        : 'Расписание ' + unavailableSuffix;
     }
     if (normalized === pricesButton) {
-      return this.content.prices ?? 'Информация о ценах ' + unavailableSuffix;
+      return this.content.prices
+        ? formatListResponse('Цены', this.content.prices)
+        : 'Информация о ценах ' + unavailableSuffix;
     }
     if (normalized === addressButton) {
-      return (
-        this.content.address ?? 'Информация об адресе ' + unavailableSuffix
-      );
+      return this.content.address
+        ? `Адрес\n\n${this.content.address}`
+        : 'Информация об адресе ' + unavailableSuffix;
     }
-    return this.content.customSections?.find(
+    const section = this.content.customSections?.find(
       (section) => section.label === normalized,
-    )?.text;
+    );
+    if (!section) return undefined;
+    return section.format === 'faq'
+      ? formatFaqResponse(section.label, section.text)
+      : section.text;
   }
+}
+
+export function formatFaqResponse(label: string, text: string): string {
+  return `${label}\n\n${parseFaqItems(text)
+    .map((item) => `❓ ${item.question}\n${item.answer}`)
+    .join('\n\n────────\n\n')}`;
+}
+
+export function hasValidFaqText(text: string): boolean {
+  const items = parseFaqItems(text);
+  return items.length > 0 && items.every((item) => item.answer.length > 0);
+}
+
+function formatListResponse(label: string, text: string): string {
+  const items = text
+    .split(/\r?\n/)
+    .map((item) => item.trim().replace(/^[-•]\s*/, ''))
+    .filter(Boolean);
+  return `${label}\n\n${items.map((item) => `• ${item}`).join('\n')}`;
+}
+
+function parseFaqItems(
+  text: string,
+): readonly { answer: string; question: string }[] {
+  return text
+    .trim()
+    .split(/\r?\n\s*\r?\n/)
+    .map((block) => {
+      const [question = '', ...answer] = block
+        .split(/\r?\n/)
+        .map((line) => line.trim());
+      return {
+        answer: answer.filter(Boolean).join('\n'),
+        question,
+      };
+    })
+    .filter((item) => item.question.length > 0);
 }
 
 function copyContent(
@@ -110,6 +156,8 @@ export function hasValidCustomSections(
       (section) =>
         section.label === section.label.trim() &&
         section.text === section.text.trim() &&
+        (section.format === undefined || section.format === 'faq') &&
+        (section.format !== 'faq' || hasValidFaqText(section.text)) &&
         section.label.length > 0 &&
         section.label.length <= 40 &&
         section.text.length > 0 &&
