@@ -31,9 +31,14 @@ describe('FileContentSettingsStore', () => {
     await store.save({
       customSections: [
         {
-          format: 'faq',
-          label: 'FAQ',
-          text: 'How to join?\nSend a message.',
+          label: 'First visit',
+          text: 'Come ten minutes early.',
+        },
+      ],
+      faq: [
+        {
+          answer: 'Send a message.',
+          question: 'How to join?',
         },
       ],
       prices: 'Single visit: 10',
@@ -43,9 +48,14 @@ describe('FileContentSettingsStore', () => {
       address: 'Main street, 1',
       customSections: [
         {
-          format: 'faq',
-          label: 'FAQ',
-          text: 'How to join?\nSend a message.',
+          label: 'First visit',
+          text: 'Come ten minutes early.',
+        },
+      ],
+      faq: [
+        {
+          answer: 'Send a message.',
+          question: 'How to join?',
         },
       ],
       prices: 'Single visit: 10',
@@ -56,9 +66,14 @@ describe('FileContentSettingsStore', () => {
       address: 'Main street, 1',
       customSections: [
         {
-          format: 'faq',
-          label: 'FAQ',
-          text: 'How to join?\nSend a message.',
+          label: 'First visit',
+          text: 'Come ten minutes early.',
+        },
+      ],
+      faq: [
+        {
+          answer: 'Send a message.',
+          question: 'How to join?',
         },
       ],
       prices: 'Single visit: 10',
@@ -71,7 +86,7 @@ describe('FileContentSettingsStore', () => {
       },
       {
         changedAt: '2026-09-01T12:00:00.000Z',
-        sections: ['schedule', 'prices', 'customSections'],
+        sections: ['schedule', 'prices', 'faq', 'customSections'],
       },
     ]);
   });
@@ -96,6 +111,63 @@ describe('FileContentSettingsStore', () => {
     await expect(store.loadHistory()).resolves.toEqual([]);
   });
 
+  it('migrates a version 2 text FAQ into structured items', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'messenger-content-'));
+    directories.push(directory);
+    const path = join(directory, 'content-settings.json');
+    await writeFile(
+      path,
+      JSON.stringify({
+        content: {
+          customSections: [
+            {
+              format: 'faq',
+              label: 'FAQ',
+              text: 'How to join?\nSend a message.\n\nWhat to bring?\nClean shoes.',
+            },
+            {
+              label: 'First visit',
+              text: 'Come ten minutes early.',
+            },
+          ],
+        },
+        history: [
+          {
+            changedAt: '2026-09-01T12:00:00.000Z',
+            sections: ['customSections'],
+          },
+        ],
+        version: 2,
+      }),
+      'utf8',
+    );
+    const store = new FileContentSettingsStore(path);
+
+    await expect(store.load()).resolves.toEqual({
+      customSections: [
+        {
+          label: 'First visit',
+          text: 'Come ten minutes early.',
+        },
+      ],
+      faq: [
+        {
+          answer: 'Send a message.',
+          question: 'How to join?',
+        },
+        {
+          answer: 'Clean shoes.',
+          question: 'What to bring?',
+        },
+      ],
+    });
+    await expect(store.loadHistory()).resolves.toEqual([
+      {
+        changedAt: '2026-09-01T12:00:00.000Z',
+        sections: ['customSections'],
+      },
+    ]);
+  });
   it('does not add history when content did not change', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'messenger-content-'));
     directories.push(directory);

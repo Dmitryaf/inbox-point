@@ -6,42 +6,73 @@ import { z } from 'zod';
 import {
   type ClientInformationContent,
   hasValidCustomSections,
+  hasValidFaqItems,
 } from '@/core/application/client-information.js';
 
-const customSectionSchema = z.object({
+const legacyCustomSectionSchema = z.object({
   format: z.literal('faq').optional(),
   label: z.string().min(1).max(40),
   text: z.string().min(1).max(4_000),
 });
-const storedContentFields = {
+const customSectionSchema = z.object({
+  label: z.string().min(1).max(40),
+  text: z.string().min(1).max(4_000),
+});
+const faqItemSchema = z.object({
+  answer: z.string().min(1).max(3_000),
+  question: z.string().min(1).max(300),
+});
+const legacyStoredContentFields = {
   address: z.string().min(1).max(4_000).optional(),
-  customSections: z.array(customSectionSchema).max(6).optional(),
+  customSections: z.array(legacyCustomSectionSchema).max(6).optional(),
   prices: z.string().min(1).max(4_000).optional(),
   schedule: z.string().min(1).max(4_000).optional(),
 };
+const storedContentFields = {
+  address: z.string().min(1).max(4_000).optional(),
+  customSections: z.array(customSectionSchema).max(6).optional(),
+  faq: z.array(faqItemSchema).max(20).optional(),
+  prices: z.string().min(1).max(4_000).optional(),
+  schedule: z.string().min(1).max(4_000).optional(),
+};
+const legacyContentPayloadSchema = z.object(legacyStoredContentFields);
 const contentPayloadSchema = z.object(storedContentFields);
 const contentSectionSchema = z.enum([
   'schedule',
   'prices',
   'address',
+  'faq',
   'customSections',
 ]);
 const contentHistoryEntrySchema = z.object({
   changedAt: z.string().refine((value) => !Number.isNaN(Date.parse(value))),
-  sections: z.array(contentSectionSchema).min(1).max(4),
+  sections: z.array(contentSectionSchema).min(1).max(5),
+});
+const legacyContentHistoryEntrySchema = z.object({
+  changedAt: z.string().refine((value) => !Number.isNaN(Date.parse(value))),
+  sections: z
+    .array(z.enum(['schedule', 'prices', 'address', 'customSections']))
+    .min(1)
+    .max(4),
 });
 const storedContentV1Schema = z.object({
-  ...storedContentFields,
+  ...legacyStoredContentFields,
   version: z.literal(1),
 });
 const storedContentV2Schema = z.object({
+  content: legacyContentPayloadSchema,
+  history: z.array(legacyContentHistoryEntrySchema).max(20),
+  version: z.literal(2),
+});
+const storedContentV3Schema = z.object({
   content: contentPayloadSchema,
   history: z.array(contentHistoryEntrySchema).max(20),
-  version: z.literal(2),
+  version: z.literal(3),
 });
 const storedContentSchema = z.union([
   storedContentV1Schema,
   storedContentV2Schema,
+  storedContentV3Schema,
 ]);
 
 export type ContentSectionKey = z.infer<typeof contentSectionSchema>;
@@ -78,7 +109,10 @@ export class FileContentSettingsStore implements ContentSettingsStore {
 
   public async save(content: ClientInformationContent): Promise<void> {
     const validatedContent = pickContent(contentPayloadSchema.parse(content));
-    if (!hasValidCustomSections(validatedContent.customSections ?? [])) {
+    if (
+      !hasValidCustomSections(validatedContent.customSections ?? []) ||
+      !hasValidFaqItems(validatedContent.faq ?? [])
+    ) {
       throw new Error('The local content settings are invalid');
     }
 
@@ -86,7 +120,7 @@ export class FileContentSettingsStore implements ContentSettingsStore {
     const sections = findChangedSections(current?.content ?? {}, content);
     if (sections.length === 0) return;
 
-    const validated = storedContentV2Schema.parse({
+    const validated = storedContentV3Schema.parse({
       content: validatedContent,
       history: [
         {
@@ -95,7 +129,7 @@ export class FileContentSettingsStore implements ContentSettingsStore {
         },
         ...(current?.history ?? []),
       ].slice(0, 20),
-      version: 2,
+      version: 3,
     });
     const directory = dirname(this.path);
     const temporaryPath = this.path + '.' + process.pid + '.tmp';
@@ -131,9 +165,14 @@ export class FileContentSettingsStore implements ContentSettingsStore {
 
     const content =
       result.data.version === 1
-        ? pickContent(result.data)
-        : pickContent(result.data.content);
-    if (!hasValidCustomSections(content.customSections ?? [])) {
+        ? migrateLegacyContent(result.data)
+        : result.data.version === 2
+          ? migrateLegacyContent(result.data.content)
+          : pickContent(result.data.content);
+    if (
+      !hasValidCustomSections(content.customSections ?? []) ||
+      !hasValidFaqItems(content.faq ?? [])
+    ) {
       throw new Error('The local content settings are invalid');
     }
     return {
@@ -157,6 +196,9 @@ function findChangedSections(
   if (previous.schedule !== next.schedule) sections.push('schedule');
   if (previous.prices !== next.prices) sections.push('prices');
   if (previous.address !== next.address) sections.push('address');
+  if (JSON.stringify(previous.faq ?? []) !== JSON.stringify(next.faq ?? [])) {
+    sections.push('faq');
+  }
   if (
     JSON.stringify(previous.customSections ?? []) !==
     JSON.stringify(next.customSections ?? [])
@@ -174,17 +216,58 @@ function pickContent(
     ...(value.customSections
       ? {
           customSections: value.customSections.map((section) => ({
-            ...(section.format === 'faq' ? { format: 'faq' as const } : {}),
             label: section.label,
             text: section.text,
           })),
         }
       : {}),
+    ...(value.faq ? { faq: value.faq.map((item) => ({ ...item })) } : {}),
     ...(value.prices ? { prices: value.prices } : {}),
     ...(value.schedule ? { schedule: value.schedule } : {}),
   };
 }
 
+function migrateLegacyContent(
+  value: z.infer<typeof legacyContentPayloadSchema>,
+): ClientInformationContent {
+  const legacyFaq = value.customSections
+    ?.filter((section) => section.format === 'faq')
+    .flatMap((section) => parseLegacyFaqText(section.text));
+  return {
+    ...(value.address ? { address: value.address } : {}),
+    ...(value.customSections
+      ? {
+          customSections: value.customSections
+            .filter((section) => section.format !== 'faq')
+            .map((section) => ({
+              label: section.label,
+              text: section.text,
+            })),
+        }
+      : {}),
+    ...(legacyFaq && legacyFaq.length > 0 ? { faq: legacyFaq } : {}),
+    ...(value.prices ? { prices: value.prices } : {}),
+    ...(value.schedule ? { schedule: value.schedule } : {}),
+  };
+}
+
+function parseLegacyFaqText(
+  text: string,
+): readonly { answer: string; question: string }[] {
+  return text
+    .trim()
+    .split(/\r?\n\s*\r?\n/)
+    .map((block) => {
+      const [question = '', ...answer] = block
+        .split(/\r?\n/)
+        .map((line) => line.trim());
+      return {
+        answer: answer.filter(Boolean).join('\n'),
+        question,
+      };
+    })
+    .filter((item) => item.question && item.answer);
+}
 function copyContent(
   content: ClientInformationContent,
 ): ClientInformationContent {
@@ -197,6 +280,7 @@ function copyContent(
           })),
         }
       : {}),
+    ...(content.faq ? { faq: content.faq.map((item) => ({ ...item })) } : {}),
   };
 }
 

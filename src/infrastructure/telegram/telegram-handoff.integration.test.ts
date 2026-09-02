@@ -2,7 +2,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { DeliveryWorker } from '@/core/application/delivery-worker.js';
 import { HandoffService } from '@/core/application/handoff-service.js';
-import { ClientInformationCatalog } from '@/core/application/client-information.js';
+import {
+  ClientInformationCatalog,
+  faqButton,
+} from '@/core/application/client-information.js';
 import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-support-repository.js';
 
 import type {
@@ -240,6 +243,29 @@ describe('Telegram handoff integration', () => {
     });
   });
 
+  it('shows and resolves the built-in FAQ without opening a request', async () => {
+    information.replace({
+      faq: [
+        {
+          answer: 'Напишите преподавателю.',
+          question: 'Как записаться?',
+        },
+      ],
+    });
+
+    await router.route(createPrivateUpdate(1, 501, '/start'));
+    await router.route(createPrivateUpdate(2, 502, faqButton));
+
+    expect(repository.findActiveRequest('telegram', '101')).toBeUndefined();
+    const replyMarkup = gateway.sent[0]?.replyMarkup;
+    if (!replyMarkup || !('keyboard' in replyMarkup)) {
+      throw new Error('Expected a reply keyboard');
+    }
+    expect(replyMarkup.keyboard.flat().map((button) => button.text)).toContain(
+      faqButton,
+    );
+    expect(gateway.sent[1]?.text).toContain('❓ Как записаться?');
+  });
   it('shows a custom section without opening an operator request', async () => {
     information.replace({
       customSections: [

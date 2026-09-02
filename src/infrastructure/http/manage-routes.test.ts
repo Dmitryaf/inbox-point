@@ -40,7 +40,7 @@ describe('managed content routes', () => {
         saved.push(content);
         history.unshift({
           changedAt: '2026-09-01T12:00:00.000Z',
-          sections: ['customSections'],
+          sections: ['faq'],
         });
         return Promise.resolve();
       },
@@ -110,11 +110,11 @@ describe('managed content routes', () => {
       method: 'POST',
       payload: {
         address: '',
-        customSections: [
+        customSections: [],
+        faq: [
           {
-            format: 'faq',
-            label: 'FAQ',
-            text: 'Как записаться?\nНапишите преподавателю.',
+            answer: 'Напишите преподавателю.',
+            question: 'Как записаться?',
           },
         ],
         prices: '',
@@ -148,16 +148,15 @@ describe('managed content routes', () => {
     expect(save.statusCode).toBe(200);
     expect(saved).toEqual([
       {
-        customSections: [
+        faq: [
           {
-            format: 'faq',
-            label: 'FAQ',
-            text: 'Как записаться?\nНапишите преподавателю.',
+            answer: 'Напишите преподавателю.',
+            question: 'Как записаться?',
           },
         ],
       },
     ]);
-    expect(catalog.resolve('FAQ')).toContain('❓ Как записаться?');
+    expect(catalog.resolve('Частые вопросы')).toContain('❓ Как записаться?');
     expect(readHistory.json()).toEqual({ history });
   });
 

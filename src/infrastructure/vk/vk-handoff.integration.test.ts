@@ -2,7 +2,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { DeliveryWorker } from '@/core/application/delivery-worker.js';
 import { HandoffService } from '@/core/application/handoff-service.js';
-import { ClientInformationCatalog } from '@/core/application/client-information.js';
+import {
+  ClientInformationCatalog,
+  faqButton,
+} from '@/core/application/client-information.js';
 import type {
   OpenOperatorRequest,
   OperatorInbox,
@@ -165,7 +168,7 @@ describe('VK handoff integration', () => {
 
     expect(inbox.opened).toHaveLength(0);
     expect(gateway.sent).toHaveLength(1);
-    expect(gateway.sent[0]?.keyboard?.buttons.flat()).toHaveLength(4);
+    expect(gateway.sent[0]?.keyboard?.buttons.flat()).toHaveLength(5);
 
     await router.route(
       createMessageEvent({
@@ -188,6 +191,33 @@ describe('VK handoff integration', () => {
     expect(gateway.sent.at(-1)?.keyboard).toBeDefined();
   });
 
+  it('shows and resolves the built-in FAQ without opening a request', async () => {
+    information.replace({
+      faq: [
+        {
+          answer: 'Напишите преподавателю.',
+          question: 'Как записаться?',
+        },
+      ],
+    });
+
+    await router.route(createMessageEvent({ text: 'Начать' }));
+    await router.route(
+      createMessageEvent({
+        conversation_message_id: 8,
+        id: 502,
+        text: faqButton,
+      }),
+    );
+
+    expect(inbox.opened).toHaveLength(0);
+    expect(
+      gateway.sent[0]?.keyboard?.buttons
+        .flat()
+        .map((button) => button.action.label),
+    ).toContain(faqButton);
+    expect(gateway.sent[1]?.text).toContain('❓ Как записаться?');
+  });
   it('shows a custom VK button without opening an operator request', async () => {
     information.replace({
       customSections: [

@@ -47,8 +47,15 @@ export const managePageHtml = `<!doctype html>
           </section>
 
           <section>
+            <h2>Частые вопросы</h2>
+            <p>Добавляйте вопросы и ответы отдельными карточками. Порядок карточек сохранится в сообщении.</p>
+            <div id='faq-items'></div>
+            <button id='add-faq' class='secondary' type='button'>Добавить вопрос</button>
+          </section>
+
+          <section>
             <h2>Дополнительные кнопки</h2>
-            <p>Добавьте до шести разделов. Для FAQ выберите формат «Вопросы и ответы».</p>
+            <p>Добавьте до шести собственных информационных разделов.</p>
             <div id='custom-sections'></div>
             <button id='add-section' class='secondary' type='button'>Добавить кнопку</button>
           </section>
@@ -163,15 +170,18 @@ header button {
   min-height: 24px;
   margin: 10px 0 0;
 }
+.faq-item,
 .custom-section {
   margin: 14px 0;
   padding: 14px;
   border: 1px solid #d9dee7;
   border-radius: 10px;
 }
+.faq-item h3,
 .custom-section h3 {
   margin-bottom: 0;
 }
+.faq-item .remove,
 .custom-section .remove {
   border-color: #d2a5a5;
   color: #8b2020;

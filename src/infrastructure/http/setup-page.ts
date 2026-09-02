@@ -49,7 +49,7 @@ export const setupPageHtml = `<!doctype html>
         <label>Цены <textarea id='content-prices' rows='5'></textarea></label>
         <label>Адрес <textarea id='content-address' rows='3'></textarea></label>
         <h3>Дополнительные кнопки</h3>
-        <p class='muted'>Можно добавить до шести собственных разделов, например «Первое занятие» или «Что взять с собой».</p>
+        <p class='muted'>Можно добавить до шести собственных разделов. Частые вопросы редактируются на странице /manage.</p>
         <div id='custom-sections'></div>
         <button id='add-custom-section' type='button'>Добавить кнопку</button>
         <button id='save-content'>Сохранить информацию</button>

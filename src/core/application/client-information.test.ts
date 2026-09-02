@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   addressButton,
   ClientInformationCatalog,
+  faqButton,
   pricesButton,
   scheduleButton,
 } from './client-information.js';
@@ -12,6 +13,7 @@ describe('client information', () => {
     [scheduleButton, 'Расписание'],
     [pricesButton, 'ценах'],
     [addressButton, 'адресе'],
+    [faqButton, 'пока не добавлены'],
   ])('resolves %s from the canonical catalog', (button, expected) => {
     const catalog = new ClientInformationCatalog();
     expect(catalog.resolve(button)).toContain(expected);
@@ -52,28 +54,36 @@ describe('client information', () => {
 
   it('formats FAQ pairs with visible questions and separators', () => {
     const catalog = new ClientInformationCatalog({
-      customSections: [
+      faq: [
         {
-          format: 'faq',
-          label: 'FAQ',
-          text: 'Как записаться?\nНапишите преподавателю.\n\nЧто взять?\nСменную обувь.',
+          answer: 'Напишите преподавателю.',
+          question: 'Как записаться?',
+        },
+        {
+          answer: 'Сменную обувь.',
+          question: 'Что взять?',
         },
       ],
     });
 
-    expect(catalog.resolve('FAQ')).toBe(
-      'FAQ\n\n❓ Как записаться?\nНапишите преподавателю.\n\n────────\n\n❓ Что взять?\nСменную обувь.',
+    expect(catalog.resolve(faqButton)).toBe(
+      'Частые вопросы\n\n❓ Как записаться?\nНапишите преподавателю.\n\n────────\n\n❓ Что взять?\nСменную обувь.',
     );
   });
 
+  it('keeps the legacy FAQ label as a hidden compatibility alias', () => {
+    const catalog = new ClientInformationCatalog({
+      faq: [{ answer: 'Напишите преподавателю.', question: 'Как записаться?' }],
+    });
+
+    expect(catalog.resolve('FAQ')).toBe(catalog.resolve(faqButton));
+  });
   it('rejects an FAQ question without an answer', () => {
     expect(
       () =>
         new ClientInformationCatalog({
-          customSections: [
-            { format: 'faq', label: 'FAQ', text: 'Как записаться?' },
-          ],
+          faq: [{ answer: '', question: 'Как записаться?' }],
         }),
-    ).toThrow('Invalid custom information sections');
+    ).toThrow('Invalid FAQ items');
   });
 });

@@ -1,6 +1,7 @@
 export const scheduleButton = 'Расписание';
 export const pricesButton = 'Цены';
 export const addressButton = 'Адрес';
+export const faqButton = 'Частые вопросы';
 export const teacherButton = 'Задать вопрос преподавателю';
 export const newQuestionButton = 'Начать новый вопрос';
 
@@ -8,6 +9,7 @@ export const informationButtons = [
   scheduleButton,
   pricesButton,
   addressButton,
+  faqButton,
 ] as const;
 
 export const reservedClientLabels = [
@@ -17,6 +19,7 @@ export const reservedClientLabels = [
   '/start',
   '/menu',
   'Начать',
+  'FAQ',
 ] as const;
 
 const unavailableSuffix =
@@ -25,14 +28,19 @@ const unavailableSuffix =
 export interface ClientInformationContent {
   address?: string;
   customSections?: readonly CustomInformationSection[];
+  faq?: readonly FaqItem[];
   prices?: string;
   schedule?: string;
 }
 
 export interface CustomInformationSection {
-  format?: 'faq';
   label: string;
   text: string;
+}
+
+export interface FaqItem {
+  answer: string;
+  question: string;
 }
 
 export interface ClientInformationResolver {
@@ -78,27 +86,40 @@ export class ClientInformationCatalog implements ClientInformationResolver {
         ? `Адрес\n\n${this.content.address}`
         : 'Информация об адресе ' + unavailableSuffix;
     }
+    if (normalized === faqButton || normalized.toLowerCase() === 'faq') {
+      return this.content.faq?.length
+        ? formatFaqResponse(this.content.faq)
+        : 'Частые вопросы пока не добавлены. Вы можете задать вопрос преподавателю.';
+    }
     const section = this.content.customSections?.find(
       (section) => section.label === normalized,
     );
     if (!section) return undefined;
-    return section.format === 'faq'
-      ? formatFaqResponse(section.label, section.text)
-      : section.text;
+    return section.text;
   }
 }
 
-export function formatFaqResponse(label: string, text: string): string {
-  return `${label}\n\n${parseFaqItems(text)
+export function formatFaqResponse(items: readonly FaqItem[]): string {
+  return `${faqButton}\n\n${items
     .map((item) => `❓ ${item.question}\n${item.answer}`)
     .join('\n\n────────\n\n')}`;
 }
 
-export function hasValidFaqText(text: string): boolean {
-  const items = parseFaqItems(text);
-  return items.length > 0 && items.every((item) => item.answer.length > 0);
+export function hasValidFaqItems(items: readonly FaqItem[]): boolean {
+  return (
+    items.length <= 20 &&
+    items.every(
+      (item) =>
+        item.question === item.question.trim() &&
+        item.answer === item.answer.trim() &&
+        item.question.length > 0 &&
+        item.question.length <= 300 &&
+        item.answer.length > 0 &&
+        item.answer.length <= 3_000,
+    ) &&
+    (items.length === 0 || formatFaqResponse(items).length <= 4_000)
+  );
 }
-
 function formatListResponse(label: string, text: string): string {
   const items = text
     .split(/\r?\n/)
@@ -107,29 +128,14 @@ function formatListResponse(label: string, text: string): string {
   return `${label}\n\n${items.map((item) => `• ${item}`).join('\n')}`;
 }
 
-function parseFaqItems(
-  text: string,
-): readonly { answer: string; question: string }[] {
-  return text
-    .trim()
-    .split(/\r?\n\s*\r?\n/)
-    .map((block) => {
-      const [question = '', ...answer] = block
-        .split(/\r?\n/)
-        .map((line) => line.trim());
-      return {
-        answer: answer.filter(Boolean).join('\n'),
-        question,
-      };
-    })
-    .filter((item) => item.question.length > 0);
-}
-
 function copyContent(
   content: ClientInformationContent,
 ): ClientInformationContent {
   if (!hasValidCustomSections(content.customSections ?? [])) {
     throw new Error('Invalid custom information sections');
+  }
+  if (!hasValidFaqItems(content.faq ?? [])) {
+    throw new Error('Invalid FAQ items');
   }
   return {
     ...content,
@@ -140,6 +146,7 @@ function copyContent(
           })),
         }
       : {}),
+    ...(content.faq ? { faq: content.faq.map((item) => ({ ...item })) } : {}),
   };
 }
 
@@ -156,8 +163,6 @@ export function hasValidCustomSections(
       (section) =>
         section.label === section.label.trim() &&
         section.text === section.text.trim() &&
-        (section.format === undefined || section.format === 'faq') &&
-        (section.format !== 'faq' || hasValidFaqText(section.text)) &&
         section.label.length > 0 &&
         section.label.length <= 40 &&
         section.text.length > 0 &&

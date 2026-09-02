@@ -191,7 +191,7 @@ export function registerManagementRoutes(
       if (!normalized) {
         return reply.code(400).send({
           message:
-            'Проверьте названия и тексты кнопок. В FAQ после каждого вопроса должен быть ответ.',
+            'Проверьте названия и тексты кнопок. Каждый частый вопрос должен содержать ответ.',
         });
       }
       try {

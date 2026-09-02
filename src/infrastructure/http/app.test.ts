@@ -311,6 +311,12 @@ describe('HTTP service status', () => {
             text: ' Приходите за 10 минут ',
           },
         ],
+        faq: [
+          {
+            answer: 'Напишите преподавателю.',
+            question: 'Как записаться?',
+          },
+        ],
         prices: 'Разовое посещение — 500 ₽',
         schedule: 'Понедельник — 19:00',
       },
@@ -331,8 +337,8 @@ describe('HTTP service status', () => {
       payload: {
         address: '',
         customSections: [
-          { label: 'FAQ', text: 'One' },
-          { label: 'faq', text: 'Two' },
+          { label: 'Первое занятие', text: 'One' },
+          { label: 'первое занятие', text: 'Two' },
         ],
         prices: '',
         schedule: '',
@@ -350,6 +356,17 @@ describe('HTTP service status', () => {
       url: '/api/setup/content',
     });
 
+    const invalidFaqSave = await app.inject({
+      method: 'POST',
+      payload: {
+        address: '',
+        customSections: [],
+        faq: [{ answer: '', question: 'Как записаться?' }],
+        prices: '',
+        schedule: '',
+      },
+      url: '/api/setup/content',
+    });
     expect(save.statusCode).toBe(200);
     expect(saved).toEqual([
       {
@@ -357,6 +374,12 @@ describe('HTTP service status', () => {
           {
             label: 'Первое занятие',
             text: 'Приходите за 10 минут',
+          },
+        ],
+        faq: [
+          {
+            answer: 'Напишите преподавателю.',
+            question: 'Как записаться?',
           },
         ],
         prices: 'Разовое посещение — 500 ₽',
@@ -370,6 +393,7 @@ describe('HTTP service status', () => {
     expect(remoteSave.statusCode).toBe(404);
     expect(duplicateSave.statusCode).toBe(400);
     expect(reservedSave.statusCode).toBe(400);
+    expect(invalidFaqSave.statusCode).toBe(400);
     expect(saved).toHaveLength(1);
   });
 });

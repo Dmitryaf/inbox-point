@@ -3,6 +3,7 @@ import {
   addressButton,
   ClientInformationCatalog,
   type ClientInformationResolver,
+  faqButton,
   newQuestionButton,
   pricesButton,
   scheduleButton,
@@ -182,7 +183,7 @@ function createMainMenu(
     is_persistent: true,
     keyboard: [
       [{ text: scheduleButton }, { text: pricesButton }],
-      [{ text: addressButton }],
+      [{ text: addressButton }, { text: faqButton }],
       ...customRows,
       [{ text: teacherButton }],
       [{ text: newQuestionButton }],
