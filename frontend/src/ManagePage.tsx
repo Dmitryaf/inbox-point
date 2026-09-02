@@ -3,11 +3,11 @@ import { useEffect, useState } from 'react';
 interface CustomSection {
   label: string;
   text: string;
-  format?: 'faq';
 }
 interface Content {
   address: string;
   customSections: CustomSection[];
+  faq: { question: string; answer: string }[];
   prices: string;
   schedule: string;
 }
@@ -46,12 +46,14 @@ async function request<T>(path: string, data?: unknown): Promise<T> {
 const empty: Content = {
   address: '',
   customSections: [],
+  faq: [],
   prices: '',
   schedule: '',
 };
 const labels = {
   address: 'адрес',
   customSections: 'дополнительные кнопки',
+  faq: 'частые вопросы',
   prices: 'цены',
   schedule: 'расписание',
 };
@@ -66,24 +68,15 @@ function listText(label: string, value: string) {
     ? label + '\n\n' + items.map((item) => '• ' + item).join('\n')
     : '';
 }
-function faqText(label: string, value: string) {
-  const items = value
-    .trim()
-    .split(/\r?\n\s*\r?\n/)
-    .map((block) => {
-      const [question = '', ...answer] = block
-        .split(/\r?\n/)
-        .map((line) => line.trim());
-      return { question, answer: answer.filter(Boolean).join('\n') };
-    })
-    .filter((item) => item.question);
+function faqText(items: Content['faq']) {
   return items.length
-    ? label +
-        '\n\n' +
+    ? 'Частые вопросы\n\n' +
         items
-          .map((item) => '❓ ' + item.question + '\n' + item.answer)
+          .map(
+            (item) => '❓ ' + item.question.trim() + '\n' + item.answer.trim(),
+          )
           .join('\n\n────────\n\n')
-    : '';
+    : 'Частые вопросы пока не добавлены. Вы можете задать вопрос преподавателю.';
 }
 
 export function ManagePage() {
@@ -193,12 +186,17 @@ export function ManagePage() {
       label: 'Адрес',
       text: content.address.trim() ? 'Адрес\n\n' + content.address.trim() : '',
     },
+    {
+      label: 'Частые вопросы',
+      text: faqText(
+        content.faq.filter(
+          (item) => item.question.trim() && item.answer.trim(),
+        ),
+      ),
+    },
     ...content.customSections.map((section) => ({
       label: section.label.trim() || 'Новая кнопка',
-      text:
-        section.format === 'faq'
-          ? faqText(section.label.trim(), section.text)
-          : section.text.trim(),
+      text: section.text.trim(),
     })),
   ];
   if (session === 'loading')
@@ -306,11 +304,94 @@ export function ManagePage() {
             ))}
           </section>
           <section>
-            <h2>Дополнительные кнопки</h2>
+            <h2>Частые вопросы</h2>
             <p>
-              Добавьте до шести разделов. Для FAQ выберите формат «Вопросы и
-              ответы».
+              Добавляйте вопросы и ответы отдельными карточками. Порядок
+              карточек сохранится в сообщении.
             </p>
+            <div id="faq-items">
+              {content.faq.map((item, index) => (
+                <div className="faq-item" key={index}>
+                  <h3>Вопрос и ответ</h3>
+                  <label>
+                    Вопрос
+                    <input
+                      type="text"
+                      maxLength={300}
+                      required
+                      disabled={pending}
+                      value={item.question}
+                      onChange={(event) =>
+                        setContent({
+                          ...content,
+                          faq: content.faq.map((value, position) =>
+                            position === index
+                              ? {
+                                  ...value,
+                                  question: event.currentTarget.value,
+                                }
+                              : value,
+                          ),
+                        })
+                      }
+                    />
+                  </label>
+                  <label>
+                    Ответ
+                    <textarea
+                      rows={4}
+                      maxLength={3000}
+                      required
+                      disabled={pending}
+                      value={item.answer}
+                      onChange={(event) =>
+                        setContent({
+                          ...content,
+                          faq: content.faq.map((value, position) =>
+                            position === index
+                              ? { ...value, answer: event.currentTarget.value }
+                              : value,
+                          ),
+                        })
+                      }
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="remove"
+                    disabled={pending}
+                    onClick={() =>
+                      setContent({
+                        ...content,
+                        faq: content.faq.filter(
+                          (_, position) => position !== index,
+                        ),
+                      })
+                    }
+                  >
+                    Удалить вопрос
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              id="add-faq"
+              className="secondary"
+              type="button"
+              disabled={!loaded || pending || content.faq.length >= 20}
+              onClick={() =>
+                setContent({
+                  ...content,
+                  faq: [...content.faq, { question: '', answer: '' }],
+                })
+              }
+            >
+              Добавить вопрос
+            </button>
+          </section>
+          <section>
+            <h2>Дополнительные кнопки</h2>
+            <p>Добавьте до шести собственных информационных разделов.</p>
             <div id="custom-sections">
               {content.customSections.map((section, index) => (
                 <div className="custom-section" key={index}>
@@ -331,29 +412,6 @@ export function ManagePage() {
                     />
                   </label>
                   <label>
-                    Формат ответа
-                    <select
-                      disabled={pending}
-                      value={section.format ?? 'plain'}
-                      onChange={(event) => {
-                        const next = { ...section };
-                        if (event.currentTarget.value === 'faq')
-                          next.format = 'faq';
-                        else delete next.format;
-                        setContent({
-                          ...content,
-                          customSections: content.customSections.map(
-                            (item, position) =>
-                              position === index ? next : item,
-                          ),
-                        });
-                      }}
-                    >
-                      <option value="plain">Обычный текст</option>
-                      <option value="faq">Вопросы и ответы</option>
-                    </select>
-                  </label>
-                  <label>
                     Ответ
                     <textarea
                       rows={6}
@@ -368,11 +426,6 @@ export function ManagePage() {
                       }
                     />
                   </label>
-                  <p className="hint">
-                    {section.format === 'faq'
-                      ? 'Сначала вопрос, со следующей строки ответ. Между парами оставляйте пустую строку.'
-                      : 'Свободный текст без обязательного шаблона.'}
-                  </p>
                   <button
                     className="remove"
                     type="button"

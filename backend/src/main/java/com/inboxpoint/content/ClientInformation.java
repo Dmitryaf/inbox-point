@@ -26,12 +26,13 @@ public final class ClientInformation {
     public static final String PRICES = "Цены";
     public static final String ADDRESS = "Адрес";
     public static final String ASK = "Задать вопрос преподавателю";
+    public static final String FAQ = "Частые вопросы";
     public static final String RESET = "Начать новый вопрос";
     private static final String UNAVAILABLE = " пока не добавлено. Вы можете задать вопрос преподавателю.";
     private static final List<String> FIELDS = List.of("schedule", "prices", "address");
     private static final Set<String> RESERVED = Set.of(
             SCHEDULE.toLowerCase(Locale.ROOT), PRICES.toLowerCase(Locale.ROOT), ADDRESS.toLowerCase(Locale.ROOT),
-            ASK.toLowerCase(Locale.ROOT), RESET.toLowerCase(Locale.ROOT), "/start", "/menu", "начать");
+            ASK.toLowerCase(Locale.ROOT), RESET.toLowerCase(Locale.ROOT), FAQ.toLowerCase(Locale.ROOT), "/start", "/menu", "начать", "faq");
     private final Path file;
     private volatile State state;
 
@@ -40,15 +41,16 @@ public final class ClientInformation {
         try {
             var json = JsonMapper.shared().readTree(Files.readString(file));
             state = switch (json.path("version").asInt()) {
-                case 1 -> new State(normalize(json), List.of());
-                case 2 -> new State(normalize(json.path("content")), history(json.path("history")));
+                case 1 -> new State(migrate(json), List.of());
+                case 2 -> new State(migrate(json.path("content")), history(json.path("history")));
+                case 3 -> new State(normalize(json.path("content")), history(json.path("history")));
                 default -> throw new IllegalArgumentException("Unsupported content settings version");
             };
         } catch (NoSuchFileException missing) {
-            state = new State(new Snapshot(Map.of(), List.of()), List.of());
+            state = new State(new Snapshot(Map.of(), List.of(), List.of()), List.of());
         } catch (IOException | RuntimeException invalid) {
             LoggerFactory.getLogger(ClientInformation.class).warn("Saved client information could not be read");
-            state = new State(new Snapshot(Map.of(), List.of()), List.of());
+            state = new State(new Snapshot(Map.of(), List.of(), List.of()), List.of());
         }
     }
 
@@ -65,6 +67,7 @@ public final class ClientInformation {
         var previous = state;
         var fieldNames = new ArrayList<>(FIELDS);
         fieldNames.add("customSections");
+        fieldNames.add("faq");
         var changed = fieldNames.stream()
                 .filter(name -> !java.util.Objects.equals(previous.content().jsonFields().get(name), next.jsonFields().get(name)))
                 .toList();
@@ -74,16 +77,19 @@ public final class ClientInformation {
         var revisions = new ArrayList<Change>();
         revisions.add(new Change(Instant.now().toString(), changed));
         revisions.addAll(previous.history().stream().limit(19).toList());
-        var output = JsonMapper.shared().createObjectNode().put("version", 2);
+        var output = JsonMapper.shared().createObjectNode().put("version", 3);
         var payload = output.putObject("content");
         next.standard().forEach(payload::put);
         if (!next.custom().isEmpty()) {
             var values = payload.putArray("customSections");
             for (var section : next.custom()) {
-                var value = values.addObject().put("label", section.label()).put("text", section.text());
-                if (section.format() != null) {
-                    value.put("format", section.format());
-                }
+                values.addObject().put("label", section.label()).put("text", section.text());
+            }
+        }
+        if (!next.faq().isEmpty()) {
+            var faq = payload.putArray("faq");
+            for (var answer : next.faq()) {
+                faq.addObject().put("question", answer.question()).put("answer", answer.answer());
             }
         }
         var entries = output.putArray("history");
@@ -98,18 +104,21 @@ public final class ClientInformation {
 
     public String resolve(String label) {
         var snapshot = state.content();
+        if (FAQ.equals(label) || "faq".equalsIgnoreCase(label)) {
+            return snapshot.faq().isEmpty() ? FAQ + UNAVAILABLE : formatFaq(snapshot.faq());
+        }
         return switch (label) {
-            case SCHEDULE -> snapshot.standard().getOrDefault("schedule", "Расписание" + UNAVAILABLE);
-            case PRICES -> snapshot.standard().getOrDefault("prices", "Информация о ценах" + UNAVAILABLE);
+            case SCHEDULE -> formatList(SCHEDULE, snapshot.standard().get("schedule"), "Расписание" + UNAVAILABLE);
+            case PRICES -> formatList(PRICES, snapshot.standard().get("prices"), "Информация о ценах" + UNAVAILABLE);
             case ADDRESS -> snapshot.standard().getOrDefault("address", "Информация об адресе" + UNAVAILABLE);
             default -> snapshot.custom().stream()
-                    .filter(section -> section.label().equals(label)).map(ClientInformation::sectionAnswer).findFirst().orElse(null);
+                    .filter(section -> section.label().equals(label)).map(Section::text).findFirst().orElse(null);
         };
     }
 
-    public record Section(String label, String text,
-            @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
-            String format) { }
+    public record Section(String label, String text) { }
+
+    public record Faq(String question, String answer) { }
 
     public record Change(String changedAt, List<String> sections) { }
 
@@ -130,12 +139,12 @@ public final class ClientInformation {
             var sections = new ArrayList<String>();
             for (var section : row.path("sections")) {
                 var key = section.asString("");
-                if (!FIELDS.contains(key) && !"customSections".equals(key)) {
+                if (!FIELDS.contains(key) && !List.of("customSections", "faq").contains(key)) {
                     throw new IllegalArgumentException("Unknown content history section");
                 }
                 sections.add(key);
             }
-            if (sections.isEmpty() || sections.size() > 4) {
+            if (sections.isEmpty() || sections.size() > 5) {
                 throw new IllegalArgumentException("Invalid content history sections");
             }
             changes.add(new Change(timestamp, List.copyOf(sections)));
@@ -143,33 +152,86 @@ public final class ClientInformation {
         return List.copyOf(changes);
     }
 
-    private static String sectionAnswer(Section section) {
-        if (!"faq".equals(section.format())) {
-            return section.text();
+    private static String formatList(String label, String value, String fallback) {
+        if (value == null) {
+            return fallback;
         }
-        var items = new ArrayList<String>();
-        for (var block : section.text().strip().split("\\R\\s*\\R")) {
-            var lines = block.lines().map(String::strip).filter(line -> !line.isEmpty()).toList();
-            if (lines.size() < 2) {
-                throw new IllegalArgumentException("A question requires an answer");
-            }
-            items.add("❓ " + lines.getFirst() + "\n" + String.join("\n", lines.subList(1, lines.size())));
-        }
-        return section.label() + "\n\n" + String.join("\n\n────────\n\n", items);
+        var items = value.lines().map(String::strip).map(line -> line.replaceFirst("^[-•]\\s*", ""))
+                .filter(line -> !line.isEmpty()).map(line -> "• " + line).toList();
+        return label + "\n\n" + String.join("\n", items);
     }
 
-    private record Snapshot(Map<String, String> standard, List<Section> custom) {
+    private static String formatFaq(List<Faq> items) {
+        return FAQ + "\n\n" + String.join("\n\n────────\n\n",
+                items.stream().map(item -> "❓ " + item.question() + "\n" + item.answer()).toList());
+    }
+
+    private static List<Faq> faq(JsonNode entries) {
+        if (entries.isMissingNode()) {
+            return List.of();
+        }
+        if (!entries.isArray() || entries.size() > 20) {
+            throw new IllegalArgumentException("Invalid FAQ sections");
+        }
+        var items = new ArrayList<Faq>();
+        for (var item : entries) {
+            var question = item.path("question");
+            var answer = item.path("answer");
+            if (!question.isString() || !answer.isString()
+                    || question.asString().length() > 300 || answer.asString().length() > 3000) {
+                throw new IllegalArgumentException("Invalid FAQ item");
+            }
+            var plainQuestion = question.asString().strip();
+            var plainAnswer = answer.asString().strip();
+            if (plainAnswer.isEmpty() && plainQuestion.isEmpty()) {
+                continue;
+            }
+            if (plainAnswer.isEmpty() || plainQuestion.isEmpty()) {
+                throw new IllegalArgumentException("A question requires an answer");
+            }
+            items.add(new Faq(plainQuestion, plainAnswer));
+        }
+        if (formatFaq(items).length() > 4000) {
+            throw new IllegalArgumentException("FAQ exceeds the supported message length");
+        }
+        return List.copyOf(items);
+    }
+
+    private static Snapshot migrate(JsonNode previous) {
+        var cleaned = JsonMapper.shared().createObjectNode();
+        var sections = cleaned.putArray("customSections");
+        var questions = cleaned.putArray("faq");
+        for (var row : previous.path("customSections")) {
+            if (!"faq".equals(row.path("format").asString(""))) {
+                sections.add(row);
+                continue;
+            }
+            for (var block : row.path("text").asString("").strip().split("\\R\\s*\\R")) {
+                var lines = block.lines().map(String::strip).filter(line -> !line.isEmpty()).toList();
+                if (lines.size() >= 2) {
+                    questions.addObject().put("question", lines.getFirst())
+                            .put("answer", String.join("\n", lines.subList(1, lines.size())));
+                }
+            }
+        }
+        return new Snapshot(fields(previous), custom(sections), faq(questions));
+    }
+
+    private record Snapshot(Map<String, String> standard, List<Section> custom, List<Faq> faq) {
         Map<String, Object> jsonFields() {
             var combined = new LinkedHashMap<String, Object>(standard);
             if (!custom.isEmpty()) {
                 combined.put("customSections", custom);
+            }
+            if (!faq.isEmpty()) {
+                combined.put("faq", faq);
             }
             return Map.copyOf(combined);
         }
     }
 
     private static Snapshot normalize(JsonNode input) {
-        return new Snapshot(fields(input), custom(input.path("customSections")));
+                return new Snapshot(fields(input), custom(input.path("customSections")), faq(input.path("faq")));
     }
 
     private static List<Section> custom(JsonNode entries) {
@@ -197,13 +259,10 @@ public final class ClientInformation {
             if (label.isEmpty() || text.isEmpty() || RESERVED.contains(normalized) || !names.add(normalized)) {
                 throw new IllegalArgumentException("Invalid custom information section");
             }
-            var formatNode = row.path("format");
-            if (!formatNode.isMissingNode() && !"faq".equals(formatNode.asString(""))) {
-                throw new IllegalArgumentException("Invalid custom information format");
+            if (row.has("format")) {
+                throw new IllegalArgumentException("Custom sections contain plain text");
             }
-            var section = new Section(label, text, formatNode.isMissingNode() ? null : "faq");
-            sectionAnswer(section);
-            sections.add(section);
+            sections.add(new Section(label, text));
         }
         return List.copyOf(sections);
     }

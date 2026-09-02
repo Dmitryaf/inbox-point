@@ -22,7 +22,7 @@ class ClientInformationTest {
         information.save(input);
         assertThat(information.resolve("Правила")).isEqualTo("Возьмите форму");
         assertThat(new ClientInformation(database).sections())
-                .containsExactly(new ClientInformation.Section("Правила", "Возьмите форму", null));
+                .containsExactly(new ClientInformation.Section("Правила", "Возьмите форму"));
         input.withArray("customSections").addObject().put("label", "РАСПИСАНИЕ").put("text", "Conflict");
         assertThatThrownBy(() -> information.save(input)).isInstanceOf(IllegalArgumentException.class);
         assertThat(information.sections()).hasSize(1);
@@ -34,16 +34,15 @@ class ClientInformationTest {
         java.nio.file.Files.writeString(directory.resolve("content-settings.json"),
                 "{\"version\":1,\"prices\":\"150\"}");
         var info = new ClientInformation(database);
-        assertThat(info.resolve("Цены")).isEqualTo("150");
+        assertThat(info.resolve("Цены")).contains("• 150");
         var changes = JsonMapper.shared().createObjectNode().put("prices", "150");
-        changes.putArray("customSections").addObject().put("label", "Правила")
-                .put("text", "Как прийти?\nК девяти.").put("format", "faq");
+        changes.putArray("faq").addObject().put("question", "Как прийти?").put("answer", "К девяти.");
         info.save(changes);
         info.save(changes);
         var restored = new ClientInformation(database);
-        assertThat(restored.resolve("Правила")).contains("❓ Как прийти?", "К девяти.");
+        assertThat(restored.resolve("Частые вопросы")).contains("❓ Как прийти?", "К девяти.");
         assertThat(restored.history()).singleElement()
-                .satisfies(change -> assertThat(change.sections()).containsExactly("customSections"));
+                .satisfies(change -> assertThat(change.sections()).containsExactly("faq"));
     }
 
     @Test
@@ -56,7 +55,7 @@ class ClientInformationTest {
                 .containsEntry("schedule", "По субботам").doesNotContainKey("prices");
         assertThatThrownBy(() -> catalog.save(json.createObjectNode().put("schedule", "x".repeat(4001))))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThat(catalog.resolve("Расписание")).isEqualTo("По субботам");
-        assertThat(new ClientInformation(database).resolve("Расписание")).isEqualTo("По субботам");
+        assertThat(catalog.resolve("Расписание")).contains("• По субботам");
+        assertThat(new ClientInformation(database).resolve("Расписание")).contains("• По субботам");
     }
 }

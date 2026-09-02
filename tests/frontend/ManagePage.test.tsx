@@ -7,6 +7,7 @@ const json = (body: unknown, status = 200) =>
 const content = {
   address: 'Улица',
   customSections: [],
+  faq: [],
   prices: '1000',
   schedule: 'Понедельник',
 };
@@ -124,8 +125,12 @@ it('edits and removes custom sections, limits them to six and renders FAQ previe
   expect(screen.getByLabelText<HTMLInputElement>('Название кнопки').value).toBe(
     'Одежда',
   );
-  fireEvent.change(screen.getByLabelText('Формат ответа'), {
-    target: { value: 'faq' },
+  fireEvent.click(screen.getByRole('button', { name: 'Добавить вопрос' }));
+  fireEvent.change(screen.getByLabelText('Вопрос'), {
+    target: { value: '<img src=x>' },
+  });
+  fireEvent.change(screen.getAllByLabelText('Ответ')[0]!, {
+    target: { value: 'Удобная форма' },
   });
   expect(document.querySelector('img')).toBeNull();
   expect(document.getElementById('preview')?.textContent).toContain(
@@ -138,9 +143,8 @@ it('edits and removes custom sections, limits them to six and renders FAQ previe
   expect(fetchMock.mock.calls[3]?.[1]?.body).toBe(
     JSON.stringify({
       ...content,
-      customSections: [
-        { label: 'Одежда', text: '<img src=x>\nУдобная форма', format: 'faq' },
-      ],
+      customSections: [{ label: 'Одежда', text: '<img src=x>\nУдобная форма' }],
+      faq: [{ question: '<img src=x>', answer: 'Удобная форма' }],
     }),
   );
   const add = screen.getByRole<HTMLButtonElement>('button', {
@@ -151,6 +155,40 @@ it('edits and removes custom sections, limits them to six and renders FAQ previe
   expect(screen.getAllByLabelText('Название кнопки')).toHaveLength(6);
   fireEvent.click(
     screen.getAllByRole('button', { name: 'Удалить кнопку' })[5]!,
+  );
+  expect(add.disabled).toBe(false);
+});
+it('preserves FAQ row order when deleting and enforces the twenty-question limit', async () => {
+  const fetchMock = mock()
+    .mockResolvedValueOnce(json({ authenticated: true }))
+    .mockResolvedValueOnce(
+      json({
+        ...content,
+        faq: [
+          { question: 'Первый', answer: 'Один' },
+          { question: 'Второй', answer: 'Два' },
+        ],
+      }),
+    )
+    .mockResolvedValueOnce(json({ history: [] }));
+  vi.stubGlobal('fetch', fetchMock);
+  render(<ManagePage />);
+  await screen.findByText('Информация загружена.');
+  fireEvent.click(
+    screen.getAllByRole('button', { name: 'Удалить вопрос' })[0]!,
+  );
+  expect(screen.getByLabelText<HTMLInputElement>('Вопрос').value).toBe(
+    'Второй',
+  );
+  expect(screen.getByLabelText<HTMLTextAreaElement>('Ответ').value).toBe('Два');
+  const add = screen.getByRole<HTMLButtonElement>('button', {
+    name: 'Добавить вопрос',
+  });
+  for (let i = 0; i < 19; i++) fireEvent.click(add);
+  expect(add.disabled).toBe(true);
+  expect(screen.getAllByLabelText('Вопрос')).toHaveLength(20);
+  fireEvent.click(
+    screen.getAllByRole('button', { name: 'Удалить вопрос' })[19]!,
   );
   expect(add.disabled).toBe(false);
 });

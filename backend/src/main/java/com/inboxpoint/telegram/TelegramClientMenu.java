@@ -11,6 +11,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 import static com.inboxpoint.content.ClientInformation.ADDRESS;
 import static com.inboxpoint.content.ClientInformation.ASK;
+import static com.inboxpoint.content.ClientInformation.FAQ;
 import static com.inboxpoint.content.ClientInformation.PRICES;
 import static com.inboxpoint.content.ClientInformation.RESET;
 import static com.inboxpoint.content.ClientInformation.SCHEDULE;
@@ -86,7 +87,7 @@ final class TelegramClientMenu {
         var markup = JsonMapper.shared().createObjectNode().put("resize_keyboard", true)
                 .put("is_persistent", true).put("input_field_placeholder", "Выберите действие");
         var rows = markup.putArray("keyboard");
-        for (var buttons : List.of(List.of(SCHEDULE, PRICES), List.of(ADDRESS), List.of(ASK), List.of(RESET))) {
+        for (var buttons : List.of(List.of(SCHEDULE, PRICES), List.of(ADDRESS, FAQ), List.of(ASK), List.of(RESET))) {
             var row = rows.addArray();
             for (var button : buttons) {
                 row.addObject().put("text", button);

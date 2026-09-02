@@ -13,6 +13,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 import static com.inboxpoint.content.ClientInformation.ADDRESS;
 import static com.inboxpoint.content.ClientInformation.ASK;
+import static com.inboxpoint.content.ClientInformation.FAQ;
 import static com.inboxpoint.content.ClientInformation.PRICES;
 import static com.inboxpoint.content.ClientInformation.SCHEDULE;
 
@@ -70,7 +71,7 @@ final class VkClientMenu {
     private static JsonNode keyboard(List<ClientInformation.Section> sections) {
         var layout = JsonMapper.shared().createObjectNode().put("inline", false).put("one_time", false);
         var rows = layout.putArray("buttons");
-        for (var labels : List.of(List.of(SCHEDULE, PRICES), List.of(ADDRESS), List.of(ASK))) {
+        for (var labels : List.of(List.of(SCHEDULE, PRICES), List.of(ADDRESS, FAQ), List.of(ASK))) {
             var row = rows.addArray();
             for (var label : labels) {
                 row.addObject().put("color", ASK.equals(label) ? "primary" : "secondary").putObject("action")
