@@ -22,10 +22,28 @@ class ClientInformationTest {
         information.save(input);
         assertThat(information.resolve("Правила")).isEqualTo("Возьмите форму");
         assertThat(new ClientInformation(database).sections())
-                .containsExactly(new ClientInformation.Section("Правила", "Возьмите форму"));
+                .containsExactly(new ClientInformation.Section("Правила", "Возьмите форму", null));
         input.withArray("customSections").addObject().put("label", "РАСПИСАНИЕ").put("text", "Conflict");
         assertThatThrownBy(() -> information.save(input)).isInstanceOf(IllegalArgumentException.class);
         assertThat(information.sections()).hasSize(1);
+    }
+
+    @Test
+    void upgradesVersionOneAndRecordsOnlyChangedSections() throws Exception {
+        var database = directory.resolve("history.sqlite").toString();
+        java.nio.file.Files.writeString(directory.resolve("content-settings.json"),
+                "{\"version\":1,\"prices\":\"150\"}");
+        var info = new ClientInformation(database);
+        assertThat(info.resolve("Цены")).isEqualTo("150");
+        var changes = JsonMapper.shared().createObjectNode().put("prices", "150");
+        changes.putArray("customSections").addObject().put("label", "Правила")
+                .put("text", "Как прийти?\nК девяти.").put("format", "faq");
+        info.save(changes);
+        info.save(changes);
+        var restored = new ClientInformation(database);
+        assertThat(restored.resolve("Правила")).contains("❓ Как прийти?", "К девяти.");
+        assertThat(restored.history()).singleElement()
+                .satisfies(change -> assertThat(change.sections()).containsExactly("customSections"));
     }
 
     @Test

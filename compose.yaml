@@ -3,6 +3,7 @@ services:
     build:
       context: .
     environment:
+      CONTENT_ADMIN_PASSWORD: '${CONTENT_ADMIN_PASSWORD:-}'
       DATABASE_PATH: /app/data/messenger-handoff.sqlite
       HOST: 0.0.0.0
       LOG_LEVEL: info

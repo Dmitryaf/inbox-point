@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { SetupPage } from './SetupPage';
+import { ManagePage } from './ManagePage';
 
 type Status = 'loading' | 'ready' | 'error';
 
 export function App() {
+  if (window.location.pathname.startsWith('/manage')) return <ManagePage />;
   return window.location.pathname.startsWith('/setup') ? (
     <SetupPage />
   ) : (
