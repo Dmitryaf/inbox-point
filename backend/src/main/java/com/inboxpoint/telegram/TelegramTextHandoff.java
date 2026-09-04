@@ -17,8 +17,15 @@ final class TelegramTextHandoff {
     private final TelegramBotApi api;
     private final Clock clock;
     private final TelegramClientMenu menu;
+    private final ClientMessageQueue queue;
 
     TelegramTextHandoff(long operatorGroup, TelegramStore store, TelegramBotApi api, Clock clock, ClientInformation information) {
+        this(operatorGroup, store, api, clock, information, new ClientMessageQueue());
+    }
+
+    TelegramTextHandoff(long operatorGroup, TelegramStore store, TelegramBotApi api, Clock clock,
+            ClientInformation information, ClientMessageQueue queue) {
+        this.queue = queue;
         this.operatorGroup = operatorGroup;
         this.store = store;
         this.api = api;
@@ -46,6 +53,15 @@ final class TelegramTextHandoff {
         if (externalMessage <= 0 || (!operator && (chat <= 0 || !"private".equals(type)))) {
             return;
         }
+        if (operator) {
+            processText(chat, topic, externalMessage, text, event, sender, true);
+        } else {
+            queue.run("telegram", chat, () -> processText(chat, topic, externalMessage, text, event, sender, false));
+        }
+    }
+
+    private void processText(long chat, long topic, long externalMessage, String text, String event,
+            JsonNode sender, boolean operator) throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
         if (!operator && menu.handle(chat, event, text, clock.instant())) {
             return;
         }
@@ -69,6 +85,11 @@ final class TelegramTextHandoff {
 
     void processVk(String event, long peer, long message, String name, String text)
             throws SQLException, InterruptedException, IOException {
+        queue.run("vk", peer, () -> processVkSerially(event, peer, message, name, text));
+    }
+
+    private void processVkSerially(String event, long peer, long message, String name, String text)
+            throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
         if (!store.claim("client:vk", event, clock.instant())) {
             return;
         }

@@ -32,6 +32,7 @@ public final class TelegramRuntime {
 
     private final Environment environment;
     private final ClientInformation information;
+    private final ClientMessageQueue queue = new ClientMessageQueue();
     private final Path database;
     private final Path settingsFile;
     private final URI origin;
@@ -149,7 +150,7 @@ public final class TelegramRuntime {
             var api = new TelegramBotApi(transport, origin, telegram.token(), API_TIMEOUT);
             var menu = new VkClientMenu(information, vk.channel());
             if (!menu.handle(store, event, peer, text)) {
-                new TelegramTextHandoff(telegram.group(), store, api, Clock.systemUTC(), information)
+                new TelegramTextHandoff(telegram.group(), store, api, Clock.systemUTC(), information, queue)
                         .processVk(event, peer, message, name, text);
             }
         }
@@ -219,7 +220,7 @@ public final class TelegramRuntime {
     private void poll(Path database, URI origin, String token, long group, int timeout) {
         try (var store = new TelegramStore(database); var transport = TelegramHttpTransport.open("", API_TIMEOUT)) {
             var api = new TelegramBotApi(transport, origin, token, API_TIMEOUT);
-            var handoff = new TelegramTextHandoff(group, store, api, Clock.systemUTC(), information);
+            var handoff = new TelegramTextHandoff(group, store, api, Clock.systemUTC(), information, queue);
             new TelegramPoller(api, handoff, timeout).run();
         } catch (InterruptedException stopping) {
             Thread.currentThread().interrupt();
