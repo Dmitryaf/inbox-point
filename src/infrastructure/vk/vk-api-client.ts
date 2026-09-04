@@ -196,7 +196,9 @@ export class VkApiClient implements VkGateway {
         sentMessageSchema,
       );
     } catch (error: unknown) {
-      if (!keyboard || !isKeyboardUnavailableError(error)) throw error;
+      if (!keyboard || !isKeyboardUnavailableError(error)) {
+        throw error;
+      }
       result = await this.call(
         'messages.send',
         {

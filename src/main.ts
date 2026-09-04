@@ -3,10 +3,10 @@ import { dirname, resolve } from 'node:path';
 import { loadRuntimeConfig } from '@/config/runtime-config.js';
 import { ClientInformationCatalog } from '@/core/application/client-information.js';
 import { createApp, registerSetupRoutes } from '@/infrastructure/http/app.js';
-import { ContentManagementAccess } from '@/infrastructure/http/content-management-access.js';
-import { ContentSetupController } from '@/infrastructure/http/content-setup-controller.js';
-import { registerManagementRoutes } from '@/infrastructure/http/manage-routes.js';
-import { FileContentSettingsStore } from '@/infrastructure/persistence/content-settings-store.js';
+import { ContentManagementService } from '@/modules/content-management/application/content-management-service.js';
+import { FileContentSettingsStore } from '@/modules/content-management/infrastructure/file-store/file-content-settings-store.js';
+import { registerManagementRoutes } from '@/modules/content-management/presentation/http/routes.js';
+import { ContentManagementAccess } from '@/modules/content-management/security/content-management-access.js';
 import { SqliteBackupService } from '@/infrastructure/persistence/sqlite-backup-service.js';
 import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-support-repository.js';
 import { FileTelegramSettingsStore } from '@/infrastructure/persistence/telegram-settings-store.js';
@@ -100,19 +100,13 @@ async function start(): Promise<void> {
     }
     const vkSource = config.vk ? 'environment' : storedVk ? 'local' : 'none';
     const vkSetup = new VkSetupController(vkRuntime, vkSettingsStore, vkSource);
-    const contentSetup = new ContentSetupController(
+    const contentSetup = new ContentManagementService(
       informationCatalog,
       contentSettingsStore,
     );
-    registerSetupRoutes(
-      app,
-      setup,
-      repository,
-      backupService,
-      vkSetup,
-      contentSetup,
-      { enabled: config.nodeEnv !== 'production' },
-    );
+    registerSetupRoutes(app, setup, repository, backupService, vkSetup, {
+      enabled: config.nodeEnv !== 'production',
+    });
     registerManagementRoutes(
       app,
       contentSetup,
@@ -142,7 +136,9 @@ async function start(): Promise<void> {
       try {
         await vkRuntime.start(vkConfig);
       } catch (error: unknown) {
-        if (config.vk) throw error;
+        if (config.vk) {
+          throw error;
+        }
         app.log.error(
           { err: error },
           'Saved VK connection could not be restored',

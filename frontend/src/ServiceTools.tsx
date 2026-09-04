@@ -16,7 +16,9 @@ export function VkSetup() {
       controller.signal,
     ).then(
       (status) => {
-        if (controller.signal.aborted) return;
+        if (controller.signal.aborted) {
+          return;
+        }
         setConnected(status.vk.connected);
         setMessage(
           status.vk.connected
@@ -27,8 +29,9 @@ export function VkSetup() {
         );
       },
       () => {
-        if (!controller.signal.aborted)
+        if (!controller.signal.aborted) {
           setMessage('Не удалось проверить подключение. Обновите страницу.');
+        }
       },
     );
     return () => controller.abort();
@@ -132,7 +135,9 @@ export function DeliveryPanel() {
     const sequence = ++owner.current.sequence;
     try {
       const status = await request<DeliveryStatus>('/api/setup/deliveries');
-      if (!owner.current.active || sequence !== owner.current.sequence) return;
+      if (!owner.current.active || sequence !== owner.current.sequence) {
+        return;
+      }
       setFailures(status.failures);
       setMessage(
         status.summary.failed === 0 && status.summary.pending === 0
@@ -140,7 +145,9 @@ export function DeliveryPanel() {
           : `Ожидают отправки: ${status.summary.pending}. Не доставлено: ${status.summary.failed}.`,
       );
     } catch {
-      if (!owner.current.active || sequence !== owner.current.sequence) return;
+      if (!owner.current.active || sequence !== owner.current.sequence) {
+        return;
+      }
       setFailures([]);
       setMessage('Не удалось проверить доставку. Обновите страницу.');
     }
@@ -164,17 +171,19 @@ export function DeliveryPanel() {
       await request('/api/setup/deliveries/retry', { deliveryId: id });
       await refresh();
     } catch (error: unknown) {
-      if (owner.current.active)
+      if (owner.current.active) {
         setMessage(
           error instanceof Error
             ? error.message
             : 'Не удалось повторить отправку. Обновите страницу.',
         );
+      }
     } finally {
-      if (owner.current.active)
+      if (owner.current.active) {
         setPending(
           (current) => new Set([...current].filter((value) => value !== id)),
         );
+      }
     }
   }
 

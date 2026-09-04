@@ -25,7 +25,9 @@ export class FileVkSettingsStore implements VkSettingsStore {
     try {
       contents = await readFile(this.path, 'utf8');
     } catch (error: unknown) {
-      if (isNodeError(error) && error.code === 'ENOENT') return undefined;
+      if (isNodeError(error) && error.code === 'ENOENT') {
+        return undefined;
+      }
       throw new Error('Unable to read the local VK settings');
     }
     let parsed: unknown;

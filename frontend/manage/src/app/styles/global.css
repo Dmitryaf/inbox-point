@@ -1,0 +1,266 @@
+:root {
+  color: #1f2b27;
+  background: #f5f2ea;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  font-synthesis: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+button,
+input,
+textarea {
+  border-radius: 0.75rem;
+  font: inherit;
+}
+button {
+  background: #1d6049;
+  border: 1px solid #1d6049;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 700;
+  min-height: 2.75rem;
+  padding: 0.65rem 1rem;
+}
+button:hover {
+  background: #154c39;
+}
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+button.quiet {
+  background: transparent;
+  color: #1d6049;
+}
+button.danger {
+  background: transparent;
+  border-color: #a13c36;
+  color: #8f2925;
+}
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid #e1a72f;
+  outline-offset: 2px;
+}
+input,
+textarea {
+  background: #fff;
+  border: 1px solid #9ca8a3;
+  color: #17201d;
+  padding: 0.8rem;
+  width: 100%;
+}
+textarea {
+  resize: vertical;
+}
+label {
+  display: block;
+  font-weight: 700;
+  margin: 1rem 0 0.4rem;
+}
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+h1 {
+  font-size: clamp(2rem, 7vw, 3.5rem);
+  letter-spacing: -0.04em;
+  line-height: 1;
+  margin-bottom: 0.75rem;
+}
+h2 {
+  font-size: 1.35rem;
+}
+
+.shell {
+  margin: 0 auto;
+  max-width: 1280px;
+  padding: 1rem;
+}
+.hero {
+  align-items: flex-start;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 2rem 0 1.5rem;
+}
+.hero > div {
+  max-width: 720px;
+}
+.eyebrow,
+.step {
+  color: #1d6049;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.workspace {
+  display: grid;
+  gap: 1rem;
+}
+.editor,
+.side-column {
+  align-content: start;
+  display: grid;
+  gap: 1rem;
+}
+.card,
+.state-card,
+.message,
+.save-bar {
+  background: #fffdf8;
+  border: 1px solid #d7d4ca;
+  border-radius: 1rem;
+  box-shadow: 0 8px 24px rgba(39, 50, 45, 0.06);
+  padding: 1rem;
+}
+.login {
+  margin: 3rem auto;
+  max-width: 440px;
+}
+.section-heading {
+  align-items: flex-start;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+.counter {
+  color: #66736e;
+  font-size: 0.8rem;
+  text-align: right;
+}
+.empty {
+  background: #f1efe8;
+  border-radius: 0.75rem;
+  color: #56615d;
+  padding: 0.8rem;
+}
+.item-card {
+  border: 1px solid #d7d4ca;
+  border-radius: 0.85rem;
+  margin: 1rem 0;
+  padding: 0.9rem;
+}
+.item-card legend {
+  font-weight: 800;
+  padding: 0 0.35rem;
+}
+.item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+}
+.save-bar {
+  align-items: center;
+  bottom: 0.5rem;
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1rem;
+  position: sticky;
+  z-index: 2;
+}
+.save-bar p {
+  color: #50605a;
+  margin: 0;
+}
+.save-bar p.changed {
+  color: #8a4b00;
+  font-weight: 700;
+}
+.message.error {
+  border-color: #c45a52;
+  color: #862721;
+}
+.message.success {
+  border-color: #61a083;
+  color: #17563f;
+}
+.preserve {
+  white-space: pre-wrap;
+}
+.preview > div {
+  border-top: 1px solid #e1ded5;
+  padding-top: 0.9rem;
+}
+.preview dt {
+  font-weight: 800;
+  margin-top: 0.8rem;
+}
+.preview dd {
+  margin: 0.25rem 0 0;
+  white-space: pre-wrap;
+}
+.history-list {
+  display: grid;
+  gap: 0.75rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.history-list li {
+  border-top: 1px solid #e1ded5;
+  display: grid;
+  gap: 0.35rem;
+  padding-top: 0.75rem;
+}
+.history-list span,
+.history-list small {
+  color: #5e6965;
+}
+.restore-confirm {
+  background: #f4ead0;
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+}
+.restore-confirm p {
+  margin-bottom: 0.5rem;
+}
+
+@media (min-width: 900px) {
+  .shell {
+    padding: 1.5rem 2rem 3rem;
+  }
+  .workspace {
+    grid-template-columns: minmax(0, 1.55fr) minmax(300px, 0.85fr);
+  }
+  .side-column {
+    position: sticky;
+    top: 1rem;
+  }
+  .card,
+  .state-card,
+  .message,
+  .save-bar {
+    padding: 1.35rem;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  button {
+    transition:
+      background-color 120ms ease,
+      transform 120ms ease;
+  }
+  button:active {
+    transform: translateY(1px);
+  }
+}

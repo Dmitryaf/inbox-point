@@ -42,19 +42,6 @@ export const setupPageHtml = `<!doctype html>
         </div>
         <p id='vk-status'>Проверяем состояние…</p>
       </section>
-      <section aria-labelledby='content-title'>
-        <h2 id='content-title'>Информация для клиентов</h2>
-        <p>Эти ответы одинаково отображаются в Telegram и VK. Пустой раздел будет отмечен как не заполненный.</p>
-        <label>Расписание <textarea id='content-schedule' rows='5'></textarea></label>
-        <label>Цены <textarea id='content-prices' rows='5'></textarea></label>
-        <label>Адрес <textarea id='content-address' rows='3'></textarea></label>
-        <h3>Дополнительные кнопки</h3>
-        <p class='muted'>Можно добавить до шести собственных разделов. Частые вопросы редактируются на странице /manage.</p>
-        <div id='custom-sections'></div>
-        <button id='add-custom-section' type='button'>Добавить кнопку</button>
-        <button id='save-content'>Сохранить информацию</button>
-        <p id='content-status' class='muted'>Загружаем сохранённые значения…</p>
-      </section>
       <section aria-labelledby='delivery-title'>
         <h2 id='delivery-title'>Доставка ответов</h2>
         <p id='delivery-summary'>Проверяем состояние…</p>

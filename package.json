@@ -11,6 +11,8 @@
   "packageManager": "npm@11.19.0",
   "scripts": {
     "build": "npm run build:frontend && npm run build:server",
+    "build:frontend": "vite build --config frontend/vite.config.ts && vite build --config frontend/manage/vite.config.ts",
+    "build:server": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json -f -fe .js",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run build",
     "dev": "npm run build:frontend && tsx watch src/main.ts",
     "format": "prettier --write .",
@@ -19,37 +21,37 @@
     "prepare": "husky",
     "start": "node dist/main.js",
     "test": "npm run build:frontend && vitest run",
-    "typecheck": "npm run typecheck:server && npm run typecheck:frontend",
-    "build:frontend": "vite build --config frontend/vite.config.ts",
-    "build:server": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json -f -fe .js",
-    "typecheck:server": "tsc --noEmit",
-    "typecheck:frontend": "tsc --noEmit -p frontend/tsconfig.json"
+    "typecheck": "npm run typecheck:server && npm run typecheck:frontend && npm run typecheck:frontend-tests",
+    "typecheck:frontend": "tsc --noEmit -p frontend/tsconfig.json && tsc --noEmit -p frontend/manage/tsconfig.json",
+    "typecheck:frontend-tests": "tsc --noEmit -p tests/frontend/tsconfig.json",
+    "typecheck:server": "tsc --noEmit"
   },
   "dependencies": {
     "fastify": "^5.12.1",
-    "zod": "^4.5.4",
     "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "react-dom": "^19.3.1",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.2",
     "@commitlint/config-conventional": "^21.2.2",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.8",
     "@types/node": "^24.13.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
     "eslint": "^10.9.1",
     "husky": "^9.1.7",
+    "jsdom": "^30.0.1",
     "prettier": "^3.9.6",
     "tsc-alias": "^1.9.2",
     "tsx": "^4.23.13",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.69.0",
-    "vitest": "^4.1.11",
-    "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0",
-    "@vitejs/plugin-react": "^6.1.2",
-    "@testing-library/react": "^16.3.3",
-    "@testing-library/dom": "^10.4.2",
-    "jsdom": "^30.0.1",
-    "vite": "^8.2.2"
+    "vite": "^8.2.2",
+    "vitest": "^4.1.11"
   },
   "allowScripts": {
     "esbuild@0.28.2": true

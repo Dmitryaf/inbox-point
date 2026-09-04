@@ -94,7 +94,9 @@ export class ClientInformationCatalog implements ClientInformationResolver {
     const section = this.content.customSections?.find(
       (section) => section.label === normalized,
     );
-    if (!section) return undefined;
+    if (!section) {
+      return undefined;
+    }
     return section.text;
   }
 }
@@ -153,7 +155,9 @@ function copyContent(
 export function hasValidCustomSections(
   sections: readonly CustomInformationSection[],
 ): boolean {
-  if (sections.length > 6) return false;
+  if (sections.length > 6) {
+    return false;
+  }
   const reserved = reservedClientLabels.map((label) => label.toLowerCase());
   const normalizedLabels = sections.map((section) =>
     section.label.trim().toLowerCase(),

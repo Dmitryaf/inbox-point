@@ -17,7 +17,6 @@ password-protected mobile-friendly page.
 ## Technology
 
 - TypeScript and Node.js
-- React and Vite for the owner interface
 - SQLite
 - Telegram Bot API
 - VK API
@@ -49,8 +48,9 @@ npm run check
 Telegram and VK text handoff, topic recovery, durable reply delivery, local
 connection setup, verified SQLite backups, persistent information buttons, and
 editable schedule, price, address, and custom information sections are
-implemented. A protected content editor, readable list and FAQ formatting, and
-metadata-only change history are also available. Production deployment is not implemented yet.
+implemented. A protected mobile-friendly React content editor, readable list and
+FAQ formatting, and restorable content history are also available. Production
+deployment is not implemented yet.
 
 ## License
 

@@ -39,14 +39,18 @@ export class VkClientMenu implements VkClientMenuHandler {
       Boolean(activeRequest),
       this.information,
     );
-    if (!response) return false;
+    if (!response) {
+      return false;
+    }
 
     const claimed = this.repository.claimEvent(
       'vk:menu',
       message.externalEventId,
       new Date(),
     );
-    if (!claimed) return true;
+    if (!claimed) {
+      return true;
+    }
 
     try {
       await this.gateway.sendMessage(
@@ -91,7 +95,9 @@ function resolveMenuResponse(
 ): string | undefined {
   const normalized = text.trim();
   const information = informationResolver.resolve(normalized);
-  if (information) return information;
+  if (information) {
+    return information;
+  }
 
   if (normalized === teacherButton) {
     return hasActiveRequest

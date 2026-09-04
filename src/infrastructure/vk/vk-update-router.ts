@@ -39,7 +39,9 @@ export class VkUpdateRouter {
       peerId: message.peer_id,
       text: message.text,
     });
-    if (handledByMenu) return;
+    if (handledByMenu) {
+      return;
+    }
     const displayName = await this.gateway.getUserDisplayName(message.from_id);
     await this.handoff.handleClientMessage(
       event.event_id ?? `vk-message:${externalMessageId}`,

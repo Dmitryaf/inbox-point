@@ -11,8 +11,6 @@ import type { FailedDelivery } from '@/core/model/support-request.js';
 import type { SqliteBackupService } from '@/infrastructure/persistence/sqlite-backup-service.js';
 import type { TelegramSetupController } from '@/infrastructure/telegram/telegram-setup-controller.js';
 import type { VkSetupController } from '@/infrastructure/vk/vk-setup-controller.js';
-import { contentInputSchema, normalizeContentInput } from './content-input.js';
-import type { ContentSetupController } from './content-setup-controller.js';
 import {
   setupPageHtml,
   setupPageScript,
@@ -44,7 +42,6 @@ export function createApp(
   });
 
   registerFrontendRoutes(app);
-
   return app;
 }
 
@@ -69,7 +66,6 @@ export function registerSetupRoutes(
   >,
   backups?: Pick<SqliteBackupService, 'createBackup'>,
   vkSetup?: VkSetupController,
-  contentSetup?: ContentSetupController,
   options: { enabled: boolean } = { enabled: true },
 ): void {
   app.addHook('onRequest', async (request, reply) => {
@@ -89,10 +85,6 @@ export function registerSetupRoutes(
     return payload;
   });
   app.get('/setup', async (_request, reply) => {
-    void reply.header(
-      'content-security-policy',
-      "default-src 'none'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'",
-    );
     void reply.header(
       'content-security-policy',
       [
@@ -206,36 +198,6 @@ export function registerSetupRoutes(
       return reply.code(400).send({ message: vkSetupErrorMessage(error) });
     }
   });
-  app.get('/api/setup/content', () => contentSetup?.get() ?? {});
-  app.post('/api/setup/content', async (request, reply) => {
-    if (!contentSetup) {
-      return reply
-        .code(503)
-        .send({ message: 'Редактирование информации пока недоступно.' });
-    }
-    const parsed = contentInputSchema.safeParse(request.body);
-    if (!parsed.success) {
-      return reply.code(400).send({
-        message: 'Каждый раздел должен быть короче 4000 символов.',
-      });
-    }
-    const content = normalizeContentInput(parsed.data);
-    if (!content) {
-      return reply.code(400).send({
-        message:
-          'Проверьте названия и тексты кнопок. Каждый частый вопрос должен содержать ответ.',
-      });
-    }
-    try {
-      await contentSetup.save(content);
-      return { saved: true };
-    } catch (error: unknown) {
-      app.log.error({ err: error }, 'Content settings save failed');
-      return reply.code(500).send({
-        message: 'Не удалось сохранить информацию. Попробуйте ещё раз.',
-      });
-    }
-  });
 }
 
 function createPublicDeliveryStatus(
@@ -331,30 +293,43 @@ function isLoopback(address: string): boolean {
 
 function setupErrorMessage(error: unknown): string {
   const message = error instanceof Error ? error.message : '';
-  if (message.includes('supergroup') || message.includes('Topics'))
+  if (message.includes('supergroup') || message.includes('Topics')) {
     return 'Включите в выбранной группе темы и попробуйте снова.';
-  if (message.includes('administrator'))
+  }
+  if (message.includes('administrator')) {
     return 'Назначьте бота администратором выбранной группы.';
-  if (message.includes('can_manage_topics'))
+  }
+  if (message.includes('can_manage_topics')) {
     return 'Разрешите боту управлять темами группы.';
-  if (message.includes('webhook'))
+  }
+  if (message.includes('webhook')) {
     return 'У бота уже настроена другая интеграция. Отключите её или создайте отдельного бота.';
-  if (message.includes('already connected')) return 'Telegram уже подключён.';
-  if (message.includes('managed by server'))
+  }
+  if (message.includes('already connected')) {
+    return 'Telegram уже подключён.';
+  }
+  if (message.includes('managed by server')) {
     return 'Эта настройка управляется сервером.';
+  }
   return 'Не удалось подключиться. Проверьте токен, группу и права бота.';
 }
 
 function vkSetupErrorMessage(error: unknown): string {
   const message = error instanceof Error ? error.message : '';
-  if (message.includes('workspace is not connected'))
+  if (message.includes('workspace is not connected')) {
     return 'Сначала подключите Telegram для преподавателей.';
-  if (message.includes('does not point to a community'))
+  }
+  if (message.includes('does not point to a community')) {
     return 'Укажите ссылку именно на сообщество VK.';
-  if (message.includes('already connected')) return 'VK уже подключён.';
-  if (message.includes('managed by server'))
+  }
+  if (message.includes('already connected')) {
+    return 'VK уже подключён.';
+  }
+  if (message.includes('managed by server')) {
     return 'Эта настройка управляется сервером.';
-  if (message.includes('code 15'))
+  }
+  if (message.includes('code 15')) {
     return 'Включите Long Poll API в настройках сообщества VK.';
+  }
   return 'Не удалось подключить VK. Проверьте ссылку, ключ и права сообщества.';
 }
