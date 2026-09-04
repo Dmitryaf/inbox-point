@@ -1,0 +1,56 @@
+import {
+  useComponentModel,
+  ModelScopeProvider,
+} from '@manage/shared/lib/component-model';
+
+import { invokeHandler as $invoke } from '@manage/shared/lib/component-events';
+
+import {
+  createComponentModel,
+  componentDefaults,
+  type ComponentProps,
+} from './LoginForm.model';
+import { controlledChange as $controlledChange } from '@manage/shared/lib/component-input-event';
+
+export default function LoginForm($incomingProps: ComponentProps) {
+  const {
+    state: $state,
+    props: $props,
+    scope: $scope,
+  } = useComponentModel(
+    $incomingProps,
+    componentDefaults,
+    createComponentModel,
+  );
+  const { submit } = $state;
+
+  const password = $state.password.value;
+  return (
+    <ModelScopeProvider scope={$scope}>
+      <form
+        onSubmit={($event) => {
+          $event.preventDefault();
+          $invoke(submit, $event);
+        }}
+        className="login card"
+      >
+        <h2>{'Вход'}</h2>
+        <p>{'Введите пароль, который выдал владелец сервиса.'}</p>
+        <label htmlFor="password">{'Пароль'}</label>
+        <input
+          id="password"
+          autoComplete="current-password"
+          required
+          type="password"
+          value={password ?? ''}
+          onChange={$controlledChange<HTMLInputElement>(($event) => {
+            $state.password.value = $event.currentTarget.value;
+          })}
+        />
+        <button disabled={$props.pending} type="submit">
+          {$props.pending ? 'Проверяем…' : 'Войти'}
+        </button>
+      </form>
+    </ModelScopeProvider>
+  );
+}

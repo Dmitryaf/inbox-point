@@ -52,7 +52,8 @@ final class StaticFrontend {
                     + "connect-src 'self'; frame-ancestors 'none'");
         }
         var asset = ASSETS.get(route);
-        var file = frontend.resolve(asset.file());
+        var root = route.startsWith("/manage") ? frontend.resolveSibling("manage") : frontend;
+        var file = root.resolve(asset.file());
         if (!Files.isRegularFile(file)) {
             return ResponseEntity.notFound().build();
         }

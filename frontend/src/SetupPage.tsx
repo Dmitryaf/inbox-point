@@ -41,15 +41,18 @@ export function TelegramSetup() {
       controller.signal,
     ).then(
       (status) => {
-        if (controller.signal.aborted) return;
+        if (controller.signal.aborted) {
+          return;
+        }
         setConnected(status.connected);
         setMessage(
           status.connected ? 'Telegram подключён.' : 'Выполните три шага выше.',
         );
       },
       () => {
-        if (!controller.signal.aborted)
+        if (!controller.signal.aborted) {
           setMessage('Не удалось проверить подключение. Обновите страницу.');
+        }
       },
     );
     return () => controller.abort();

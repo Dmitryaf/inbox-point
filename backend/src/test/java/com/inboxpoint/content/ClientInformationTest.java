@@ -46,6 +46,19 @@ class ClientInformationTest {
     }
 
     @Test
+    void restoresASavedRevisionAfterRestartAndRecordsTheRestore() throws Exception {
+        var database = directory.resolve("revision.sqlite").toString();
+        var info = new ClientInformation(database);
+        info.save(JsonMapper.shared().createObjectNode().put("address", "First"));
+        info.save(JsonMapper.shared().createObjectNode().put("address", "Second"));
+        var restored = new ClientInformation(database);
+        assertThat(restored.restore(99)).isFalse();
+        assertThat(restored.restore(1)).isTrue();
+        assertThat(restored.resolve("Адрес")).isEqualTo("First");
+        assertThat(restored.history()).extracting(ClientInformation.Change::revision).containsExactly(3, 2, 1);
+    }
+
+    @Test
     void publishesTrimmedAnswersOnlyOnSuccessfulSaveAndRestoresThemAfterRestart() throws Exception {
         var database = directory.resolve("inbox.sqlite").toString();
         var catalog = new ClientInformation(database);

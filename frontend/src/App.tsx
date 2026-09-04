@@ -1,11 +1,9 @@
 import { useEffect, useState } from 'react';
 import { SetupPage } from './SetupPage';
-import { ManagePage } from './ManagePage';
 
 type Status = 'loading' | 'ready' | 'error';
 
 export function App() {
-  if (window.location.pathname.startsWith('/manage')) return <ManagePage />;
   return window.location.pathname.startsWith('/setup') ? (
     <SetupPage />
   ) : (
@@ -22,14 +20,20 @@ function ServiceStatus() {
     void Promise.all(
       ['/health', '/ready'].map(async (path) => {
         const response = await fetch(path, { signal: controller.signal });
-        if (!response.ok) throw new Error('Service is unavailable');
+        if (!response.ok) {
+          throw new Error('Service is unavailable');
+        }
       }),
     ).then(
       () => {
-        if (!controller.signal.aborted) setStatus('ready');
+        if (!controller.signal.aborted) {
+          setStatus('ready');
+        }
       },
       () => {
-        if (!controller.signal.aborted) setStatus('error');
+        if (!controller.signal.aborted) {
+          setStatus('error');
+        }
       },
     );
     return () => controller.abort();

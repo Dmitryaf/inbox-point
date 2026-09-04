@@ -4,7 +4,9 @@ import { App } from './App';
 import './style.css';
 
 const root = document.getElementById('app');
-if (!root) throw new Error('Application root is missing');
+if (!root) {
+  throw new Error('Application root is missing');
+}
 createRoot(root).render(
   <StrictMode>
     <App />

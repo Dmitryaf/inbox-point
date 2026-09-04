@@ -43,7 +43,7 @@ public final class ClientInformation {
             state = switch (json.path("version").asInt()) {
                 case 1 -> new State(migrate(json), List.of());
                 case 2 -> new State(migrate(json.path("content")), history(json.path("history")));
-                case 3 -> new State(normalize(json.path("content")), history(json.path("history")));
+                case 3, 4 -> new State(normalize(json.path("content")), history(json.path("history")));
                 default -> throw new IllegalArgumentException("Unsupported content settings version");
             };
         } catch (NoSuchFileException missing) {
@@ -75,10 +75,29 @@ public final class ClientInformation {
             return next.jsonFields();
         }
         var revisions = new ArrayList<Change>();
-        revisions.add(new Change(Instant.now().toString(), changed));
+        var newest = previous.history().stream()
+                .mapToInt(change -> change.revision() == null ? 0 : change.revision()).max().orElse(0);
+        revisions.add(new Change(Instant.now().toString(), changed, newest + 1, next.jsonFields()));
         revisions.addAll(previous.history().stream().limit(19).toList());
-        var output = JsonMapper.shared().createObjectNode().put("version", 3);
+        var output = JsonMapper.shared().createObjectNode().put("version", 4);
         var payload = output.putObject("content");
+        serialize(payload, next);
+        var entries = output.putArray("history");
+        for (var revision : revisions) {
+            var row = entries.addObject().put("changedAt", revision.changedAt());
+            if (revision.revision() != null) {
+                row.put("revision", revision.revision());
+                row.set("content", JsonMapper.shared().valueToTree(revision.content()));
+            }
+            var fields = row.putArray("sections");
+            revision.sections().forEach(fields::add);
+        }
+        LocalJsonFile.write(file, output);
+        state = new State(next, List.copyOf(revisions));
+        return next.jsonFields();
+    }
+
+    private static void serialize(tools.jackson.databind.node.ObjectNode payload, Snapshot next) {
         next.standard().forEach(payload::put);
         if (!next.custom().isEmpty()) {
             var values = payload.putArray("customSections");
@@ -92,14 +111,7 @@ public final class ClientInformation {
                 faq.addObject().put("question", answer.question()).put("answer", answer.answer());
             }
         }
-        var entries = output.putArray("history");
-        for (var revision : revisions) {
-            var fields = entries.addObject().put("changedAt", revision.changedAt()).putArray("sections");
-            revision.sections().forEach(fields::add);
-        }
-        LocalJsonFile.write(file, output);
-        state = new State(next, List.copyOf(revisions));
-        return next.jsonFields();
+
     }
 
     public String resolve(String label) {
@@ -120,7 +132,21 @@ public final class ClientInformation {
 
     public record Faq(String question, String answer) { }
 
-    public record Change(String changedAt, List<String> sections) { }
+    public record Change(String changedAt,
+            List<String> sections,
+            @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+            Integer revision,
+            @com.fasterxml.jackson.annotation.JsonIgnore Map<String, Object> content) { }
+
+    public synchronized boolean restore(int revision) throws IOException {
+        for (var change : state.history()) {
+            if (change.revision() != null && change.revision() == revision && change.content() != null) {
+                save(JsonMapper.shared().valueToTree(change.content()));
+                return true;
+            }
+        }
+        return false;
+    }
 
     private record State(Snapshot content, List<Change> history) { }
 
@@ -147,7 +173,12 @@ public final class ClientInformation {
             if (sections.isEmpty() || sections.size() > 5) {
                 throw new IllegalArgumentException("Invalid content history sections");
             }
-            changes.add(new Change(timestamp, List.copyOf(sections)));
+            var revision = row.path("revision").asInt(0);
+            if (revision < 0 || (revision == 0 && row.has("revision"))) {
+                throw new IllegalArgumentException("Invalid content revision");
+            }
+            var payload = revision > 0 ? normalize(row.path("content")).jsonFields() : null;
+            changes.add(new Change(timestamp, List.copyOf(sections), revision == 0 ? null : revision, payload));
         }
         return List.copyOf(changes);
     }

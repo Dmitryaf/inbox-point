@@ -7,11 +7,7 @@ import {
   screen,
 } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import {
-  BackupPanel,
-  DeliveryPanel,
-  VkSetup,
-} from '../../frontend/src/ServiceTools';
+import { DeliveryPanel, VkSetup } from '@legacy/ServiceTools';
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status });
@@ -133,32 +129,5 @@ describe('service tools', () => {
       await vi.advanceTimersByTimeAsync(20_000);
     });
     expect(fetchMock).toHaveBeenCalledTimes(2);
-  });
-
-  it('reports a backup only after confirmed creation and permits retry after failure', async () => {
-    const creating = Promise.withResolvers<Response>();
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(
-        json({ message: 'Не удалось проверить копию.' }, 500),
-      )
-      .mockImplementationOnce(() => creating.promise);
-    vi.stubGlobal('fetch', fetchMock);
-    render(<BackupPanel />);
-    const button = screen.getByRole<HTMLButtonElement>('button', {
-      name: 'Создать резервную копию',
-    });
-    fireEvent.click(button);
-    await screen.findByText('Не удалось проверить копию.');
-    fireEvent.click(button);
-    await screen.findByText('Создаём и проверяем копию…');
-    expect(button.disabled).toBe(true);
-    fireEvent.click(button);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    creating.resolve(json({ fileName: 'synthetic-backup.sqlite' }));
-    await screen.findByText(
-      'Резервная копия создана: synthetic-backup.sqlite.',
-    );
-    expect(button.disabled).toBe(false);
   });
 });

@@ -101,6 +101,29 @@ final class ManageContentController {
         }
     }
 
+    @PostMapping("/content/restore")
+    ResponseEntity<?> restore(@RequestBody JsonNode input, HttpServletRequest request, HttpServletResponse response) {
+        if (!admin.available(request, response)) {
+            return missing();
+        }
+        if (!admin.authorized(request, response)) {
+            return unauthorized();
+        }
+        if (!ContentAdmin.sameOrigin(request)) {
+            return error(403, "Запрос отклонён.");
+        }
+        var revision = input.path("revision");
+        if (!revision.isIntegralNumber() || !revision.canConvertToInt() || revision.asInt() <= 0) {
+            return error(400, "Версия указана неверно.");
+        }
+        try {
+            return information.restore(revision.intValue()) ? ResponseEntity.ok(Map.of("restored", true))
+                    : error(404, "Эта версия больше недоступна для восстановления.");
+        } catch (IOException unavailable) {
+            return error(500, "Не удалось восстановить информацию. Попробуйте ещё раз.");
+        }
+    }
+
     private static ResponseEntity<Map<String, String>> missing() {
         return error(404, "Not found");
     }

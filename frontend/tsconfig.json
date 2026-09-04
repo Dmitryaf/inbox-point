@@ -15,5 +15,5 @@
     "noEmit": true,
     "types": ["vite/client", "vitest/globals"]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "../tests/frontend/**/*.tsx"]
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
 }

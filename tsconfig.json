@@ -4,7 +4,8 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@test/*": ["./tests/*"]
     },
     "strict": true,
     "noUncheckedIndexedAccess": true,
@@ -17,5 +18,11 @@
     "types": ["node"],
     "noEmit": true
   },
-  "include": ["src/**/*.ts", "eslint.config.js", "vitest.config.ts"]
+  "include": [
+    "src/**/*.ts",
+    "tests/unit/**/*.ts",
+    "tests/integration/**/*.ts",
+    "eslint.config.js",
+    "vitest.config.ts"
+  ]
 }

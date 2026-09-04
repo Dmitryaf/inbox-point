@@ -14,11 +14,12 @@ export async function request<T>(
     ...(signal ? { signal } : {}),
   });
   const value = (await response.json()) as T & { message?: unknown };
-  if (!response.ok)
+  if (!response.ok) {
     throw new Error(
       typeof value.message === 'string'
         ? value.message
         : 'Не удалось выполнить действие.',
     );
+  }
   return value;
 }
