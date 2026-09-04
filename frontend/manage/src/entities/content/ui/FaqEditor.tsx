@@ -2,10 +2,17 @@ import {
   useComponentModel,
   ModelScopeProvider,
 } from '@manage/shared/lib/component-model';
-import { renderList as $renderList } from '@manage/shared/lib/component-view';
+import {
+  classNames as $class,
+  renderList as $renderList,
+} from '@manage/shared/lib/component-view';
 import { invokeHandler as $invoke } from '@manage/shared/lib/component-events';
 import { unref as $unref } from '@manage/shared/lib/model-state';
-import { requiredValue as $required } from '@manage/shared/lib/component-bindings';
+import {
+  requiredValue as $required,
+  setProperty as $setProperty,
+} from '@manage/shared/lib/component-bindings';
+import { inheritedAttributes } from '@manage/shared/lib/component-attributes';
 
 import { moveItem } from '@manage/shared/lib/move-item';
 import {
@@ -16,6 +23,7 @@ import {
 import { controlledChange as $controlledChange } from '@manage/shared/lib/component-input-event';
 
 export default function FaqEditor($incomingProps: ComponentProps) {
+  const $attributes = inheritedAttributes($incomingProps);
   const { state: $state, scope: $scope } = useComponentModel(
     $incomingProps,
     componentDefaults,
@@ -26,7 +34,10 @@ export default function FaqEditor($incomingProps: ComponentProps) {
   const items = $state.items.value;
   return (
     <ModelScopeProvider scope={$scope}>
-      <section className="card">
+      <section
+        {...$attributes}
+        className={$class('card', $attributes.className)}
+      >
         <div className="section-heading">
           <div>
             <p className="step">{'Готовый раздел меню'}</p>
@@ -56,7 +67,11 @@ export default function FaqEditor($incomingProps: ComponentProps) {
               required
               value={item.question ?? ''}
               onChange={$controlledChange<HTMLInputElement>(($event) => {
-                item.question = $event.currentTarget.value;
+                $setProperty(
+                  $required(item),
+                  'question',
+                  $event.currentTarget.value,
+                );
               })}
             />
             <label htmlFor={`faq-answer-${index}`}>{'Ответ'}</label>
@@ -67,7 +82,11 @@ export default function FaqEditor($incomingProps: ComponentProps) {
               rows={4}
               value={item.answer ?? ''}
               onChange={$controlledChange<HTMLTextAreaElement>(($event) => {
-                item.answer = $event.currentTarget.value;
+                $setProperty(
+                  $required(item),
+                  'answer',
+                  $event.currentTarget.value,
+                );
               })}
             />
             <div className="item-actions">

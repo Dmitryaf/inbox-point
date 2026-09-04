@@ -16,29 +16,36 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 final class StaticFrontend {
-    private static final Map<String, Asset> ASSETS = Map.of(
-            "/", new Asset("index.html", "text/html;charset=UTF-8"),
-            "/setup", new Asset("index.html", "text/html;charset=UTF-8"),
-            "/setup/app.js", new Asset("app.js", "text/javascript;charset=UTF-8"),
-            "/manage", new Asset("index.html", "text/html;charset=UTF-8"),
-            "/manage/app.js", new Asset("app.js", "text/javascript;charset=UTF-8"),
-            "/manage/style.css", new Asset("style.css", "text/css;charset=UTF-8"),
-            "/app.js", new Asset("app.js", "text/javascript;charset=UTF-8"),
-            "/style.css", new Asset("style.css", "text/css;charset=UTF-8"));
+    private static final Map<String, Asset> ASSETS = Map.ofEntries(
+            Map.entry("/", new Asset("index.html", "text/html;charset=UTF-8")),
+            Map.entry("/setup", new Asset("index.html", "text/html;charset=UTF-8")),
+            Map.entry("/setup/app.js", new Asset("app.js", "text/javascript;charset=UTF-8")),
+            Map.entry("/manage", new Asset("index.html", "text/html;charset=UTF-8")),
+            Map.entry("/manage/app.js", new Asset("app.js", "text/javascript;charset=UTF-8")),
+            Map.entry("/manage/style.css", new Asset("style.css", "text/css;charset=UTF-8")),
+            Map.entry("/ops", new Asset("index.html", "text/html;charset=UTF-8")),
+            Map.entry("/ops/app.js", new Asset("app.js", "text/javascript;charset=UTF-8")),
+            Map.entry("/ops/style.css", new Asset("style.css", "text/css;charset=UTF-8")),
+            Map.entry("/app.js", new Asset("app.js", "text/javascript;charset=UTF-8")),
+            Map.entry("/style.css", new Asset("style.css", "text/css;charset=UTF-8")));
 
     private final Path frontend;
     private final ContentAdmin admin;
+    private final OperationsAdmin ops;
 
-    StaticFrontend(@Value("${inboxpoint.frontend.path:dist/frontend}") String directory, ContentAdmin admin) {
+    StaticFrontend(@Value("${inboxpoint.frontend.path:dist/frontend}") String directory, ContentAdmin admin, OperationsAdmin ops) {
+        this.ops = ops;
         this.admin = admin;
         frontend = Path.of(directory);
     }
 
-    @GetMapping({"/", "/app.js", "/style.css", "/setup", "/setup/app.js", "/manage", "/manage/app.js", "/manage/style.css"})
+    @GetMapping({"/", "/app.js", "/style.css", "/setup", "/setup/app.js", "/manage", "/manage/app.js", "/manage/style.css", "/ops", "/ops/app.js", "/ops/style.css"})
     ResponseEntity<byte[]> serve(HttpServletRequest request, HttpServletResponse response) throws IOException {
         var route = request.getRequestURI();
-        if (route.startsWith("/manage")) {
-            if (!admin.available(request, response)) {
+        var operations = route.startsWith("/ops");
+        var content = route.startsWith("/manage");
+        if (operations || content) {
+            if (!(operations ? ops : admin).available(request, response)) {
                 return ResponseEntity.notFound().build();
             }
             response.setHeader("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; "
@@ -52,7 +59,7 @@ final class StaticFrontend {
                     + "connect-src 'self'; frame-ancestors 'none'");
         }
         var asset = ASSETS.get(route);
-        var root = route.startsWith("/manage") ? frontend.resolveSibling("manage") : frontend;
+        var root = operations ? frontend.resolveSibling("ops") : content ? frontend.resolveSibling("manage") : frontend;
         var file = root.resolve(asset.file());
         if (!Files.isRegularFile(file)) {
             return ResponseEntity.notFound().build();

@@ -4,6 +4,8 @@ import {
 } from '@manage/shared/lib/component-model';
 import { classNames as $class } from '@manage/shared/lib/component-view';
 
+import { inheritedAttributes } from '@manage/shared/lib/component-attributes';
+
 import {
   createComponentModel,
   componentDefaults,
@@ -11,6 +13,7 @@ import {
 } from './SaveBar.model';
 
 export default function SaveBar($incomingProps: ComponentProps) {
+  const $attributes = inheritedAttributes($incomingProps);
   const {
     state: $state,
     props: $props,
@@ -24,7 +27,10 @@ export default function SaveBar($incomingProps: ComponentProps) {
 
   return (
     <ModelScopeProvider scope={$scope}>
-      <div className="save-bar">
+      <div
+        {...$attributes}
+        className={$class('save-bar', $attributes.className)}
+      >
         <p role="status" className={$class({ changed: $props.dirty })}>
           {$props.dirty
             ? 'Есть несохранённые изменения'

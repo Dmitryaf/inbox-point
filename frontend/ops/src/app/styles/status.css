@@ -1,0 +1,116 @@
+.overview {
+  display: grid;
+  gap: 1rem;
+}
+
+.summary-card {
+  border-left: 0.45rem solid #31836a;
+  display: grid;
+  gap: 1rem;
+  padding: 1.2rem;
+}
+
+.summary-card--attention {
+  border-left-color: #c7762f;
+}
+
+.summary-card h2,
+.summary-card .eyebrow {
+  margin-bottom: 0;
+}
+
+.summary-facts,
+.delivery-facts {
+  display: grid;
+  gap: 0.8rem;
+  margin: 0;
+}
+
+.summary-facts div,
+.delivery-facts div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+dt {
+  color: #5b6b65;
+  font-size: 0.82rem;
+}
+
+dd {
+  font-size: 1.05rem;
+  font-weight: 750;
+  margin: 0;
+}
+
+.status-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.status-card {
+  min-width: 0;
+  padding: 1.1rem;
+}
+
+.status-card-heading {
+  align-items: start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: space-between;
+}
+
+.status-card h3 {
+  margin-bottom: 0.8rem;
+}
+
+.status-card p {
+  color: #53655f;
+  margin-bottom: 0;
+}
+
+.status-pill {
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 0.35rem 0.65rem;
+}
+
+.status-pill--healthy {
+  background: #dcefe7;
+  color: #14513e;
+}
+
+.status-pill--attention {
+  background: #ffead7;
+  color: #7c3f0d;
+}
+
+.status-pill--neutral {
+  background: #e8ece9;
+  color: #45534e;
+}
+
+.delivery-card {
+  grid-column: 1 / -1;
+}
+
+.delivery-facts {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 700px) {
+  .summary-card {
+    align-items: end;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .summary-facts {
+    grid-template-columns: repeat(2, minmax(10rem, 1fr));
+  }
+
+  .status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

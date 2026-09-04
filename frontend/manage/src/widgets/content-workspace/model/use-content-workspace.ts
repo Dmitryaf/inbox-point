@@ -17,8 +17,8 @@ import {
   normalizeContentDraft,
   snapshotContent,
 } from '@manage/entities/content/model/content-draft';
-import { errorMessage } from '@manage/shared/lib/error-message';
-import { HttpError } from '@manage/shared/api/http-client';
+import { HttpError } from '@frontend/shared/api/http-client';
+import { errorMessage } from '@frontend/shared/lib/error-message';
 
 interface ContentWorkspaceOptions {
   onUnauthorized(): void;

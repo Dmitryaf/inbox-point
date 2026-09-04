@@ -2,7 +2,7 @@ import type {
   ContentChange,
   ContentDraft,
 } from '@manage/entities/content/model/types';
-import { request } from '@manage/shared/api/http-client';
+import { request } from '@frontend/shared/api/http-client';
 
 export function loadContent(): Promise<Partial<ContentDraft>> {
   return request('/api/manage/content');

@@ -23,6 +23,7 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
+      '@frontend': resolve(root, '..'),
       '@manage': resolve(root, 'src'),
     },
   },

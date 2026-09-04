@@ -2,10 +2,17 @@ import {
   useComponentModel,
   ModelScopeProvider,
 } from '@manage/shared/lib/component-model';
-import { renderList as $renderList } from '@manage/shared/lib/component-view';
+import {
+  classNames as $class,
+  renderList as $renderList,
+} from '@manage/shared/lib/component-view';
 import { invokeHandler as $invoke } from '@manage/shared/lib/component-events';
 
-import { requiredValue as $required } from '@manage/shared/lib/component-bindings';
+import {
+  requiredValue as $required,
+  setProperty as $setProperty,
+} from '@manage/shared/lib/component-bindings';
+import { inheritedAttributes } from '@manage/shared/lib/component-attributes';
 
 import {
   createComponentModel,
@@ -15,6 +22,7 @@ import {
 import { controlledChange as $controlledChange } from '@manage/shared/lib/component-input-event';
 
 export default function CustomSectionsEditor($incomingProps: ComponentProps) {
+  const $attributes = inheritedAttributes($incomingProps);
   const { state: $state, scope: $scope } = useComponentModel(
     $incomingProps,
     componentDefaults,
@@ -25,7 +33,10 @@ export default function CustomSectionsEditor($incomingProps: ComponentProps) {
   const sections = $state.sections.value;
   return (
     <ModelScopeProvider scope={$scope}>
-      <section className="card">
+      <section
+        {...$attributes}
+        className={$class('card', $attributes.className)}
+      >
         <div className="section-heading">
           <div>
             <p className="step">{'Свои кнопки'}</p>
@@ -54,7 +65,11 @@ export default function CustomSectionsEditor($incomingProps: ComponentProps) {
               required
               value={section.label ?? ''}
               onChange={$controlledChange<HTMLInputElement>(($event) => {
-                section.label = $event.currentTarget.value;
+                $setProperty(
+                  $required(section),
+                  'label',
+                  $event.currentTarget.value,
+                );
               })}
             />
             <label htmlFor={`section-text-${index}`}>
@@ -67,7 +82,11 @@ export default function CustomSectionsEditor($incomingProps: ComponentProps) {
               rows={4}
               value={section.text ?? ''}
               onChange={$controlledChange<HTMLTextAreaElement>(($event) => {
-                section.text = $event.currentTarget.value;
+                $setProperty(
+                  $required(section),
+                  'text',
+                  $event.currentTarget.value,
+                );
               })}
             />
             <div className="item-actions">

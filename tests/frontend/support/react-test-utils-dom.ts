@@ -11,9 +11,17 @@ export class DOMWrapper<ElementType extends Element = Element> {
   exists(): boolean {
     return Boolean(this.node);
   }
+  find<Tag extends keyof HTMLElementTagNameMap>(
+    selector: Tag,
+  ): DOMWrapper<HTMLElementTagNameMap[Tag]>;
+  find<T extends Element = Element>(selector: string): DOMWrapper<T>;
   find<T extends Element = Element>(selector: string): DOMWrapper<T> {
     return new DOMWrapper(this.element.querySelector<T>(selector) ?? undefined);
   }
+  get<Tag extends keyof HTMLElementTagNameMap>(
+    selector: Tag,
+  ): DOMWrapper<HTMLElementTagNameMap[Tag]>;
+  get<T extends Element = Element>(selector: string): DOMWrapper<T>;
   get<T extends Element = Element>(selector: string): DOMWrapper<T> {
     const wrapper = this.find<T>(selector);
     if (!wrapper.exists()) {
@@ -23,6 +31,10 @@ export class DOMWrapper<ElementType extends Element = Element> {
     }
     return wrapper;
   }
+  findAll<Tag extends keyof HTMLElementTagNameMap>(
+    selector: Tag,
+  ): DOMWrapper<HTMLElementTagNameMap[Tag]>[];
+  findAll<T extends Element = Element>(selector: string): DOMWrapper<T>[];
   findAll<T extends Element = Element>(selector: string): DOMWrapper<T>[] {
     return Array.from(
       this.element.querySelectorAll<T>(selector),
@@ -124,8 +136,5 @@ export class DOMWrapper<ElementType extends Element = Element> {
       }
       await Promise.resolve();
     });
-  }
-  async setChecked(checked = true): Promise<void> {
-    await this.setValue(checked);
   }
 }

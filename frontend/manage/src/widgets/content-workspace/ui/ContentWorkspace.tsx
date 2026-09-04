@@ -8,6 +8,7 @@ import { unref as $unref } from '@manage/shared/lib/model-state';
 import {
   modelSetter as $setter,
   requiredValue as $required,
+  setProperty as $setProperty,
 } from '@manage/shared/lib/component-bindings';
 
 import SaveBar from '@manage/features/save-content/ui/SaveBar';
@@ -59,7 +60,11 @@ export default function ContentWorkspace($incomingProps: ComponentProps) {
                 activeSection={activeSection}
                 modelValue={workspace.draft}
                 onModelValueChange={($value) => {
-                  $required($unref($state.workspace)).draft = $value;
+                  $setProperty(
+                    $required($unref($state.workspace)),
+                    'draft',
+                    $value,
+                  );
                 }}
               />
             ) : activeView === 'preview' ? (

@@ -2,7 +2,12 @@ import {
   useComponentModel,
   ModelScopeProvider,
 } from '@manage/shared/lib/component-model';
-import { renderList as $renderList } from '@manage/shared/lib/component-view';
+import {
+  classNames as $class,
+  renderList as $renderList,
+} from '@manage/shared/lib/component-view';
+
+import { inheritedAttributes } from '@manage/shared/lib/component-attributes';
 
 import {
   createComponentModel,
@@ -11,6 +16,7 @@ import {
 } from './ContentPreview.model';
 
 export default function ContentPreview($incomingProps: ComponentProps) {
+  const $attributes = inheritedAttributes($incomingProps);
   const {
     state: $state,
     props: $props,
@@ -24,7 +30,11 @@ export default function ContentPreview($incomingProps: ComponentProps) {
   const visible = $state.visible.value;
   return (
     <ModelScopeProvider scope={$scope}>
-      <section aria-labelledby="preview-title" className="card preview">
+      <section
+        {...$attributes}
+        aria-labelledby="preview-title"
+        className={$class('card preview', $attributes.className)}
+      >
         <p className="step">{'Предпросмотр'}</p>
         <h2 id="preview-title">{'Что увидит клиент'}</h2>
         {!visible ? (

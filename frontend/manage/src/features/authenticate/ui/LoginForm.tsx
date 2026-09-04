@@ -2,10 +2,11 @@ import {
   useComponentModel,
   ModelScopeProvider,
 } from '@manage/shared/lib/component-model';
-
+import { classNames as $class } from '@manage/shared/lib/component-view';
 import { invokeHandler as $invoke } from '@manage/shared/lib/component-events';
 
 import { setModelValue as $set } from '@manage/shared/lib/component-bindings';
+import { inheritedAttributes } from '@manage/shared/lib/component-attributes';
 
 import {
   createComponentModel,
@@ -15,6 +16,7 @@ import {
 import { controlledChange as $controlledChange } from '@manage/shared/lib/component-input-event';
 
 export default function LoginForm($incomingProps: ComponentProps) {
+  const $attributes = inheritedAttributes($incomingProps);
   const {
     state: $state,
     props: $props,
@@ -30,11 +32,12 @@ export default function LoginForm($incomingProps: ComponentProps) {
   return (
     <ModelScopeProvider scope={$scope}>
       <form
+        {...$attributes}
         onSubmit={($event) => {
           $event.preventDefault();
           $invoke(submit, $event);
         }}
-        className="login card"
+        className={$class('login card', $attributes.className)}
       >
         <h2>{'Вход'}</h2>
         <p>{'Введите пароль, который выдал владелец сервиса.'}</p>

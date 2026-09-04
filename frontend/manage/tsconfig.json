@@ -4,6 +4,7 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "paths": {
+      "@frontend/*": ["../*"],
       "@manage/*": ["./src/*"]
     },
     "strict": true,
@@ -16,5 +17,11 @@
     "types": ["vite/client", "vitest/globals"],
     "jsx": "react-jsx"
   },
-  "include": ["src/**/*.ts", "vite.config.ts", "src/**/*.tsx"]
+  "include": [
+    "src/**/*.ts",
+    "../shared/**/*.ts",
+    "vite.config.ts",
+    "src/**/*.tsx",
+    "../shared/**/*.tsx"
+  ]
 }
