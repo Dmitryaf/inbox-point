@@ -76,7 +76,7 @@ public final class TelegramRuntime {
         }
     }
 
-    synchronized Status status() {
+    public synchronized Status status() {
         var running = poller != null && poller.isAlive() && deliveries.isAlive();
         return new Status(running, running || ENVIRONMENT.equals(source), source);
     }
@@ -132,7 +132,7 @@ public final class TelegramRuntime {
         vk.restore(this::receiveVk);
     }
 
-    Status vkStatus() {
+    public Status vkStatus() {
         return vk.status();
     }
 
@@ -229,7 +229,7 @@ public final class TelegramRuntime {
         }
     }
 
-    record Status(boolean connected, boolean locked, String source) { }
+    public record Status(boolean connected, boolean locked, String source) { }
 
     private record Settings(String token, long group, int timeout) { }
 }
