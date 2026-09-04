@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { RuntimeConfig } from '@/config/runtime-config.js';
-import { TelegramSetupController } from '@/infrastructure/telegram/telegram-setup-controller.js';
 import { createApp, registerSetupRoutes } from '@/infrastructure/http/app.js';
+import { TelegramSetupController } from '@/infrastructure/telegram/telegram-setup-controller.js';
+import { OperationsMonitoringService } from '@/modules/operations-monitoring/application/operations-monitoring-service.js';
+import { registerReadinessRoute } from '@/modules/operations-monitoring/presentation/http/readiness-route.js';
 
 const config: RuntimeConfig = {
   databasePath: './data/test.sqlite',
@@ -45,29 +47,64 @@ describe('HTTP service status', () => {
     expect(response.json()).toEqual({ status: 'ok' });
   });
 
-  it('reports delivery state without exposing message content', async () => {
-    const app = createApp(config, () => ({ failed: 2, pending: 3 }));
+  it('reports readiness without exposing delivery state', async () => {
+    const app = createApp(config);
     apps.add(app);
+    registerReadinessRoute(
+      app,
+      createMonitoringService(() => ({ failed: 2, pending: 3 })),
+    );
 
     const response = await app.inject({ method: 'GET', url: '/ready' });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({
-      deliveries: { failed: 2, pending: 3 },
-      status: 'ready',
-    });
+    expect(response.json()).toEqual({ status: 'ready' });
+    expect(response.body).not.toContain('deliveries');
   });
 
   it('fails readiness when delivery state cannot be read', async () => {
-    const app = createApp(config, () => {
-      throw new Error('Database unavailable');
-    });
+    const app = createApp(config);
     apps.add(app);
+    registerReadinessRoute(
+      app,
+      createMonitoringService(() => {
+        throw new Error('Database unavailable');
+      }),
+    );
 
     const response = await app.inject({ method: 'GET', url: '/ready' });
 
     expect(response.statusCode).toBe(503);
     expect(response.json()).toEqual({ status: 'not_ready' });
+  });
+
+  it('fails readiness without exposing which configured channel is stale', async () => {
+    const app = createApp(config);
+    apps.add(app);
+    registerReadinessRoute(
+      app,
+      new OperationsMonitoringService({
+        channelActivity: (channel) => {
+          if (channel === 'telegram') {
+            return {
+              lastSuccessfulPollAt: new Date('2026-09-04T12:00:00.000Z'),
+            };
+          }
+          return {};
+        },
+        clock: () => new Date('2026-09-04T12:03:00.000Z'),
+        deliverySummary: () => ({ failed: 0, pending: 0 }),
+        startedAt: new Date('2026-09-04T12:00:00.000Z'),
+        telegramStatus: () => ({ connected: true, source: 'environment' }),
+        vkStatus: () => ({ connected: false, source: 'none' }),
+      }),
+    );
+
+    const response = await app.inject({ method: 'GET', url: '/ready' });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toEqual({ status: 'not_ready' });
+    expect(response.body).not.toContain('telegram');
   });
 
   it('serves setup only on the loopback interface', async () => {
@@ -263,3 +300,15 @@ describe('HTTP service status', () => {
     expect(remoteBackup.statusCode).toBe(404);
   });
 });
+
+function createMonitoringService(
+  deliverySummary: () => { failed: number; pending: number },
+): OperationsMonitoringService {
+  return new OperationsMonitoringService({
+    channelActivity: () => ({}),
+    deliverySummary,
+    startedAt: new Date('2026-09-04T12:00:00.000Z'),
+    telegramStatus: () => ({ connected: false, source: 'none' }),
+    vkStatus: () => ({ connected: false, source: 'none' }),
+  });
+}

@@ -57,5 +57,50 @@ describe('OperationsMonitoringService', () => {
     });
 
     expect(monitoring.getStatus().state).toBe('attention');
+    expect(monitoring.isReady()).toBe(false);
+  });
+
+  it('allows a bounded startup period before the first successful poll', () => {
+    const monitoring = new OperationsMonitoringService({
+      channelActivity: () => ({}),
+      clock: () => new Date('2026-09-04T12:01:00.000Z'),
+      deliverySummary: () => ({ failed: 0, pending: 0 }),
+      pollStaleAfterMs: 120_000,
+      startedAt: new Date('2026-09-04T12:00:00.000Z'),
+      telegramStatus: () => ({ connected: true, source: 'environment' }),
+      vkStatus: () => ({ connected: true, source: 'environment' }),
+    });
+
+    const status = monitoring.getStatus();
+
+    expect(status.channels.telegram.state).toBe('starting');
+    expect(status.channels.vk.state).toBe('starting');
+    expect(status.state).toBe('healthy');
+    expect(monitoring.isReady()).toBe(true);
+  });
+
+  it('marks a configured channel as stale after the grace period', () => {
+    const monitoring = new OperationsMonitoringService({
+      channelActivity: (channel) => {
+        if (channel === 'telegram') {
+          return {
+            lastSuccessfulPollAt: new Date('2026-09-04T12:00:00.000Z'),
+          };
+        }
+        return {};
+      },
+      clock: () => new Date('2026-09-04T12:02:01.000Z'),
+      deliverySummary: () => ({ failed: 0, pending: 0 }),
+      pollStaleAfterMs: 120_000,
+      startedAt: new Date('2026-09-04T12:00:00.000Z'),
+      telegramStatus: () => ({ connected: true, source: 'environment' }),
+      vkStatus: () => ({ connected: false, source: 'none' }),
+    });
+
+    const status = monitoring.getStatus();
+
+    expect(status.channels.telegram.state).toBe('poll_stale');
+    expect(status.state).toBe('attention');
+    expect(monitoring.isReady()).toBe(false);
   });
 });

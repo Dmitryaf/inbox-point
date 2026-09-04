@@ -8,7 +8,13 @@ export interface ChannelOperationsStatus {
   lastSuccessfulPollAt?: string;
   running: boolean;
   source: ChannelConnectionSource;
-  state: 'not_configured' | 'poll_failed' | 'running' | 'stopped';
+  state:
+    | 'not_configured'
+    | 'poll_failed'
+    | 'poll_stale'
+    | 'running'
+    | 'starting'
+    | 'stopped';
 }
 
 export interface OperationsStatus {

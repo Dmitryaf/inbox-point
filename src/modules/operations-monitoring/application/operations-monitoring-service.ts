@@ -1,21 +1,19 @@
 import type { DeliverySummary } from '@/core/contracts/support-repository.js';
 import type { ClientChannelKind } from '@/core/model/support-message.js';
 import type { ChannelActivitySnapshot } from '@/modules/operations-monitoring/application/channel-activity-monitor.js';
-import type {
-  ChannelConnectionSource,
-  ChannelOperationsStatus,
-  OperationsStatus,
-} from '@/modules/operations-monitoring/model/operations-status.js';
-
-export interface ChannelStatusSnapshot {
-  connected: boolean;
-  source: ChannelConnectionSource;
-}
+import {
+  channelIsReady,
+  channelNeedsAttention,
+  mapChannelStatus,
+  type ChannelStatusSnapshot,
+} from '@/modules/operations-monitoring/application/channel-status.js';
+import type { OperationsStatus } from '@/modules/operations-monitoring/model/operations-status.js';
 
 export interface OperationsMonitoringDependencies {
   clock?: () => Date;
   channelActivity: (channel: ClientChannelKind) => ChannelActivitySnapshot;
   deliverySummary: () => DeliverySummary;
+  pollStaleAfterMs?: number;
   startedAt: Date;
   telegramStatus: () => ChannelStatusSnapshot;
   vkStatus: () => ChannelStatusSnapshot;
@@ -23,11 +21,13 @@ export interface OperationsMonitoringDependencies {
 
 export class OperationsMonitoringService {
   private readonly clock: () => Date;
+  private readonly pollStaleAfterMs: number;
 
   public constructor(
     private readonly dependencies: OperationsMonitoringDependencies,
   ) {
     this.clock = dependencies.clock ?? (() => new Date());
+    this.pollStaleAfterMs = dependencies.pollStaleAfterMs ?? 120_000;
   }
 
   public getStatus(): OperationsStatus {
@@ -36,15 +36,21 @@ export class OperationsMonitoringService {
     const telegram = mapChannelStatus(
       this.dependencies.telegramStatus(),
       this.dependencies.channelActivity('telegram'),
+      observedAt,
+      this.dependencies.startedAt,
+      this.pollStaleAfterMs,
     );
     const vk = mapChannelStatus(
       this.dependencies.vkStatus(),
       this.dependencies.channelActivity('vk'),
+      observedAt,
+      this.dependencies.startedAt,
+      this.pollStaleAfterMs,
     );
     const needsAttention =
       deliveries.failed > 0 ||
-      telegram.state !== 'running' ||
-      vk.state !== 'running';
+      channelNeedsAttention(telegram) ||
+      channelNeedsAttention(vk);
 
     return {
       channels: { telegram, vk },
@@ -61,44 +67,13 @@ export class OperationsMonitoringService {
       ),
     };
   }
-}
 
-function mapChannelStatus(
-  status: ChannelStatusSnapshot,
-  activity: ChannelActivitySnapshot,
-): ChannelOperationsStatus {
-  return {
-    configured: status.source !== 'none',
-    ...(activity.lastFailedPollAt
-      ? { lastFailedPollAt: activity.lastFailedPollAt.toISOString() }
-      : {}),
-    ...(activity.lastSuccessfulPollAt
-      ? {
-          lastSuccessfulPollAt: activity.lastSuccessfulPollAt.toISOString(),
-        }
-      : {}),
-    running: status.connected,
-    source: status.source,
-    state: resolveChannelState(status, activity),
-  };
-}
+  public isReady(): boolean {
+    const status = this.getStatus();
 
-function resolveChannelState(
-  status: ChannelStatusSnapshot,
-  activity: ChannelActivitySnapshot,
-): ChannelOperationsStatus['state'] {
-  if (status.source === 'none') {
-    return 'not_configured';
+    return (
+      channelIsReady(status.channels.telegram) &&
+      channelIsReady(status.channels.vk)
+    );
   }
-  if (
-    activity.lastFailedPollAt &&
-    (!activity.lastSuccessfulPollAt ||
-      activity.lastFailedPollAt > activity.lastSuccessfulPollAt)
-  ) {
-    return 'poll_failed';
-  }
-  if (status.connected) {
-    return 'running';
-  }
-  return 'stopped';
 }

@@ -10,6 +10,7 @@ import { ContentManagementAccess } from '@/modules/content-management/security/c
 import { ChannelActivityMonitor } from '@/modules/operations-monitoring/application/channel-activity-monitor.js';
 import { OperationsMonitoringService } from '@/modules/operations-monitoring/application/operations-monitoring-service.js';
 import { registerOperationsRoutes } from '@/modules/operations-monitoring/presentation/http/routes.js';
+import { registerReadinessRoute } from '@/modules/operations-monitoring/presentation/http/readiness-route.js';
 import { OperationsAccess } from '@/modules/operations-monitoring/security/operations-access.js';
 import { SqliteBackupService } from '@/infrastructure/persistence/sqlite-backup-service.js';
 import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-support-repository.js';
@@ -25,7 +26,7 @@ async function start(): Promise<void> {
   const config = loadRuntimeConfig(process.env);
   const repository = new SqliteSupportRepository(config.databasePath);
   const backupService = new SqliteBackupService(config.databasePath);
-  const app = createApp(config, () => repository.getDeliverySummary());
+  const app = createApp(config);
   const contentSettingsStore = new FileContentSettingsStore(
     resolve(dirname(config.databasePath), 'content-settings.json'),
   );
@@ -124,15 +125,17 @@ async function start(): Promise<void> {
         secureCookies: config.nodeEnv === 'production',
       },
     );
+    const operationsMonitoring = new OperationsMonitoringService({
+      channelActivity: (channel) => channelActivity.snapshot(channel),
+      deliverySummary: () => repository.getDeliverySummary(),
+      startedAt,
+      telegramStatus: () => setup.status(),
+      vkStatus: () => vkSetup.status(),
+    });
+    registerReadinessRoute(app, operationsMonitoring);
     registerOperationsRoutes(
       app,
-      new OperationsMonitoringService({
-        channelActivity: (channel) => channelActivity.snapshot(channel),
-        deliverySummary: () => repository.getDeliverySummary(),
-        startedAt,
-        telegramStatus: () => setup.status(),
-        vkStatus: () => vkSetup.status(),
-      }),
+      operationsMonitoring,
       new OperationsAccess(config.operationsAdminPassword),
       {
         allowLocalBypass: config.nodeEnv !== 'production',
