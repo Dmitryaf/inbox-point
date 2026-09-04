@@ -1,4 +1,4 @@
-import { request } from '@manage/shared/api/http-client';
+import { request } from '@frontend/shared/api/http-client';
 
 export async function readSession(): Promise<boolean> {
   const session = await request<{ authenticated: boolean }>(

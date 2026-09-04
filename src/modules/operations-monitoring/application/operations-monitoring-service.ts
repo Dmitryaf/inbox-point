@@ -34,8 +34,8 @@ export class OperationsMonitoringService {
     const vk = mapChannelStatus(this.dependencies.vkStatus());
     const needsAttention =
       deliveries.failed > 0 ||
-      isConfiguredButStopped(telegram) ||
-      isConfiguredButStopped(vk);
+      isChannelUnavailable(telegram) ||
+      isChannelUnavailable(vk);
 
     return {
       channels: { telegram, vk },
@@ -64,6 +64,6 @@ function mapChannelStatus(
   };
 }
 
-function isConfiguredButStopped(status: ChannelOperationsStatus): boolean {
-  return status.configured && !status.running;
+function isChannelUnavailable(status: ChannelOperationsStatus): boolean {
+  return !status.running;
 }

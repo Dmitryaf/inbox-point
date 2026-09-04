@@ -2,7 +2,7 @@ import {
   useComponentModel,
   ModelScopeProvider,
 } from '@manage/shared/lib/component-model';
-
+import { classNames as $class } from '@manage/shared/lib/component-view';
 import {
   invokeHandler as $invoke,
   invokeArgs as $invokeArgs,
@@ -12,6 +12,7 @@ import {
   modelSetter as $setter,
   requiredValue as $required,
 } from '@manage/shared/lib/component-bindings';
+import { inheritedAttributes } from '@manage/shared/lib/component-attributes';
 
 import LoginForm from '@manage/features/authenticate/ui/LoginForm';
 import AsyncMessage from '@manage/shared/ui/AsyncMessage';
@@ -23,6 +24,7 @@ import {
 } from './ContentManagementPage.model';
 
 export default function ContentManagementPage($incomingProps: ComponentProps) {
+  const $attributes = inheritedAttributes($incomingProps);
   const { state: $state, scope: $scope } = useComponentModel(
     $incomingProps,
     componentDefaults,
@@ -33,7 +35,7 @@ export default function ContentManagementPage($incomingProps: ComponentProps) {
 
   return (
     <ModelScopeProvider scope={$scope}>
-      <div className="shell">
+      <div {...$attributes} className={$class('shell', $attributes.className)}>
         <header className="hero">
           <div>
             <p className="eyebrow">{'Messenger Handoff'}</p>

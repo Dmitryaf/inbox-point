@@ -12,8 +12,13 @@ export class ReactWrapper<
     private readonly currentProps: Props,
     private readonly events: Events,
     private readonly wrap: (children: React.ReactNode) => React.ReactNode,
+    private readonly exposed: { current: unknown },
+    private readonly ownedContainer?: HTMLElement,
   ) {
     super(rendered.container);
+  }
+  get vm(): unknown {
+    return this.exposed.current;
   }
   async setProps(props: Partial<Props>): Promise<void> {
     Object.assign(this.currentProps, props);
@@ -31,6 +36,7 @@ export class ReactWrapper<
   }
   unmount(): void {
     this.rendered.unmount();
+    this.ownedContainer?.remove();
     roots.delete(this);
   }
 }

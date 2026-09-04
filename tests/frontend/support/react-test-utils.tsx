@@ -58,6 +58,20 @@ export function mount<Props extends object>(
   };
   const events: Events = {};
   const supplied = { ...options.attrs, ...options.props };
+  const exposed: { current: unknown } = { current: undefined };
+  const suppliedRef: unknown = Reflect.get(supplied, 'ref');
+  Reflect.set(supplied, 'ref', (value: unknown) => {
+    exposed.current = value;
+    if (typeof suppliedRef === 'function') {
+      Reflect.apply(suppliedRef, undefined, [value]);
+    } else if (
+      suppliedRef &&
+      typeof suppliedRef === 'object' &&
+      'current' in suppliedRef
+    ) {
+      suppliedRef.current = value;
+    }
+  });
   if (options.slots) {
     if (Object.keys(options.slots).some((name) => name !== 'default')) {
       throw new Error('Named mount slots require render callbacks');
@@ -79,9 +93,13 @@ export function mount<Props extends object>(
     typeof options.attachTo === 'string'
       ? document.querySelector(options.attachTo)
       : options.attachTo;
+  const ownedContainer = attached ? document.createElement('div') : undefined;
+  if (ownedContainer) {
+    attached?.appendChild(ownedContainer);
+  }
   const rendered = render(
     wrap(React.createElement(Component, currentProps)),
-    attached ? { container: attached as HTMLElement } : undefined,
+    ownedContainer ? { container: ownedContainer } : undefined,
   );
   const wrapper = new ReactWrapper(
     rendered,
@@ -89,6 +107,8 @@ export function mount<Props extends object>(
     currentProps,
     events,
     wrap,
+    exposed,
+    ownedContainer,
   );
   roots.add(wrapper);
   return wrapper;

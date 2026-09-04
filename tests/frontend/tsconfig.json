@@ -2,11 +2,20 @@
   "extends": "../../frontend/manage/tsconfig.json",
   "compilerOptions": {
     "paths": {
+      "@frontend/*": ["../../frontend/*"],
       "@manage/*": ["../../frontend/manage/src/*"],
+      "@ops/*": ["../../frontend/ops/src/*"],
       "@test/*": ["../*"],
       "@legacy/*": ["../../frontend/src/*"]
     },
     "jsx": "react-jsx"
   },
-  "include": ["**/*.ts", "../../frontend/manage/src/**/*.d.ts", "**/*.tsx"]
+  "include": [
+    "**/*.ts",
+    "../../frontend/manage/src/**/*.d.ts",
+    "../../frontend/ops/src/**/*.d.ts",
+    "../../frontend/shared/**/*.ts",
+    "**/*.tsx",
+    "../../frontend/shared/**/*.tsx"
+  ]
 }

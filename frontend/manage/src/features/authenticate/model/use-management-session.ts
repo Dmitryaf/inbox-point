@@ -1,6 +1,6 @@
 import { onMounted, ref } from '@manage/shared/lib/model-state';
 
-import { errorMessage } from '@manage/shared/lib/error-message';
+import { errorMessage } from '@frontend/shared/lib/error-message';
 import { login, logout, readSession } from '../api/session-api';
 
 export function useManagementSession() {

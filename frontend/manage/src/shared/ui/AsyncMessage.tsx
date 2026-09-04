@@ -4,6 +4,8 @@ import {
 } from '@manage/shared/lib/component-model';
 import { classNames as $class } from '@manage/shared/lib/component-view';
 
+import { inheritedAttributes } from '@manage/shared/lib/component-attributes';
+
 import {
   createComponentModel,
   componentDefaults,
@@ -11,6 +13,7 @@ import {
 } from './AsyncMessage.model';
 
 export default function AsyncMessage($incomingProps: ComponentProps) {
+  const $attributes = inheritedAttributes($incomingProps);
   const { props: $props, scope: $scope } = useComponentModel(
     $incomingProps,
     componentDefaults,
@@ -21,8 +24,9 @@ export default function AsyncMessage($incomingProps: ComponentProps) {
     <ModelScopeProvider scope={$scope}>
       {$props.text ? (
         <p
+          {...$attributes}
           role={$props.kind === 'error' ? 'alert' : 'status'}
-          className={$class('message', $props.kind)}
+          className={$class('message', $props.kind, $attributes.className)}
         >
           {$props.text}
         </p>

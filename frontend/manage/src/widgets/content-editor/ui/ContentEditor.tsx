@@ -2,11 +2,14 @@ import {
   useComponentModel,
   ModelScopeProvider,
 } from '@manage/shared/lib/component-model';
+import { classNames as $class } from '@manage/shared/lib/component-view';
 
 import {
   setModelValue as $set,
   requiredValue as $required,
+  setProperty as $setProperty,
 } from '@manage/shared/lib/component-bindings';
+import { inheritedAttributes } from '@manage/shared/lib/component-attributes';
 
 import CoreSectionsFields from '@manage/entities/content/ui/CoreSectionsFields';
 import CustomSectionsEditor from '@manage/entities/content/ui/CustomSectionsEditor';
@@ -19,6 +22,7 @@ import {
 } from './ContentEditor.model';
 
 export default function ContentEditor($incomingProps: ComponentProps) {
+  const $attributes = inheritedAttributes($incomingProps);
   const {
     state: $state,
     props: $props,
@@ -32,7 +36,7 @@ export default function ContentEditor($incomingProps: ComponentProps) {
   const draft = $state.draft.value;
   return (
     <ModelScopeProvider scope={$scope}>
-      <div className="editor">
+      <div {...$attributes} className={$class('editor', $attributes.className)}>
         {$props.activeSection === 'core' ? (
           <CoreSectionsFields
             modelValue={draft}
@@ -44,14 +48,18 @@ export default function ContentEditor($incomingProps: ComponentProps) {
           <FaqEditor
             modelValue={draft.faq}
             onModelValueChange={($value) => {
-              $required($state.draft.value).faq = $value;
+              $setProperty($required($state.draft.value), 'faq', $value);
             }}
           />
         ) : (
           <CustomSectionsEditor
             modelValue={draft.customSections}
             onModelValueChange={($value) => {
-              $required($state.draft.value).customSections = $value;
+              $setProperty(
+                $required($state.draft.value),
+                'customSections',
+                $value,
+              );
             }}
           />
         )}

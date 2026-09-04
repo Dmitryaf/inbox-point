@@ -15,6 +15,11 @@ const config: RuntimeConfig = {
 };
 
 const apps = new Set<ReturnType<typeof createApp>>();
+const operationsAssets = {
+  html: '<!doctype html><title>Состояние сервиса</title>',
+  script: 'globalThis.operationsApp = true;',
+  styles: ':root { color: black; }',
+};
 
 afterEach(async () => {
   await Promise.all([...apps].map(async (app) => app.close()));
@@ -31,13 +36,22 @@ describe('operations monitoring routes', () => {
       new OperationsAccess('correct-operations-password', {
         createToken: () => 'synthetic-operations-session',
       }),
-      { allowLocalBypass: false, secureCookies: true },
+      {
+        allowLocalBypass: false,
+        assets: operationsAssets,
+        secureCookies: true,
+      },
     );
 
     const unauthorized = await app.inject({
       method: 'GET',
       remoteAddress: '192.0.2.10',
       url: '/api/ops/status',
+    });
+    const page = await app.inject({
+      method: 'GET',
+      remoteAddress: '192.0.2.10',
+      url: '/ops',
     });
     const crossOrigin = await app.inject({
       headers: {
@@ -68,6 +82,10 @@ describe('operations monitoring routes', () => {
     });
 
     expect(unauthorized.statusCode).toBe(401);
+    expect(page.statusCode).toBe(200);
+    expect(page.headers['content-security-policy']).toContain(
+      "default-src 'none'",
+    );
     expect(crossOrigin.statusCode).toBe(403);
     expect(login.statusCode).toBe(200);
     expect(login.headers['set-cookie']).toContain(
@@ -92,7 +110,11 @@ describe('operations monitoring routes', () => {
       app,
       createMonitoringService(),
       new OperationsAccess(undefined),
-      { allowLocalBypass: false, secureCookies: true },
+      {
+        allowLocalBypass: false,
+        assets: operationsAssets,
+        secureCookies: true,
+      },
     );
 
     const response = await app.inject({
@@ -111,7 +133,11 @@ describe('operations monitoring routes', () => {
       app,
       createMonitoringService(),
       new OperationsAccess(undefined),
-      { allowLocalBypass: true, secureCookies: false },
+      {
+        allowLocalBypass: true,
+        assets: operationsAssets,
+        secureCookies: false,
+      },
     );
 
     const response = await app.inject({

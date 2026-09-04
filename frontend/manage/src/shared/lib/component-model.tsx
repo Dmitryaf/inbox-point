@@ -4,7 +4,9 @@ import {
   createComponentProps,
   type ModelOptions,
   type ModelRef,
+  type WithDefaults,
 } from './component-props';
+export type { WithDefaults } from './component-props';
 
 type EventName<Name extends string> =
   Name extends `${infer First}-${infer Rest}`
@@ -29,9 +31,6 @@ export interface ComponentAttributes {
   ref?: React.Ref<unknown>;
   __onModelEvent?: (event: string, ...args: unknown[]) => void;
 }
-export type WithDefaults<Props, Defaults> = Props & {
-  [Key in keyof Props & keyof Defaults]-?: Exclude<Props[Key], undefined>;
-};
 type ModelFactory<Props, State> = (
   props: Props,
   emit: (event: string, ...args: unknown[]) => void,

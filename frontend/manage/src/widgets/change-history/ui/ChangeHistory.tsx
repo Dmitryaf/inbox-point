@@ -2,9 +2,14 @@ import {
   useComponentModel,
   ModelScopeProvider,
 } from '@manage/shared/lib/component-model';
-import { renderList as $renderList } from '@manage/shared/lib/component-view';
+import {
+  classNames as $class,
+  renderList as $renderList,
+} from '@manage/shared/lib/component-view';
 
 import { unref as $unref } from '@manage/shared/lib/model-state';
+
+import { inheritedAttributes } from '@manage/shared/lib/component-attributes';
 
 import {
   formatChangeDate,
@@ -18,6 +23,7 @@ import {
 } from './ChangeHistory.model';
 
 export default function ChangeHistory($incomingProps: ComponentProps) {
+  const $attributes = inheritedAttributes($incomingProps);
   const {
     state: $state,
     props: $props,
@@ -31,7 +37,11 @@ export default function ChangeHistory($incomingProps: ComponentProps) {
 
   return (
     <ModelScopeProvider scope={$scope}>
-      <section aria-labelledby="history-title" className="card">
+      <section
+        {...$attributes}
+        aria-labelledby="history-title"
+        className={$class('card', $attributes.className)}
+      >
         <p className="step">{'История'}</p>
         <h2 id="history-title">{'Предыдущие версии'}</h2>
         {$props.changes.length === 0 ? (

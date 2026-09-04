@@ -1,4 +1,7 @@
-import { customRef, trackModelRead } from './model-state';
+import { customRef, reactive, trackModelRead } from './model-state';
+export type WithDefaults<Props, Defaults> = Props & {
+  [Key in keyof Props & keyof Defaults]-?: Exclude<Props[Key], undefined>;
+};
 
 export interface ModelOptions<Value> {
   required?: boolean;
@@ -8,16 +11,12 @@ export interface ModelRef<Value> {
   value: Value;
 }
 
-export type DefaultedProps<Props, Defaults> = Props & {
-  [Key in keyof Props & keyof Defaults]-?: Exclude<Props[Key], undefined>;
-};
-
 export function createComponentProps<
   Props extends object,
   Defaults extends object,
 >(current: { current: Props }, defaults: Defaults) {
   const fallback = new Map<PropertyKey, unknown>();
-  const props = new Proxy({} as DefaultedProps<Props, Defaults>, {
+  const props = new Proxy({} as WithDefaults<Props, Defaults>, {
     get(_target, key): unknown {
       return trackModelRead(() => {
         const provided: unknown = Reflect.get(current.current, key);
@@ -70,7 +69,10 @@ export function createComponentProps<
         ? (options.default as () => Value)()
         : options.default;
     return customRef(
-      () => (Reflect.get(props, name) ?? ownDefault) as Value,
+      () => {
+        const value = (Reflect.get(props, name) ?? ownDefault) as Value;
+        return value && typeof value === 'object' ? reactive(value) : value;
+      },
       (value) => emit(`${name}Change`, value),
     );
   };

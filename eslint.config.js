@@ -8,7 +8,7 @@ export default tseslint.config(
     files: [
       'frontend/src/**/*.{ts,tsx}',
       'src/**/*.ts',
-      'frontend/manage/src/**/*.{ts,tsx}',
+      'frontend/**/*.{ts,tsx}',
       'tests/**/*.{ts,tsx}',
     ],
     extends: [
@@ -41,10 +41,7 @@ export default tseslint.config(
     },
   },
   {
-    files: [
-      'frontend/manage/src/**/*.{ts,tsx}',
-      'tests/frontend/**/*.{ts,tsx}',
-    ],
+    files: ['frontend/**/*.{ts,tsx}', 'tests/frontend/**/*.{ts,tsx}'],
     rules: {
       'max-lines': [
         'error',
@@ -53,12 +50,24 @@ export default tseslint.config(
     },
   },
   {
-    files: ['src/modules/content-management/**/*.ts'],
+    files: [
+      'src/modules/content-management/**/*.ts',
+      'src/modules/operations-monitoring/**/*.ts',
+    ],
     ignores: ['**/*.test.ts'],
     rules: {
       'max-lines': [
         'error',
         { max: 140, skipBlankLines: true, skipComments: true },
+      ],
+    },
+  },
+  {
+    files: ['frontend/shared/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        { patterns: ['@manage/**', '@ops/**'] },
       ],
     },
   },
@@ -126,6 +135,46 @@ export default tseslint.config(
     },
   },
   {
+    files: ['frontend/ops/src/entities/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            '@ops/features/**',
+            '@ops/widgets/**',
+            '@ops/pages/**',
+            '@ops/app/**',
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['frontend/ops/src/features/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        { patterns: ['@ops/widgets/**', '@ops/pages/**', '@ops/app/**'] },
+      ],
+    },
+  },
+  {
+    files: ['frontend/ops/src/widgets/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        { patterns: ['@ops/pages/**', '@ops/app/**'] },
+      ],
+    },
+  },
+  {
+    files: ['frontend/ops/src/pages/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': ['error', { patterns: ['@ops/app/**'] }],
+    },
+  },
+  {
     files: ['src/modules/content-management/application/**/*.ts'],
     rules: {
       'no-restricted-imports': [
@@ -168,9 +217,23 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    files: ['src/modules/operations-monitoring/application/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            '@/modules/operations-monitoring/presentation/**',
+            '@/modules/operations-monitoring/security/**',
+          ],
+        },
+      ],
+    },
+  },
 
   {
-    files: ['frontend/manage/src/**/*.tsx'],
+    files: ['frontend/*/src/**/*.tsx'],
     rules: {
       curly: ['error', 'all'],
       'max-lines': [

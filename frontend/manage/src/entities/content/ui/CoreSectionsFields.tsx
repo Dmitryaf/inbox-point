@@ -2,8 +2,13 @@ import {
   useComponentModel,
   ModelScopeProvider,
 } from '@manage/shared/lib/component-model';
+import { classNames as $class } from '@manage/shared/lib/component-view';
 
-import { requiredValue as $required } from '@manage/shared/lib/component-bindings';
+import {
+  requiredValue as $required,
+  setProperty as $setProperty,
+} from '@manage/shared/lib/component-bindings';
+import { inheritedAttributes } from '@manage/shared/lib/component-attributes';
 
 import {
   createComponentModel,
@@ -13,6 +18,7 @@ import {
 import { controlledChange as $controlledChange } from '@manage/shared/lib/component-input-event';
 
 export default function CoreSectionsFields($incomingProps: ComponentProps) {
+  const $attributes = inheritedAttributes($incomingProps);
   const { state: $state, scope: $scope } = useComponentModel(
     $incomingProps,
     componentDefaults,
@@ -22,7 +28,10 @@ export default function CoreSectionsFields($incomingProps: ComponentProps) {
   const draft = $state.draft.value;
   return (
     <ModelScopeProvider scope={$scope}>
-      <section className="card">
+      <section
+        {...$attributes}
+        className={$class('card', $attributes.className)}
+      >
         <p className="step">{'Основные разделы'}</p>
         <h2>{'Расписание, цены и адрес'}</h2>
         <details open className="field-group">
@@ -39,8 +48,11 @@ export default function CoreSectionsFields($incomingProps: ComponentProps) {
             rows={5}
             value={draft.schedule ?? ''}
             onChange={$controlledChange<HTMLTextAreaElement>(($event) => {
-              $required($state.draft.value).schedule =
-                $event.currentTarget.value;
+              $setProperty(
+                $required($state.draft.value),
+                'schedule',
+                $event.currentTarget.value,
+              );
             })}
           />
           <p className="counter">
@@ -60,7 +72,11 @@ export default function CoreSectionsFields($incomingProps: ComponentProps) {
             rows={5}
             value={draft.prices ?? ''}
             onChange={$controlledChange<HTMLTextAreaElement>(($event) => {
-              $required($state.draft.value).prices = $event.currentTarget.value;
+              $setProperty(
+                $required($state.draft.value),
+                'prices',
+                $event.currentTarget.value,
+              );
             })}
           />
           <p className="counter">
@@ -80,8 +96,11 @@ export default function CoreSectionsFields($incomingProps: ComponentProps) {
             rows={4}
             value={draft.address ?? ''}
             onChange={$controlledChange<HTMLTextAreaElement>(($event) => {
-              $required($state.draft.value).address =
-                $event.currentTarget.value;
+              $setProperty(
+                $required($state.draft.value),
+                'address',
+                $event.currentTarget.value,
+              );
             })}
           />
           <p className="counter">

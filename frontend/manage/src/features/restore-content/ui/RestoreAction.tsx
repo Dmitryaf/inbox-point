@@ -2,9 +2,11 @@ import {
   useComponentModel,
   ModelScopeProvider,
 } from '@manage/shared/lib/component-model';
+import { classNames as $class } from '@manage/shared/lib/component-view';
 
 import { unref as $unref } from '@manage/shared/lib/model-state';
 import { setModelValue as $set } from '@manage/shared/lib/component-bindings';
+import { inheritedAttributes } from '@manage/shared/lib/component-attributes';
 
 import {
   createComponentModel,
@@ -13,6 +15,7 @@ import {
 } from './RestoreAction.model';
 
 export default function RestoreAction($incomingProps: ComponentProps) {
+  const $attributes = inheritedAttributes($incomingProps);
   const {
     state: $state,
     props: $props,
@@ -23,11 +26,15 @@ export default function RestoreAction($incomingProps: ComponentProps) {
     createComponentModel,
   );
   const { props } = $state;
+
   const confirming = $state.confirming.value;
   return (
     <ModelScopeProvider scope={$scope}>
       {confirming ? (
-        <div className="restore-confirm">
+        <div
+          {...$attributes}
+          className={$class('restore-confirm', $attributes.className)}
+        >
           <p>{'Заменить текущую информацию этой версией?'}</p>
           {$props.hasUnsavedChanges ? (
             <p className="warning-text">
@@ -56,11 +63,12 @@ export default function RestoreAction($incomingProps: ComponentProps) {
         </div>
       ) : (
         <button
+          {...$attributes}
           type="button"
           onClick={() => {
             void $set($state, 'confirming', true);
           }}
-          className="quiet"
+          className={$class('quiet', $attributes.className)}
         >
           {' Восстановить '}
         </button>
