@@ -1,4 +1,8 @@
-import type { ContentDraft } from './types';
+import {
+  informationSectionIds,
+  type ContentDraft,
+  type InformationSectionId,
+} from './types';
 
 export function createEmptyContent(): ContentDraft {
   return {
@@ -7,6 +11,7 @@ export function createEmptyContent(): ContentDraft {
     faq: [],
     prices: '',
     schedule: '',
+    visibleSections: [...informationSectionIds],
   };
 }
 
@@ -20,6 +25,9 @@ export function normalizeContentDraft(
     faq: content.faq?.map((item) => ({ ...item })) ?? [],
     prices: content.prices ?? '',
     schedule: content.schedule ?? '',
+    visibleSections: content.visibleSections
+      ? [...content.visibleSections]
+      : [...informationSectionIds],
   };
 }
 
@@ -29,12 +37,21 @@ export function snapshotContent(content: ContentDraft): string {
 
 export function hasContent(content: ContentDraft): boolean {
   return (
-    Boolean(content.schedule.trim()) ||
-    Boolean(content.prices.trim()) ||
-    Boolean(content.address.trim()) ||
-    content.faq.some((item) => item.question.trim() && item.answer.trim()) ||
+    (isSectionVisible(content, 'schedule') &&
+      Boolean(content.schedule.trim())) ||
+    (isSectionVisible(content, 'prices') && Boolean(content.prices.trim())) ||
+    (isSectionVisible(content, 'address') && Boolean(content.address.trim())) ||
+    (isSectionVisible(content, 'faq') &&
+      content.faq.some((item) => item.question.trim() && item.answer.trim())) ||
     content.customSections.some(
       (section) => section.label.trim() && section.text.trim(),
     )
   );
+}
+
+export function isSectionVisible(
+  content: ContentDraft,
+  section: InformationSectionId,
+): boolean {
+  return content.visibleSections.includes(section);
 }

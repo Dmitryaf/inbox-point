@@ -2,6 +2,7 @@ const sectionNames: Record<string, string> = {
   address: 'адрес',
   customSections: 'дополнительные разделы',
   faq: 'частые вопросы',
+  visibility: 'видимость кнопок',
   prices: 'цены',
   schedule: 'расписание',
 };

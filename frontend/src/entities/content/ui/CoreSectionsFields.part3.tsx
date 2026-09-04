@@ -3,6 +3,8 @@ import {
   setProperty as $setProperty,
 } from '@frontend/shared/lib/component-bindings';
 
+import SectionVisibilityControl from '@frontend/entities/content/ui/SectionVisibilityControl';
+
 import type { createComponentModel } from './CoreSectionsFields.model';
 import { controlledChange as $controlledChange } from '@frontend/shared/lib/component-input-event';
 export function renderCoreSectionsFieldsPart3(
@@ -34,6 +36,18 @@ export function renderCoreSectionsFieldsPart3(
           {draft.address.length}
           {' / 4000'}
         </p>
+        <SectionVisibilityControl
+          contentPresent={Boolean(draft.address.trim())}
+          section="address"
+          modelValue={draft.visibleSections}
+          onModelValueChange={($value) => {
+            $setProperty(
+              $required($state.draft.value),
+              'visibleSections',
+              $value,
+            );
+          }}
+        />
       </details>
     </>
   );

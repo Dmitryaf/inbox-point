@@ -13,10 +13,10 @@ import { controlledChange as $controlledChange } from '@frontend/shared/lib/comp
 export function renderFaqEditorPart1(
   $state: ReturnType<typeof createComponentModel>,
 ) {
-  const items = $state.items.value;
+  const draft = $state.draft.value;
   return (
     <>
-      {$renderList(items, (item, index) => (
+      {$renderList(draft.faq, (item, index) => (
         <fieldset key={index} className="item-card">
           <legend>
             {'Вопрос '}
@@ -56,16 +56,24 @@ export function renderFaqEditorPart1(
               disabled={index === 0}
               type="button"
               onClick={() => {
-                void $unref(moveItem)($state.items.value, index, -1);
+                void $unref(moveItem)(
+                  $required($state.draft.value).faq,
+                  index,
+                  -1,
+                );
               }}
             >
               {' Выше '}
             </button>
             <button
-              disabled={index === items.length - 1}
+              disabled={index === draft.faq.length - 1}
               type="button"
               onClick={() => {
-                void $unref(moveItem)($state.items.value, index, 1);
+                void $unref(moveItem)(
+                  $required($state.draft.value).faq,
+                  index,
+                  1,
+                );
               }}
             >
               {' Ниже '}
@@ -73,7 +81,7 @@ export function renderFaqEditorPart1(
             <button
               type="button"
               onClick={() => {
-                void $required($state.items.value).splice(index, 1);
+                void $required($state.draft.value).faq.splice(index, 1);
               }}
               className="danger"
             >

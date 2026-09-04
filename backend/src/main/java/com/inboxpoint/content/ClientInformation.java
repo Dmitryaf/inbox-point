@@ -47,10 +47,10 @@ public final class ClientInformation {
                 default -> throw new IllegalArgumentException("Unsupported content settings version");
             };
         } catch (NoSuchFileException missing) {
-            state = new State(new Snapshot(Map.of(), List.of(), List.of()), List.of());
+            state = new State(new Snapshot(Map.of(), List.of(), List.of(), null), List.of());
         } catch (IOException | RuntimeException invalid) {
             LoggerFactory.getLogger(ClientInformation.class).warn("Saved client information could not be read");
-            state = new State(new Snapshot(Map.of(), List.of(), List.of()), List.of());
+            state = new State(new Snapshot(Map.of(), List.of(), List.of(), null), List.of());
         }
     }
 
@@ -68,8 +68,10 @@ public final class ClientInformation {
         var fieldNames = new ArrayList<>(FIELDS);
         fieldNames.add("customSections");
         fieldNames.add("faq");
+        fieldNames.add("visibleSections");
         var changed = fieldNames.stream()
                 .filter(name -> !java.util.Objects.equals(previous.content().jsonFields().get(name), next.jsonFields().get(name)))
+                .map(name -> name.equals("visibleSections") ? "visibility" : name)
                 .toList();
         if (changed.isEmpty()) {
             return next.jsonFields();
@@ -99,6 +101,10 @@ public final class ClientInformation {
 
     private static void serialize(tools.jackson.databind.node.ObjectNode payload, Snapshot next) {
         next.standard().forEach(payload::put);
+        if (next.visible() != null) {
+            var fields = payload.putArray("visibleSections");
+            next.visible().forEach(fields::add);
+        }
         if (!next.custom().isEmpty()) {
             var values = payload.putArray("customSections");
             for (var section : next.custom()) {
@@ -117,16 +123,16 @@ public final class ClientInformation {
     public List<String> informationButtons() {
         var current = state.content();
         var buttons = new ArrayList<String>();
-        if (current.standard().containsKey("schedule")) {
+        if (current.standard().containsKey("schedule") && current.includes("schedule")) {
             buttons.add(SCHEDULE);
         }
-        if (current.standard().containsKey("prices")) {
+        if (current.standard().containsKey("prices") && current.includes("prices")) {
             buttons.add(PRICES);
         }
-        if (current.standard().containsKey("address")) {
+        if (current.standard().containsKey("address") && current.includes("address")) {
             buttons.add(ADDRESS);
         }
-        if (!current.faq().isEmpty()) {
+        if (!current.faq().isEmpty() && current.includes("faq")) {
             buttons.add(FAQ);
         }
         return List.copyOf(buttons);
@@ -183,12 +189,12 @@ public final class ClientInformation {
             var sections = new ArrayList<String>();
             for (var section : row.path("sections")) {
                 var key = section.asString("");
-                if (!FIELDS.contains(key) && !List.of("customSections", "faq").contains(key)) {
+                if (!FIELDS.contains(key) && !List.of("customSections", "faq", "visibility").contains(key)) {
                     throw new IllegalArgumentException("Unknown content history section");
                 }
                 sections.add(key);
             }
-            if (sections.isEmpty() || sections.size() > 5) {
+            if (sections.isEmpty() || sections.size() > 6) {
                 throw new IllegalArgumentException("Invalid content history sections");
             }
             var revision = row.path("revision").asInt(0);
@@ -263,10 +269,15 @@ public final class ClientInformation {
                 }
             }
         }
-        return new Snapshot(fields(previous), custom(sections), faq(questions));
+        return new Snapshot(fields(previous), custom(sections), faq(questions), null);
     }
 
-    private record Snapshot(Map<String, String> standard, List<Section> custom, List<Faq> faq) {
+    private record Snapshot(Map<String, String> standard, List<Section> custom, List<Faq> faq,
+            List<String> visible) {
+        boolean includes(String section) {
+            return visible == null || visible.contains(section);
+        }
+
         Map<String, Object> jsonFields() {
             var combined = new LinkedHashMap<String, Object>(standard);
             if (!custom.isEmpty()) {
@@ -275,12 +286,34 @@ public final class ClientInformation {
             if (!faq.isEmpty()) {
                 combined.put("faq", faq);
             }
+            if (visible != null) {
+                combined.put("visibleSections", visible);
+            }
             return Map.copyOf(combined);
         }
     }
 
     private static Snapshot normalize(JsonNode input) {
-                return new Snapshot(fields(input), custom(input.path("customSections")), faq(input.path("faq")));
+                return new Snapshot(fields(input), custom(input.path("customSections")), faq(input.path("faq")),
+                visibility(input.path("visibleSections")));
+    }
+
+    private static List<String> visibility(JsonNode array) {
+        if (array.isMissingNode()) {
+            return null;
+        }
+        if (!array.isArray() || array.size() > 4) {
+            throw new IllegalArgumentException("Invalid section visibility");
+        }
+        var configured = new ArrayList<String>();
+        for (var value : array) {
+            var key = value.asString("");
+            if ((!FIELDS.contains(key) && !"faq".equals(key)) || configured.contains(key)) {
+                throw new IllegalArgumentException("Invalid section visibility");
+            }
+            configured.add(key);
+        }
+        return List.copyOf(configured);
     }
 
     private static List<Section> custom(JsonNode entries) {

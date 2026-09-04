@@ -59,6 +59,21 @@ class ClientInformationTest {
     }
 
     @Test
+    void hidesSectionsWithoutLosingSavedAnswersAndPreservesThatChoice() throws Exception {
+        var database = directory.resolve("visibility.sqlite").toString();
+        var info = new ClientInformation(database);
+        var input = JsonMapper.shared().createObjectNode().put("prices", "150").put("schedule", "Saturday");
+        info.save(input);
+        assertThat(info.informationButtons()).containsExactly("Расписание", "Цены");
+        input.putArray("visibleSections").add("schedule");
+        info.save(input);
+        var restored = new ClientInformation(database);
+        assertThat(restored.informationButtons()).containsExactly("Расписание");
+        assertThat(restored.current()).containsEntry("prices", "150");
+        assertThat(restored.history().getFirst().sections()).containsExactly("visibility");
+    }
+
+    @Test
     void publishesTrimmedAnswersOnlyOnSuccessfulSaveAndRestoresThemAfterRestart() throws Exception {
         var database = directory.resolve("inbox.sqlite").toString();
         var catalog = new ClientInformation(database);

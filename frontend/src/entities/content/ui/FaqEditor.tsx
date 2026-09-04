@@ -5,7 +5,13 @@ import {
 import { classNames as $class } from '@frontend/shared/lib/component-view';
 import { invokeHandler as $invoke } from '@frontend/shared/lib/component-events';
 
+import {
+  requiredValue as $required,
+  setProperty as $setProperty,
+} from '@frontend/shared/lib/component-bindings';
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
+
+import SectionVisibilityControl from './SectionVisibilityControl';
 
 import { renderFaqEditorPart1 } from './FaqEditor.part1';
 import {
@@ -25,7 +31,7 @@ export default function FaqEditor($incomingProps: ComponentProps) {
     createComponentModel,
   );
   const { add } = $state;
-  const items = $state.items.value;
+  const draft = $state.draft.value;
   const $attributes = inheritedAttributes($props);
   return (
     <ModelScopeProvider scope={$scope}>
@@ -39,19 +45,31 @@ export default function FaqEditor($incomingProps: ComponentProps) {
             <h2>{'Частые вопросы'}</h2>
           </div>
           <span>
-            {items.length}
+            {draft.faq.length}
             {' / 20'}
           </span>
         </div>
         <p>{'Вопросы показываются клиенту в этом порядке.'}</p>
-        {items.length === 0 ? (
+        <SectionVisibilityControl
+          contentPresent={draft.faq.length > 0}
+          section="faq"
+          modelValue={draft.visibleSections}
+          onModelValueChange={($value) => {
+            $setProperty(
+              $required($state.draft.value),
+              'visibleSections',
+              $value,
+            );
+          }}
+        />
+        {draft.faq.length === 0 ? (
           <p className="empty">
             {' Вопросов пока нет. Клиенту предложат написать преподавателю. '}
           </p>
         ) : null}
         {renderFaqEditorPart1($state)}
         <button
-          disabled={items.length >= 20}
+          disabled={draft.faq.length >= 20}
           type="button"
           onClick={($event) => {
             $invoke(add, $event);
