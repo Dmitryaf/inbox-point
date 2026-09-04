@@ -22,8 +22,14 @@ export function createComponentModel($props: ResolvedProps) {
     if (props.channel.state === 'poll_failed') {
       return { label: 'Ошибка связи', tone: 'attention' };
     }
+    if (props.channel.state === 'poll_stale') {
+      return { label: 'Нет свежих данных', tone: 'attention' };
+    }
     if (props.channel.state === 'running') {
       return { label: 'Запущен', tone: 'healthy' };
+    }
+    if (props.channel.state === 'starting') {
+      return { label: 'Запускается', tone: 'neutral' };
     }
     return { label: 'Остановлен', tone: 'attention' };
   });

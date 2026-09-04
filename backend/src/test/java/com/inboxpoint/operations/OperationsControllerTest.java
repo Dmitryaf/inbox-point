@@ -49,7 +49,7 @@ class OperationsControllerTest {
                     .GET().build(), HttpResponse.BodyHandlers.ofString());
             assertThat(current.statusCode()).isEqualTo(200);
             var status = JsonMapper.shared().readTree(current.body());
-            assertThat(status.path("state").asString()).isEqualTo("healthy");
+            assertThat(status.path("state").asString()).isEqualTo("attention");
             assertThat(status.at("/channels/vk/configured").asBoolean()).isFalse();
             assertThat(status.at("/deliveries/failed").asLong()).isZero();
         }

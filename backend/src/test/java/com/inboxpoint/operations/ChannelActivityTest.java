@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 
+import com.inboxpoint.telegram.TelegramRuntime;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -24,6 +25,23 @@ class ChannelActivityTest {
         assertThat(recovered.failedSinceSuccess()).isFalse();
         assertThat(recovered.lastFailed()).isEqualTo(failed.lastFailed());
         assertThat(recovered.lastSucceeded()).isEqualTo(time.now);
+    }
+
+    @Test
+    void distinguishesOptionalChannelsFromChannelsWithStaleOrFailedPolling() {
+        var start = Instant.parse("2026-09-01T10:00:00Z");
+        var none = new ChannelActivity.Snapshot(null, null);
+        var configured = new TelegramRuntime.Status(true, true, "environment");
+        assertThat(ChannelState.observe(new TelegramRuntime.Status(false, false, "none"), none, start,
+                start.plusSeconds(130)).ready()).isTrue();
+        assertThat(ChannelState.observe(configured, none, start, start.plusSeconds(30)).state()).isEqualTo("starting");
+        var stale = ChannelState.observe(configured, none, start, start.plusSeconds(130));
+        assertThat(stale.state()).isEqualTo("poll_stale");
+        assertThat(stale.ready()).isFalse();
+        var failed = ChannelState.observe(configured, new ChannelActivity.Snapshot(start.plusSeconds(2), start),
+                start, start.plusSeconds(3));
+        assertThat(failed.ready()).isFalse();
+        assertThat(failed.state()).isEqualTo("poll_failed");
     }
 
     private static final class MutableClock extends Clock {
