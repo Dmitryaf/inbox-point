@@ -7,6 +7,9 @@ import { ContentManagementService } from '@/modules/content-management/applicati
 import { FileContentSettingsStore } from '@/modules/content-management/infrastructure/file-store/file-content-settings-store.js';
 import { registerManagementRoutes } from '@/modules/content-management/presentation/http/routes.js';
 import { ContentManagementAccess } from '@/modules/content-management/security/content-management-access.js';
+import { OperationsMonitoringService } from '@/modules/operations-monitoring/application/operations-monitoring-service.js';
+import { registerOperationsRoutes } from '@/modules/operations-monitoring/presentation/http/routes.js';
+import { OperationsAccess } from '@/modules/operations-monitoring/security/operations-access.js';
 import { SqliteBackupService } from '@/infrastructure/persistence/sqlite-backup-service.js';
 import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-support-repository.js';
 import { FileTelegramSettingsStore } from '@/infrastructure/persistence/telegram-settings-store.js';
@@ -17,6 +20,7 @@ import { VkRuntime } from '@/infrastructure/vk/vk-runtime.js';
 import { VkSetupController } from '@/infrastructure/vk/vk-setup-controller.js';
 
 async function start(): Promise<void> {
+  const startedAt = new Date();
   const config = loadRuntimeConfig(process.env);
   const repository = new SqliteSupportRepository(config.databasePath);
   const backupService = new SqliteBackupService(config.databasePath);
@@ -116,6 +120,20 @@ async function start(): Promise<void> {
         secureCookies: config.nodeEnv === 'production',
       },
     );
+    registerOperationsRoutes(
+      app,
+      new OperationsMonitoringService({
+        deliverySummary: () => repository.getDeliverySummary(),
+        startedAt,
+        telegramStatus: () => setup.status(),
+        vkStatus: () => vkSetup.status(),
+      }),
+      new OperationsAccess(config.operationsAdminPassword),
+      {
+        allowLocalBypass: config.nodeEnv !== 'production',
+        secureCookies: config.nodeEnv === 'production',
+      },
+    );
     const telegramConfig = config.telegram ?? storedTelegram;
     if (telegramConfig) {
       try {
@@ -158,6 +176,13 @@ async function start(): Promise<void> {
       );
     } else {
       app.log.warn('Remote content management is disabled');
+    }
+    if (config.operationsAdminPassword || config.nodeEnv !== 'production') {
+      app.log.info(
+        `Operational status API is available at http://${config.host}:${config.port}/api/ops/status`,
+      );
+    } else {
+      app.log.warn('Remote operational monitoring is disabled');
     }
   } catch (error: unknown) {
     await vkRuntime.stop();

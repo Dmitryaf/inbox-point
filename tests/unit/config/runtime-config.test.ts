@@ -44,6 +44,24 @@ describe('loadRuntimeConfig', () => {
     expect(load).not.toThrowError(/synthetic-admin-password/);
   });
 
+  it('enables remote operational monitoring with a separate password', () => {
+    expect(
+      loadRuntimeConfig({
+        OPS_ADMIN_PASSWORD: 'synthetic-operations-password',
+      }),
+    ).toMatchObject({
+      operationsAdminPassword: 'synthetic-operations-password',
+    });
+
+    const load = (): void => {
+      loadRuntimeConfig({ OPS_ADMIN_PASSWORD: 'short' });
+    };
+    expect(load).toThrowError(
+      'Invalid runtime configuration: OPS_ADMIN_PASSWORD:',
+    );
+    expect(load).not.toThrowError(/synthetic-operations-password/);
+  });
+
   it('enables Telegram only with the required credentials', () => {
     expect(
       loadRuntimeConfig({

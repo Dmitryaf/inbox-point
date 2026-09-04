@@ -1,8 +1,12 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
+import {
+  createSessionCookie,
+  readCookie,
+} from '@/infrastructure/http/session-cookie.js';
 import type { ContentManagementAccess } from '@/modules/content-management/security/content-management-access.js';
-import { type ManagementRouteAccess, readCookie } from './route-access.js';
+import type { ManagementRouteAccess } from './route-access.js';
 
 const passwordSchema = z.object({
   password: z.string().min(1).max(200),
@@ -69,20 +73,4 @@ export function registerManagementSessionRoutes(
       return { authenticated: false };
     },
   );
-}
-
-function createSessionCookie(
-  name: string,
-  value: string,
-  maxAge: number,
-  secure: boolean,
-): string {
-  return [
-    `${name}=${value}`,
-    'Path=/',
-    `Max-Age=${maxAge}`,
-    'HttpOnly',
-    'SameSite=Strict',
-    ...(secure ? ['Secure'] : []),
-  ].join('; ');
 }

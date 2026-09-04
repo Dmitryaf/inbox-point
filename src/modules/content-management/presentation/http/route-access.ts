@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
+import { readCookie } from '@/infrastructure/http/session-cookie.js';
 import type { ContentManagementAccess } from '@/modules/content-management/security/content-management-access.js';
 import type { ManagementAssets } from './assets.js';
 
@@ -83,26 +84,6 @@ export function createManagementRouteAccess(
       }
     },
   };
-}
-
-export function readCookie(
-  header: string | undefined,
-  expectedName: string,
-): string | undefined {
-  if (!header) {
-    return undefined;
-  }
-  for (const part of header.split(';')) {
-    const separator = part.indexOf('=');
-    if (separator < 0) {
-      continue;
-    }
-    const name = part.slice(0, separator).trim();
-    if (name === expectedName) {
-      return part.slice(separator + 1).trim();
-    }
-  }
-  return undefined;
 }
 
 function isManagementUrl(url: string): boolean {
