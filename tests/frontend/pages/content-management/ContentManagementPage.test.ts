@@ -7,7 +7,7 @@ import {
 } from '@test/frontend/support/react-test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import ContentManagementPage from '@manage/pages/content-management/ui/ContentManagementPage';
+import ContentManagementPage from '@frontend/pages/content-management/ui/ContentManagementPage';
 import { requestUrl, response } from '@test/frontend/support/fake-response';
 
 describe('ContentManagementPage', () => {

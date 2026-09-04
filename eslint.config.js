@@ -6,7 +6,7 @@ export default tseslint.config(
   },
   {
     files: [
-      'frontend/src/**/*.{ts,tsx}',
+      'frontend/legacy/src/**/*.{ts,tsx}',
       'src/**/*.ts',
       'frontend/**/*.{ts,tsx}',
       'tests/**/*.{ts,tsx}',
@@ -63,115 +63,66 @@ export default tseslint.config(
     },
   },
   {
-    files: ['frontend/shared/**/*.{ts,tsx}'],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        { patterns: ['@manage/**', '@ops/**'] },
-      ],
-    },
-  },
-  {
-    files: ['frontend/manage/src/shared/**/*.{ts,tsx}'],
+    files: ['frontend/src/shared/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': [
         'error',
         {
           patterns: [
-            '@manage/entities/**',
-            '@manage/features/**',
-            '@manage/widgets/**',
-            '@manage/pages/**',
-            '@manage/app/**',
+            '@frontend/entities/**',
+            '@frontend/features/**',
+            '@frontend/widgets/**',
+            '@frontend/pages/**',
+            '@frontend/app/**',
           ],
         },
       ],
     },
   },
   {
-    files: ['frontend/manage/src/entities/**/*.{ts,tsx}'],
+    files: ['frontend/src/entities/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': [
         'error',
         {
           patterns: [
-            '@manage/features/**',
-            '@manage/widgets/**',
-            '@manage/pages/**',
-            '@manage/app/**',
+            '@frontend/features/**',
+            '@frontend/widgets/**',
+            '@frontend/pages/**',
+            '@frontend/app/**',
           ],
         },
       ],
     },
   },
   {
-    files: ['frontend/manage/src/features/**/*.{ts,tsx}'],
+    files: ['frontend/src/features/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': [
         'error',
         {
           patterns: [
-            '@manage/widgets/**',
-            '@manage/pages/**',
-            '@manage/app/**',
+            '@frontend/widgets/**',
+            '@frontend/pages/**',
+            '@frontend/app/**',
           ],
         },
       ],
     },
   },
   {
-    files: ['frontend/manage/src/widgets/**/*.{ts,tsx}'],
+    files: ['frontend/src/widgets/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': [
         'error',
-        { patterns: ['@manage/pages/**', '@manage/app/**'] },
+        { patterns: ['@frontend/pages/**', '@frontend/app/**'] },
       ],
     },
   },
   {
-    files: ['frontend/manage/src/pages/**/*.{ts,tsx}'],
+    files: ['frontend/src/pages/**/*.{ts,tsx}'],
     rules: {
-      'no-restricted-imports': ['error', { patterns: ['@manage/app/**'] }],
-    },
-  },
-  {
-    files: ['frontend/ops/src/entities/**/*.{ts,tsx}'],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            '@ops/features/**',
-            '@ops/widgets/**',
-            '@ops/pages/**',
-            '@ops/app/**',
-          ],
-        },
-      ],
-    },
-  },
-  {
-    files: ['frontend/ops/src/features/**/*.{ts,tsx}'],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        { patterns: ['@ops/widgets/**', '@ops/pages/**', '@ops/app/**'] },
-      ],
-    },
-  },
-  {
-    files: ['frontend/ops/src/widgets/**/*.{ts,tsx}'],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        { patterns: ['@ops/pages/**', '@ops/app/**'] },
-      ],
-    },
-  },
-  {
-    files: ['frontend/ops/src/pages/**/*.{ts,tsx}'],
-    rules: {
-      'no-restricted-imports': ['error', { patterns: ['@ops/app/**'] }],
+      'no-restricted-imports': ['error', { patterns: ['@frontend/app/**'] }],
     },
   },
   {
@@ -233,7 +184,7 @@ export default tseslint.config(
   },
 
   {
-    files: ['frontend/*/src/**/*.tsx'],
+    files: ['frontend/src/**/*.tsx'],
     rules: {
       curly: ['error', 'all'],
       'max-lines': [

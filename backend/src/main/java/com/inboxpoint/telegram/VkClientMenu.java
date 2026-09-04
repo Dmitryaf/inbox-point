@@ -11,11 +11,7 @@ import com.inboxpoint.vk.VkChannel;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
-import static com.inboxpoint.content.ClientInformation.ADDRESS;
 import static com.inboxpoint.content.ClientInformation.ASK;
-import static com.inboxpoint.content.ClientInformation.FAQ;
-import static com.inboxpoint.content.ClientInformation.PRICES;
-import static com.inboxpoint.content.ClientInformation.SCHEDULE;
 
 final class VkClientMenu {
 
@@ -39,7 +35,7 @@ final class VkClientMenu {
             return true;
         }
         try {
-            api.send(peer, answer, "vk-menu:" + event, keyboard(information.sections()));
+            api.send(peer, answer, "vk-menu:" + event, keyboard());
             return true;
         } catch (IOException failure) {
             store.release("vk:menu", event);
@@ -68,20 +64,21 @@ final class VkClientMenu {
         return null;
     }
 
-    private static JsonNode keyboard(List<ClientInformation.Section> sections) {
+    private JsonNode keyboard() {
         var layout = JsonMapper.shared().createObjectNode().put("inline", false).put("one_time", false);
         var rows = layout.putArray("buttons");
-        for (var labels : List.of(List.of(SCHEDULE, PRICES), List.of(ADDRESS, FAQ), List.of(ASK))) {
+        var standard = information.informationButtons();
+        for (int index = 0; index < standard.size(); index += 2) {
             var row = rows.addArray();
-            for (var label : labels) {
-                row.addObject().put("color", ASK.equals(label) ? "primary" : "secondary").putObject("action")
-                        .put("label", label).put("type", "text");
+            for (var label : standard.subList(index, Math.min(index + 2, standard.size()))) {
+                row.addObject().put("color", "secondary").putObject("action").put("label", label).put("type", "text");
             }
         }
-        for (var section : sections) {
+        for (var section : information.sections()) {
             rows.addArray().addObject().put("color", "secondary").putObject("action")
                     .put("label", section.label()).put("type", "text");
         }
+        rows.addArray().addObject().put("color", "primary").putObject("action").put("label", ASK).put("type", "text");
         return layout;
     }
 }

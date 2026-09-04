@@ -2,19 +2,14 @@ package com.inboxpoint.telegram;
 
 import java.sql.SQLException;
 import java.time.Instant;
-import java.util.List;
 import java.util.Locale;
 
 import com.inboxpoint.content.ClientInformation;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
-import static com.inboxpoint.content.ClientInformation.ADDRESS;
 import static com.inboxpoint.content.ClientInformation.ASK;
-import static com.inboxpoint.content.ClientInformation.FAQ;
-import static com.inboxpoint.content.ClientInformation.PRICES;
 import static com.inboxpoint.content.ClientInformation.RESET;
-import static com.inboxpoint.content.ClientInformation.SCHEDULE;
 
 final class TelegramClientMenu {
     private static final String SOURCE = "telegram:menu";
@@ -47,7 +42,7 @@ final class TelegramClientMenu {
                 api.closeTopic(group, active.topic());
                 store.changeStatus(active.id(), false, now);
             }
-            api.sendMessage(chat, null, response, keyboard(information.sections()));
+            api.sendMessage(chat, null, response, keyboard());
         } catch (TelegramBotApi.RequestFailed failure) {
             if (!failure.outcomeUnknown()) {
                 store.release(SOURCE, event);
@@ -83,19 +78,22 @@ final class TelegramClientMenu {
         return null;
     }
 
-    private static JsonNode keyboard(List<ClientInformation.Section> sections) {
+    private JsonNode keyboard() {
         var markup = JsonMapper.shared().createObjectNode().put("resize_keyboard", true)
                 .put("is_persistent", true).put("input_field_placeholder", "Выберите действие");
         var rows = markup.putArray("keyboard");
-        for (var buttons : List.of(List.of(SCHEDULE, PRICES), List.of(ADDRESS, FAQ), List.of(ASK), List.of(RESET))) {
+        var standard = information.informationButtons();
+        for (int index = 0; index < standard.size(); index += 2) {
             var row = rows.addArray();
-            for (var button : buttons) {
-                row.addObject().put("text", button);
+            for (var label : standard.subList(index, Math.min(index + 2, standard.size()))) {
+                row.addObject().put("text", label);
             }
         }
-        for (var section : sections) {
+        for (var section : information.sections()) {
             rows.addArray().addObject().put("text", section.label());
         }
+        rows.addArray().addObject().put("text", ASK);
+        rows.addArray().addObject().put("text", RESET);
         return markup;
     }
 }

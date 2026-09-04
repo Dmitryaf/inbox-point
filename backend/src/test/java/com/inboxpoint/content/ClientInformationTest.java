@@ -63,12 +63,14 @@ class ClientInformationTest {
         var database = directory.resolve("inbox.sqlite").toString();
         var catalog = new ClientInformation(database);
         assertThat(catalog.resolve("Расписание")).startsWith("Расписание пока не добавлено");
+        assertThat(catalog.informationButtons()).isEmpty();
         var json = JsonMapper.shared();
         assertThat(catalog.save(json.createObjectNode().put("schedule", "  По субботам  ").put("prices", "")))
                 .containsEntry("schedule", "По субботам").doesNotContainKey("prices");
         assertThatThrownBy(() -> catalog.save(json.createObjectNode().put("schedule", "x".repeat(4001))))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThat(catalog.resolve("Расписание")).contains("• По субботам");
+        assertThat(catalog.informationButtons()).containsExactly("Расписание");
         assertThat(new ClientInformation(database).resolve("Расписание")).contains("• По субботам");
     }
 }

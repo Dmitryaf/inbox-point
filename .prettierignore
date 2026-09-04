@@ -4,6 +4,7 @@ AGENTS.md
 coverage/
 dist/
 node_modules/
+.tmp/
 package-lock.json
 
 /backend/target/

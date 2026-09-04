@@ -114,6 +114,24 @@ public final class ClientInformation {
 
     }
 
+    public List<String> informationButtons() {
+        var current = state.content();
+        var buttons = new ArrayList<String>();
+        if (current.standard().containsKey("schedule")) {
+            buttons.add(SCHEDULE);
+        }
+        if (current.standard().containsKey("prices")) {
+            buttons.add(PRICES);
+        }
+        if (current.standard().containsKey("address")) {
+            buttons.add(ADDRESS);
+        }
+        if (!current.faq().isEmpty()) {
+            buttons.add(FAQ);
+        }
+        return List.copyOf(buttons);
+    }
+
     public String resolve(String label) {
         var snapshot = state.content();
         if (FAQ.equals(label) || "faq".equalsIgnoreCase(label)) {

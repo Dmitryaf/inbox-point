@@ -1,6 +1,7 @@
 package com.inboxpoint.operations;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
@@ -59,13 +60,18 @@ final class StaticFrontend {
                     + "connect-src 'self'; frame-ancestors 'none'");
         }
         var asset = ASSETS.get(route);
-        var root = operations ? frontend.resolveSibling("ops") : content ? frontend.resolveSibling("manage") : frontend;
+        var root = operations || content ? frontend : frontend.resolveSibling("legacy");
         var file = root.resolve(asset.file());
         if (!Files.isRegularFile(file)) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok().contentType(MediaType.parseMediaType(asset.contentType()))
-                .body(Files.readAllBytes(file));
+        byte[] body = Files.readAllBytes(file);
+        if ((operations || content) && "index.html".equals(asset.file())) {
+            var prefix = operations ? "/ops/" : "/manage/";
+            body = new String(body, StandardCharsets.UTF_8).replace("=\"./", "=\"" + prefix)
+                    .getBytes(StandardCharsets.UTF_8);
+        }
+        return ResponseEntity.ok().contentType(MediaType.parseMediaType(asset.contentType())).body(body);
     }
 
     private record Asset(String file, String contentType) { }

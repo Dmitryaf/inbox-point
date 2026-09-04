@@ -8,12 +8,10 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
-      '@frontend': fileURLToPath(new URL('./frontend', import.meta.url)),
-      '@manage': fileURLToPath(
-        new URL('./frontend/manage/src', import.meta.url),
+      '@frontend': fileURLToPath(new URL('./frontend/src', import.meta.url)),
+      '@legacy': fileURLToPath(
+        new URL('./frontend/legacy/src', import.meta.url),
       ),
-      '@ops': fileURLToPath(new URL('./frontend/ops/src', import.meta.url)),
-      '@legacy': fileURLToPath(new URL('./frontend/src', import.meta.url)),
       '@test': fileURLToPath(new URL('./tests', import.meta.url)),
     },
   },
