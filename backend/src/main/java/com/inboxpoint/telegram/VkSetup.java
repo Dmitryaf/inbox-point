@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.sql.SQLException;
 import java.time.Duration;
 
+import com.inboxpoint.operations.ChannelActivity;
 import com.inboxpoint.persistence.LocalJsonFile;
 import com.inboxpoint.vk.VkChannel;
 import org.slf4j.LoggerFactory;
@@ -18,6 +19,7 @@ final class VkSetup {
     private final Environment environment;
     private final Path path;
     private final URI origin;
+    private final ChannelActivity activity = new ChannelActivity();
     private volatile VkChannel channel;
     private Thread poller;
     private String source = "none";
@@ -87,7 +89,7 @@ final class VkSetup {
         channel = client;
         poller = Thread.ofVirtual().name("vk-handoff").start(() -> {
             try {
-                client.poll(group, timeout, sink);
+                client.poll(group, timeout, sink, activity);
             } catch (InterruptedException stopping) {
                 Thread.currentThread().interrupt();
             } catch (IOException | SQLException failure) {
@@ -105,6 +107,10 @@ final class VkSetup {
     synchronized TelegramRuntime.Status status() {
         var connected = poller != null && poller.isAlive();
         return new TelegramRuntime.Status(connected, "environment".equals(source) || channel != null, source);
+    }
+
+    ChannelActivity.Snapshot pollActivity() {
+        return activity.snapshot();
     }
 
     VkChannel channel() {

@@ -16,7 +16,6 @@ import {
 import { controlledChange as $controlledChange } from '@manage/shared/lib/component-input-event';
 
 export default function LoginForm($incomingProps: ComponentProps) {
-  const $attributes = inheritedAttributes($incomingProps);
   const {
     state: $state,
     props: $props,
@@ -27,8 +26,8 @@ export default function LoginForm($incomingProps: ComponentProps) {
     createComponentModel,
   );
   const { submit } = $state;
-
   const password = $state.password.value;
+  const $attributes = inheritedAttributes($props);
   return (
     <ModelScopeProvider scope={$scope}>
       <form

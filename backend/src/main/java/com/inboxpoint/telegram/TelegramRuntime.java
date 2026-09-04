@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.inboxpoint.content.ClientInformation;
+import com.inboxpoint.operations.ChannelActivity;
 import com.inboxpoint.persistence.LocalJsonFile;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.LoggerFactory;
@@ -39,6 +40,7 @@ public final class TelegramRuntime {
     private Thread poller;
     private Thread deliveries;
     private final VkSetup vk;
+    private final ChannelActivity activity = new ChannelActivity();
     private volatile Settings live;
     private String source = NONE;
 
@@ -132,6 +134,14 @@ public final class TelegramRuntime {
         vk.restore(this::receiveVk);
     }
 
+    public ChannelActivity.Snapshot vkPolling() {
+        return vk.pollActivity();
+    }
+
+    public ChannelActivity.Snapshot telegramPolling() {
+        return activity.snapshot();
+    }
+
     public Status vkStatus() {
         return vk.status();
     }
@@ -221,7 +231,7 @@ public final class TelegramRuntime {
         try (var store = new TelegramStore(database); var transport = TelegramHttpTransport.open("", API_TIMEOUT)) {
             var api = new TelegramBotApi(transport, origin, token, API_TIMEOUT);
             var handoff = new TelegramTextHandoff(group, store, api, Clock.systemUTC(), information, queue);
-            new TelegramPoller(api, handoff, timeout).run();
+            new TelegramPoller(api, handoff, timeout, activity).run();
         } catch (InterruptedException stopping) {
             Thread.currentThread().interrupt();
         } catch (IOException | SQLException failure) {

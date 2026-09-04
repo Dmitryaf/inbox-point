@@ -23,3 +23,13 @@ export function connectionSourceLabel(source: ConnectionSource): string {
   }
   return 'Не настроен';
 }
+
+export function formatStatusTime(value: string | undefined): string {
+  if (!value) {
+    return 'Ещё не было';
+  }
+  return new Intl.DateTimeFormat('ru-RU', {
+    dateStyle: 'short',
+    timeStyle: 'medium',
+  }).format(new Date(value));
+}

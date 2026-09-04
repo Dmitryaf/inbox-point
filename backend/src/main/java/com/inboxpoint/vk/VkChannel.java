@@ -6,6 +6,7 @@ import java.net.http.HttpClient;
 import java.sql.SQLException;
 import java.time.Duration;
 
+import com.inboxpoint.operations.ChannelActivity;
 import tools.jackson.databind.JsonNode;
 
 public final class VkChannel implements AutoCloseable {
@@ -36,7 +37,7 @@ public final class VkChannel implements AutoCloseable {
         initial = api.open(group);
     }
 
-    public void poll(long group, int timeout, Incoming sink) throws IOException, SQLException, InterruptedException {
+    public void poll(long group, int timeout, Incoming sink, ChannelActivity activity) throws IOException, SQLException, InterruptedException {
         var server = initial == null ? api.open(group) : initial;
         var cursor = server.initialCursor();
         while (!Thread.currentThread().isInterrupted()) {
@@ -60,6 +61,7 @@ public final class VkChannel implements AutoCloseable {
                             }
                         }
                         cursor = batch.cursor();
+                        activity.succeeded();
                     }
                     case VkApiClient.Recovery recovery -> {
                         if (recovery.code() == 1 && recovery.cursor() != null) {
@@ -73,6 +75,7 @@ public final class VkChannel implements AutoCloseable {
                     }
                 }
             } catch (IOException failure) {
+                activity.failed();
                 Thread.sleep(Duration.ofSeconds(1));
             }
         }

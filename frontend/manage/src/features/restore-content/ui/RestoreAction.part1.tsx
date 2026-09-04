@@ -1,0 +1,67 @@
+import { classNames as $class } from '@manage/shared/lib/component-view';
+
+import { unref as $unref } from '@manage/shared/lib/model-state';
+import { setModelValue as $set } from '@manage/shared/lib/component-bindings';
+import { inheritedAttributes } from '@manage/shared/lib/component-attributes';
+
+import type { WithDefaults } from '@manage/shared/lib/component-model';
+import type {
+  createComponentModel,
+  ComponentProps,
+  componentDefaults,
+} from './RestoreAction.model';
+export function renderRestoreActionPart1(
+  $state: ReturnType<typeof createComponentModel>,
+  $props: WithDefaults<ComponentProps, typeof componentDefaults>,
+) {
+  const { props } = $state;
+  const confirming = $state.confirming.value;
+  const $attributes = inheritedAttributes($props);
+  return (
+    <>
+      {confirming ? (
+        <div
+          {...$attributes}
+          className={$class('restore-confirm', $attributes.className)}
+        >
+          <p>{'Заменить текущую информацию этой версией?'}</p>
+          {$props.hasUnsavedChanges ? (
+            <p className="warning-text">
+              {' Несохранённые изменения будут потеряны. '}
+            </p>
+          ) : null}
+          <button
+            disabled={$props.pending}
+            type="button"
+            onClick={() => {
+              void $unref($state.emit)('restore', props.revision);
+            }}
+          >
+            {$props.pending ? 'Восстанавливаем…' : 'Да, восстановить'}
+          </button>
+          <button
+            disabled={$props.pending}
+            type="button"
+            onClick={() => {
+              void $set($state, 'confirming', false);
+            }}
+            className="quiet"
+          >
+            {' Отмена '}
+          </button>
+        </div>
+      ) : (
+        <button
+          {...$attributes}
+          type="button"
+          onClick={() => {
+            void $set($state, 'confirming', true);
+          }}
+          className={$class('quiet', $attributes.className)}
+        >
+          {' Восстановить '}
+        </button>
+      )}
+    </>
+  );
+}

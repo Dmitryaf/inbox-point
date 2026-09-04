@@ -83,12 +83,12 @@ final class OperationsController {
             return message(401, "Введите пароль мониторинга.");
         }
         try {
-            var telegram = channel(runtime.status());
-            var vk = channel(runtime.vkStatus());
+            var telegram = channel(runtime.status(), runtime.telegramPolling());
+            var vk = channel(runtime.vkStatus(), runtime.vkPolling());
             var now = Instant.now();
             var delivery = runtime.deliveryCounts();
             boolean attention = delivery.get("failed") > 0
-                    || telegram.configured() && !telegram.running() || vk.configured() && !vk.running();
+                    || telegram.needsAttention() || vk.needsAttention();
             return ResponseEntity.ok(Map.of(
                     "state", attention ? "attention" : "healthy",
                     "channels", Map.of("telegram", telegram, "vk", vk),
@@ -99,13 +99,24 @@ final class OperationsController {
         }
     }
 
-    private static Channel channel(TelegramRuntime.Status status) {
-        return new Channel(!status.source().equals("none"), status.connected(), status.source());
+    private static Channel channel(TelegramRuntime.Status setup, ChannelActivity.Snapshot polling) {
+        var configured = !setup.source().equals("none");
+        var state = !configured ? "not_configured" : !setup.connected() ? "stopped"
+                : polling.failedSinceSuccess() ? "poll_failed" : "running";
+        return new Channel(configured, setup.connected(), setup.source(), state,
+                polling.lastFailed() == null ? null : polling.lastFailed().toString(),
+                polling.lastSucceeded() == null ? null : polling.lastSucceeded().toString());
     }
 
     private static ResponseEntity<Map<String, String>> message(int status, String text) {
         return ResponseEntity.status(status).body(Map.of("message", text));
     }
 
-    private record Channel(boolean configured, boolean running, String source) { }
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    private record Channel(boolean configured, boolean running, String source, String state,
+            String lastFailedPollAt, String lastSuccessfulPollAt) {
+        boolean needsAttention() {
+            return "stopped".equals(state) || "poll_failed".equals(state);
+        }
+    }
 }

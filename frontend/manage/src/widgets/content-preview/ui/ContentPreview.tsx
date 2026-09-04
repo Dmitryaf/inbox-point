@@ -2,13 +2,11 @@ import {
   useComponentModel,
   ModelScopeProvider,
 } from '@manage/shared/lib/component-model';
-import {
-  classNames as $class,
-  renderList as $renderList,
-} from '@manage/shared/lib/component-view';
+import { classNames as $class } from '@manage/shared/lib/component-view';
 
 import { inheritedAttributes } from '@manage/shared/lib/component-attributes';
 
+import { renderContentPreviewPart1 } from './ContentPreview.part1';
 import {
   createComponentModel,
   componentDefaults,
@@ -16,7 +14,6 @@ import {
 } from './ContentPreview.model';
 
 export default function ContentPreview($incomingProps: ComponentProps) {
-  const $attributes = inheritedAttributes($incomingProps);
   const {
     state: $state,
     props: $props,
@@ -26,8 +23,7 @@ export default function ContentPreview($incomingProps: ComponentProps) {
     componentDefaults,
     createComponentModel,
   );
-
-  const visible = $state.visible.value;
+  const $attributes = inheritedAttributes($props);
   return (
     <ModelScopeProvider scope={$scope}>
       <section
@@ -37,53 +33,7 @@ export default function ContentPreview($incomingProps: ComponentProps) {
       >
         <p className="step">{'Предпросмотр'}</p>
         <h2 id="preview-title">{'Что увидит клиент'}</h2>
-        {!visible ? (
-          <p className="empty">
-            {' Заполните разделы — здесь появится будущий ответ. '}
-          </p>
-        ) : (
-          <>
-            {$props.content.schedule.trim() ? (
-              <div>
-                <h3>{'Расписание'}</h3>
-                <p className="preserve">{$props.content.schedule}</p>
-              </div>
-            ) : null}
-            {$props.content.prices.trim() ? (
-              <div>
-                <h3>{'Цены'}</h3>
-                <p className="preserve">{$props.content.prices}</p>
-              </div>
-            ) : null}
-            {$props.content.address.trim() ? (
-              <div>
-                <h3>{'Адрес'}</h3>
-                <p className="preserve">{$props.content.address}</p>
-              </div>
-            ) : null}
-            {$props.content.faq.length ? (
-              <div>
-                <h3>{'Частые вопросы'}</h3>
-                <dl>
-                  {$renderList($props.content.faq, (item) => (
-                    <>
-                      <dt>{item.question || 'Вопрос без названия'}</dt>
-                      <dd>{item.answer || 'Ответ ещё не заполнен'}</dd>
-                    </>
-                  ))}
-                </dl>
-              </div>
-            ) : null}
-            {$renderList($props.content.customSections, (section, index) => (
-              <div key={index}>
-                <h3>{section.label || 'Раздел без названия'}</h3>
-                <p className="preserve">
-                  {section.text || 'Текст ещё не заполнен'}
-                </p>
-              </div>
-            ))}
-          </>
-        )}
+        {renderContentPreviewPart1($state, $props)}
       </section>
     </ModelScopeProvider>
   );

@@ -20,10 +20,18 @@ describe('OperationsDashboardPage', () => {
             channels: {
               telegram: {
                 configured: true,
+                lastSuccessfulPollAt: '2026-09-04T12:00:30.000Z',
                 running: true,
                 source: 'environment',
+                state: 'running',
               },
-              vk: { configured: true, running: false, source: 'local' },
+              vk: {
+                configured: true,
+                lastFailedPollAt: '2026-09-04T12:00:45.000Z',
+                running: false,
+                source: 'local',
+                state: 'poll_failed',
+              },
             },
             deliveries: { failed: 2, pending: 3 },
             observedAt: '2026-09-04T12:01:00.000Z',
@@ -42,8 +50,10 @@ describe('OperationsDashboardPage', () => {
     const statusCards = wrapper.findAll('.status-card');
     expect(statusCards[0]?.text()).toContain('Telegram');
     expect(statusCards[0]?.text()).toContain('Запущен');
+    expect(statusCards[0]?.text()).toContain('Последняя успешная проверка');
     expect(statusCards[1]?.text()).toContain('VK');
-    expect(statusCards[1]?.text()).toContain('Остановлен');
+    expect(statusCards[1]?.text()).toContain('Ошибка связи');
+    expect(statusCards[1]?.text()).toContain('Последняя ошибка связи');
     expect(statusCards[2]?.text()).toContain('Ожидают отправки3');
     expect(statusCards[2]?.text()).toContain('Не доставлены2');
 

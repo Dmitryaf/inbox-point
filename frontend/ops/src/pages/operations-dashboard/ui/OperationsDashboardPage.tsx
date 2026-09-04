@@ -3,17 +3,12 @@ import {
   ModelScopeProvider,
 } from '@ops/shared/lib/component-model';
 import { classNames as $class } from '@ops/shared/lib/component-view';
-import {
-  invokeHandler as $invoke,
-  invokeArgs as $invokeArgs,
-} from '@ops/shared/lib/component-events';
+import { invokeHandler as $invoke } from '@ops/shared/lib/component-events';
 import { unref as $unref } from '@ops/shared/lib/model-state';
-import { requiredValue as $required } from '@ops/shared/lib/component-bindings';
+
 import { inheritedAttributes } from '@ops/shared/lib/component-attributes';
 
-import OperationsLoginForm from '@ops/features/authenticate/ui/OperationsLoginForm';
-
-import OperationsOverview from '@ops/widgets/operations-overview/ui/OperationsOverview';
+import { renderOperationsDashboardPagePart1 } from './OperationsDashboardPage.part1';
 import {
   createComponentModel,
   componentDefaults,
@@ -23,16 +18,18 @@ import {
 export default function OperationsDashboardPage(
   $incomingProps: ComponentProps,
 ) {
-  const $attributes = inheritedAttributes($incomingProps);
-  const { state: $state, scope: $scope } = useComponentModel(
+  const {
+    state: $state,
+    props: $props,
+    scope: $scope,
+  } = useComponentModel(
     $incomingProps,
     componentDefaults,
     createComponentModel,
   );
-  const { logout, authenticate } = $state;
+  const { logout } = $state;
   const session = $unref($state.session);
-  const operations = $unref($state.operations);
-
+  const $attributes = inheritedAttributes($props);
   return (
     <ModelScopeProvider scope={$scope}>
       <main
@@ -64,46 +61,7 @@ export default function OperationsDashboardPage(
             {session.error.value}
           </p>
         ) : null}
-        {session.booting.value ? (
-          <section className="card loading-card">
-            <p>{'Проверяем доступ…'}</p>
-          </section>
-        ) : !session.authenticated.value ? (
-          <OperationsLoginForm
-            pending={session.pending.value}
-            onSubmit={(...$args) => {
-              $invokeArgs(authenticate, $args);
-            }}
-          />
-        ) : (
-          <>
-            <div className="toolbar">
-              <p>{'Состояние обновляется автоматически каждые 30 секунд.'}</p>
-              <button
-                disabled={operations.loading.value}
-                type="button"
-                onClick={($event) => {
-                  $invoke($required($unref($state.operations)).refresh, $event);
-                }}
-                className="secondary-button"
-              >
-                {operations.loading.value ? 'Обновляем…' : 'Обновить'}
-              </button>
-            </div>
-            {operations.error.value ? (
-              <p role="alert" className="message message--error">
-                {operations.error.value}
-              </p>
-            ) : null}
-            {operations.status.value ? (
-              <OperationsOverview status={operations.status.value} />
-            ) : (
-              <section className="card loading-card">
-                <p>{'Получаем состояние сервиса…'}</p>
-              </section>
-            )}
-          </>
-        )}
+        {renderOperationsDashboardPagePart1($state)}
       </main>
     </ModelScopeProvider>
   );
