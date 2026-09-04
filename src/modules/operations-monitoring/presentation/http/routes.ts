@@ -1,9 +1,9 @@
 import type { FastifyInstance } from 'fastify';
 
+import { loadFrontendAssets } from '@/infrastructure/http/frontend-assets.js';
 import type { OperationsMonitoringService } from '@/modules/operations-monitoring/application/operations-monitoring-service.js';
 import type { OperationsAccess } from '@/modules/operations-monitoring/security/operations-access.js';
 import { registerOperationsAssetRoutes } from './asset-routes.js';
-import { loadOperationsAssets } from './assets.js';
 import {
   createOperationsRouteAccess,
   type OperationsRouteOptions,
@@ -18,7 +18,7 @@ export function registerOperationsRoutes(
   options: OperationsRouteOptions,
 ): void {
   const routeAccess = createOperationsRouteAccess(app, access, options);
-  const assets = options.assets ?? loadOperationsAssets();
+  const assets = options.assets ?? loadFrontendAssets('/ops');
 
   registerOperationsAssetRoutes(app, routeAccess, assets);
   registerOperationsSessionRoutes(

@@ -1,12 +1,8 @@
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
 import {
-  addressButton,
   ClientInformationCatalog,
   type ClientInformationResolver,
-  faqButton,
   newQuestionButton,
-  pricesButton,
-  scheduleButton,
   teacherButton,
 } from '@/core/application/client-information.js';
 
@@ -171,25 +167,34 @@ function resolveMenuResponse(
 function createMainMenu(
   information: ClientInformationResolver,
 ): TelegramReplyKeyboard {
+  const informationRows = createButtonRows(
+    information.getInformationButtons().map((text) => ({ text })),
+  );
   const customButtons = information
     .getCustomSections()
     .map((section) => ({ text: section.label }));
-  const customRows: { text: string }[][] = [];
-  for (let index = 0; index < customButtons.length; index += 2) {
-    customRows.push(customButtons.slice(index, index + 2));
-  }
+  const customRows = createButtonRows(customButtons);
   return {
     input_field_placeholder: 'Выберите действие',
     is_persistent: true,
     keyboard: [
-      [{ text: scheduleButton }, { text: pricesButton }],
-      [{ text: addressButton }, { text: faqButton }],
+      ...informationRows,
       ...customRows,
       [{ text: teacherButton }],
       [{ text: newQuestionButton }],
     ],
     resize_keyboard: true,
   };
+}
+
+function createButtonRows(
+  buttons: readonly { text: string }[],
+): { text: string }[][] {
+  const rows: { text: string }[][] = [];
+  for (let index = 0; index < buttons.length; index += 2) {
+    rows.push(buttons.slice(index, index + 2));
+  }
+  return rows;
 }
 
 function parseCommand(text: string): string | undefined {

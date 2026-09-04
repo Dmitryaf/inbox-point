@@ -1,12 +1,12 @@
 import type { FastifyInstance } from 'fastify';
 
-import type { OperationsAssets } from './assets.js';
+import type { FrontendAssets } from '@/infrastructure/http/frontend-assets.js';
 import type { OperationsRouteAccess } from './route-access.js';
 
 export function registerOperationsAssetRoutes(
   app: FastifyInstance,
   access: OperationsRouteAccess,
-  assets: OperationsAssets,
+  assets: FrontendAssets,
 ): void {
   app.get(
     '/ops',

@@ -162,13 +162,13 @@ describe('VK handoff integration', () => {
     });
   });
 
-  it('shows information buttons without opening or extending a request', async () => {
+  it('hides empty information buttons without blocking typed labels', async () => {
     await router.route(createMessageEvent({ text: 'Начать' }));
     await router.route(createMessageEvent({ text: 'Начать' }));
 
     expect(inbox.opened).toHaveLength(0);
     expect(gateway.sent).toHaveLength(1);
-    expect(gateway.sent[0]?.keyboard?.buttons.flat()).toHaveLength(5);
+    expect(gateway.sent[0]?.keyboard?.buttons.flat()).toHaveLength(1);
 
     await router.route(
       createMessageEvent({

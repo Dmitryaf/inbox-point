@@ -1,15 +1,15 @@
 import {
-  addressButton,
   ClientInformationCatalog,
   type ClientInformationResolver,
-  faqButton,
-  pricesButton,
-  scheduleButton,
   teacherButton,
 } from '@/core/application/client-information.js';
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
 
-import type { VkGateway, VkKeyboard } from './vk-api-client.js';
+import type {
+  VkGateway,
+  VkKeyboard,
+  VkKeyboardButton,
+} from './vk-api-client.js';
 import { createVkRandomId } from './vk-random-id.js';
 
 export interface VkMenuMessage {
@@ -70,22 +70,32 @@ export class VkClientMenu implements VkClientMenuHandler {
 export function createVkMainKeyboard(
   information: ClientInformationResolver = new ClientInformationCatalog(),
 ): VkKeyboard {
+  const informationButtons = information
+    .getInformationButtons()
+    .map((label, index) => createButton(label, 'information-' + index));
+  const informationRows = createButtonRows(informationButtons);
   const customRows = information
     .getCustomSections()
     .map((section, index) => [createButton(section.label, 'custom-' + index)]);
   return {
     buttons: [
-      [
-        createButton(scheduleButton, 'schedule'),
-        createButton(pricesButton, 'prices'),
-      ],
-      [createButton(addressButton, 'address'), createButton(faqButton, 'faq')],
+      ...informationRows,
       ...customRows,
       [createButton(teacherButton, 'teacher', 'primary')],
     ],
     inline: false,
     one_time: false,
   };
+}
+
+function createButtonRows(
+  buttons: readonly VkKeyboardButton[],
+): VkKeyboardButton[][] {
+  const rows: VkKeyboardButton[][] = [];
+  for (let index = 0; index < buttons.length; index += 2) {
+    rows.push(buttons.slice(index, index + 2));
+  }
+  return rows;
 }
 
 function resolveMenuResponse(

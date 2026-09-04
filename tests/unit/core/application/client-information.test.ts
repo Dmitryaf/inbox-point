@@ -9,6 +9,21 @@ import {
 } from '@/core/application/client-information.js';
 
 describe('client information', () => {
+  it('lists only information buttons with configured content', () => {
+    const catalog = new ClientInformationCatalog({
+      address: 'Main street, 1',
+      faq: [
+        {
+          answer: 'Напишите преподавателю.',
+          question: 'Как записаться?',
+        },
+      ],
+    });
+
+    expect(catalog.getInformationButtons()).toEqual([addressButton, faqButton]);
+    expect(new ClientInformationCatalog().getInformationButtons()).toEqual([]);
+  });
+
   it.each([
     [scheduleButton, 'Расписание'],
     [pricesButton, 'ценах'],

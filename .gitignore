@@ -11,6 +11,7 @@ PROJECT_PLAN.md
 node_modules/
 dist/
 coverage/
+.tmp/
 
 data/
 *.db

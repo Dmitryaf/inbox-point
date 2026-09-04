@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import type { FastifyInstance } from 'fastify';
 
 export function registerFrontendRoutes(app: FastifyInstance): void {
-  const root = resolve('dist/frontend');
+  const root = resolve('dist/legacy');
   app.get('/', async (_, reply) =>
     reply
       .type('text/html; charset=utf-8')

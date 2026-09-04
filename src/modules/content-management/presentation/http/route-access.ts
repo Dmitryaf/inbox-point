@@ -1,12 +1,12 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
+import type { FrontendAssets } from '@/infrastructure/http/frontend-assets.js';
 import { readCookie } from '@/infrastructure/http/session-cookie.js';
 import type { ContentManagementAccess } from '@/modules/content-management/security/content-management-access.js';
-import type { ManagementAssets } from './assets.js';
 
 export interface ManagementRouteOptions {
   allowLocalBypass: boolean;
-  assets?: ManagementAssets;
+  assets?: FrontendAssets;
   secureCookies: boolean;
 }
 

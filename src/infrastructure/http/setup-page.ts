@@ -126,6 +126,6 @@ button {
 `;
 
 export const setupPageScript = readFileSync(
-  resolve('dist/frontend/app.js'),
+  resolve('dist/legacy/app.js'),
   'utf8',
 );

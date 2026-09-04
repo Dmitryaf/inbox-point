@@ -44,6 +44,7 @@ export interface FaqItem {
 }
 
 export interface ClientInformationResolver {
+  getInformationButtons(): readonly string[];
   getCustomSections(): readonly CustomInformationSection[];
   resolve(text: string): string | undefined;
 }
@@ -63,6 +64,23 @@ export class ClientInformationCatalog implements ClientInformationResolver {
     return (
       this.content.customSections?.map((section) => ({ ...section })) ?? []
     );
+  }
+
+  public getInformationButtons(): readonly string[] {
+    const buttons: string[] = [];
+    if (this.content.schedule?.trim()) {
+      buttons.push(scheduleButton);
+    }
+    if (this.content.prices?.trim()) {
+      buttons.push(pricesButton);
+    }
+    if (this.content.address?.trim()) {
+      buttons.push(addressButton);
+    }
+    if (this.content.faq?.length) {
+      buttons.push(faqButton);
+    }
+    return buttons;
   }
 
   public replace(content: ClientInformationContent): void {

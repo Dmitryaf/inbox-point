@@ -5,6 +5,8 @@ import { HandoffService } from '@/core/application/handoff-service.js';
 import {
   ClientInformationCatalog,
   faqButton,
+  newQuestionButton,
+  teacherButton,
 } from '@/core/application/client-information.js';
 import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-support-repository.js';
 
@@ -187,6 +189,14 @@ describe('Telegram handoff integration', () => {
         resize_keyboard: true,
       },
     });
+    const initialMenu = gateway.sent[0]?.replyMarkup;
+    if (!initialMenu || !('keyboard' in initialMenu)) {
+      throw new Error('Expected a reply keyboard');
+    }
+    expect(initialMenu.keyboard.flat().map((button) => button.text)).toEqual([
+      teacherButton,
+      newQuestionButton,
+    ]);
     expect(gateway.sent[1]?.text).toContain('Напишите свой вопрос');
     expect(gateway.sent[1]?.replyMarkup).toMatchObject({
       is_persistent: true,
