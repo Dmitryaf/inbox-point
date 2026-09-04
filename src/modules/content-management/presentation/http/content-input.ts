@@ -4,7 +4,14 @@ import {
   type ClientInformationContent,
   hasValidCustomSections,
   hasValidFaqItems,
+  informationSectionIds,
 } from '@/core/application/client-information.js';
+
+const visibleSectionsSchema = z
+  .array(z.enum(informationSectionIds))
+  .max(informationSectionIds.length)
+  .refine((sections) => new Set(sections).size === sections.length)
+  .default([...informationSectionIds]);
 
 export const contentInputSchema = z
   .object({
@@ -33,6 +40,7 @@ export const contentInputSchema = z
       .default([]),
     prices: z.string().max(4_000),
     schedule: z.string().max(4_000),
+    visibleSections: visibleSectionsSchema,
   })
   .strict();
 
@@ -68,5 +76,6 @@ export function normalizeContentInput(
     ...(faq.length > 0 ? { faq } : {}),
     ...(prices ? { prices } : {}),
     ...(schedule ? { schedule } : {}),
+    visibleSections: [...content.visibleSections],
   };
 }

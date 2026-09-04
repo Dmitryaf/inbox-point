@@ -12,6 +12,15 @@ export const informationButtons = [
   faqButton,
 ] as const;
 
+export const informationSectionIds = [
+  'schedule',
+  'prices',
+  'address',
+  'faq',
+] as const;
+
+export type InformationSectionId = (typeof informationSectionIds)[number];
+
 export const reservedClientLabels = [
   ...informationButtons,
   teacherButton,
@@ -31,6 +40,7 @@ export interface ClientInformationContent {
   faq?: readonly FaqItem[];
   prices?: string;
   schedule?: string;
+  visibleSections?: readonly InformationSectionId[];
 }
 
 export interface CustomInformationSection {
@@ -68,16 +78,28 @@ export class ClientInformationCatalog implements ClientInformationResolver {
 
   public getInformationButtons(): readonly string[] {
     const buttons: string[] = [];
-    if (this.content.schedule?.trim()) {
+    if (
+      this.content.schedule?.trim() &&
+      isInformationSectionVisible(this.content, 'schedule')
+    ) {
       buttons.push(scheduleButton);
     }
-    if (this.content.prices?.trim()) {
+    if (
+      this.content.prices?.trim() &&
+      isInformationSectionVisible(this.content, 'prices')
+    ) {
       buttons.push(pricesButton);
     }
-    if (this.content.address?.trim()) {
+    if (
+      this.content.address?.trim() &&
+      isInformationSectionVisible(this.content, 'address')
+    ) {
       buttons.push(addressButton);
     }
-    if (this.content.faq?.length) {
+    if (
+      this.content.faq?.length &&
+      isInformationSectionVisible(this.content, 'faq')
+    ) {
       buttons.push(faqButton);
     }
     return buttons;
@@ -167,7 +189,17 @@ function copyContent(
         }
       : {}),
     ...(content.faq ? { faq: content.faq.map((item) => ({ ...item })) } : {}),
+    ...(content.visibleSections
+      ? { visibleSections: [...content.visibleSections] }
+      : {}),
   };
+}
+
+export function isInformationSectionVisible(
+  content: ClientInformationContent,
+  section: InformationSectionId,
+): boolean {
+  return content.visibleSections?.includes(section) ?? true;
 }
 
 export function hasValidCustomSections(

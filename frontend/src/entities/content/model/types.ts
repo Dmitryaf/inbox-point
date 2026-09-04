@@ -8,12 +8,22 @@ export interface CustomSection {
   text: string;
 }
 
+export const informationSectionIds = [
+  'schedule',
+  'prices',
+  'address',
+  'faq',
+] as const;
+
+export type InformationSectionId = (typeof informationSectionIds)[number];
+
 export interface ContentDraft {
   address: string;
   customSections: CustomSection[];
   faq: FaqItem[];
   prices: string;
   schedule: string;
+  visibleSections: InformationSectionId[];
 }
 
 export interface ContentChange {

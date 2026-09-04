@@ -24,6 +24,21 @@ describe('client information', () => {
     expect(new ClientInformationCatalog().getInformationButtons()).toEqual([]);
   });
 
+  it('keeps hidden section content without exposing its menu button', () => {
+    const catalog = new ClientInformationCatalog({
+      address: 'Main street, 1',
+      prices: 'Single visit: 10',
+      schedule: 'Monday: 19:00',
+      visibleSections: ['address', 'schedule'],
+    });
+
+    expect(catalog.getInformationButtons()).toEqual([
+      scheduleButton,
+      addressButton,
+    ]);
+    expect(catalog.resolve(pricesButton)).toContain('Single visit: 10');
+  });
+
   it.each([
     [scheduleButton, 'Расписание'],
     [pricesButton, 'ценах'],

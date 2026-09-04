@@ -256,6 +256,45 @@ describe('FileContentSettingsStore', () => {
     await expect(store.loadHistory()).resolves.toHaveLength(1);
   });
 
+  it('persists menu visibility independently from section content', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'messenger-content-'));
+    directories.push(directory);
+    const moments = [
+      new Date('2026-09-01T12:00:00.000Z'),
+      new Date('2026-09-01T12:05:00.000Z'),
+    ];
+    const store = new FileContentSettingsStore(
+      join(directory, 'content-settings.json'),
+      () => moments.shift()!,
+    );
+
+    await store.save({
+      prices: 'Single visit: 10',
+      visibleSections: ['schedule', 'prices', 'address', 'faq'],
+    });
+    await store.save({
+      prices: 'Single visit: 10',
+      visibleSections: ['schedule', 'address', 'faq'],
+    });
+
+    await expect(store.load()).resolves.toEqual({
+      prices: 'Single visit: 10',
+      visibleSections: ['schedule', 'address', 'faq'],
+    });
+    await expect(store.loadHistory()).resolves.toEqual([
+      {
+        changedAt: '2026-09-01T12:05:00.000Z',
+        revision: 2,
+        sections: ['visibility'],
+      },
+      {
+        changedAt: '2026-09-01T12:00:00.000Z',
+        revision: 1,
+        sections: ['prices'],
+      },
+    ]);
+  });
+
   it('rejects content that exceeds the supported message size', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'messenger-content-'));
     directories.push(directory);

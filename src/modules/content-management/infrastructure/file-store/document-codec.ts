@@ -1,4 +1,5 @@
 import type { ClientInformationContent } from '@/core/application/client-information.js';
+import { informationSectionIds } from '@/core/application/client-information.js';
 import {
   copyContent,
   migrateLegacyContent,
@@ -93,6 +94,12 @@ export function findChangedSections(
     JSON.stringify(next.customSections ?? [])
   ) {
     sections.push('customSections');
+  }
+  if (
+    JSON.stringify(previous.visibleSections ?? informationSectionIds) !==
+    JSON.stringify(next.visibleSections ?? informationSectionIds)
+  ) {
+    sections.push('visibility');
   }
   return sections;
 }

@@ -1,7 +1,7 @@
 import type { ClientInformationContent } from '@/core/application/client-information.js';
 
 export type ContentSectionKey =
-  'address' | 'customSections' | 'faq' | 'prices' | 'schedule';
+  'address' | 'customSections' | 'faq' | 'prices' | 'schedule' | 'visibility';
 
 export interface ContentChange {
   changedAt: string;

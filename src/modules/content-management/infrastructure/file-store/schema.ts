@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { informationSectionIds } from '@/core/application/client-information.js';
 
 const legacyCustomSectionSchema = z.object({
   format: z.literal('faq').optional(),
@@ -13,6 +14,10 @@ const faqItemSchema = z.object({
   answer: z.string().min(1).max(3_000),
   question: z.string().min(1).max(300),
 });
+const visibleSectionsSchema = z
+  .array(z.enum(informationSectionIds))
+  .max(informationSectionIds.length)
+  .refine((sections) => new Set(sections).size === sections.length);
 
 export const legacyContentPayloadSchema = z.object({
   address: z.string().min(1).max(4_000).optional(),
@@ -26,6 +31,7 @@ export const contentPayloadSchema = z.object({
   faq: z.array(faqItemSchema).max(20).optional(),
   prices: z.string().min(1).max(4_000).optional(),
   schedule: z.string().min(1).max(4_000).optional(),
+  visibleSections: visibleSectionsSchema.optional(),
 });
 const contentSectionSchema = z.enum([
   'schedule',
@@ -33,10 +39,11 @@ const contentSectionSchema = z.enum([
   'address',
   'faq',
   'customSections',
+  'visibility',
 ]);
 const historyEntrySchema = z.object({
   changedAt: z.string().refine((value) => !Number.isNaN(Date.parse(value))),
-  sections: z.array(contentSectionSchema).min(1).max(5),
+  sections: z.array(contentSectionSchema).min(1).max(6),
 });
 const legacyHistoryEntrySchema = z.object({
   changedAt: z.string().refine((value) => !Number.isNaN(Date.parse(value))),

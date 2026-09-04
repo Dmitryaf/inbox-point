@@ -31,6 +31,9 @@ export function pickContent(value: ContentPayload): ClientInformationContent {
     ...(value.faq ? { faq: value.faq.map((item) => ({ ...item })) } : {}),
     ...(value.prices ? { prices: value.prices } : {}),
     ...(value.schedule ? { schedule: value.schedule } : {}),
+    ...(value.visibleSections
+      ? { visibleSections: [...value.visibleSections] }
+      : {}),
   };
 }
 
@@ -68,6 +71,9 @@ export function copyContent(
         }
       : {}),
     ...(content.faq ? { faq: content.faq.map((item) => ({ ...item })) } : {}),
+    ...(content.visibleSections
+      ? { visibleSections: [...content.visibleSections] }
+      : {}),
   };
 }
 

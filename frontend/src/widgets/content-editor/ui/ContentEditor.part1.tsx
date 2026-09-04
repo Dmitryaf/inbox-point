@@ -30,9 +30,9 @@ export function renderContentEditorPart1(
         />
       ) : $props.activeSection === 'faq' ? (
         <FaqEditor
-          modelValue={draft.faq}
+          modelValue={draft}
           onModelValueChange={($value) => {
-            $setProperty($required($state.draft.value), 'faq', $value);
+            $set($state, 'draft', $value);
           }}
         />
       ) : (

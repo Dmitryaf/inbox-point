@@ -26,6 +26,32 @@
   text-align: right;
 }
 
+.visibility-control {
+  align-items: flex-start;
+  color: var(--color-text);
+  display: flex;
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+}
+
+.visibility-control input {
+  flex: 0 0 auto;
+  margin: 0.15rem 0 0;
+  min-height: 1.1rem;
+  width: 1.1rem;
+}
+
+.visibility-control span {
+  min-width: 0;
+}
+
+.visibility-control small {
+  color: var(--color-text-muted);
+  display: block;
+  font-weight: 400;
+  margin-top: 0.2rem;
+}
+
 .field-group {
   border-top: 1px solid var(--color-border);
   min-width: 0;

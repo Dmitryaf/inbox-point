@@ -6,11 +6,11 @@ import {
   type ModelOptions,
   type ModelRef,
 } from '@frontend/shared/lib/component-props';
-import type { FaqItem } from '@frontend/entities/content/model/types';
+import type { ContentDraft } from '@frontend/entities/content/model/types';
 
 export type ComponentProps = {
-  modelValue: FaqItem[];
-  onModelValueChange?: (value: FaqItem[]) => void;
+  modelValue: ContentDraft;
+  onModelValueChange?: (value: ContentDraft) => void;
 } & ComponentAttributes;
 export const componentDefaults = {};
 type ResolvedProps = WithDefaults<ComponentProps, typeof componentDefaults>;
@@ -22,11 +22,11 @@ export function createComponentModel(
     options?: ModelOptions<Value>,
   ) => ModelRef<Value>,
 ) {
-  const items = $model<FaqItem[]>('modelValue', { required: true });
+  const draft = $model<ContentDraft>('modelValue', { required: true });
   function add(): void {
-    if (items.value.length < 20) {
-      items.value.push({ answer: '', question: '' });
+    if (draft.value.faq.length < 20) {
+      draft.value.faq.push({ answer: '', question: '' });
     }
   }
-  return { items, add };
+  return { draft, add };
 }

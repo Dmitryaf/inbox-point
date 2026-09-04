@@ -189,6 +189,7 @@ describe('managed content routes', () => {
             question: 'Как записаться?',
           },
         ],
+        visibleSections: ['schedule', 'prices', 'address', 'faq'],
       },
     ]);
     expect(catalog.resolve('Частые вопросы')).toContain('❓ Как записаться?');

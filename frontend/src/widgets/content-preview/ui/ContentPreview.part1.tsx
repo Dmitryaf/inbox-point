@@ -1,5 +1,9 @@
 import { renderList as $renderList } from '@frontend/shared/lib/component-view';
 
+import { unref as $unref } from '@frontend/shared/lib/model-state';
+
+import { isSectionVisible } from '@frontend/entities/content/model/content-draft';
+
 import type { WithDefaults } from '@frontend/shared/lib/component-model';
 import type {
   createComponentModel,
@@ -19,25 +23,29 @@ export function renderContentPreviewPart1(
         </p>
       ) : (
         <>
-          {$props.content.schedule.trim() ? (
+          {$unref(isSectionVisible)($props.content, 'schedule') &&
+          $props.content.schedule.trim() ? (
             <div>
               <h3>{'Расписание'}</h3>
               <p className="preserve">{$props.content.schedule}</p>
             </div>
           ) : null}
-          {$props.content.prices.trim() ? (
+          {$unref(isSectionVisible)($props.content, 'prices') &&
+          $props.content.prices.trim() ? (
             <div>
               <h3>{'Цены'}</h3>
               <p className="preserve">{$props.content.prices}</p>
             </div>
           ) : null}
-          {$props.content.address.trim() ? (
+          {$unref(isSectionVisible)($props.content, 'address') &&
+          $props.content.address.trim() ? (
             <div>
               <h3>{'Адрес'}</h3>
               <p className="preserve">{$props.content.address}</p>
             </div>
           ) : null}
-          {$props.content.faq.length ? (
+          {$unref(isSectionVisible)($props.content, 'faq') &&
+          $props.content.faq.length ? (
             <div>
               <h3>{'Частые вопросы'}</h3>
               <dl>
