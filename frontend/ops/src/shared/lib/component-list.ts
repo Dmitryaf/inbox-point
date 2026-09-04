@@ -8,8 +8,12 @@ export function renderList<Value>(
   render: (value: Value, key: string, index: number) => React.ReactNode,
 ): React.ReactNode[];
 export function renderList(
-  source: number | string,
-  render: (value: number | string, index: number) => React.ReactNode,
+  source: number,
+  render: (value: number, index: number) => React.ReactNode,
+): React.ReactNode[];
+export function renderList(
+  source: string,
+  render: (value: string, index: number) => React.ReactNode,
 ): React.ReactNode[];
 export function renderList(
   source: unknown,

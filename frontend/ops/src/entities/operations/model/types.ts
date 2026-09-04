@@ -2,8 +2,11 @@ export type ConnectionSource = 'environment' | 'local' | 'none';
 
 export interface ChannelOperationsStatus {
   configured: boolean;
+  lastFailedPollAt?: string;
+  lastSuccessfulPollAt?: string;
   running: boolean;
   source: ConnectionSource;
+  state: 'not_configured' | 'poll_failed' | 'running' | 'stopped';
 }
 
 export interface OperationsStatus {

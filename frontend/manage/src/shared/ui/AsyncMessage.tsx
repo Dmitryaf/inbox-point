@@ -13,13 +13,12 @@ import {
 } from './AsyncMessage.model';
 
 export default function AsyncMessage($incomingProps: ComponentProps) {
-  const $attributes = inheritedAttributes($incomingProps);
   const { props: $props, scope: $scope } = useComponentModel(
     $incomingProps,
     componentDefaults,
     createComponentModel,
   );
-
+  const $attributes = inheritedAttributes($props);
   return (
     <ModelScopeProvider scope={$scope}>
       {$props.text ? (

@@ -7,6 +7,7 @@ import { ContentManagementService } from '@/modules/content-management/applicati
 import { FileContentSettingsStore } from '@/modules/content-management/infrastructure/file-store/file-content-settings-store.js';
 import { registerManagementRoutes } from '@/modules/content-management/presentation/http/routes.js';
 import { ContentManagementAccess } from '@/modules/content-management/security/content-management-access.js';
+import { ChannelActivityMonitor } from '@/modules/operations-monitoring/application/channel-activity-monitor.js';
 import { OperationsMonitoringService } from '@/modules/operations-monitoring/application/operations-monitoring-service.js';
 import { registerOperationsRoutes } from '@/modules/operations-monitoring/presentation/http/routes.js';
 import { OperationsAccess } from '@/modules/operations-monitoring/security/operations-access.js';
@@ -29,6 +30,7 @@ async function start(): Promise<void> {
     resolve(dirname(config.databasePath), 'content-settings.json'),
   );
   const informationCatalog = new ClientInformationCatalog();
+  const channelActivity = new ChannelActivityMonitor();
   const settingsStore = new FileTelegramSettingsStore(
     resolve(dirname(config.databasePath), 'telegram-settings.json'),
   );
@@ -41,6 +43,7 @@ async function start(): Promise<void> {
       error: (error, message) => app.log.error({ err: error }, message),
     },
     informationCatalog,
+    channelActivity,
   );
   const vkRuntime = new VkRuntime(
     telegramRuntime,
@@ -49,6 +52,7 @@ async function start(): Promise<void> {
       error: (error, message) => app.log.error({ err: error }, message),
     },
     informationCatalog,
+    channelActivity,
   );
   let closing = false;
 
@@ -123,6 +127,7 @@ async function start(): Promise<void> {
     registerOperationsRoutes(
       app,
       new OperationsMonitoringService({
+        channelActivity: (channel) => channelActivity.snapshot(channel),
         deliverySummary: () => repository.getDeliverySummary(),
         startedAt,
         telegramStatus: () => setup.status(),

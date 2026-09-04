@@ -4,8 +4,11 @@ export type ChannelConnectionSource = 'environment' | 'local' | 'none';
 
 export interface ChannelOperationsStatus {
   configured: boolean;
+  lastFailedPollAt?: string;
+  lastSuccessfulPollAt?: string;
   running: boolean;
   source: ChannelConnectionSource;
+  state: 'not_configured' | 'poll_failed' | 'running' | 'stopped';
 }
 
 export interface OperationsStatus {

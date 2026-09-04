@@ -152,6 +152,7 @@ describe('operations monitoring routes', () => {
 
 function createMonitoringService(): OperationsMonitoringService {
   return new OperationsMonitoringService({
+    channelActivity: () => ({}),
     clock: () => new Date('2026-09-04T12:01:00.000Z'),
     deliverySummary: () => ({ failed: 1, pending: 2 }),
     startedAt: new Date('2026-09-04T12:00:00.000Z'),

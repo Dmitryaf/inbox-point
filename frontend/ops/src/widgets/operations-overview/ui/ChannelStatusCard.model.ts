@@ -16,10 +16,13 @@ type ResolvedProps = WithDefaults<ComponentProps, typeof componentDefaults>;
 export function createComponentModel($props: ResolvedProps) {
   const props = $props;
   const state = computed(() => {
-    if (!props.channel.configured) {
+    if (props.channel.state === 'not_configured') {
       return { label: 'Не настроен', tone: 'neutral' };
     }
-    if (props.channel.running) {
+    if (props.channel.state === 'poll_failed') {
+      return { label: 'Ошибка связи', tone: 'attention' };
+    }
+    if (props.channel.state === 'running') {
       return { label: 'Запущен', tone: 'healthy' };
     }
     return { label: 'Остановлен', tone: 'attention' };

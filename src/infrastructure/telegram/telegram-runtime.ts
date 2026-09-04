@@ -5,6 +5,10 @@ import {
 } from '@/core/application/client-information.js';
 import { DeliveryWorker } from '@/core/application/delivery-worker.js';
 import { HandoffService } from '@/core/application/handoff-service.js';
+import {
+  silentChannelActivityReporter,
+  type ChannelActivityReporter,
+} from '@/core/contracts/channel-activity-reporter.js';
 import type { ClientChannel } from '@/core/contracts/client-channel.js';
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
 import type { SupportMessage } from '@/core/model/support-message.js';
@@ -36,6 +40,7 @@ export class TelegramRuntime implements TelegramRuntimeControl {
     private readonly repository: SupportRepository,
     private readonly logger: TelegramRuntimeLogger,
     private readonly information: ClientInformationResolver = new ClientInformationCatalog(),
+    private readonly activity: ChannelActivityReporter = silentChannelActivityReporter,
   ) {}
 
   public get running(): boolean {
@@ -78,7 +83,15 @@ export class TelegramRuntime implements TelegramRuntimeControl {
         ),
       ),
       config.pollTimeoutSeconds,
-      (error) => this.logger.error(error, 'Telegram update failed; retrying'),
+      {
+        onError: (error) => {
+          this.activity.recordPollFailed('telegram', new Date());
+          this.logger.error(error, 'Telegram update failed; retrying');
+        },
+        onSuccess: () => {
+          this.activity.recordPollSucceeded('telegram', new Date());
+        },
+      },
     );
     const abortController = new AbortController();
     this.abortController = abortController;
@@ -96,6 +109,7 @@ export class TelegramRuntime implements TelegramRuntimeControl {
     });
     void this.pollerPromise.catch((error: unknown) => {
       if (!abortController.signal.aborted) {
+        this.activity.recordPollFailed('telegram', new Date());
         this.logger.error(error, 'Telegram poller stopped unexpectedly');
       }
     });

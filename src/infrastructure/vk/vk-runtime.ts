@@ -3,6 +3,10 @@ import {
   ClientInformationCatalog,
   type ClientInformationResolver,
 } from '@/core/application/client-information.js';
+import {
+  silentChannelActivityReporter,
+  type ChannelActivityReporter,
+} from '@/core/contracts/channel-activity-reporter.js';
 import type { ClientChannel } from '@/core/contracts/client-channel.js';
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
 import type { SupportMessage } from '@/core/model/support-message.js';
@@ -34,6 +38,7 @@ export class VkRuntime {
     private readonly repository: SupportRepository,
     private readonly logger: VkRuntimeLogger,
     private readonly information: ClientInformationResolver = new ClientInformationCatalog(),
+    private readonly activity: ChannelActivityReporter = silentChannelActivityReporter,
   ) {}
 
   public get running(): boolean {
@@ -57,14 +62,23 @@ export class VkRuntime {
         gateway,
         new VkClientMenu(gateway, this.repository, this.information),
       ),
-      config.pollTimeoutSeconds,
-      (error) => this.logger.error(error, 'VK update failed; retrying'),
+      {
+        onError: (error) => {
+          this.activity.recordPollFailed('vk', new Date());
+          this.logger.error(error, 'VK update failed; retrying');
+        },
+        onSuccess: () => {
+          this.activity.recordPollSucceeded('vk', new Date());
+        },
+        waitSeconds: config.pollTimeoutSeconds,
+      },
     );
     const abortController = new AbortController();
     this.abortController = abortController;
     this.pollerPromise = poller.run(abortController.signal);
     void this.pollerPromise.catch((error: unknown) => {
       if (!abortController.signal.aborted) {
+        this.activity.recordPollFailed('vk', new Date());
         this.logger.error(error, 'VK poller stopped unexpectedly');
       }
     });

@@ -5,16 +5,27 @@ export interface TelegramUpdateProcessor {
   route(update: TelegramUpdate): Promise<void>;
 }
 
+export interface TelegramPollerOptions {
+  onError?: (error: unknown) => void;
+  onSuccess?: () => void;
+  retryDelay?: (signal: AbortSignal) => Promise<void>;
+}
+
 export class TelegramPoller {
+  private readonly onError: (error: unknown) => void;
+  private readonly onSuccess: () => void;
+  private readonly retryDelay: (signal: AbortSignal) => Promise<void>;
+
   public constructor(
     private readonly gateway: TelegramGateway,
     private readonly router: TelegramUpdateProcessor,
     private readonly timeoutSeconds: number,
-    private readonly onError: (error: unknown) => void = () => undefined,
-    private readonly retryDelay: (
-      signal: AbortSignal,
-    ) => Promise<void> = waitBeforeRetry,
-  ) {}
+    options: TelegramPollerOptions = {},
+  ) {
+    this.onError = options.onError ?? (() => undefined);
+    this.onSuccess = options.onSuccess ?? (() => undefined);
+    this.retryDelay = options.retryDelay ?? waitBeforeRetry;
+  }
 
   public async run(signal: AbortSignal): Promise<void> {
     let offset: number | undefined;
@@ -30,6 +41,9 @@ export class TelegramPoller {
         for (const update of updates) {
           await this.router.route(update);
           offset = update.update_id + 1;
+        }
+        if (!signal.aborted) {
+          this.onSuccess();
         }
       } catch (error: unknown) {
         if (isAbortError(error) || signal.aborted) {

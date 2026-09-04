@@ -13,7 +13,6 @@ import {
 } from './SaveBar.model';
 
 export default function SaveBar($incomingProps: ComponentProps) {
-  const $attributes = inheritedAttributes($incomingProps);
   const {
     state: $state,
     props: $props,
@@ -24,7 +23,7 @@ export default function SaveBar($incomingProps: ComponentProps) {
     createComponentModel,
   );
   const { $emit } = $state;
-
+  const $attributes = inheritedAttributes($props);
   return (
     <ModelScopeProvider scope={$scope}>
       <div

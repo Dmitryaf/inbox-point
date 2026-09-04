@@ -10,6 +10,7 @@ import { inheritedAttributes } from '@ops/shared/lib/component-attributes';
 
 import { connectionSourceLabel } from '@ops/entities/operations/lib/status-format';
 
+import { renderChannelStatusCardPart1 } from './ChannelStatusCard.part1';
 import {
   createComponentModel,
   componentDefaults,
@@ -17,7 +18,6 @@ import {
 } from './ChannelStatusCard.model';
 
 export default function ChannelStatusCard($incomingProps: ComponentProps) {
-  const $attributes = inheritedAttributes($incomingProps);
   const {
     state: $state,
     props: $props,
@@ -27,8 +27,8 @@ export default function ChannelStatusCard($incomingProps: ComponentProps) {
     componentDefaults,
     createComponentModel,
   );
-
   const state = $state.state.value;
+  const $attributes = inheritedAttributes($props);
   return (
     <ModelScopeProvider scope={$scope}>
       <article
@@ -42,6 +42,7 @@ export default function ChannelStatusCard($incomingProps: ComponentProps) {
           </span>
         </div>
         <p>{$unref(connectionSourceLabel)($props.channel.source)}</p>
+        {renderChannelStatusCardPart1($props)}
       </article>
     </ModelScopeProvider>
   );

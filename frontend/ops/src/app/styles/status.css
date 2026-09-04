@@ -70,6 +70,19 @@ dd {
   margin-bottom: 0;
 }
 
+.channel-activity {
+  border-top: 1px solid #e4e0d6;
+  display: grid;
+  gap: 0.7rem;
+  margin: 1rem 0 0;
+  padding-top: 0.9rem;
+}
+
+.channel-activity div {
+  display: grid;
+  gap: 0.2rem;
+}
+
 .status-pill {
   border-radius: 999px;
   font-size: 0.78rem;

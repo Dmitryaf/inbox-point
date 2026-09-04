@@ -50,6 +50,7 @@ describe('TelegramPoller', () => {
     const gateway = new RetryGateway(abortController);
     const errors: unknown[] = [];
     let attempts = 0;
+    let successfulPolls = 0;
     const poller = new TelegramPoller(
       gateway,
       {
@@ -61,14 +62,20 @@ describe('TelegramPoller', () => {
         },
       },
       30,
-      (error) => errors.push(error),
-      () => Promise.resolve(),
+      {
+        onError: (error) => errors.push(error),
+        onSuccess: () => {
+          successfulPolls += 1;
+        },
+        retryDelay: () => Promise.resolve(),
+      },
     );
 
     await poller.run(abortController.signal);
 
     expect(attempts).toBe(2);
     expect(errors).toHaveLength(1);
+    expect(successfulPolls).toBe(1);
     expect(gateway.offsets).toEqual([undefined, undefined, 2]);
   });
 });

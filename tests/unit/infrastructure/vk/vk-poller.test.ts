@@ -20,7 +20,13 @@ describe('VkPoller', () => {
       abortController.abort();
       return Promise.resolve();
     });
-    const poller = new VkPoller(gateway, 42, { route }, 25);
+    const onSuccess = vi.fn();
+    const poller = new VkPoller(
+      gateway,
+      42,
+      { route },
+      { onSuccess, waitSeconds: 25 },
+    );
 
     await poller.run(abortController.signal);
 
@@ -31,6 +37,7 @@ describe('VkPoller', () => {
       '10',
     ]);
     expect(route).toHaveBeenCalledOnce();
+    expect(onSuccess).toHaveBeenCalledTimes(3);
   });
 });
 

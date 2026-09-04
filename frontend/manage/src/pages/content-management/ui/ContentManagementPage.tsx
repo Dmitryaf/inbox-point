@@ -3,20 +3,12 @@ import {
   ModelScopeProvider,
 } from '@manage/shared/lib/component-model';
 import { classNames as $class } from '@manage/shared/lib/component-view';
-import {
-  invokeHandler as $invoke,
-  invokeArgs as $invokeArgs,
-} from '@manage/shared/lib/component-events';
+import { invokeHandler as $invoke } from '@manage/shared/lib/component-events';
 import { unref as $unref } from '@manage/shared/lib/model-state';
-import {
-  modelSetter as $setter,
-  requiredValue as $required,
-} from '@manage/shared/lib/component-bindings';
+
 import { inheritedAttributes } from '@manage/shared/lib/component-attributes';
 
-import LoginForm from '@manage/features/authenticate/ui/LoginForm';
-import AsyncMessage from '@manage/shared/ui/AsyncMessage';
-import ContentWorkspace from '@manage/widgets/content-workspace/ui/ContentWorkspace';
+import { renderContentManagementPagePart1 } from './ContentManagementPage.part1';
 import {
   createComponentModel,
   componentDefaults,
@@ -24,15 +16,18 @@ import {
 } from './ContentManagementPage.model';
 
 export default function ContentManagementPage($incomingProps: ComponentProps) {
-  const $attributes = inheritedAttributes($incomingProps);
-  const { state: $state, scope: $scope } = useComponentModel(
+  const {
+    state: $state,
+    props: $props,
+    scope: $scope,
+  } = useComponentModel(
     $incomingProps,
     componentDefaults,
     createComponentModel,
   );
   const { logOut } = $state;
   const session = $unref($state.session);
-
+  const $attributes = inheritedAttributes($props);
   return (
     <ModelScopeProvider scope={$scope}>
       <div {...$attributes} className={$class('shell', $attributes.className)}>
@@ -54,36 +49,7 @@ export default function ContentManagementPage($incomingProps: ComponentProps) {
             </button>
           ) : null}
         </header>
-        {session.booting.value ? (
-          <p role="status" className="state-card">
-            {' Открываем редактор… '}
-          </p>
-        ) : (
-          <main>
-            <AsyncMessage kind="error" text={session.error.value} />
-            {!session.authenticated.value ? (
-              <LoginForm
-                pending={session.pending.value}
-                onSubmit={(...$args) => {
-                  $invokeArgs(
-                    $required($unref($state.session)).authenticate,
-                    $args,
-                  );
-                }}
-              />
-            ) : (
-              <ContentWorkspace
-                onDirtyChange={$setter($state, 'hasUnsavedChanges')}
-                onUnauthorized={(...$args) => {
-                  $invokeArgs(
-                    $required($unref($state.session)).expireSession,
-                    $args,
-                  );
-                }}
-              />
-            )}
-          </main>
-        )}
+        {renderContentManagementPagePart1($state)}
       </div>
     </ModelScopeProvider>
   );
