@@ -6,9 +6,9 @@ export default tseslint.config(
   },
   {
     files: [
+      'frontend/src/**/*.{ts,tsx}',
       'src/**/*.ts',
       'frontend/manage/src/**/*.{ts,tsx}',
-      'frontend/src/**/*.{ts,tsx}',
       'tests/**/*.{ts,tsx}',
     ],
     extends: [

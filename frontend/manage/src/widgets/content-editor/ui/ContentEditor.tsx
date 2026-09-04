@@ -3,9 +3,15 @@ import {
   ModelScopeProvider,
 } from '@manage/shared/lib/component-model';
 
+import {
+  setModelValue as $set,
+  requiredValue as $required,
+} from '@manage/shared/lib/component-bindings';
+
 import CoreSectionsFields from '@manage/entities/content/ui/CoreSectionsFields';
 import CustomSectionsEditor from '@manage/entities/content/ui/CustomSectionsEditor';
 import FaqEditor from '@manage/entities/content/ui/FaqEditor';
+
 import {
   createComponentModel,
   componentDefaults,
@@ -13,7 +19,11 @@ import {
 } from './ContentEditor.model';
 
 export default function ContentEditor($incomingProps: ComponentProps) {
-  const { state: $state, scope: $scope } = useComponentModel(
+  const {
+    state: $state,
+    props: $props,
+    scope: $scope,
+  } = useComponentModel(
     $incomingProps,
     componentDefaults,
     createComponentModel,
@@ -23,24 +33,28 @@ export default function ContentEditor($incomingProps: ComponentProps) {
   return (
     <ModelScopeProvider scope={$scope}>
       <div className="editor">
-        <CoreSectionsFields
-          modelValue={draft}
-          onModelValueChange={($value) => {
-            $state.draft.value = $value;
-          }}
-        />
-        <FaqEditor
-          modelValue={draft.faq}
-          onModelValueChange={($value) => {
-            $state.draft.value.faq = $value;
-          }}
-        />
-        <CustomSectionsEditor
-          modelValue={draft.customSections}
-          onModelValueChange={($value) => {
-            $state.draft.value.customSections = $value;
-          }}
-        />
+        {$props.activeSection === 'core' ? (
+          <CoreSectionsFields
+            modelValue={draft}
+            onModelValueChange={($value) => {
+              $set($state, 'draft', $value);
+            }}
+          />
+        ) : $props.activeSection === 'faq' ? (
+          <FaqEditor
+            modelValue={draft.faq}
+            onModelValueChange={($value) => {
+              $required($state.draft.value).faq = $value;
+            }}
+          />
+        ) : (
+          <CustomSectionsEditor
+            modelValue={draft.customSections}
+            onModelValueChange={($value) => {
+              $required($state.draft.value).customSections = $value;
+            }}
+          />
+        )}
       </div>
     </ModelScopeProvider>
   );

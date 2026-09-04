@@ -1,10 +1,12 @@
 import {
   type EventProps,
   type ComponentAttributes,
+  type WithDefaults,
 } from '@manage/shared/lib/component-model';
 
-import { onMounted, watch } from '@manage/shared/lib/model-state';
+import { onMounted, ref, watch } from '@manage/shared/lib/model-state';
 
+import type { EditorSection, WorkspaceView } from '../model/navigation';
 import { useContentWorkspace } from '../model/use-content-workspace';
 
 export type ComponentProps = EventProps<{
@@ -13,17 +15,20 @@ export type ComponentProps = EventProps<{
 }> &
   ComponentAttributes;
 export const componentDefaults = {};
+type ResolvedProps = WithDefaults<ComponentProps, typeof componentDefaults>;
 export function createComponentModel(
-  $props: ComponentProps,
+  _props: ResolvedProps,
   $emit: (event: string, ...args: unknown[]) => void,
 ) {
   const emit = $emit;
   const workspace = useContentWorkspace({
     onUnauthorized: () => emit('unauthorized'),
   });
+  const activeView = ref<WorkspaceView>('edit');
+  const activeSection = ref<EditorSection>('core');
   onMounted(() => void workspace.load());
   watch(workspace.dirty, (dirty) => emit('dirtyChange', dirty), {
     immediate: true,
   });
-  return { workspace };
+  return { workspace, activeView, activeSection };
 }

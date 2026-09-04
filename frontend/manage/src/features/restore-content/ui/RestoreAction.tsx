@@ -4,6 +4,7 @@ import {
 } from '@manage/shared/lib/component-model';
 
 import { unref as $unref } from '@manage/shared/lib/model-state';
+import { setModelValue as $set } from '@manage/shared/lib/component-bindings';
 
 import {
   createComponentModel,
@@ -22,18 +23,22 @@ export default function RestoreAction($incomingProps: ComponentProps) {
     createComponentModel,
   );
   const { props } = $state;
-  const emit = $unref($state.emit);
   const confirming = $state.confirming.value;
   return (
     <ModelScopeProvider scope={$scope}>
       {confirming ? (
         <div className="restore-confirm">
           <p>{'Заменить текущую информацию этой версией?'}</p>
+          {$props.hasUnsavedChanges ? (
+            <p className="warning-text">
+              {' Несохранённые изменения будут потеряны. '}
+            </p>
+          ) : null}
           <button
             disabled={$props.pending}
             type="button"
             onClick={() => {
-              void emit('restore', props.revision);
+              void $unref($state.emit)('restore', props.revision);
             }}
           >
             {$props.pending ? 'Восстанавливаем…' : 'Да, восстановить'}
@@ -42,7 +47,7 @@ export default function RestoreAction($incomingProps: ComponentProps) {
             disabled={$props.pending}
             type="button"
             onClick={() => {
-              void ($state.confirming.value = false);
+              void $set($state, 'confirming', false);
             }}
             className="quiet"
           >
@@ -53,7 +58,7 @@ export default function RestoreAction($incomingProps: ComponentProps) {
         <button
           type="button"
           onClick={() => {
-            void ($state.confirming.value = true);
+            void $set($state, 'confirming', true);
           }}
           className="quiet"
         >

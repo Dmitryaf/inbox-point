@@ -5,6 +5,8 @@ import {
 
 import { invokeHandler as $invoke } from '@manage/shared/lib/component-events';
 
+import { setModelValue as $set } from '@manage/shared/lib/component-bindings';
+
 import {
   createComponentModel,
   componentDefaults,
@@ -44,7 +46,7 @@ export default function LoginForm($incomingProps: ComponentProps) {
           type="password"
           value={password ?? ''}
           onChange={$controlledChange<HTMLInputElement>(($event) => {
-            $state.password.value = $event.currentTarget.value;
+            $set($state, 'password', $event.currentTarget.value);
           })}
         />
         <button disabled={$props.pending} type="submit">

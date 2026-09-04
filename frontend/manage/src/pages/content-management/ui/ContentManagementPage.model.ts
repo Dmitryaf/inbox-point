@@ -5,6 +5,7 @@ import { useManagementSession } from '@manage/features/authenticate/model/use-ma
 
 export type ComponentProps = ComponentAttributes;
 export const componentDefaults = {};
+
 export function createComponentModel() {
   const session = useManagementSession();
   const hasUnsavedChanges = ref(false);

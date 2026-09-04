@@ -1,6 +1,7 @@
 import {
   type EventProps,
   type ComponentAttributes,
+  type WithDefaults,
 } from '@manage/shared/lib/component-model';
 
 export type ComponentProps = { dirty: boolean; saving: boolean } & EventProps<{
@@ -8,8 +9,9 @@ export type ComponentProps = { dirty: boolean; saving: boolean } & EventProps<{
 }> &
   ComponentAttributes;
 export const componentDefaults = {};
+type ResolvedProps = WithDefaults<ComponentProps, typeof componentDefaults>;
 export function createComponentModel(
-  $props: ComponentProps,
+  _props: ResolvedProps,
   $emit: (event: string, ...args: unknown[]) => void,
 ) {
   return { $emit };
