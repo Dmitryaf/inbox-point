@@ -4,6 +4,8 @@ import {
 } from '@manage/shared/lib/component-model';
 import { renderList as $renderList } from '@manage/shared/lib/component-view';
 
+import { unref as $unref } from '@manage/shared/lib/model-state';
+
 import {
   formatChangeDate,
   formatSections,
@@ -38,12 +40,13 @@ export default function ChangeHistory($incomingProps: ComponentProps) {
           <ol className="history-list">
             {$renderList($props.changes, (change, index) => (
               <li key={`${change.changedAt}-${change.revision ?? 'old'}`}>
-                <strong>{formatChangeDate(change.changedAt)}</strong>
-                <span>{formatSections(change.sections)}</span>
+                <strong>{$unref(formatChangeDate)(change.changedAt)}</strong>
+                <span>{$unref(formatSections)(change.sections)}</span>
                 {index === 0 ? (
                   <small>{'Текущая версия'}</small>
                 ) : change.revision ? (
                   <RestoreAction
+                    hasUnsavedChanges={$props.hasUnsavedChanges}
                     pending={$props.restoring}
                     revision={change.revision}
                     onRestore={($event) => {

@@ -1,18 +1,24 @@
-import { type ComponentAttributes } from '@manage/shared/lib/component-model';
+import {
+  type ComponentAttributes,
+  type WithDefaults,
+} from '@manage/shared/lib/component-model';
 import {
   type ModelOptions,
   type ModelRef,
 } from '@manage/shared/lib/component-props';
 import type { ContentDraft } from '@manage/entities/content/model/types';
 
-export type ComponentProps = {
+import type { EditorSection } from '@manage/widgets/content-workspace/model/navigation';
+
+export type ComponentProps = { activeSection: EditorSection } & {
   modelValue: ContentDraft;
   onModelValueChange?: (value: ContentDraft) => void;
 } & ComponentAttributes;
 export const componentDefaults = {};
+type ResolvedProps = WithDefaults<ComponentProps, typeof componentDefaults>;
 export function createComponentModel(
-  $props: ComponentProps,
-  $emit: (event: string, ...args: unknown[]) => void,
+  _props: ResolvedProps,
+  _emit: (event: string, ...args: unknown[]) => void,
   $model: <Value>(
     name: string,
     options?: ModelOptions<Value>,

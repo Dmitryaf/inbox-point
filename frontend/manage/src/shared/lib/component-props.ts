@@ -8,12 +8,16 @@ export interface ModelRef<Value> {
   value: Value;
 }
 
-export function createComponentProps<Props extends object>(
-  current: { current: Props },
-  defaults: Partial<Props>,
-) {
+export type DefaultedProps<Props, Defaults> = Props & {
+  [Key in keyof Props & keyof Defaults]-?: Exclude<Props[Key], undefined>;
+};
+
+export function createComponentProps<
+  Props extends object,
+  Defaults extends object,
+>(current: { current: Props }, defaults: Defaults) {
   const fallback = new Map<PropertyKey, unknown>();
-  const props = new Proxy({} as Props, {
+  const props = new Proxy({} as DefaultedProps<Props, Defaults>, {
     get(_target, key): unknown {
       return trackModelRead(() => {
         const provided: unknown = Reflect.get(current.current, key);

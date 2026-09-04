@@ -8,6 +8,10 @@ import {
   invokeArgs as $invokeArgs,
 } from '@manage/shared/lib/component-events';
 import { unref as $unref } from '@manage/shared/lib/model-state';
+import {
+  modelSetter as $setter,
+  requiredValue as $required,
+} from '@manage/shared/lib/component-bindings';
 
 import LoginForm from '@manage/features/authenticate/ui/LoginForm';
 import AsyncMessage from '@manage/shared/ui/AsyncMessage';
@@ -59,16 +63,20 @@ export default function ContentManagementPage($incomingProps: ComponentProps) {
               <LoginForm
                 pending={session.pending.value}
                 onSubmit={(...$args) => {
-                  $invokeArgs(session.authenticate, $args);
+                  $invokeArgs(
+                    $required($unref($state.session)).authenticate,
+                    $args,
+                  );
                 }}
               />
             ) : (
               <ContentWorkspace
-                onDirtyChange={($event) => {
-                  void ($state.hasUnsavedChanges.value = $event);
-                }}
+                onDirtyChange={$setter($state, 'hasUnsavedChanges')}
                 onUnauthorized={(...$args) => {
-                  $invokeArgs(session.expireSession, $args);
+                  $invokeArgs(
+                    $required($unref($state.session)).expireSession,
+                    $args,
+                  );
                 }}
               />
             )}

@@ -21,9 +21,17 @@ export interface ComponentAttributes {
   children?: React.ReactNode;
   slots?: Record<string, (props: Record<string, unknown>) => React.ReactNode>;
   attributes?: Record<string, unknown>;
-  ref?: React.Ref<Record<string, unknown>>;
+  className?: string;
+  style?: React.CSSProperties;
+  id?: string;
+  title?: string;
+  role?: React.AriaRole;
+  ref?: React.Ref<unknown>;
   __onModelEvent?: (event: string, ...args: unknown[]) => void;
 }
+export type WithDefaults<Props, Defaults> = Props & {
+  [Key in keyof Props & keyof Defaults]-?: Exclude<Props[Key], undefined>;
+};
 type ModelFactory<Props, State> = (
   props: Props,
   emit: (event: string, ...args: unknown[]) => void,
@@ -41,17 +49,21 @@ interface ComponentModel<Props, State> {
 }
 const ParentModelScope = React.createContext<ModelScope | undefined>(undefined);
 
-export function useComponentModel<Props extends object, State>(
+export function useComponentModel<
+  Props extends object,
+  Defaults extends object,
+  State,
+>(
   incomingProps: Props,
-  defaults: Partial<Props>,
-  factory: ModelFactory<Props, State>,
-): ComponentModel<Props, State> {
+  defaults: Defaults,
+  factory: ModelFactory<WithDefaults<Props, Defaults>, State>,
+): ComponentModel<WithDefaults<Props, Defaults>, State> {
   const parent = React.useContext(ParentModelScope);
   const current = React.useRef(incomingProps);
   current.current = incomingProps;
-  const holder = React.useRef<ComponentModel<Props, State> | undefined>(
-    undefined,
-  );
+  const holder = React.useRef<
+    ComponentModel<WithDefaults<Props, Defaults>, State> | undefined
+  >(undefined);
   if (!holder.current) {
     const scope = createModelScope(parent);
     const { props, emit, model, expose, publishExposed } = createComponentProps(

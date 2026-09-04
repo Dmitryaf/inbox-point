@@ -5,6 +5,7 @@ export type ComponentProps = {
   text: string;
 } & ComponentAttributes;
 export const componentDefaults = {};
+
 export function createComponentModel() {
   return {};
 }

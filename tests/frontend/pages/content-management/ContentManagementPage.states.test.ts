@@ -25,8 +25,11 @@ describe('ContentManagementPage states', () => {
     const wrapper = mount(ContentManagementPage);
     await flushPromises();
 
+    await wrapper.get('#editor-section').setValue('faq');
     expect(wrapper.text()).toContain('Вопросов пока нет');
+    await wrapper.get('#workspace-view').setValue('preview');
     expect(wrapper.text()).toContain('здесь появится будущий ответ');
+    await wrapper.get('#workspace-view').setValue('history');
     expect(wrapper.text()).toContain('Изменений пока нет');
   });
 

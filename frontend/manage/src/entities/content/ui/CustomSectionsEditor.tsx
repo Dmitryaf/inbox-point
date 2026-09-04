@@ -5,6 +5,8 @@ import {
 import { renderList as $renderList } from '@manage/shared/lib/component-view';
 import { invokeHandler as $invoke } from '@manage/shared/lib/component-events';
 
+import { requiredValue as $required } from '@manage/shared/lib/component-bindings';
+
 import {
   createComponentModel,
   componentDefaults,
@@ -72,7 +74,7 @@ export default function CustomSectionsEditor($incomingProps: ComponentProps) {
               <button
                 type="button"
                 onClick={() => {
-                  void $state.sections.value.splice(index, 1);
+                  void $required($state.sections.value).splice(index, 1);
                 }}
                 className="danger"
               >

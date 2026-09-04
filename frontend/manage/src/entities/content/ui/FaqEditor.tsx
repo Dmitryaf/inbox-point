@@ -4,6 +4,8 @@ import {
 } from '@manage/shared/lib/component-model';
 import { renderList as $renderList } from '@manage/shared/lib/component-view';
 import { invokeHandler as $invoke } from '@manage/shared/lib/component-events';
+import { unref as $unref } from '@manage/shared/lib/model-state';
+import { requiredValue as $required } from '@manage/shared/lib/component-bindings';
 
 import { moveItem } from '@manage/shared/lib/move-item';
 import {
@@ -73,7 +75,7 @@ export default function FaqEditor($incomingProps: ComponentProps) {
                 disabled={index === 0}
                 type="button"
                 onClick={() => {
-                  void moveItem($state.items.value, index, -1);
+                  void $unref(moveItem)($state.items.value, index, -1);
                 }}
               >
                 {' Выше '}
@@ -82,7 +84,7 @@ export default function FaqEditor($incomingProps: ComponentProps) {
                 disabled={index === items.length - 1}
                 type="button"
                 onClick={() => {
-                  void moveItem($state.items.value, index, 1);
+                  void $unref(moveItem)($state.items.value, index, 1);
                 }}
               >
                 {' Ниже '}
@@ -90,7 +92,7 @@ export default function FaqEditor($incomingProps: ComponentProps) {
               <button
                 type="button"
                 onClick={() => {
-                  void $state.items.value.splice(index, 1);
+                  void $required($state.items.value).splice(index, 1);
                 }}
                 className="danger"
               >

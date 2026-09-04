@@ -1,4 +1,7 @@
-import { type ComponentAttributes } from '@manage/shared/lib/component-model';
+import {
+  type ComponentAttributes,
+  type WithDefaults,
+} from '@manage/shared/lib/component-model';
 import {
   type ModelOptions,
   type ModelRef,
@@ -10,9 +13,10 @@ export type ComponentProps = {
   onModelValueChange?: (value: FaqItem[]) => void;
 } & ComponentAttributes;
 export const componentDefaults = {};
+type ResolvedProps = WithDefaults<ComponentProps, typeof componentDefaults>;
 export function createComponentModel(
-  $props: ComponentProps,
-  $emit: (event: string, ...args: unknown[]) => void,
+  _props: ResolvedProps,
+  _emit: (event: string, ...args: unknown[]) => void,
   $model: <Value>(
     name: string,
     options?: ModelOptions<Value>,
