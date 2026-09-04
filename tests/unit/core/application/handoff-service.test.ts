@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { HandoffService } from '@/core/application/handoff-service.js';
 import type {
   OpenOperatorRequest,
   OperatorInbox,
@@ -7,9 +8,9 @@ import type {
 import type { SupportMessage } from '@/core/model/support-message.js';
 import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-support-repository.js';
 
-import { HandoffService } from '@/core/application/handoff-service.js';
-
 class FakeOperatorInbox implements OperatorInbox {
+  public firstOpenGate: Promise<void> | undefined;
+  public onOpenRequest: (() => void) | undefined;
   public readonly closed: string[] = [];
   public readonly opened: OpenOperatorRequest[] = [];
   public readonly reopened: string[] = [];
@@ -23,14 +24,24 @@ class FakeOperatorInbox implements OperatorInbox {
     return Promise.resolve();
   }
 
-  public openRequest(
+  public async openRequest(
     request: OpenOperatorRequest,
   ): Promise<{ operatorMessageId: string; topicId: string }> {
     this.opened.push(request);
-    return Promise.resolve({
-      operatorMessageId: `operator-message-${this.opened.length}`,
-      topicId: `topic-${this.opened.length}`,
-    });
+    const openNumber = this.opened.length;
+
+    if (this.onOpenRequest) {
+      this.onOpenRequest();
+    }
+
+    if (openNumber === 1 && this.firstOpenGate) {
+      await this.firstOpenGate;
+    }
+
+    return {
+      operatorMessageId: `operator-message-${openNumber}`,
+      topicId: `topic-${openNumber}`,
+    };
   }
 
   public relayCustomerMessage(
@@ -93,6 +104,37 @@ describe('HandoffService', () => {
       'update-2',
       createClientMessage('message-2', 'Second'),
     );
+
+    expect(inbox.opened).toHaveLength(1);
+    expect(inbox.relayed).toEqual([
+      {
+        message: createClientMessage('message-2', 'Second'),
+        operatorTopicId: 'topic-1',
+      },
+    ]);
+  });
+
+  it('serializes simultaneous messages from the same client', async () => {
+    const firstOpenGate = Promise.withResolvers<void>();
+    const firstOpenStarted = Promise.withResolvers<void>();
+    inbox.firstOpenGate = firstOpenGate.promise;
+    inbox.onOpenRequest = firstOpenStarted.resolve;
+
+    const first = service.handleClientMessage(
+      'update-1',
+      createClientMessage('message-1', 'First'),
+    );
+    await firstOpenStarted.promise;
+
+    const second = service.handleClientMessage(
+      'update-2',
+      createClientMessage('message-2', 'Second'),
+    );
+
+    expect(inbox.opened).toHaveLength(1);
+
+    firstOpenGate.resolve();
+    await Promise.all([first, second]);
 
     expect(inbox.opened).toHaveLength(1);
     expect(inbox.relayed).toEqual([

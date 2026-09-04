@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import { KeyedTaskQueue } from '@/core/application/keyed-task-queue.js';
 import {
   OperatorConversationUnavailableError,
   type OperatorInbox,
@@ -16,6 +17,7 @@ export interface HandoffServiceDependencies {
 }
 
 export class HandoffService {
+  private readonly clientMessageQueue = new KeyedTaskQueue();
   private readonly clock: () => Date;
   private readonly createId: () => string;
   private readonly operatorInbox: OperatorInbox;
@@ -32,50 +34,56 @@ export class HandoffService {
     externalEventId: string,
     message: SupportMessage,
   ): Promise<void> {
-    await this.handleEvent(
-      `client:${message.channel}`,
-      externalEventId,
-      async () => {
-        const existingRequest = this.repository.findActiveRequest(
-          message.channel,
-          message.conversationId,
-        );
+    const conversationKey = createConversationKey(message);
 
-        if (existingRequest) {
-          try {
-            await this.relayClientMessage(existingRequest, message);
-            return;
-          } catch (error: unknown) {
-            if (!(error instanceof OperatorConversationUnavailableError)) {
-              throw error;
-            }
-            this.repository.closeRequest(existingRequest.id, this.clock());
-          }
-        }
+    await this.clientMessageQueue.run(conversationKey, async () => {
+      await this.handleEvent(
+        `client:${message.channel}`,
+        externalEventId,
+        async () => {
+          await this.processClientMessage(message);
+        },
+      );
+    });
+  }
 
-        const previousRequest = this.repository.findLatestRequest(
-          message.channel,
-          message.conversationId,
-        );
-        if (previousRequest?.status === 'closed') {
-          try {
-            await this.operatorInbox.reopenRequest(
-              previousRequest.operatorTopicId,
-            );
-            this.repository.reopenRequest(previousRequest.id);
-            await this.relayClientMessage(previousRequest, message);
-            return;
-          } catch (error: unknown) {
-            if (!(error instanceof OperatorConversationUnavailableError)) {
-              throw error;
-            }
-            this.repository.closeRequest(previousRequest.id, this.clock());
-          }
-        }
-
-        await this.openClientRequest(message);
-      },
+  private async processClientMessage(message: SupportMessage): Promise<void> {
+    const existingRequest = this.repository.findActiveRequest(
+      message.channel,
+      message.conversationId,
     );
+
+    if (existingRequest) {
+      try {
+        await this.relayClientMessage(existingRequest, message);
+        return;
+      } catch (error: unknown) {
+        if (!(error instanceof OperatorConversationUnavailableError)) {
+          throw error;
+        }
+        this.repository.closeRequest(existingRequest.id, this.clock());
+      }
+    }
+
+    const previousRequest = this.repository.findLatestRequest(
+      message.channel,
+      message.conversationId,
+    );
+    if (previousRequest?.status === 'closed') {
+      try {
+        await this.operatorInbox.reopenRequest(previousRequest.operatorTopicId);
+        this.repository.reopenRequest(previousRequest.id);
+        await this.relayClientMessage(previousRequest, message);
+        return;
+      } catch (error: unknown) {
+        if (!(error instanceof OperatorConversationUnavailableError)) {
+          throw error;
+        }
+        this.repository.closeRequest(previousRequest.id, this.clock());
+      }
+    }
+
+    await this.openClientRequest(message);
   }
 
   private async relayClientMessage(
@@ -241,6 +249,10 @@ export class HandoffService {
       throw error;
     }
   }
+}
+
+function createConversationKey(message: SupportMessage): string {
+  return `${message.channel}\u0000${message.conversationId}`;
 }
 
 function createTopicTitle(
