@@ -40,10 +40,14 @@ public final class VkChannel implements AutoCloseable {
     }
 
     public void poll(long group, int timeout, Incoming sink, ChannelActivity activity) throws IOException, SQLException, InterruptedException {
-        var server = initial == null ? api.open(group) : initial;
-        var cursor = server.initialCursor();
+        var server = initial;
+        var cursor = server == null ? null : server.initialCursor();
         while (!Thread.currentThread().isInterrupted()) {
             try {
+                if (server == null) {
+                    server = api.open(group);
+                    cursor = server.initialCursor();
+                }
                 sink.drain();
                 switch (api.poll(server, cursor, timeout)) {
                     case VkApiClient.Batch batch -> {

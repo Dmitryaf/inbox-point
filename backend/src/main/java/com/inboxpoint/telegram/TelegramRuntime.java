@@ -60,6 +60,7 @@ public final class TelegramRuntime {
         try (var store = new TelegramStore(database)) {
             store.recoverInterrupted();
         }
+        vk.restore(incomingVk());
         if (environment.getProperty("TELEGRAM_ENABLED", Boolean.class, false)) {
             source = ENVIRONMENT;
             var config = new Settings(environment.getRequiredProperty("TELEGRAM_BOT_TOKEN"),
@@ -94,6 +95,9 @@ public final class TelegramRuntime {
 
             @Override
             public void drain() throws IOException, SQLException, InterruptedException {
+                if (live == null) {
+                    return;
+                }
                 try (var store = new TelegramStore(database)) {
                     for (var item = store.nextVk(); item != null; item = store.nextVk()) {
                         receiveVk(item.event(), item.peer(), item.message(), item.name(), item.text());
@@ -157,7 +161,6 @@ public final class TelegramRuntime {
         poller = Thread.ofVirtual().name("telegram-handoff")
                 .start(() -> poll(database, origin, settings.token(), settings.group(), settings.timeout()));
         deliveries = Thread.ofVirtual().name("telegram-deliveries").start(() -> deliver(settings.token()));
-        vk.restore(incomingVk());
     }
 
     public ChannelActivity.Snapshot vkPolling() {

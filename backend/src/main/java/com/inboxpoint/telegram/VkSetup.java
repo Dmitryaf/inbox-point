@@ -77,8 +77,8 @@ final class VkSetup {
         }
         var client = new VkChannel(origin, token);
         try {
-            client.check(group);
             if (save) {
+                client.check(group);
                 LocalJsonFile.write(path, JsonMapper.shared().createObjectNode().put("version", 1)
                         .put("accessToken", token).put("groupId", group).put("pollTimeoutSeconds", timeout));
             }
