@@ -33,6 +33,10 @@ describe('SetupPage', () => {
 
     expect(wrapper.text()).toContain('Подключение Telegram');
     expect(wrapper.text()).toContain('Подключение VK');
+    expect(wrapper.text()).toContain('Настройте Long Poll API');
+    expect(wrapper.text()).toContain(
+      'Ключ даёт доступ к сообщениям сообщества',
+    );
     expect(wrapper.text()).toContain('Доставка ответов');
     expect(wrapper.text()).toContain('Резервная копия');
     expect(wrapper.find('#telegram-token').exists()).toBe(true);
@@ -118,6 +122,37 @@ describe('SetupPage', () => {
     expect(wrapper.text()).toContain('Требуют ручной проверки: 1');
     expect(wrapper.text()).toContain('Проверить вручную');
     expect(wrapper.text()).not.toContain('Повторить');
+
+    wrapper.unmount();
+  });
+
+  it('uses a single column when only one channel needs setup', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = requestUrl(input);
+        if (url.endsWith('/status')) {
+          return Promise.resolve(
+            response({
+              connected: true,
+              locked: true,
+              source: 'local',
+              vk: { connected: false, locked: false, source: 'none' },
+            }),
+          );
+        }
+        return Promise.resolve(
+          response({ failures: [], summary: { failed: 0, pending: 0 } }),
+        );
+      }),
+    );
+
+    const wrapper = mount(SetupPage);
+    await flushPromises();
+
+    expect(wrapper.get('.setup-channel-grid').classes()).toContain(
+      'setup-channel-grid--mixed',
+    );
 
     wrapper.unmount();
   });

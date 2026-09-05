@@ -5,6 +5,8 @@ import {
   logicalOr as $or,
 } from '@frontend/shared/lib/component-bindings';
 
+import VkSetupInstructions from './VkSetupInstructions';
+
 import type { WithDefaults } from '@frontend/shared/lib/component-model';
 import type {
   createComponentModel,
@@ -25,16 +27,13 @@ export function renderVkSetupCardPart1(
     <>
       {$props.status.connected ? (
         <p className="setup-status setup-status--success">
-          {' VK подключён. '}
+          {
+            ' VK подключён. После перезапуска сервис восстановит подключение автоматически. '
+          }
         </p>
       ) : (
         <>
-          <ol className="setup-steps">
-            <li>{'Включите «Возможности ботов» в настройках сообщений.'}</li>
-            <li>{'В разделе «Работа с API» включите Long Poll API.'}</li>
-            <li>{'Отметьте событие «Входящие сообщения».'}</li>
-            <li>{'Создайте ключ сообщества с правом работы с сообщениями.'}</li>
-          </ol>
+          <VkSetupInstructions />
           {!$props.telegramConnected ? (
             <p className="setup-status">
               {' Сначала подключите Telegram для операторов. '}
@@ -51,7 +50,7 @@ export function renderVkSetupCardPart1(
               }}
               className="setup-form"
             >
-              <label htmlFor="vk-community">{'Ссылка на сообщество'}</label>
+              <label htmlFor="vk-community">{'Адрес сообщества VK'}</label>
               <input
                 id="vk-community"
                 placeholder="https://vk.com/your_community"
@@ -62,7 +61,9 @@ export function renderVkSetupCardPart1(
                   $set($state, 'community', $event.currentTarget.value);
                 })}
               />
-              <label htmlFor="vk-token">{'Ключ доступа сообщества'}</label>
+              <label htmlFor="vk-token">
+                {'Ключ доступа с правом работы с сообщениями'}
+              </label>
               <input
                 id="vk-token"
                 autoComplete="off"
