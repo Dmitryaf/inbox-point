@@ -1,14 +1,13 @@
 // @vitest-environment jsdom
 
-import {
-  flushPromises,
-  mount,
-  type DOMWrapper,
-} from '@test/frontend/support/react-test-utils';
+import { flushPromises, mount } from '@test/frontend/support/react-test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import ContentManagementPage from '@frontend/pages/content-management/ui/ContentManagementPage';
 import { requestUrl, response } from '@test/frontend/support/fake-response';
+import { findButton, initialVersion } from './content-management-test-helpers';
+
+const savedVersion = 'b'.repeat(64);
 
 describe('ContentManagementPage', () => {
   beforeEach(() => {
@@ -31,8 +30,11 @@ describe('ContentManagementPage', () => {
         }
         return Promise.resolve(
           response({
-            faq: [{ answer: 'Напишите нам.', question: 'Как записаться?' }],
-            schedule: 'Понедельник, 19:00',
+            content: {
+              faq: [{ answer: 'Напишите нам.', question: 'Как записаться?' }],
+              schedule: 'Понедельник, 19:00',
+            },
+            version: initialVersion,
           }),
         );
       }),
@@ -47,20 +49,18 @@ describe('ContentManagementPage', () => {
     expect(wrapper.text()).not.toContain('Как записаться?');
     expect(wrapper.text()).toContain('Все изменения сохранены');
 
-    await clickButton(
-      wrapper.findAll<HTMLButtonElement>('button'),
-      'Частые вопросы',
+    await findButton(wrapper.findAll('button'), 'Частые вопросы').trigger(
+      'click',
     );
     expect(wrapper.get<HTMLInputElement>('#faq-question-0').element.value).toBe(
       'Как записаться?',
     );
     expect(wrapper.find('#schedule').exists()).toBe(false);
 
-    await clickButton(wrapper.findAll<HTMLButtonElement>('button'), 'Основное');
+    await findButton(wrapper.findAll('button'), 'Основное').trigger('click');
     await wrapper.get('#schedule').setValue('Вторник, 20:00');
-    await clickButton(
-      wrapper.findAll<HTMLButtonElement>('button'),
-      'Предпросмотр',
+    await findButton(wrapper.findAll('button'), 'Предпросмотр').trigger(
+      'click',
     );
 
     expect(wrapper.text()).toContain('Вторник, 20:00');
@@ -69,6 +69,7 @@ describe('ContentManagementPage', () => {
 
   it('restores an earlier revision and reloads the editor', async () => {
     let schedule = 'Вторник, 20:00';
+    let restored = false;
     const history = [
       {
         changedAt: '2026-09-02T12:00:00.000Z',
@@ -90,18 +91,34 @@ describe('ContentManagementPage', () => {
         }
         if (url.endsWith('/restore') && options?.method === 'POST') {
           schedule = 'Понедельник, 19:00';
-          return Promise.resolve(response({ restored: true }));
+          restored = true;
+          return Promise.resolve(
+            response({
+              content: { schedule },
+              version: savedVersion,
+            }),
+          );
         }
         if (url.endsWith('/history')) {
+          if (restored) {
+            return Promise.resolve(
+              response({ message: 'История временно недоступна.' }, 500),
+            );
+          }
           return Promise.resolve(response({ history }));
         }
-        return Promise.resolve(response({ schedule }));
+        return Promise.resolve(
+          response({
+            content: { schedule },
+            version: initialVersion,
+          }),
+        );
       }),
     );
 
     const wrapper = mount(ContentManagementPage);
     await flushPromises();
-    await clickButton(wrapper.findAll<HTMLButtonElement>('button'), 'История');
+    await findButton(wrapper.findAll('button'), 'История').trigger('click');
     const restoreButton = wrapper
       .findAll('button')
       .find((button) => button.text() === 'Восстановить');
@@ -117,25 +134,16 @@ describe('ContentManagementPage', () => {
     }
     await confirmButton.trigger('click');
     await flushPromises();
-    await clickButton(
-      wrapper.findAll<HTMLButtonElement>('button'),
-      'Редактирование',
+    await findButton(wrapper.findAll('button'), 'Редактирование').trigger(
+      'click',
     );
 
     expect(wrapper.get<HTMLTextAreaElement>('#schedule').element.value).toBe(
       'Понедельник, 19:00',
     );
     expect(wrapper.text()).toContain('Предыдущая версия восстановлена');
+    expect(wrapper.get('[role="alert"]').text()).toContain(
+      'Версия восстановлена, но историю изменений обновить не удалось.',
+    );
   });
 });
-
-async function clickButton(
-  buttons: DOMWrapper<HTMLButtonElement>[],
-  label: string,
-): Promise<void> {
-  const button = buttons.find((candidate) => candidate.text() === label);
-  if (!button) {
-    throw new Error(`Expected the "${label}" button`);
-  }
-  await button.trigger('click');
-}

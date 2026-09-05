@@ -9,6 +9,7 @@ import type { ContentChange } from '@frontend/entities/content/model/types';
 export type ComponentProps = {
   changes: ContentChange[];
   hasUnsavedChanges: boolean;
+  loading: boolean;
   restoring: boolean;
 } & EventProps<{ restore: [revision: number] }> &
   ComponentAttributes;

@@ -303,5 +303,10 @@ describe('FileContentSettingsStore', () => {
     );
 
     await expect(store.save({ schedule: 'x'.repeat(4_001) })).rejects.toThrow();
+    await expect(
+      store.save({
+        schedule: Array.from({ length: 2_000 }, () => 'x').join('\n'),
+      }),
+    ).rejects.toThrow();
   });
 });

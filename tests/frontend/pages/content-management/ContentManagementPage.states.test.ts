@@ -6,6 +6,8 @@ import { describe, expect, it, vi } from 'vitest';
 import ContentManagementPage from '@frontend/pages/content-management/ui/ContentManagementPage';
 import { requestUrl, response } from '@test/frontend/support/fake-response';
 
+const initialVersion = 'a'.repeat(64);
+
 describe('ContentManagementPage states', () => {
   it('explains the empty content state', async () => {
     vi.stubGlobal(
@@ -18,7 +20,9 @@ describe('ContentManagementPage states', () => {
         if (url.endsWith('/history')) {
           return Promise.resolve(response({ history: [] }));
         }
-        return Promise.resolve(response({}));
+        return Promise.resolve(
+          response({ content: {}, version: initialVersion }),
+        );
       }),
     );
 
@@ -49,7 +53,12 @@ describe('ContentManagementPage states', () => {
             response({ message: 'Не удалось сохранить информацию.' }, 500),
           );
         }
-        return Promise.resolve(response({ schedule: 'Старое расписание' }));
+        return Promise.resolve(
+          response({
+            content: { schedule: 'Старое расписание' },
+            version: initialVersion,
+          }),
+        );
       }),
     );
 

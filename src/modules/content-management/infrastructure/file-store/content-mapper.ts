@@ -1,5 +1,6 @@
 import {
   type ClientInformationContent,
+  hasValidClientInformationResponses,
   hasValidCustomSections,
   hasValidFaqItems,
 } from '@/core/application/client-information.js';
@@ -11,7 +12,8 @@ export function validateContent(
   const content = pickContent(value);
   if (
     !hasValidCustomSections(content.customSections ?? []) ||
-    !hasValidFaqItems(content.faq ?? [])
+    !hasValidFaqItems(content.faq ?? []) ||
+    !hasValidClientInformationResponses(content)
   ) {
     throw new Error('The local content settings are invalid');
   }

@@ -1,123 +1,128 @@
 import {
-  computed,
-  onBeforeUnmount,
-  onMounted,
-  reactive,
-  ref,
-} from '@frontend/shared/lib/model-state';
-
-import {
   loadContent,
-  loadContentHistory,
   restoreContent,
   saveContent,
 } from '@frontend/entities/content/api/content-api';
 import {
-  createEmptyContent,
+  copyContentDraft,
   normalizeContentDraft,
   snapshotContent,
 } from '@frontend/entities/content/model/content-draft';
-import { HttpError } from '@frontend/shared/api/http-client';
-import { errorMessage } from '@frontend/shared/lib/error-message';
+import { createContentWorkspaceState } from './content-workspace-state';
+import { useContentHistory } from './use-content-history';
+import { useUnsavedExitGuard } from './use-unsaved-exit-guard';
 
 interface ContentWorkspaceOptions {
-  onUnauthorized(): void;
+  onUnauthorized: () => void;
 }
 
 export function useContentWorkspace(options: ContentWorkspaceOptions) {
-  const draft = reactive(createEmptyContent());
-  const history = ref<Awaited<ReturnType<typeof loadContentHistory>>>([]);
-  const savedSnapshot = ref(snapshotContent(draft));
-  const loading = ref(true);
-  const saving = ref(false);
-  const restoring = ref(false);
-  const error = ref('');
-  const notice = ref('');
-  const dirty = computed(() => snapshotContent(draft) !== savedSnapshot.value);
+  const state = createContentWorkspaceState(options.onUnauthorized);
+  const historyState = useContentHistory((cause) => state.reportFailure(cause));
+  useUnsavedExitGuard(state.dirty);
 
   const load = async (): Promise<void> => {
-    loading.value = true;
-    error.value = '';
+    state.loading.value = true;
+    state.error.value = '';
+    state.notice.value = '';
     try {
-      const [content, changes] = await Promise.all([
-        loadContent(),
-        loadContentHistory(),
-      ]);
-      Object.assign(draft, normalizeContentDraft(content));
-      savedSnapshot.value = snapshotContent(draft);
-      history.value = changes;
+      const snapshot = await loadContent();
+      Object.assign(state.draft, normalizeContentDraft(snapshot.content));
+      state.savedSnapshot.value = snapshotContent(state.draft);
+      state.version.value = snapshot.version;
+      state.loaded.value = true;
     } catch (cause: unknown) {
-      reportFailure(cause);
+      state.reportFailure(cause);
+      return;
     } finally {
-      loading.value = false;
+      state.loading.value = false;
     }
+    await refreshHistory(
+      'Информация загружена, но историю изменений обновить не удалось.',
+    );
   };
 
   const save = async (): Promise<void> => {
-    saving.value = true;
-    error.value = '';
-    notice.value = '';
+    state.saving.value = true;
+    state.error.value = '';
+    state.notice.value = '';
+    const submission = copyContentDraft(state.draft);
+    const submittedSnapshot = snapshotContent(submission);
+    let saved = false;
     try {
-      await saveContent(draft);
-      savedSnapshot.value = snapshotContent(draft);
-      history.value = await loadContentHistory();
-      notice.value = 'Информация сохранена и уже доступна клиентам.';
+      const result = await saveContent(submission, state.version.value);
+      const savedContent = normalizeContentDraft(result.content);
+      state.version.value = result.version;
+      state.savedSnapshot.value = snapshotContent(savedContent);
+      if (snapshotContent(state.draft) === submittedSnapshot) {
+        Object.assign(state.draft, savedContent);
+      }
+      state.notice.value = 'Информация сохранена и уже доступна клиентам.';
+      saved = true;
     } catch (cause: unknown) {
-      const message = reportFailure(cause);
+      const message = state.reportFailure(cause);
       if (message) {
-        error.value = `${message} Ваши изменения остались на этой странице.`;
+        state.error.value = `${message} Ваши изменения остались на этой странице.`;
       }
     } finally {
-      saving.value = false;
+      state.saving.value = false;
+    }
+    if (saved) {
+      await refreshHistory(
+        'Информация сохранена, но историю изменений обновить не удалось.',
+      );
     }
   };
 
   const restore = async (revision: number): Promise<void> => {
-    restoring.value = true;
-    error.value = '';
-    notice.value = '';
+    state.restoring.value = true;
+    state.error.value = '';
+    state.notice.value = '';
+    let restored = false;
     try {
-      await restoreContent(revision);
-      await load();
-      notice.value = 'Предыдущая версия восстановлена и уже доступна клиентам.';
+      const result = await restoreContent(revision, state.version.value);
+      Object.assign(state.draft, normalizeContentDraft(result.content));
+      state.savedSnapshot.value = snapshotContent(state.draft);
+      state.version.value = result.version;
+      state.notice.value =
+        'Предыдущая версия восстановлена и уже доступна клиентам.';
+      restored = true;
     } catch (cause: unknown) {
-      reportFailure(cause);
+      state.reportFailure(cause);
     } finally {
-      restoring.value = false;
+      state.restoring.value = false;
+    }
+    if (restored) {
+      await refreshHistory(
+        'Версия восстановлена, но историю изменений обновить не удалось.',
+      );
     }
   };
 
-  const preventUnsavedExit = (event: BeforeUnloadEvent): void => {
-    if (dirty.value) {
-      event.preventDefault();
+  const resumeAfterAuthentication = async (): Promise<void> => {
+    if (!state.loaded.value) {
+      await load();
+      return;
+    }
+    if (!historyState.historyLoaded.value) {
+      await refreshHistory('Историю изменений обновить не удалось.');
     }
   };
-  onMounted(() => window.addEventListener('beforeunload', preventUnsavedExit));
-  onBeforeUnmount(() =>
-    window.removeEventListener('beforeunload', preventUnsavedExit),
-  );
 
-  function reportFailure(cause: unknown): string {
-    if (cause instanceof HttpError && cause.status === 401) {
-      options.onUnauthorized();
-      return '';
+  async function refreshHistory(failurePrefix: string): Promise<void> {
+    const message = await historyState.refreshHistory();
+    if (message) {
+      state.error.value = `${failurePrefix} ${message}`;
     }
-    const message = errorMessage(cause);
-    error.value = message;
-    return message;
   }
 
   return {
-    dirty,
-    draft,
-    error,
-    history,
+    ...state,
+    history: historyState.history,
+    historyLoading: historyState.historyLoading,
     load,
-    loading,
-    notice,
     restore,
-    restoring,
+    resumeAfterAuthentication,
     save,
-    saving,
   };
 }

@@ -1,5 +1,8 @@
 import { classNames as $class } from '@frontend/shared/lib/component-view';
-import { invokeArgs as $invokeArgs } from '@frontend/shared/lib/component-events';
+import {
+  invokeHandler as $invoke,
+  invokeArgs as $invokeArgs,
+} from '@frontend/shared/lib/component-events';
 import { unref as $unref } from '@frontend/shared/lib/model-state';
 import {
   modelSetter as $setter,
@@ -30,6 +33,19 @@ export function renderContentWorkspacePart1(
         <p role="status" className="state-card">
           {' Загружаем информацию… '}
         </p>
+      ) : !workspace.loaded.value ? (
+        <section className="state-card">
+          <p>{'Редактор не открыт. Повторите загрузку.'}</p>
+          <button
+            type="button"
+            onClick={($event) => {
+              $invoke($required($unref($state.workspace)).load, $event);
+            }}
+            className="secondary-button"
+          >
+            {' Повторить '}
+          </button>
+        </section>
       ) : (
         <div
           className={$class('workspace', {
@@ -76,6 +92,7 @@ export function renderContentWorkspacePart1(
               <ChangeHistory
                 changes={workspace.history.value}
                 hasUnsavedChanges={workspace.dirty.value}
+                loading={workspace.historyLoading.value}
                 restoring={workspace.restoring.value}
                 onRestore={(...$args) => {
                   $invokeArgs(

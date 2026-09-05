@@ -125,6 +125,13 @@ describe('managed content routes', () => {
     if (!cookie) {
       throw new Error('Expected a session cookie value');
     }
+    const loaded = await app.inject({
+      headers: { cookie },
+      method: 'GET',
+      remoteAddress: '192.0.2.10',
+      url: '/api/manage/content',
+    });
+    const loadedVersion = loaded.json<{ version: string }>().version;
     const save = await app.inject({
       headers: {
         cookie,
@@ -133,16 +140,39 @@ describe('managed content routes', () => {
       },
       method: 'POST',
       payload: {
-        address: '',
-        customSections: [],
-        faq: [
-          {
-            answer: 'Напишите преподавателю.',
-            question: 'Как записаться?',
-          },
-        ],
-        prices: '',
-        schedule: '',
+        content: {
+          address: '',
+          customSections: [],
+          faq: [
+            {
+              answer: 'Напишите преподавателю.',
+              question: 'Как записаться?',
+            },
+          ],
+          prices: '',
+          schedule: '',
+        },
+        version: loadedVersion,
+      },
+      remoteAddress: '192.0.2.10',
+      url: '/api/manage/content',
+    });
+    const conflict = await app.inject({
+      headers: {
+        cookie,
+        host: 'example.test',
+        origin: 'https://example.test',
+      },
+      method: 'POST',
+      payload: {
+        content: {
+          address: '',
+          customSections: [],
+          faq: [],
+          prices: '',
+          schedule: 'Конфликтующая версия',
+        },
+        version: loadedVersion,
       },
       remoteAddress: '192.0.2.10',
       url: '/api/manage/content',
@@ -160,7 +190,10 @@ describe('managed content routes', () => {
         origin: 'https://example.test',
       },
       method: 'POST',
-      payload: { revision: 7 },
+      payload: {
+        revision: 7,
+        version: save.json<{ version: string }>().version,
+      },
       remoteAddress: '192.0.2.10',
       url: '/api/manage/content/restore',
     });
@@ -180,7 +213,13 @@ describe('managed content routes', () => {
     expect(login.headers['set-cookie']).toContain('SameSite=Strict');
     expect(login.headers['set-cookie']).toContain('Secure');
     expect(login.headers['set-cookie']).not.toContain('correct-password');
+    expect(loaded.statusCode).toBe(200);
+    expect(loadedVersion).toHaveLength(64);
     expect(save.statusCode).toBe(200);
+    expect(conflict.statusCode).toBe(409);
+    expect(conflict.json<{ message: string }>().message).toContain(
+      'другой вкладке',
+    );
     expect(saved).toEqual([
       {
         faq: [
