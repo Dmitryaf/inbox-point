@@ -26,6 +26,9 @@ import tools.jackson.databind.json.JsonMapper;
 
 @Component
 public final class ClientInformation {
+    public static final String INTAKE_PAUSED =
+            "Бот временно не принимает новые обращения.\n\n"
+                    + "Используйте резервный способ связи, указанный в описании бота.";
     public static final String SCHEDULE = "Расписание";
     public static final String PRICES = "Цены";
     public static final String ADDRESS = "Адрес";

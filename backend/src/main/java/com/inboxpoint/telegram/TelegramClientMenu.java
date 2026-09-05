@@ -3,6 +3,7 @@ package com.inboxpoint.telegram;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.Locale;
+import java.util.function.Predicate;
 
 import com.inboxpoint.content.ClientInformation;
 import tools.jackson.databind.JsonNode;
@@ -18,8 +19,10 @@ final class TelegramClientMenu {
     private final TelegramBotApi api;
     private final long group;
     private final ClientInformation information;
+    private final Predicate<String> paused;
 
-    TelegramClientMenu(TelegramStore store, TelegramBotApi api, long group, ClientInformation information) {
+    TelegramClientMenu(TelegramStore store, TelegramBotApi api, long group, ClientInformation information, Predicate<String> paused) {
+        this.paused = paused;
         this.information = information;
         this.store = store;
         this.api = api;
@@ -30,7 +33,10 @@ final class TelegramClientMenu {
             throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
         var active = store.activeRequest(chat);
         var trimmed = text.strip();
-        var response = response(trimmed, active != null);
+        var blocked = active == null && paused.test("telegram");
+        var published = information.informationButtons().contains(trimmed) || information.sections().stream()
+                .anyMatch(section -> section.label().equals(trimmed));
+        var response = blocked && !published ? ClientInformation.INTAKE_PAUSED : response(trimmed, active != null);
         if (response == null) {
             return false;
         }
@@ -42,7 +48,7 @@ final class TelegramClientMenu {
                 api.closeTopic(group, active.topic());
                 store.changeStatus(active.id(), false, now);
             }
-            api.sendMessage(chat, null, response, keyboard());
+            api.sendMessage(chat, null, response, keyboard(blocked));
             store.completeEvent(SOURCE, event, now);
         } catch (TelegramBotApi.RequestFailed failure) {
             if (!failure.outcomeUnknown()) {
@@ -81,7 +87,7 @@ final class TelegramClientMenu {
         return null;
     }
 
-    private JsonNode keyboard() {
+    private JsonNode keyboard(boolean blocked) {
         var markup = JsonMapper.shared().createObjectNode().put("resize_keyboard", true)
                 .put("is_persistent", true).put("input_field_placeholder", "Выберите действие");
         var rows = markup.putArray("keyboard");
@@ -95,8 +101,10 @@ final class TelegramClientMenu {
         for (var section : information.sections()) {
             rows.addArray().addObject().put("text", section.label());
         }
-        rows.addArray().addObject().put("text", ASK);
-        rows.addArray().addObject().put("text", RESET);
+        if (!blocked) {
+            rows.addArray().addObject().put("text", ASK);
+            rows.addArray().addObject().put("text", RESET);
+        }
         return markup;
     }
 }

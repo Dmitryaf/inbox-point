@@ -15,6 +15,7 @@ import java.util.Map;
 
 import com.inboxpoint.content.ClientInformation;
 import com.inboxpoint.operations.ChannelActivity;
+import com.inboxpoint.operations.LocalServiceControl;
 import com.inboxpoint.vk.VkChannel;
 import com.inboxpoint.persistence.LocalJsonFile;
 import jakarta.annotation.PreDestroy;
@@ -34,6 +35,7 @@ public final class TelegramRuntime {
 
     private final Environment environment;
     private final ClientInformation information;
+    private final LocalServiceControl serviceControl;
     private final ClientMessageQueue queue = new ClientMessageQueue();
     private final Path database;
     private final Path settingsFile;
@@ -50,6 +52,7 @@ public final class TelegramRuntime {
         this.information = information;
         this.environment = environment;
         database = Path.of(environment.getProperty("DATABASE_PATH", "./data/messenger-handoff.sqlite"));
+        serviceControl = new LocalServiceControl(database);
         settingsFile = database.toAbsolutePath().resolveSibling("telegram-settings.json");
         origin = URI.create(environment.getProperty("inboxpoint.telegram.api-origin", "https://api.telegram.org"));
         vk = new VkSetup(environment, database);
@@ -171,6 +174,10 @@ public final class TelegramRuntime {
         return activity.snapshot();
     }
 
+    public LocalServiceControl serviceControl() {
+        return serviceControl;
+    }
+
     public Status vkStatus() {
         return vk.status();
     }
@@ -187,9 +194,9 @@ public final class TelegramRuntime {
         var telegram = live;
         try (var store = new TelegramStore(database); var transport = TelegramHttpTransport.open("", API_TIMEOUT)) {
             var api = new TelegramBotApi(transport, origin, telegram.token(), API_TIMEOUT);
-            var menu = new VkClientMenu(information, vk.channel());
+            var menu = new VkClientMenu(information, vk.channel(), serviceControl::intakePaused);
             if (!menu.handle(store, event, peer, text)) {
-                new TelegramTextHandoff(telegram.group(), store, api, Clock.systemUTC(), information, queue)
+                new TelegramTextHandoff(telegram.group(), store, api, Clock.systemUTC(), information, queue, serviceControl::intakePaused)
                         .processVk(event, peer, message, name, text);
             }
         }
@@ -289,7 +296,7 @@ public final class TelegramRuntime {
     private void poll(Path database, URI origin, String token, long group, int timeout) {
         try (var store = new TelegramStore(database); var transport = TelegramHttpTransport.open("", API_TIMEOUT)) {
             var api = new TelegramBotApi(transport, origin, token, API_TIMEOUT);
-            var handoff = new TelegramTextHandoff(group, store, api, Clock.systemUTC(), information, queue);
+            var handoff = new TelegramTextHandoff(group, store, api, Clock.systemUTC(), information, queue, serviceControl::intakePaused);
             new TelegramPoller(api, handoff, timeout, activity).run();
         } catch (InterruptedException stopping) {
             Thread.currentThread().interrupt();

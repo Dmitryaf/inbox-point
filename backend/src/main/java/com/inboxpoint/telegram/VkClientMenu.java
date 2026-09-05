@@ -5,6 +5,7 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
+import java.util.function.Predicate;
 
 import com.inboxpoint.content.ClientInformation;
 import com.inboxpoint.vk.VkChannel;
@@ -16,9 +17,11 @@ import static com.inboxpoint.content.ClientInformation.ASK;
 final class VkClientMenu {
 
     private final ClientInformation information;
+    private final Predicate<String> paused;
     private final VkChannel api;
 
-    VkClientMenu(ClientInformation information, VkChannel api) {
+    VkClientMenu(ClientInformation information, VkChannel api, Predicate<String> paused) {
+        this.paused = paused;
         this.information = information;
         this.api = api;
     }
@@ -27,6 +30,13 @@ final class VkClientMenu {
             throws IOException, SQLException, InterruptedException {
         var active = store.activeRequest("vk", peer);
         var label = text.strip();
+        if (active == null && paused.test("vk")) {
+            var now = Instant.now();
+            if (store.claim("vk:menu", event, now)) {
+                store.completeEvent("vk:menu", event, now);
+            }
+            return true;
+        }
         var answer = response(label, active != null);
         if (answer == null) {
             return false;

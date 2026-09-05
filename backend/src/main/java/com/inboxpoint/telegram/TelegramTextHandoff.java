@@ -5,6 +5,7 @@ import java.sql.SQLException;
 import java.time.Clock;
 import java.util.Locale;
 import java.util.UUID;
+import java.util.function.Predicate;
 
 import com.inboxpoint.content.ClientInformation;
 import tools.jackson.databind.JsonNode;
@@ -20,17 +21,17 @@ final class TelegramTextHandoff {
     private final ClientMessageQueue queue;
 
     TelegramTextHandoff(long operatorGroup, TelegramStore store, TelegramBotApi api, Clock clock, ClientInformation information) {
-        this(operatorGroup, store, api, clock, information, new ClientMessageQueue());
+        this(operatorGroup, store, api, clock, information, new ClientMessageQueue(), channel -> false);
     }
 
     TelegramTextHandoff(long operatorGroup, TelegramStore store, TelegramBotApi api, Clock clock,
-            ClientInformation information, ClientMessageQueue queue) {
+            ClientInformation information, ClientMessageQueue queue, Predicate<String> paused) {
         this.queue = queue;
         this.operatorGroup = operatorGroup;
         this.store = store;
         this.api = api;
         this.clock = clock;
-        this.menu = new TelegramClientMenu(store, api, operatorGroup, information);
+        this.menu = new TelegramClientMenu(store, api, operatorGroup, information, paused);
     }
 
     void process(JsonNode update) throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {

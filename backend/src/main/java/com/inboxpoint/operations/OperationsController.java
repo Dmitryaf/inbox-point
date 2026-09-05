@@ -92,7 +92,7 @@ final class OperationsController {
             return ResponseEntity.ok(Map.of(
                     "state", attention ? "attention" : "healthy",
                     "channels", Map.of("telegram", telegram, "vk", vk),
-                    "deliveries", delivery, "observedAt", now.toString(), "startedAt", started.toString(),
+                    "deliveries", delivery, "intake", runtime.serviceControl().current().channels(), "observedAt", now.toString(), "startedAt", started.toString(),
                     "uptimeSeconds", Math.max(0, Duration.between(started, now).toSeconds())));
         } catch (IOException | SQLException unavailable) {
             return message(503, "Не удалось прочитать состояние сервиса.");
