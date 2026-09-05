@@ -1,12 +1,9 @@
 import { renderList as $renderList } from '@frontend/shared/lib/component-view';
 
-import {
-  requiredValue as $required,
-  setProperty as $setProperty,
-} from '@frontend/shared/lib/component-bindings';
+import { requiredValue as $required } from '@frontend/shared/lib/component-bindings';
+import { textProperty as $textProperty } from '@frontend/shared/lib/component-inputs';
 
 import type { createComponentModel } from './FaqEditor.model';
-import { controlledChange as $controlledChange } from '@frontend/shared/lib/component-input-event';
 export function renderFaqEditorPart1(
   $state: ReturnType<typeof createComponentModel>,
 ) {
@@ -25,13 +22,7 @@ export function renderFaqEditorPart1(
             maxLength={300}
             required
             value={item.question ?? ''}
-            onChange={$controlledChange<HTMLInputElement>(($event) => {
-              $setProperty(
-                $required(item),
-                'question',
-                $event.currentTarget.value,
-              );
-            })}
+            onChange={$textProperty(() => item, 'question')}
           />
           <p className="counter">
             {item.question.length}
@@ -44,13 +35,7 @@ export function renderFaqEditorPart1(
             required
             rows={4}
             value={item.answer ?? ''}
-            onChange={$controlledChange<HTMLTextAreaElement>(($event) => {
-              $setProperty(
-                $required(item),
-                'answer',
-                $event.currentTarget.value,
-              );
-            })}
+            onChange={$textProperty(() => item, 'answer')}
           />
           <p className="counter">
             {item.answer.length}
@@ -59,9 +44,9 @@ export function renderFaqEditorPart1(
           <div className="item-actions">
             <button
               type="button"
-              onClick={() => {
-                void $required($state.draft.value).faq.splice(index, 1);
-              }}
+              onClick={() =>
+                void $required($state.draft.value).faq.splice(index, 1)
+              }
               className="danger"
             >
               {' Удалить '}

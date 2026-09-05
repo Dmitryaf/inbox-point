@@ -1,13 +1,13 @@
 import { classNames as $class } from '@frontend/shared/lib/component-view';
 import {
-  invokeHandler as $invoke,
-  invokeArgs as $invokeArgs,
+  eventCallback as $callback,
+  nativeHandler as $nativeHandler,
 } from '@frontend/shared/lib/component-events';
 import { unref as $unref } from '@frontend/shared/lib/model-state';
 import {
   modelSetter as $setter,
+  propertySetter as $propertySetter,
   requiredValue as $required,
-  setProperty as $setProperty,
 } from '@frontend/shared/lib/component-bindings';
 
 import SaveBar from '@frontend/features/save-content/ui/SaveBar';
@@ -39,9 +39,7 @@ export function renderContentWorkspacePart1(
           <p>{'Редактор не открыт. Повторите загрузку.'}</p>
           <button
             type="button"
-            onClick={($event) => {
-              $invoke($required($unref($state.workspace)).load, $event);
-            }}
+            onClick={$nativeHandler($required($unref($state.workspace)).load)}
             className="secondary-button"
           >
             {' Повторить '}
@@ -79,13 +77,10 @@ export function renderContentWorkspacePart1(
               <ContentEditor
                 activeSection={activeSection}
                 modelValue={workspace.draft}
-                onModelValueChange={($value) => {
-                  $setProperty(
-                    $required($unref($state.workspace)),
-                    'draft',
-                    $value,
-                  );
-                }}
+                onModelValueChange={$propertySetter(
+                  () => $unref($state.workspace),
+                  'draft',
+                )}
               />
             ) : activeView === 'preview' ? (
               <ContentPreview content={workspace.draft} />
@@ -95,12 +90,9 @@ export function renderContentWorkspacePart1(
                 hasUnsavedChanges={workspace.dirty.value}
                 loading={workspace.historyLoading.value}
                 restoring={workspace.restoring.value}
-                onRestore={(...$args) => {
-                  $invokeArgs(
-                    $required($unref($state.workspace)).restore,
-                    $args,
-                  );
-                }}
+                onRestore={$callback(
+                  $required($unref($state.workspace)).restore,
+                )}
               />
             )}
           </main>
@@ -110,9 +102,7 @@ export function renderContentWorkspacePart1(
               saving={workspace.saving.value}
               valid={validation.valid}
               validationMessage={validation.message}
-              onSave={(...$args) => {
-                $invokeArgs($required($unref($state.workspace)).save, $args);
-              }}
+              onSave={$callback($required($unref($state.workspace)).save)}
             />
             <ContentSummary content={workspace.draft} />
           </aside>

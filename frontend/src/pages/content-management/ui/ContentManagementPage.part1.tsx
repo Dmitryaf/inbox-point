@@ -1,4 +1,4 @@
-import { invokeArgs as $invokeArgs } from '@frontend/shared/lib/component-events';
+import { eventCallback as $callback } from '@frontend/shared/lib/component-events';
 import { unref as $unref } from '@frontend/shared/lib/model-state';
 import {
   modelSetter as $setter,
@@ -29,12 +29,9 @@ export function renderContentManagementPagePart1(
                 <AsyncMessage kind="error" text={session.error.value} />
                 <LoginForm
                   pending={session.pending.value}
-                  onSubmit={(...$args) => {
-                    $invokeArgs(
-                      $required($unref($state.session)).authenticate,
-                      $args,
-                    );
-                  }}
+                  onSubmit={$callback(
+                    $required($unref($state.session)).authenticate,
+                  )}
                 />
               </div>
             </section>
@@ -54,12 +51,9 @@ export function renderContentManagementPagePart1(
               <ContentWorkspace
                 authenticated={session.authenticated.value}
                 onDirtyChange={$setter($state, 'hasUnsavedChanges')}
-                onUnauthorized={(...$args) => {
-                  $invokeArgs(
-                    $required($unref($state.session)).expireSession,
-                    $args,
-                  );
-                }}
+                onUnauthorized={$callback(
+                  $required($unref($state.session)).expireSession,
+                )}
               />
             </div>
           ) : null}

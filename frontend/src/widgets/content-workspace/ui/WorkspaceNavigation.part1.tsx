@@ -1,5 +1,5 @@
 import { renderList as $renderList } from '@frontend/shared/lib/component-view';
-import { invokeHandler as $invoke } from '@frontend/shared/lib/component-events';
+import { nativeHandler as $nativeHandler } from '@frontend/shared/lib/component-events';
 import { unref as $unref } from '@frontend/shared/lib/model-state';
 
 import {
@@ -13,7 +13,6 @@ import type {
   ComponentProps,
   componentDefaults,
 } from './WorkspaceNavigation.model';
-import { controlledChange as $controlledChange } from '@frontend/shared/lib/component-input-event';
 export function renderWorkspaceNavigationPart1(
   $state: ReturnType<typeof createComponentModel>,
   $props: WithDefaults<ComponentProps, typeof componentDefaults>,
@@ -27,9 +26,7 @@ export function renderWorkspaceNavigationPart1(
           <select
             id="workspace-view"
             value={$props.activeView}
-            onChange={$controlledChange<HTMLSelectElement>(($event) => {
-              $invoke(changeView, $event);
-            })}
+            onChange={$nativeHandler(changeView)}
           >
             {$renderList($unref(workspaceViews), (view) => (
               <option key={view.id} value={view.id}>
@@ -44,9 +41,7 @@ export function renderWorkspaceNavigationPart1(
             <select
               id="editor-section"
               value={$props.activeSection}
-              onChange={$controlledChange<HTMLSelectElement>(($event) => {
-                $invoke(changeSection, $event);
-              })}
+              onChange={$nativeHandler(changeSection)}
             >
               {$renderList($unref(editorSections), (section) => (
                 <option key={section.id} value={section.id}>

@@ -1,10 +1,11 @@
 import { renderList as $renderList } from '@frontend/shared/lib/component-view';
-import { invokeHandler as $invoke } from '@frontend/shared/lib/component-events';
+import { nativeHandler as $nativeHandler } from '@frontend/shared/lib/component-events';
 
+import { logicalOr as $or } from '@frontend/shared/lib/component-bindings';
 import {
-  setModelValue as $set,
-  logicalOr as $or,
-} from '@frontend/shared/lib/component-bindings';
+  textModel as $textModel,
+  radioModel as $radioModel,
+} from '@frontend/shared/lib/component-inputs';
 
 import TelegramSetupInstructions from './TelegramSetupInstructions';
 
@@ -14,7 +15,6 @@ import type {
   ComponentProps,
   componentDefaults,
 } from './TelegramSetupCard.model';
-import { controlledChange as $controlledChange } from '@frontend/shared/lib/component-input-event';
 export function renderTelegramSetupCardPart1(
   $state: ReturnType<typeof createComponentModel>,
   $props: WithDefaults<ComponentProps, typeof componentDefaults>,
@@ -48,9 +48,7 @@ export function renderTelegramSetupCardPart1(
                 autoComplete="off"
                 type="password"
                 value={botToken ?? ''}
-                onChange={$controlledChange<HTMLInputElement>(($event) => {
-                  $set($state, 'botToken', $event.currentTarget.value);
-                })}
+                onChange={$textModel($state, 'botToken')}
               />
               <button
                 disabled={$or(
@@ -58,9 +56,7 @@ export function renderTelegramSetupCardPart1(
                   () => botToken.trim().length < 20,
                 )}
                 type="button"
-                onClick={($event) => {
-                  $invoke(discover, $event);
-                }}
+                onClick={$nativeHandler(discover)}
               >
                 {pending === 'discover' ? 'Ищем…' : 'Найти группы'}
               </button>
@@ -73,12 +69,10 @@ export function renderTelegramSetupCardPart1(
                         value={chat.id}
                         type="radio"
                         checked={selectedChatId === chat.id}
-                        onChange={$controlledChange<HTMLInputElement>(
-                          ($event) => {
-                            if ($event.currentTarget.checked) {
-                              $set($state, 'selectedChatId', chat.id);
-                            }
-                          },
+                        onChange={$radioModel(
+                          $state,
+                          'selectedChatId',
+                          chat.id,
                         )}
                       />
                       <span>{chatLabel(chat)}</span>
@@ -93,9 +87,7 @@ export function renderTelegramSetupCardPart1(
                     () => selectedChatId === null,
                   )}
                   type="button"
-                  onClick={($event) => {
-                    $invoke(connect, $event);
-                  }}
+                  onClick={$nativeHandler(connect)}
                 >
                   {pending === 'connect'
                     ? 'Подключаем…'

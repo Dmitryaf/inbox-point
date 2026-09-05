@@ -2,6 +2,7 @@ import { classNames as $class } from '@frontend/shared/lib/component-view';
 
 import { unref as $unref } from '@frontend/shared/lib/model-state';
 import { setModelValue as $set } from '@frontend/shared/lib/component-bindings';
+
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
 import type { WithDefaults } from '@frontend/shared/lib/component-model';
@@ -33,18 +34,14 @@ export function renderRestoreActionPart1(
           <button
             disabled={$props.pending}
             type="button"
-            onClick={() => {
-              void $unref($state.emit)('restore', props.revision);
-            }}
+            onClick={() => void $unref($state.emit)('restore', props.revision)}
           >
             {$props.pending ? 'Восстанавливаем…' : 'Да, восстановить'}
           </button>
           <button
             disabled={$props.pending}
             type="button"
-            onClick={() => {
-              void $set($state, 'confirming', false);
-            }}
+            onClick={() => void $set($state, 'confirming', false)}
             className="quiet"
           >
             {' Отмена '}
@@ -54,9 +51,7 @@ export function renderRestoreActionPart1(
         <button
           {...$attributes}
           type="button"
-          onClick={() => {
-            void $set($state, 'confirming', true);
-          }}
+          onClick={() => void $set($state, 'confirming', true)}
           className={$class('quiet', $attributes.className)}
         >
           {' Восстановить '}

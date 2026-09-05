@@ -3,9 +3,10 @@ import {
   ModelScopeProvider,
 } from '@frontend/shared/lib/component-model';
 import { classNames as $class } from '@frontend/shared/lib/component-view';
-import { invokeHandler as $invoke } from '@frontend/shared/lib/component-events';
+import { nativeHandler as $nativeHandler } from '@frontend/shared/lib/component-events';
 
 import { logicalOr as $or } from '@frontend/shared/lib/component-bindings';
+
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
 import { renderDeliveryStatusCardPart1 } from './DeliveryStatusCard.part1';
@@ -45,9 +46,7 @@ export default function DeliveryStatusCard($incomingProps: ComponentProps) {
         {renderDeliveryStatusCardPart1($state)}
         <button
           disabled={loading}
-          onClick={($event) => {
-            $invoke(refresh, $event);
-          }}
+          onClick={$nativeHandler(refresh)}
           className="secondary-button"
         >
           {loading ? 'Обновляем…' : 'Обновить'}

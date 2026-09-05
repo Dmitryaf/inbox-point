@@ -8,6 +8,7 @@ services:
       HOST: 0.0.0.0
       LOG_LEVEL: info
       NODE_ENV: production
+      OPS_ADMIN_PASSWORD: '${OPS_ADMIN_PASSWORD:-}'
       PORT: 3000
     ports:
       - '${PORT:-3000}:3000'

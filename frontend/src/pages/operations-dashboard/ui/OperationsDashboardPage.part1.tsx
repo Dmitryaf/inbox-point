@@ -1,6 +1,6 @@
 import {
-  invokeHandler as $invoke,
-  invokeArgs as $invokeArgs,
+  eventCallback as $callback,
+  nativeHandler as $nativeHandler,
 } from '@frontend/shared/lib/component-events';
 import { unref as $unref } from '@frontend/shared/lib/model-state';
 import { requiredValue as $required } from '@frontend/shared/lib/component-bindings';
@@ -32,9 +32,7 @@ export function renderOperationsDashboardPagePart1(
             ) : null}
             <OperationsLoginForm
               pending={session.pending.value}
-              onSubmit={(...$args) => {
-                $invokeArgs(authenticate, $args);
-              }}
+              onSubmit={$callback(authenticate)}
             />
           </div>
         </section>
@@ -50,9 +48,9 @@ export function renderOperationsDashboardPagePart1(
             <button
               disabled={operations.loading.value}
               type="button"
-              onClick={($event) => {
-                $invoke($required($unref($state.operations)).refresh, $event);
-              }}
+              onClick={$nativeHandler(
+                $required($unref($state.operations)).refresh,
+              )}
               className="secondary-button"
             >
               {operations.loading.value ? 'Обновляем…' : 'Обновить'}

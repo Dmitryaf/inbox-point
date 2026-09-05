@@ -3,7 +3,7 @@ import {
   ModelScopeProvider,
 } from '@frontend/shared/lib/component-model';
 import { classNames as $class } from '@frontend/shared/lib/component-view';
-import { invokeHandler as $invoke } from '@frontend/shared/lib/component-events';
+import { nativeHandler as $nativeHandler } from '@frontend/shared/lib/component-events';
 
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
@@ -50,9 +50,7 @@ export default function CustomSectionsEditor($incomingProps: ComponentProps) {
         <button
           disabled={sections.length >= 6}
           type="button"
-          onClick={($event) => {
-            $invoke(add, $event);
-          }}
+          onClick={$nativeHandler(add)}
         >
           {' Добавить раздел '}
         </button>

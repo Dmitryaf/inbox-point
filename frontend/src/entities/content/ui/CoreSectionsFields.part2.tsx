@@ -1,14 +1,11 @@
 import { classNames as $class } from '@frontend/shared/lib/component-view';
 
-import {
-  requiredValue as $required,
-  setProperty as $setProperty,
-} from '@frontend/shared/lib/component-bindings';
+import { propertySetter as $propertySetter } from '@frontend/shared/lib/component-bindings';
+import { textProperty as $textProperty } from '@frontend/shared/lib/component-inputs';
 
 import SectionVisibilityControl from '@frontend/entities/content/ui/SectionVisibilityControl';
 
 import type { createComponentModel } from './CoreSectionsFields.model';
-import { controlledChange as $controlledChange } from '@frontend/shared/lib/component-input-event';
 export function renderCoreSectionsFieldsPart2(
   $state: ReturnType<typeof createComponentModel>,
 ) {
@@ -38,13 +35,7 @@ export function renderCoreSectionsFieldsPart2(
           maxLength={4000}
           rows={5}
           value={draft.prices ?? ''}
-          onChange={$controlledChange<HTMLTextAreaElement>(($event) => {
-            $setProperty(
-              $required($state.draft.value),
-              'prices',
-              $event.currentTarget.value,
-            );
-          })}
+          onChange={$textProperty(() => $state.draft.value, 'prices')}
         />
         <p
           className={$class('counter', {
@@ -59,13 +50,10 @@ export function renderCoreSectionsFieldsPart2(
           contentPresent={Boolean(draft.prices.trim())}
           section="prices"
           modelValue={draft.visibleSections}
-          onModelValueChange={($value) => {
-            $setProperty(
-              $required($state.draft.value),
-              'visibleSections',
-              $value,
-            );
-          }}
+          onModelValueChange={$propertySetter(
+            () => $state.draft.value,
+            'visibleSections',
+          )}
         />
       </details>
     </>

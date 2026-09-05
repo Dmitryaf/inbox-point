@@ -1,9 +1,7 @@
-import { invokeHandler as $invoke } from '@frontend/shared/lib/component-events';
+import { nativeHandler as $nativeHandler } from '@frontend/shared/lib/component-events';
 
-import {
-  setModelValue as $set,
-  logicalOr as $or,
-} from '@frontend/shared/lib/component-bindings';
+import { logicalOr as $or } from '@frontend/shared/lib/component-bindings';
+import { textModel as $textModel } from '@frontend/shared/lib/component-inputs';
 
 import VkSetupInstructions from './VkSetupInstructions';
 
@@ -13,7 +11,6 @@ import type {
   ComponentProps,
   componentDefaults,
 } from './VkSetupCard.model';
-import { controlledChange as $controlledChange } from '@frontend/shared/lib/component-input-event';
 export function renderVkSetupCardPart1(
   $state: ReturnType<typeof createComponentModel>,
   $props: WithDefaults<ComponentProps, typeof componentDefaults>,
@@ -44,10 +41,7 @@ export function renderVkSetupCardPart1(
             </p>
           ) : (
             <form
-              onSubmit={($event) => {
-                $event.preventDefault();
-                $invoke(connect, $event);
-              }}
+              onSubmit={$nativeHandler(connect, { prevent: true })}
               className="setup-form"
             >
               <label htmlFor="vk-community">{'Адрес сообщества VK'}</label>
@@ -57,9 +51,7 @@ export function renderVkSetupCardPart1(
                 required
                 type="text"
                 value={community ?? ''}
-                onChange={$controlledChange<HTMLInputElement>(($event) => {
-                  $set($state, 'community', $event.currentTarget.value);
-                })}
+                onChange={$textModel($state, 'community')}
               />
               <label htmlFor="vk-token">
                 {'Ключ доступа с правом работы с сообщениями'}
@@ -70,9 +62,7 @@ export function renderVkSetupCardPart1(
                 required
                 type="password"
                 value={accessToken ?? ''}
-                onChange={$controlledChange<HTMLInputElement>(($event) => {
-                  $set($state, 'accessToken', $event.currentTarget.value);
-                })}
+                onChange={$textModel($state, 'accessToken')}
               />
               <button
                 disabled={$or(pending, () => accessToken.trim().length < 20)}
