@@ -116,4 +116,12 @@ describe('client information', () => {
         }),
     ).toThrow('Invalid FAQ items');
   });
+
+  it('rejects list content whose formatted response exceeds the limit', () => {
+    const schedule = Array.from({ length: 2_000 }, () => 'a').join('\n');
+
+    expect(() => new ClientInformationCatalog({ schedule })).toThrow(
+      'Client information response is too long',
+    );
+  });
 });

@@ -59,6 +59,11 @@ export class VkClientMenu implements VkClientMenuHandler {
         createVkRandomId('vk-menu:' + message.externalEventId),
         createVkMainKeyboard(this.information),
       );
+      this.repository.completeEvent(
+        'vk:menu',
+        message.externalEventId,
+        new Date(),
+      );
       return true;
     } catch (error: unknown) {
       this.repository.releaseEvent('vk:menu', message.externalEventId);

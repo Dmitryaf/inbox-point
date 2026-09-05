@@ -244,6 +244,7 @@ export class HandoffService {
 
     try {
       await operation();
+      this.repository.completeEvent(source, externalEventId, this.clock());
     } catch (error: unknown) {
       this.repository.releaseEvent(source, externalEventId);
       throw error;

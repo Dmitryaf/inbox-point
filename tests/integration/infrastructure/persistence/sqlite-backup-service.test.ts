@@ -43,6 +43,14 @@ describe('SqliteBackupService', () => {
       requestId: 'request-1',
       text: 'Synthetic answer',
     });
+    repository.enqueueInboundEvents([
+      {
+        externalEventId: 'vk-event-1',
+        payload: '{"type":"message_new"}',
+        receivedAt: new Date('2026-09-01T12:01:30.000Z'),
+        source: 'vk:long-poll',
+      },
+    ]);
     const backups = new SqliteBackupService(databasePath, {
       backupDirectory: join(directory, 'backups'),
       clock: () => new Date('2026-09-01T12:02:00.000Z'),
@@ -67,6 +75,9 @@ describe('SqliteBackupService', () => {
         id: 'delivery-1',
         text: 'Synthetic answer',
       }),
+    ]);
+    expect(restored.findPendingInboundEvents('vk:long-poll', 10)).toEqual([
+      expect.objectContaining({ externalEventId: 'vk-event-1' }),
     ]);
     restored.close();
     repository.close();

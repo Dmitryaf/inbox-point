@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import {
   type ClientInformationContent,
+  hasValidClientInformationResponses,
   hasValidCustomSections,
   hasValidFaqItems,
   informationSectionIds,
@@ -70,7 +71,7 @@ export function normalizeContentInput(
     return undefined;
   }
 
-  return {
+  const normalized: ClientInformationContent = {
     ...(address ? { address } : {}),
     ...(customSections.length > 0 ? { customSections } : {}),
     ...(faq.length > 0 ? { faq } : {}),
@@ -78,4 +79,10 @@ export function normalizeContentInput(
     ...(schedule ? { schedule } : {}),
     visibleSections: [...content.visibleSections],
   };
+
+  if (!hasValidClientInformationResponses(normalized)) {
+    return undefined;
+  }
+
+  return normalized;
 }

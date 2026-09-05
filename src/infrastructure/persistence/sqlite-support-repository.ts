@@ -4,6 +4,7 @@ import { DatabaseSync } from 'node:sqlite';
 
 import type {
   DeliverySummary,
+  PendingInboundEvent,
   SupportRepository,
 } from '@/core/contracts/support-repository.js';
 import type {
@@ -62,6 +63,7 @@ export class SqliteSupportRepository implements SupportRepository {
     this.database.exec('PRAGMA journal_mode = WAL');
     this.database.exec('PRAGMA synchronous = FULL');
     this.migrate();
+    this.releaseInterruptedEvents();
   }
 
   public addMessageLink(link: MessageLink): void {
@@ -96,8 +98,10 @@ export class SqliteSupportRepository implements SupportRepository {
         `INSERT OR IGNORE INTO processed_events (
           source,
           external_event_id,
-          claimed_at
-        ) VALUES (?, ?, ?)`,
+          claimed_at,
+          status,
+          completed_at
+        ) VALUES (?, ?, ?, 'processing', NULL)`,
       )
       .run(source, externalEventId, claimedAt.toISOString());
 
@@ -116,6 +120,35 @@ export class SqliteSupportRepository implements SupportRepository {
          WHERE id = ?`,
       )
       .run(closedAt.toISOString(), requestId);
+  }
+
+  public completeEvent(
+    source: string,
+    externalEventId: string,
+    completedAt: Date,
+  ): void {
+    const result = this.database
+      .prepare(
+        `UPDATE processed_events
+         SET status = 'completed', completed_at = ?
+         WHERE source = ?
+           AND external_event_id = ?
+           AND status = 'processing'`,
+      )
+      .run(completedAt.toISOString(), source, externalEventId);
+
+    if (Number(result.changes) !== 1) {
+      throw new Error('Claimed event was not found');
+    }
+  }
+
+  public completeInboundEvent(source: string, externalEventId: string): void {
+    this.database
+      .prepare(
+        `DELETE FROM inbound_events
+         WHERE source = ? AND external_event_id = ?`,
+      )
+      .run(source, externalEventId);
   }
 
   public completeDelivery(
@@ -217,6 +250,36 @@ export class SqliteSupportRepository implements SupportRepository {
     return row.id;
   }
 
+  public enqueueInboundEvents(events: readonly PendingInboundEvent[]): void {
+    if (events.length === 0) {
+      return;
+    }
+
+    const insert = this.database.prepare(
+      `INSERT OR IGNORE INTO inbound_events (
+        source,
+        external_event_id,
+        payload,
+        received_at
+      ) VALUES (?, ?, ?, ?)`,
+    );
+    this.database.exec('BEGIN IMMEDIATE');
+    try {
+      for (const event of events) {
+        insert.run(
+          event.source,
+          event.externalEventId,
+          event.payload,
+          event.receivedAt.toISOString(),
+        );
+      }
+      this.database.exec('COMMIT');
+    } catch (error: unknown) {
+      this.database.exec('ROLLBACK');
+      throw error;
+    }
+  }
+
   public findActiveRequest(
     channel: ClientChannelKind,
     conversationId: string,
@@ -286,6 +349,33 @@ export class SqliteSupportRepository implements SupportRepository {
       .get(channel, conversationId) as SupportRequestRow | undefined;
 
     return row ? mapRequest(row) : undefined;
+  }
+
+  public findPendingInboundEvents(
+    source: string,
+    limit: number,
+  ): readonly PendingInboundEvent[] {
+    const rows = this.database
+      .prepare(
+        `SELECT source, external_event_id, payload, received_at
+         FROM inbound_events
+         WHERE source = ?
+         ORDER BY received_at, rowid
+         LIMIT ?`,
+      )
+      .all(source, limit) as unknown as {
+      external_event_id: string;
+      payload: string;
+      received_at: string;
+      source: string;
+    }[];
+
+    return rows.map((row) => ({
+      externalEventId: row.external_event_id,
+      payload: row.payload,
+      receivedAt: new Date(row.received_at),
+      source: row.source,
+    }));
   }
 
   public findRequestByTopicId(topicId: string): SupportRequest | undefined {
@@ -405,7 +495,9 @@ export class SqliteSupportRepository implements SupportRepository {
     this.database
       .prepare(
         `DELETE FROM processed_events
-         WHERE source = ? AND external_event_id = ?`,
+         WHERE source = ?
+           AND external_event_id = ?
+           AND status = 'processing'`,
       )
       .run(source, externalEventId);
   }
@@ -468,6 +560,18 @@ export class SqliteSupportRepository implements SupportRepository {
         source TEXT NOT NULL,
         external_event_id TEXT NOT NULL,
         claimed_at TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'processing' CHECK (
+          status IN ('processing', 'completed')
+        ),
+        completed_at TEXT,
+        PRIMARY KEY (source, external_event_id)
+      ) STRICT;
+
+      CREATE TABLE IF NOT EXISTS inbound_events (
+        source TEXT NOT NULL,
+        external_event_id TEXT NOT NULL,
+        payload TEXT NOT NULL,
+        received_at TEXT NOT NULL,
         PRIMARY KEY (source, external_event_id)
       ) STRICT;
 
@@ -507,6 +611,28 @@ export class SqliteSupportRepository implements SupportRepository {
         'ALTER TABLE deliveries ADD COLUMN next_attempt_at TEXT',
       );
     }
+
+    const eventColumns = this.database
+      .prepare('PRAGMA table_info(processed_events)')
+      .all() as unknown as { name: string }[];
+    if (!eventColumns.some((column) => column.name === 'status')) {
+      this.database.exec(
+        "ALTER TABLE processed_events ADD COLUMN status TEXT NOT NULL DEFAULT 'completed' CHECK (status IN ('processing', 'completed'))",
+      );
+    }
+    if (!eventColumns.some((column) => column.name === 'completed_at')) {
+      this.database.exec(
+        'ALTER TABLE processed_events ADD COLUMN completed_at TEXT',
+      );
+    }
+  }
+
+  private releaseInterruptedEvents(): void {
+    // One SQLite database is owned by one application process. A processing row
+    // found during repository startup therefore belongs to an interrupted run.
+    this.database
+      .prepare("DELETE FROM processed_events WHERE status = 'processing'")
+      .run();
   }
 }
 

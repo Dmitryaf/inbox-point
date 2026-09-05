@@ -62,6 +62,7 @@ export class VkRuntime {
         gateway,
         new VkClientMenu(gateway, this.repository, this.information),
       ),
+      this.repository,
       {
         onError: (error) => {
           this.activity.recordPollFailed('vk', new Date());

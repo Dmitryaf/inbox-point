@@ -74,6 +74,11 @@ export class TelegramClientMenu implements TelegramClientMenuHandler {
         replyMarkup: response.replyMarkup,
         text: response.text,
       });
+      this.repository.completeEvent(
+        'telegram:menu',
+        message.externalEventId,
+        new Date(),
+      );
       return true;
     } catch (error: unknown) {
       this.repository.releaseEvent('telegram:menu', message.externalEventId);

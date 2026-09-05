@@ -4,6 +4,7 @@ export const addressButton = 'Адрес';
 export const faqButton = 'Частые вопросы';
 export const teacherButton = 'Задать вопрос преподавателю';
 export const newQuestionButton = 'Начать новый вопрос';
+export const clientMessageLengthLimit = 4_000;
 
 export const informationButtons = [
   scheduleButton,
@@ -159,9 +160,32 @@ export function hasValidFaqItems(items: readonly FaqItem[]): boolean {
         item.answer.length > 0 &&
         item.answer.length <= 3_000,
     ) &&
-    (items.length === 0 || formatFaqResponse(items).length <= 4_000)
+    (items.length === 0 ||
+      formatFaqResponse(items).length <= clientMessageLengthLimit)
   );
 }
+
+export function hasValidClientInformationResponses(
+  content: ClientInformationContent,
+): boolean {
+  const responses = [
+    content.schedule
+      ? formatListResponse(scheduleButton, content.schedule)
+      : undefined,
+    content.prices
+      ? formatListResponse(pricesButton, content.prices)
+      : undefined,
+    content.address ? `${addressButton}\n\n${content.address}` : undefined,
+    content.faq?.length ? formatFaqResponse(content.faq) : undefined,
+    ...(content.customSections?.map((section) => section.text) ?? []),
+  ];
+
+  return responses.every(
+    (response) =>
+      response === undefined || response.length <= clientMessageLengthLimit,
+  );
+}
+
 function formatListResponse(label: string, text: string): string {
   const items = text
     .split(/\r?\n/)
@@ -178,6 +202,9 @@ function copyContent(
   }
   if (!hasValidFaqItems(content.faq ?? [])) {
     throw new Error('Invalid FAQ items');
+  }
+  if (!hasValidClientInformationResponses(content)) {
+    throw new Error('Client information response is too long');
   }
   return {
     ...content,

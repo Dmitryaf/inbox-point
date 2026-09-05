@@ -1,6 +1,7 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -36,6 +37,11 @@ describe('SqliteSupportRepository', () => {
         new Date('2026-08-31T12:00:00.000Z'),
       ),
     ).toBe(true);
+    first.completeEvent(
+      'client:telegram',
+      'update-1',
+      new Date('2026-08-31T12:00:01.000Z'),
+    );
     first.enqueueDelivery({
       channel: 'telegram',
       conversationId: '101',
@@ -84,6 +90,119 @@ describe('SqliteSupportRepository', () => {
     ]);
     expect(second.getDeliverySummary()).toEqual({ failed: 0, pending: 1 });
     second.close();
+  });
+
+  it('releases an interrupted event claim when the process restarts', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-test-'));
+    temporaryDirectories.push(directory);
+    const databasePath = join(directory, 'handoff.sqlite');
+
+    const first = new SqliteSupportRepository(databasePath);
+    expect(
+      first.claimEvent(
+        'client:telegram',
+        'interrupted-update',
+        new Date('2026-08-31T12:00:00.000Z'),
+      ),
+    ).toBe(true);
+    first.close();
+
+    const second = new SqliteSupportRepository(databasePath);
+    expect(
+      second.claimEvent(
+        'client:telegram',
+        'interrupted-update',
+        new Date('2026-08-31T12:01:00.000Z'),
+      ),
+    ).toBe(true);
+    second.completeEvent(
+      'client:telegram',
+      'interrupted-update',
+      new Date('2026-08-31T12:01:01.000Z'),
+    );
+    expect(
+      second.claimEvent(
+        'client:telegram',
+        'interrupted-update',
+        new Date('2026-08-31T12:02:00.000Z'),
+      ),
+    ).toBe(false);
+    second.close();
+  });
+
+  it('migrates existing processed events as completed', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-test-'));
+    temporaryDirectories.push(directory);
+    const databasePath = join(directory, 'handoff.sqlite');
+    const legacyDatabase = new DatabaseSync(databasePath);
+    legacyDatabase.exec(`
+      CREATE TABLE processed_events (
+        source TEXT NOT NULL,
+        external_event_id TEXT NOT NULL,
+        claimed_at TEXT NOT NULL,
+        PRIMARY KEY (source, external_event_id)
+      ) STRICT;
+      INSERT INTO processed_events (
+        source,
+        external_event_id,
+        claimed_at
+      ) VALUES (
+        'client:telegram',
+        'completed-update',
+        '2026-08-31T12:00:00.000Z'
+      );
+    `);
+    legacyDatabase.close();
+
+    const repository = new SqliteSupportRepository(databasePath);
+
+    expect(
+      repository.claimEvent(
+        'client:telegram',
+        'completed-update',
+        new Date('2026-08-31T12:01:00.000Z'),
+      ),
+    ).toBe(false);
+    expect(
+      repository.claimEvent(
+        'client:telegram',
+        'new-update',
+        new Date('2026-08-31T12:02:00.000Z'),
+      ),
+    ).toBe(true);
+    repository.completeEvent(
+      'client:telegram',
+      'new-update',
+      new Date('2026-08-31T12:02:01.000Z'),
+    );
+    repository.close();
+  });
+
+  it('restores queued inbound events after restart', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-test-'));
+    temporaryDirectories.push(directory);
+    const databasePath = join(directory, 'handoff.sqlite');
+    const event = {
+      externalEventId: 'vk-event-1',
+      payload: '{"type":"message_new"}',
+      receivedAt: new Date('2026-09-05T12:00:00.000Z'),
+      source: 'vk:long-poll',
+    };
+
+    const first = new SqliteSupportRepository(databasePath);
+    first.enqueueInboundEvents([event]);
+    first.close();
+
+    const second = new SqliteSupportRepository(databasePath);
+    expect(second.findPendingInboundEvents('vk:long-poll', 10)).toEqual([
+      event,
+    ]);
+    second.completeInboundEvent('vk:long-poll', 'vk-event-1');
+    second.close();
+
+    const third = new SqliteSupportRepository(databasePath);
+    expect(third.findPendingInboundEvents('vk:long-poll', 10)).toEqual([]);
+    third.close();
   });
 
   it('rolls back delivery completion when the message link cannot be stored', () => {
