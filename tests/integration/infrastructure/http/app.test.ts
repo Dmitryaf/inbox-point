@@ -83,6 +83,10 @@ describe('HTTP service status', () => {
           return {};
         },
         clock: () => new Date('2026-09-04T12:03:00.000Z'),
+        deliveryActivity: () => ({
+          lastCycleAt: new Date('2026-09-04T12:02:59.000Z'),
+          running: true,
+        }),
         deliverySummary: () => ({ failed: 0, pending: 0 }),
         startedAt: new Date('2026-09-04T12:00:00.000Z'),
         telegramStatus: () => ({ connected: true, source: 'environment' }),
@@ -300,6 +304,7 @@ function createMonitoringService(
 ): OperationsMonitoringService {
   return new OperationsMonitoringService({
     channelActivity: () => ({}),
+    deliveryActivity: () => ({ lastCycleAt: new Date(), running: true }),
     deliverySummary,
     startedAt: new Date('2026-09-04T12:00:00.000Z'),
     telegramStatus: () => ({ connected: false, source: 'none' }),

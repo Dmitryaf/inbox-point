@@ -8,6 +8,7 @@ import { FileContentSettingsStore } from '@/modules/content-management/infrastru
 import { registerManagementRoutes } from '@/modules/content-management/presentation/http/routes.js';
 import { ContentManagementAccess } from '@/modules/content-management/security/content-management-access.js';
 import { ChannelActivityMonitor } from '@/modules/operations-monitoring/application/channel-activity-monitor.js';
+import { DeliveryWorkerActivityMonitor } from '@/modules/operations-monitoring/application/delivery-worker-activity-monitor.js';
 import { OperationsMonitoringService } from '@/modules/operations-monitoring/application/operations-monitoring-service.js';
 import { registerOperationsRoutes } from '@/modules/operations-monitoring/presentation/http/routes.js';
 import { registerReadinessRoute } from '@/modules/operations-monitoring/presentation/http/readiness-route.js';
@@ -16,6 +17,7 @@ import { SqliteBackupService } from '@/infrastructure/persistence/sqlite-backup-
 import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-support-repository.js';
 import { FileTelegramSettingsStore } from '@/infrastructure/persistence/telegram-settings-store.js';
 import { FileVkSettingsStore } from '@/infrastructure/persistence/vk-settings-store.js';
+import { startChannelRuntime } from '@/infrastructure/runtime/start-channel-runtime.js';
 import { TelegramRuntime } from '@/infrastructure/telegram/telegram-runtime.js';
 import { TelegramSetupController } from '@/infrastructure/telegram/telegram-setup-controller.js';
 import { VkRuntime } from '@/infrastructure/vk/vk-runtime.js';
@@ -32,6 +34,7 @@ async function start(): Promise<void> {
   );
   const informationCatalog = new ClientInformationCatalog();
   const channelActivity = new ChannelActivityMonitor();
+  const deliveryActivity = new DeliveryWorkerActivityMonitor();
   const settingsStore = new FileTelegramSettingsStore(
     resolve(dirname(config.databasePath), 'telegram-settings.json'),
   );
@@ -45,6 +48,7 @@ async function start(): Promise<void> {
     },
     informationCatalog,
     channelActivity,
+    deliveryActivity,
   );
   const vkRuntime = new VkRuntime(
     telegramRuntime,
@@ -127,6 +131,7 @@ async function start(): Promise<void> {
     );
     const operationsMonitoring = new OperationsMonitoringService({
       channelActivity: (channel) => channelActivity.snapshot(channel),
+      deliveryActivity: () => deliveryActivity.snapshot(),
       deliverySummary: () => repository.getDeliverySummary(),
       startedAt,
       telegramStatus: () => setup.status(),
@@ -142,37 +147,25 @@ async function start(): Promise<void> {
         secureCookies: config.nodeEnv === 'production',
       },
     );
-    const telegramConfig = config.telegram ?? storedTelegram;
-    if (telegramConfig) {
-      try {
-        await telegramRuntime.start(telegramConfig);
-      } catch (error: unknown) {
-        if (config.telegram) {
-          throw error;
-        }
-        app.log.error(
-          { err: error },
-          'Saved Telegram connection could not be restored',
-        );
-      }
-    }
-
-    const vkConfig = config.vk ?? storedVk;
-    if (vkConfig) {
-      try {
-        await vkRuntime.start(vkConfig);
-      } catch (error: unknown) {
-        if (config.vk) {
-          throw error;
-        }
-        app.log.error(
-          { err: error },
-          'Saved VK connection could not be restored',
-        );
-      }
-    }
-
     await app.listen({ host: config.host, port: config.port });
+    const runtimeLogger = {
+      error: (error: unknown, message: string) =>
+        app.log.error({ err: error }, message),
+    };
+    await Promise.all([
+      startChannelRuntime({
+        channel: 'Telegram',
+        config: config.telegram ?? storedTelegram,
+        logger: runtimeLogger,
+        runtime: telegramRuntime,
+      }),
+      startChannelRuntime({
+        channel: 'VK',
+        config: config.vk ?? storedVk,
+        logger: runtimeLogger,
+        runtime: vkRuntime,
+      }),
+    ]);
     if (config.nodeEnv !== 'production') {
       app.log.info(
         `Open http://${config.host}:${config.port}/setup to configure the service`,
@@ -193,6 +186,7 @@ async function start(): Promise<void> {
       app.log.warn('Remote operational monitoring is disabled');
     }
   } catch (error: unknown) {
+    await app.close();
     await vkRuntime.stop();
     await telegramRuntime.stop();
     repository.close();

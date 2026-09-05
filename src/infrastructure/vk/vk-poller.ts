@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 
+import { waitForDelay } from '@/core/application/wait-for-delay.js';
 import type { InboundEventStore } from '@/core/contracts/support-repository.js';
 
 import type { VkGateway, VkLongPollServer } from './vk-api-client.js';
@@ -33,7 +34,8 @@ export class VkPoller {
   ) {
     this.onError = options.onError ?? (() => undefined);
     this.onSuccess = options.onSuccess ?? (() => undefined);
-    this.retryDelay = options.retryDelay ?? ((signal) => wait(1_000, signal));
+    this.retryDelay =
+      options.retryDelay ?? ((signal) => waitForDelay(1_000, signal));
     this.waitSeconds = options.waitSeconds ?? 25;
   }
 
@@ -128,18 +130,4 @@ function parseStoredUpdate(payload: string): VkLongPollEvent {
 
 function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'AbortError';
-}
-
-async function wait(milliseconds: number, signal: AbortSignal): Promise<void> {
-  await new Promise<void>((resolve) => {
-    const timeout = setTimeout(resolve, milliseconds);
-    signal.addEventListener(
-      'abort',
-      () => {
-        clearTimeout(timeout);
-        resolve();
-      },
-      { once: true },
-    );
-  });
 }

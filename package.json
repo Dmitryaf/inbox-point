@@ -20,6 +20,7 @@
     "lint": "eslint .",
     "prepare": "husky",
     "start": "node dist/main.js",
+    "start:availability-monitor": "node --env-file-if-exists=.env.monitor dist/availability-monitor.js",
     "test": "vitest run",
     "typecheck": "npm run typecheck:server && npm run typecheck:frontend && npm run typecheck:frontend-tests",
     "typecheck:frontend": "tsc --noEmit -p frontend/tsconfig.json",

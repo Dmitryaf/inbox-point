@@ -43,6 +43,16 @@ Run all project checks with:
 npm run check
 ```
 
+## Availability monitoring
+
+The application image has a local Docker health check. For process-level
+failures, run the independent monitor on another host and point it at the
+public HTTPS `/health` endpoint. It sends one Telegram alert when availability
+is lost and another when the service recovers. Copy `.env.monitor.example` to
+the ignored `.env.monitor`, configure it, then run
+`npm run start:availability-monitor` from a built checkout. Monitor credentials
+must stay only on the monitoring host.
+
 ## Status
 
 Telegram and VK text handoff, topic recovery, durable reply delivery, local

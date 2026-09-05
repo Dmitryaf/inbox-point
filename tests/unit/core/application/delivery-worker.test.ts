@@ -74,7 +74,11 @@ describe('DeliveryWorker', () => {
 
     await worker.processPending();
     expect(repository.findPendingDeliveries(now, 10)).toHaveLength(0);
-    expect(repository.getDeliverySummary()).toEqual({ failed: 0, pending: 1 });
+    expect(repository.getDeliverySummary()).toEqual({
+      failed: 0,
+      oldestPendingAt: new Date('2026-08-31T12:01:00.000Z'),
+      pending: 1,
+    });
     now = new Date(now.getTime() + 1_000);
     expect(repository.findPendingDeliveries(now, 10)).toEqual([
       expect.objectContaining({ attempts: 1 }),
@@ -110,7 +114,11 @@ describe('DeliveryWorker', () => {
 
     channel.failuresRemaining = 0;
     expect(repository.retryFailedDelivery('delivery-1', now)).toBe(true);
-    expect(repository.getDeliverySummary()).toEqual({ failed: 0, pending: 1 });
+    expect(repository.getDeliverySummary()).toEqual({
+      failed: 0,
+      oldestPendingAt: new Date('2026-08-31T12:01:00.000Z'),
+      pending: 1,
+    });
     await worker.processPending();
 
     expect(channel.sent).toHaveLength(3);

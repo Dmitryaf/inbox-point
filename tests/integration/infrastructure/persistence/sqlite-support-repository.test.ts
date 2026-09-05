@@ -57,7 +57,11 @@ describe('SqliteSupportRepository', () => {
       'Temporary network failure',
       new Date('2026-08-31T12:08:00.000Z'),
     );
-    expect(first.getDeliverySummary()).toEqual({ failed: 0, pending: 1 });
+    expect(first.getDeliverySummary()).toEqual({
+      failed: 0,
+      oldestPendingAt: new Date('2026-08-31T12:01:00.000Z'),
+      pending: 1,
+    });
     first.closeRequest('request-1', new Date('2026-08-31T12:05:00.000Z'));
     first.close();
 
@@ -88,7 +92,11 @@ describe('SqliteSupportRepository', () => {
         text: 'Answer',
       }),
     ]);
-    expect(second.getDeliverySummary()).toEqual({ failed: 0, pending: 1 });
+    expect(second.getDeliverySummary()).toEqual({
+      failed: 0,
+      oldestPendingAt: new Date('2026-08-31T12:01:00.000Z'),
+      pending: 1,
+    });
     second.close();
   });
 
@@ -255,7 +263,11 @@ describe('SqliteSupportRepository', () => {
         10,
       ),
     ).toHaveLength(1);
-    expect(repository.getDeliverySummary()).toEqual({ failed: 0, pending: 1 });
+    expect(repository.getDeliverySummary()).toEqual({
+      failed: 0,
+      oldestPendingAt: new Date('2026-08-31T12:01:00.000Z'),
+      pending: 1,
+    });
     repository.close();
   });
 });

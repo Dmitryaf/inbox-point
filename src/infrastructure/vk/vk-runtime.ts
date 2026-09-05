@@ -76,7 +76,10 @@ export class VkRuntime {
     );
     const abortController = new AbortController();
     this.abortController = abortController;
-    this.pollerPromise = poller.run(abortController.signal);
+    this.activity.recordPollerStarted('vk', new Date());
+    this.pollerPromise = poller.run(abortController.signal).finally(() => {
+      this.activity.recordPollerStopped('vk', new Date());
+    });
     void this.pollerPromise.catch((error: unknown) => {
       if (!abortController.signal.aborted) {
         this.activity.recordPollFailed('vk', new Date());

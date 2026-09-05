@@ -402,13 +402,21 @@ export class SqliteSupportRepository implements SupportRepository {
       .prepare(
         `SELECT
           SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed,
-          SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending
+          SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending,
+          MIN(CASE WHEN status = 'pending' THEN created_at END) AS oldest_pending_at
          FROM deliveries`,
       )
-      .get() as { failed: number | null; pending: number | null };
+      .get() as {
+      failed: number | null;
+      oldest_pending_at: string | null;
+      pending: number | null;
+    };
 
     return {
       failed: row.failed ?? 0,
+      ...(row.oldest_pending_at
+        ? { oldestPendingAt: new Date(row.oldest_pending_at) }
+        : {}),
       pending: row.pending ?? 0,
     };
   }

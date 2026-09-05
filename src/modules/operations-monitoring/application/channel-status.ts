@@ -26,7 +26,7 @@ export function mapChannelStatus(
           lastSuccessfulPollAt: activity.lastSuccessfulPollAt.toISOString(),
         }
       : {}),
-    running: status.connected,
+    running: status.connected && activity.pollerRunning !== false,
     source: status.source,
     state: resolveChannelState(
       status,
@@ -69,7 +69,7 @@ function resolveChannelState(
   ) {
     return 'poll_failed';
   }
-  if (!status.connected) {
+  if (!status.connected || activity.pollerRunning === false) {
     return 'stopped';
   }
   if (!activity.lastSuccessfulPollAt) {

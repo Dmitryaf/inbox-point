@@ -33,7 +33,18 @@ describe('OperationsDashboardPage', () => {
                 state: 'poll_failed',
               },
             },
-            deliveries: { failed: 2, pending: 3 },
+            deliveries: {
+              failed: 2,
+              oldestPendingAgeSeconds: 90,
+              oldestPendingAt: '2026-09-04T11:59:30.000Z',
+              pending: 3,
+              state: 'failed',
+              worker: {
+                lastCycleAt: '2026-09-04T12:00:59.000Z',
+                running: true,
+                state: 'running',
+              },
+            },
             observedAt: '2026-09-04T12:01:00.000Z',
             startedAt: '2026-09-04T12:00:00.000Z',
             state: 'attention',
@@ -56,6 +67,7 @@ describe('OperationsDashboardPage', () => {
     expect(statusCards[1]?.text()).toContain('Последняя ошибка связи');
     expect(statusCards[2]?.text()).toContain('Ожидают отправки3');
     expect(statusCards[2]?.text()).toContain('Не доставлены2');
+    expect(statusCards[2]?.text()).toContain('Обработчик очередиЗапущен');
 
     wrapper.unmount();
   });

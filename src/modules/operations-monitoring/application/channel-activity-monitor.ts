@@ -3,7 +3,10 @@ import type { ClientChannelKind } from '@/core/model/support-message.js';
 
 export interface ChannelActivitySnapshot {
   lastFailedPollAt?: Date;
+  lastPollerStartedAt?: Date;
+  lastPollerStoppedAt?: Date;
   lastSuccessfulPollAt?: Date;
+  pollerRunning?: boolean;
 }
 
 export class ChannelActivityMonitor implements ChannelActivityReporter {
@@ -16,6 +19,28 @@ export class ChannelActivityMonitor implements ChannelActivityReporter {
     this.activity.set(channel, {
       ...this.activity.get(channel),
       lastFailedPollAt: occurredAt,
+    });
+  }
+
+  public recordPollerStarted(
+    channel: ClientChannelKind,
+    occurredAt: Date,
+  ): void {
+    this.activity.set(channel, {
+      ...this.activity.get(channel),
+      lastPollerStartedAt: occurredAt,
+      pollerRunning: true,
+    });
+  }
+
+  public recordPollerStopped(
+    channel: ClientChannelKind,
+    occurredAt: Date,
+  ): void {
+    this.activity.set(channel, {
+      ...this.activity.get(channel),
+      lastPollerStoppedAt: occurredAt,
+      pollerRunning: false,
     });
   }
 

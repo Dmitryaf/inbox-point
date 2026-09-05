@@ -1,5 +1,3 @@
-import type { DeliverySummary } from '@/core/contracts/support-repository.js';
-
 export type ChannelConnectionSource = 'environment' | 'local' | 'none';
 
 export interface ChannelOperationsStatus {
@@ -22,9 +20,22 @@ export interface OperationsStatus {
     telegram: ChannelOperationsStatus;
     vk: ChannelOperationsStatus;
   };
-  deliveries: DeliverySummary;
+  deliveries: DeliveryOperationsStatus;
   observedAt: string;
   startedAt: string;
   state: 'attention' | 'healthy';
   uptimeSeconds: number;
+}
+
+export interface DeliveryOperationsStatus {
+  failed: number;
+  oldestPendingAgeSeconds?: number;
+  oldestPendingAt?: string;
+  pending: number;
+  state: 'backlog' | 'failed' | 'healthy' | 'stalled';
+  worker: {
+    lastCycleAt?: string;
+    running: boolean;
+    state: 'inactive' | 'running' | 'stalled';
+  };
 }

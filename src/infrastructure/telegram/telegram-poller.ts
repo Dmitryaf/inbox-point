@@ -1,3 +1,5 @@
+import { waitForDelay } from '@/core/application/wait-for-delay.js';
+
 import type { TelegramGateway } from './telegram-api-client.js';
 import type { TelegramUpdate } from './telegram-types.js';
 
@@ -24,7 +26,7 @@ export class TelegramPoller {
   ) {
     this.onError = options.onError ?? (() => undefined);
     this.onSuccess = options.onSuccess ?? (() => undefined);
-    this.retryDelay = options.retryDelay ?? waitBeforeRetry;
+    this.retryDelay = options.retryDelay ?? waitForDelay.bind(undefined, 1_000);
   }
 
   public async run(signal: AbortSignal): Promise<void> {
@@ -61,20 +63,6 @@ export class TelegramPoller {
       }
     }
   }
-}
-
-async function waitBeforeRetry(signal: AbortSignal): Promise<void> {
-  await new Promise<void>((resolve, reject) => {
-    const timeout = setTimeout(resolve, 1_000);
-    signal.addEventListener(
-      'abort',
-      () => {
-        clearTimeout(timeout);
-        reject(new DOMException('Aborted', 'AbortError'));
-      },
-      { once: true },
-    );
-  });
 }
 
 function isAbortError(error: unknown): boolean {

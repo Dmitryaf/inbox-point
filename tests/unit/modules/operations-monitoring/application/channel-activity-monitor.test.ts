@@ -11,11 +11,16 @@ describe('ChannelActivityMonitor', () => {
 
     monitor.recordPollSucceeded('telegram', telegramSuccess);
     monitor.recordPollFailed('telegram', telegramFailure);
+    monitor.recordPollerStarted('telegram', telegramSuccess);
+    monitor.recordPollerStopped('telegram', telegramFailure);
     monitor.recordPollSucceeded('vk', vkSuccess);
 
     expect(monitor.snapshot('telegram')).toEqual({
       lastFailedPollAt: telegramFailure,
+      lastPollerStartedAt: telegramSuccess,
+      lastPollerStoppedAt: telegramFailure,
       lastSuccessfulPollAt: telegramSuccess,
+      pollerRunning: false,
     });
     expect(monitor.snapshot('vk')).toEqual({
       lastSuccessfulPollAt: vkSuccess,

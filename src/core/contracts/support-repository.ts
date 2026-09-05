@@ -9,6 +9,7 @@ import type { ClientChannelKind } from '@/core/model/support-message.js';
 
 export interface DeliverySummary {
   failed: number;
+  oldestPendingAt?: Date;
   pending: number;
 }
 

@@ -1,9 +1,15 @@
 import { randomUUID } from 'node:crypto';
 
 import type { ClientChannel } from '@/core/contracts/client-channel.js';
+import {
+  silentDeliveryWorkerActivityReporter,
+  type DeliveryWorkerActivityReporter,
+} from '@/core/contracts/delivery-worker-activity-reporter.js';
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
+import { waitForDelay } from './wait-for-delay.js';
 
 export interface DeliveryWorkerDependencies {
+  activity?: DeliveryWorkerActivityReporter;
   channels: readonly ClientChannel[];
   clock?: () => Date;
   createId?: () => string;
@@ -21,6 +27,7 @@ export interface DeliveryFailureContext {
 }
 
 export class DeliveryWorker {
+  private readonly activity: DeliveryWorkerActivityReporter;
   private readonly channels: Map<string, ClientChannel>;
   private readonly clock: () => Date;
   private readonly createId: () => string;
@@ -33,6 +40,8 @@ export class DeliveryWorker {
   private readonly retryBaseDelayMs: number;
 
   public constructor(dependencies: DeliveryWorkerDependencies) {
+    this.activity =
+      dependencies.activity ?? silentDeliveryWorkerActivityReporter;
     this.channels = new Map(
       dependencies.channels.map((channel) => [channel.kind, channel]),
     );
@@ -109,9 +118,15 @@ export class DeliveryWorker {
   }
 
   public async run(signal: AbortSignal): Promise<void> {
-    while (!signal.aborted) {
-      const processed = await this.processPending();
-      await wait(processed > 0 ? 100 : 1_000, signal);
+    this.activity.recordWorkerStarted(this.clock());
+    try {
+      while (!signal.aborted) {
+        const processed = await this.processPending();
+        this.activity.recordWorkerCycle(this.clock());
+        await waitForDelay(processed > 0 ? 100 : 1_000, signal);
+      }
+    } finally {
+      this.activity.recordWorkerStopped(this.clock());
     }
   }
 }
@@ -120,18 +135,4 @@ function safeErrorMessage(error: unknown): string {
   return error instanceof Error
     ? error.message.slice(0, 500)
     : 'Unknown delivery error';
-}
-
-async function wait(milliseconds: number, signal: AbortSignal): Promise<void> {
-  await new Promise<void>((resolve) => {
-    const timeout = setTimeout(resolve, milliseconds);
-    signal.addEventListener(
-      'abort',
-      () => {
-        clearTimeout(timeout);
-        resolve();
-      },
-      { once: true },
-    );
-  });
 }

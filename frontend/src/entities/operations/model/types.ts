@@ -22,7 +22,15 @@ export interface OperationsStatus {
   };
   deliveries: {
     failed: number;
+    oldestPendingAgeSeconds?: number;
+    oldestPendingAt?: string;
     pending: number;
+    state: 'backlog' | 'failed' | 'healthy' | 'stalled';
+    worker: {
+      lastCycleAt?: string;
+      running: boolean;
+      state: 'inactive' | 'running' | 'stalled';
+    };
   };
   observedAt: string;
   startedAt: string;

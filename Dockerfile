@@ -23,5 +23,7 @@ COPY --from=build /app/dist ./dist
 
 USER node
 EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD ["node", "dist/healthcheck.js"]
 
 CMD ["node", "dist/main.js"]

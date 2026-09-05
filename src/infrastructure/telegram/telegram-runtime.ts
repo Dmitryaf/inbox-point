@@ -11,6 +11,7 @@ import {
 } from '@/core/contracts/channel-activity-reporter.js';
 import type { ClientChannel } from '@/core/contracts/client-channel.js';
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
+import type { DeliveryWorkerActivityReporter } from '@/core/contracts/delivery-worker-activity-reporter.js';
 import type { SupportMessage } from '@/core/model/support-message.js';
 import { TelegramApiClient } from '@/infrastructure/telegram/telegram-api-client.js';
 import { TelegramClientChannel } from '@/infrastructure/telegram/telegram-client-channel.js';
@@ -41,6 +42,7 @@ export class TelegramRuntime implements TelegramRuntimeControl {
     private readonly logger: TelegramRuntimeLogger,
     private readonly information: ClientInformationResolver = new ClientInformationCatalog(),
     private readonly activity: ChannelActivityReporter = silentChannelActivityReporter,
+    private readonly deliveryActivity?: DeliveryWorkerActivityReporter,
   ) {}
 
   public get running(): boolean {
@@ -60,6 +62,7 @@ export class TelegramRuntime implements TelegramRuntimeControl {
       repository: this.repository,
     });
     const deliveryWorker = new DeliveryWorker({
+      ...(this.deliveryActivity ? { activity: this.deliveryActivity } : {}),
       channels: [clientChannel],
       onError: (error, context) =>
         this.logger.error(
@@ -97,8 +100,11 @@ export class TelegramRuntime implements TelegramRuntimeControl {
     this.abortController = abortController;
     this.deliveryWorker = deliveryWorker;
     this.handoffService = handoffService;
+    this.activity.recordPollerStarted('telegram', new Date());
     this.deliveryPromise = deliveryWorker.run(abortController.signal);
-    this.pollerPromise = poller.run(abortController.signal);
+    this.pollerPromise = poller.run(abortController.signal).finally(() => {
+      this.activity.recordPollerStopped('telegram', new Date());
+    });
     void this.deliveryPromise.catch((error: unknown) => {
       if (!abortController.signal.aborted) {
         this.logger.error(
