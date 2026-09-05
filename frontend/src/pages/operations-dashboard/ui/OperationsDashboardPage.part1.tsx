@@ -39,7 +39,7 @@ export function renderOperationsDashboardPagePart1(
           </div>
         </section>
       ) : (
-        <>
+        <section className="ops-workspace">
           {session.error.value ? (
             <p role="alert" className="message message--error">
               {session.error.value}
@@ -70,7 +70,7 @@ export function renderOperationsDashboardPagePart1(
               <p>{'Получаем состояние сервиса…'}</p>
             </section>
           )}
-        </>
+        </section>
       )}
     </>
   );

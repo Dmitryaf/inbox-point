@@ -1,0 +1,149 @@
+.setup-shell {
+  margin: 0 auto;
+  max-width: 1120px;
+  min-width: 0;
+  padding: 1rem 1.25rem 4rem;
+  width: 100%;
+}
+
+.setup-header {
+  padding: 1.75rem 0 1.5rem;
+}
+
+.setup-header h1 {
+  font-size: clamp(2rem, 5vw, 3rem);
+}
+
+.setup-workspace {
+  background: #e9eef3;
+  border: 1px solid #d5dde6;
+  border-radius: 1.25rem;
+  box-shadow: 0 20px 54px rgba(39, 53, 68, 0.1);
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.setup-channel-grid,
+.setup-service-grid {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.setup-card h2 {
+  margin-bottom: 0.75rem;
+}
+
+.setup-card > button,
+.setup-form button {
+  margin-top: 0.85rem;
+}
+
+.setup-steps {
+  color: var(--color-text-muted);
+  margin: 0.9rem 0 1.1rem;
+  padding-left: 1.3rem;
+}
+
+.setup-steps li + li {
+  margin-top: 0.35rem;
+}
+
+.setup-card > label,
+.setup-form label {
+  margin: 0.85rem 0 0.4rem;
+}
+
+.setup-form {
+  display: grid;
+}
+
+.setup-status,
+.setup-note {
+  color: var(--color-text-muted);
+  margin: 0.85rem 0 0;
+}
+
+.setup-status {
+  background: var(--color-surface-muted);
+  border-radius: 0.75rem;
+  padding: 0.7rem 0.8rem;
+}
+
+.setup-status--success {
+  background: #e5f3ec;
+  color: #235b43;
+  font-weight: 700;
+}
+
+.setup-lead {
+  color: var(--color-text-muted);
+}
+
+.setup-note {
+  font-size: 0.84rem;
+}
+
+.setup-options {
+  border: 1px solid var(--color-border);
+  border-radius: 0.8rem;
+  margin: 1rem 0 0;
+  padding: 0.8rem;
+}
+
+.setup-options legend {
+  font-weight: 750;
+  padding: 0 0.3rem;
+}
+
+.setup-options label {
+  align-items: flex-start;
+  display: flex;
+  gap: 0.55rem;
+  padding: 0.4rem 0;
+}
+
+.setup-options input {
+  flex: 0 0 auto;
+  margin-top: 0.25rem;
+  min-height: auto;
+  width: auto;
+}
+
+.delivery-failures {
+  display: grid;
+  gap: 0.7rem;
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+}
+
+.delivery-failures li {
+  align-items: center;
+  background: var(--color-danger-soft);
+  border: 1px solid #e3bab6;
+  border-radius: 0.8rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: space-between;
+  padding: 0.8rem;
+}
+
+.delivery-failures p,
+.delivery-failures small {
+  margin: 0.2rem 0 0;
+}
+
+@media (min-width: 760px) {
+  .setup-shell {
+    padding: 1.5rem 2.5rem 5rem;
+  }
+
+  .setup-channel-grid,
+  .setup-service-grid {
+    align-items: start;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

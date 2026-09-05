@@ -1,0 +1,28 @@
+// @vitest-environment jsdom
+
+import { mount } from '@test/frontend/support/react-test-utils';
+import { describe, expect, it } from 'vitest';
+
+import { createEmptyContent } from '@frontend/entities/content/model/content-draft';
+import CoreSectionsFields from '@frontend/entities/content/ui/CoreSectionsFields';
+
+describe('CoreSectionsFields', () => {
+  it('makes collapsed sections visibly discoverable and expandable', async () => {
+    const wrapper = mount(CoreSectionsFields, {
+      props: { modelValue: createEmptyContent() },
+    });
+    const prices = wrapper.findAll('details')[1];
+    if (!prices) {
+      throw new Error('Expected the prices section');
+    }
+
+    expect(prices.element.open).toBe(false);
+    expect(prices.get('summary').text()).toContain('Открыть настройки раздела');
+    expect(prices.find('.disclosure-chevron').exists()).toBe(true);
+
+    await prices.get('summary').trigger('click');
+
+    expect(prices.element.open).toBe(true);
+    expect(prices.get('summary').text()).toContain('Скрыть настройки раздела');
+  });
+});

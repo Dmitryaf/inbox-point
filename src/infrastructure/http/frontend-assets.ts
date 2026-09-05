@@ -8,7 +8,7 @@ export interface FrontendAssets {
 }
 
 export function loadFrontendAssets(
-  routeBase: '/manage' | '/ops',
+  routeBase: '/manage' | '/ops' | '/setup',
   root = resolve(process.cwd(), 'dist', 'frontend'),
 ): FrontendAssets {
   try {
@@ -27,6 +27,9 @@ export function loadFrontendAssets(
   }
 }
 
-function scopeAssetPaths(html: string, routeBase: '/manage' | '/ops'): string {
+function scopeAssetPaths(
+  html: string,
+  routeBase: '/manage' | '/ops' | '/setup',
+): string {
   return html.replaceAll('="./', `="${routeBase}/`);
 }

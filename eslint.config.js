@@ -5,12 +5,7 @@ export default tseslint.config(
     ignores: ['.ai-rules/**', '.local/**', 'coverage/**', 'dist/**'],
   },
   {
-    files: [
-      'frontend/legacy/src/**/*.{ts,tsx}',
-      'src/**/*.ts',
-      'frontend/**/*.{ts,tsx}',
-      'tests/**/*.{ts,tsx}',
-    ],
+    files: ['src/**/*.ts', 'frontend/**/*.{ts,tsx}', 'tests/**/*.{ts,tsx}'],
     extends: [
       ...tseslint.configs.recommendedTypeChecked,
       ...tseslint.configs.stylisticTypeChecked,

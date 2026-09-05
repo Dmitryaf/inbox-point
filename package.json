@@ -11,7 +11,7 @@
   "packageManager": "npm@11.19.0",
   "scripts": {
     "build": "npm run build:frontend && npm run build:server",
-    "build:frontend": "vite build --config frontend/legacy/vite.config.ts && vite build --config frontend/vite.config.ts",
+    "build:frontend": "vite build --config frontend/vite.config.ts",
     "build:server": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json -f -fe .js",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run build",
     "dev": "npm run build:frontend && tsx watch src/main.ts",
@@ -20,9 +20,9 @@
     "lint": "eslint .",
     "prepare": "husky",
     "start": "node dist/main.js",
-    "test": "npm run build:frontend && vitest run",
+    "test": "vitest run",
     "typecheck": "npm run typecheck:server && npm run typecheck:frontend && npm run typecheck:frontend-tests",
-    "typecheck:frontend": "tsc --noEmit -p frontend/legacy/tsconfig.json && tsc --noEmit -p frontend/tsconfig.json",
+    "typecheck:frontend": "tsc --noEmit -p frontend/tsconfig.json",
     "typecheck:frontend-tests": "tsc --noEmit -p tests/frontend/tsconfig.json",
     "typecheck:server": "tsc --noEmit"
   },

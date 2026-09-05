@@ -15,8 +15,19 @@ export function renderCoreSectionsFieldsPart3(
     <>
       <details className="field-group">
         <summary>
-          <strong>{'Адрес'}</strong>
-          <small>{draft.address.trim() ? 'Заполнено' : 'Не заполнено'}</small>
+          <span className="summary-copy">
+            <strong>{'Адрес'}</strong>
+            <span className="summary-action summary-action--open">
+              {' Открыть настройки раздела '}
+            </span>
+            <span className="summary-action summary-action--close">
+              {' Скрыть настройки раздела '}
+            </span>
+          </span>
+          <span className="summary-meta">
+            <small>{draft.address.trim() ? 'Заполнено' : 'Не заполнено'}</small>
+            <span aria-hidden="true" className="disclosure-chevron" />
+          </span>
         </summary>
         <label htmlFor="address">{'Текст для клиента'}</label>
         <textarea

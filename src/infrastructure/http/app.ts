@@ -1,4 +1,3 @@
-import { registerFrontendRoutes } from './frontend-routes.js';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
@@ -11,11 +10,7 @@ import type { FailedDelivery } from '@/core/model/support-request.js';
 import type { SqliteBackupService } from '@/infrastructure/persistence/sqlite-backup-service.js';
 import type { TelegramSetupController } from '@/infrastructure/telegram/telegram-setup-controller.js';
 import type { VkSetupController } from '@/infrastructure/vk/vk-setup-controller.js';
-import {
-  setupPageHtml,
-  setupPageScript,
-  setupPageStyles,
-} from './setup-page.js';
+import { loadFrontendAssets, type FrontendAssets } from './frontend-assets.js';
 
 export function createApp(config: RuntimeConfig): FastifyInstance {
   const app = Fastify({
@@ -26,7 +21,6 @@ export function createApp(config: RuntimeConfig): FastifyInstance {
 
   app.get('/health', () => ({ status: 'ok' }));
 
-  registerFrontendRoutes(app);
   return app;
 }
 
@@ -51,8 +45,15 @@ export function registerSetupRoutes(
   >,
   backups?: Pick<SqliteBackupService, 'createBackup'>,
   vkSetup?: VkSetupController,
-  options: { enabled: boolean } = { enabled: true },
+  options: { assets?: FrontendAssets; enabled: boolean } = { enabled: true },
 ): void {
+  let assets = options.assets;
+
+  function getAssets(): FrontendAssets {
+    assets ??= loadFrontendAssets('/setup');
+    return assets;
+  }
+
   app.addHook('onRequest', async (request, reply) => {
     if (
       isSetupUrl(request.url) &&
@@ -80,13 +81,15 @@ export function registerSetupRoutes(
         `frame-ancestors 'none'`,
       ].join('; '),
     );
-    return reply.type('text/html; charset=utf-8').send(setupPageHtml);
+    return reply.type('text/html; charset=utf-8').send(getAssets().html);
   });
   app.get('/setup/app.js', async (_request, reply) =>
-    reply.type('application/javascript; charset=utf-8').send(setupPageScript),
+    reply
+      .type('application/javascript; charset=utf-8')
+      .send(getAssets().script),
   );
   app.get('/setup/style.css', async (_request, reply) =>
-    reply.type('text/css; charset=utf-8').send(setupPageStyles),
+    reply.type('text/css; charset=utf-8').send(getAssets().styles),
   );
   app.get('/api/setup/status', () => ({
     ...setup.status(),

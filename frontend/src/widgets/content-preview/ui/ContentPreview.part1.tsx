@@ -1,6 +1,7 @@
 import { renderList as $renderList } from '@frontend/shared/lib/component-view';
 
 import { unref as $unref } from '@frontend/shared/lib/model-state';
+import { logicalOr as $or } from '@frontend/shared/lib/component-bindings';
 
 import { isSectionVisible } from '@frontend/entities/content/model/content-draft';
 
@@ -51,8 +52,8 @@ export function renderContentPreviewPart1(
               <dl>
                 {$renderList($props.content.faq, (item) => (
                   <>
-                    <dt>{item.question || 'Вопрос без названия'}</dt>
-                    <dd>{item.answer || 'Ответ ещё не заполнен'}</dd>
+                    <dt>{$or(item.question, () => 'Вопрос без названия')}</dt>
+                    <dd>{$or(item.answer, () => 'Ответ ещё не заполнен')}</dd>
                   </>
                 ))}
               </dl>
@@ -60,9 +61,9 @@ export function renderContentPreviewPart1(
           ) : null}
           {$renderList($props.content.customSections, (section, index) => (
             <div key={index}>
-              <h3>{section.label || 'Раздел без названия'}</h3>
+              <h3>{$or(section.label, () => 'Раздел без названия')}</h3>
               <p className="preserve">
-                {section.text || 'Текст ещё не заполнен'}
+                {$or(section.text, () => 'Текст ещё не заполнен')}
               </p>
             </div>
           ))}

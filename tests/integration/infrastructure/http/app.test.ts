@@ -15,6 +15,11 @@ const config: RuntimeConfig = {
 };
 
 const apps = new Set<ReturnType<typeof createApp>>();
+const setupAssets = {
+  html: '<div id="app">Подключение Telegram Доставка ответов Резервная копия</div>',
+  script: 'globalThis.setup = true;',
+  styles: ':root { color: black; }',
+};
 
 afterEach(async () => {
   await Promise.all([...apps].map(async (app) => app.close()));
@@ -22,21 +27,6 @@ afterEach(async () => {
 });
 
 describe('HTTP service status', () => {
-  it('serves the React entry and compiled frontend resources', async () => {
-    const app = createApp(config);
-    apps.add(app);
-    const html = await app.inject({ method: 'GET', url: '/' });
-    expect(html.statusCode).toBe(200);
-    expect(html.headers['content-type']).toContain('text/html');
-    expect(html.body).toContain('id="app"');
-    expect(html.body).toContain('/app.js');
-    for (const path of ['/app.js', '/style.css']) {
-      const response = await app.inject({ method: 'GET', url: path });
-      expect(response.statusCode).toBe(200);
-      expect(response.body.length).toBeGreaterThan(0);
-    }
-  });
-
   it('returns liveness status', async () => {
     const app = createApp(config);
     apps.add(app);
@@ -124,6 +114,10 @@ describe('HTTP service status', () => {
         },
         'none',
       ),
+      undefined,
+      undefined,
+      undefined,
+      { assets: setupAssets, enabled: true },
     );
 
     const local = await app.inject({ method: 'GET', url: '/setup' });

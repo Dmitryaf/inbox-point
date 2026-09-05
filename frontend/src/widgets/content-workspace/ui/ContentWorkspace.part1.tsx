@@ -8,7 +8,9 @@ import {
 } from '@frontend/shared/lib/component-bindings';
 
 import SaveBar from '@frontend/features/save-content/ui/SaveBar';
+import ContentSummary from '@frontend/entities/content/ui/ContentSummary';
 
+import AppIcon from '@frontend/shared/ui/AppIcon';
 import ChangeHistory from '@frontend/widgets/change-history/ui/ChangeHistory';
 import ContentEditor from '@frontend/widgets/content-editor/ui/ContentEditor';
 import ContentPreview from '@frontend/widgets/content-preview/ui/ContentPreview';
@@ -34,6 +36,21 @@ export function renderContentWorkspacePart1(
             'workspace--editing': activeView === 'edit',
           })}
         >
+          <header className="workspace-topbar">
+            <div className="workspace-identity">
+              <span className="workspace-mark">
+                <AppIcon name="channel" />
+              </span>
+              <div>
+                <strong>{'Messenger Handoff'}</strong>
+                <small>{'Информация для клиентов'}</small>
+              </div>
+            </div>
+            <span className="channel-badge">
+              <span aria-hidden="true" />
+              {' Telegram и VK '}
+            </span>
+          </header>
           <WorkspaceNavigation
             activeSection={activeSection}
             activeView={activeView}
@@ -69,13 +86,16 @@ export function renderContentWorkspacePart1(
               />
             )}
           </main>
-          <SaveBar
-            dirty={workspace.dirty.value}
-            saving={workspace.saving.value}
-            onSave={(...$args) => {
-              $invokeArgs($required($unref($state.workspace)).save, $args);
-            }}
-          />
+          <aside className="workspace-rail">
+            <SaveBar
+              dirty={workspace.dirty.value}
+              saving={workspace.saving.value}
+              onSave={(...$args) => {
+                $invokeArgs($required($unref($state.workspace)).save, $args);
+              }}
+            />
+            <ContentSummary content={workspace.draft} />
+          </aside>
         </div>
       )}
     </>

@@ -17,7 +17,7 @@ afterEach(async () => {
 });
 
 describe('loadFrontendAssets', () => {
-  it.each(['/manage', '/ops'] as const)(
+  it.each(['/manage', '/ops', '/setup'] as const)(
     'scopes the shared bundle to %s',
     async (routeBase) => {
       const directory = await mkdtemp(join(tmpdir(), 'mh-frontend-assets-'));
