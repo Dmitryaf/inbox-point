@@ -147,3 +147,14 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+@media (max-width: 520px) {
+  .setup-shell {
+    padding-inline: 0.75rem;
+  }
+
+  .setup-workspace {
+    gap: 0.7rem;
+    padding: 0.6rem;
+  }
+}

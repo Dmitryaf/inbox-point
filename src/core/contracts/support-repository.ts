@@ -11,6 +11,7 @@ export interface DeliverySummary {
   failed: number;
   oldestPendingAt?: Date;
   pending: number;
+  uncertain?: number;
 }
 
 export interface PendingInboundEvent {
@@ -63,6 +64,7 @@ export interface SupportRepository extends InboundEventStore {
   ): readonly QueuedDelivery[];
   getDeliverySummary(): DeliverySummary;
   markDeliveryFailed(deliveryId: string, error: string): void;
+  markDeliveryOutcomeUnknown(deliveryId: string, error: string): void;
   markDeliveryRetry(
     deliveryId: string,
     error: string,

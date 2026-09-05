@@ -38,6 +38,7 @@ export function mapDeliveryStatus(
         }),
     pending: summary.pending,
     state,
+    uncertain: summary.uncertain ?? 0,
     worker: {
       ...(activity.lastCycleAt
         ? { lastCycleAt: activity.lastCycleAt.toISOString() }

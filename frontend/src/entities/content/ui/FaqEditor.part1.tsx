@@ -33,6 +33,10 @@ export function renderFaqEditorPart1(
               );
             })}
           />
+          <p className="counter">
+            {item.question.length}
+            {' / 300'}
+          </p>
           <label htmlFor={`faq-answer-${index}`}>{'Ответ'}</label>
           <textarea
             id={`faq-answer-${index}`}
@@ -48,6 +52,10 @@ export function renderFaqEditorPart1(
               );
             })}
           />
+          <p className="counter">
+            {item.answer.length}
+            {' / 3000'}
+          </p>
           <div className="item-actions">
             <button
               type="button"

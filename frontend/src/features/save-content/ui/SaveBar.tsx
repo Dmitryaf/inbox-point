@@ -24,6 +24,7 @@ export default function SaveBar($incomingProps: ComponentProps) {
     createComponentModel,
   );
   const { $emit } = $state;
+  const statusMessage = $state.statusMessage.value;
   const $attributes = inheritedAttributes($props);
   return (
     <ModelScopeProvider scope={$scope}>
@@ -34,13 +35,14 @@ export default function SaveBar($incomingProps: ComponentProps) {
         <div>
           <span className="save-bar-label">{'Публикация'}</span>
           <p role="status" className={$class({ changed: $props.dirty })}>
-            {$props.dirty
-              ? 'Есть несохранённые изменения'
-              : 'Все изменения сохранены'}
+            {statusMessage}
           </p>
         </div>
         <button
-          disabled={$or($props.saving, () => !$props.dirty)}
+          disabled={$or(
+            $or($props.saving, () => !$props.dirty),
+            () => !$props.valid,
+          )}
           type="button"
           onClick={() => {
             void $emit('save');

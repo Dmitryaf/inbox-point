@@ -27,6 +27,7 @@ export function renderContentWorkspacePart1(
   const workspace = $unref($state.workspace);
   const activeView = $state.activeView.value;
   const activeSection = $state.activeSection.value;
+  const validation = $state.validation.value;
   return (
     <>
       {workspace.loading.value ? (
@@ -107,6 +108,8 @@ export function renderContentWorkspacePart1(
             <SaveBar
               dirty={workspace.dirty.value}
               saving={workspace.saving.value}
+              valid={validation.valid}
+              validationMessage={validation.message}
               onSave={(...$args) => {
                 $invokeArgs($required($unref($state.workspace)).save, $args);
               }}

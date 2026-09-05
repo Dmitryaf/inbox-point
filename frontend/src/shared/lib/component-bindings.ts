@@ -41,6 +41,14 @@ export function modelSetter<State extends object, Key extends keyof State>(
     setModelValue(state, key, value);
   };
 }
+export function propertySetter<State extends object, Key extends keyof State>(
+  read: () => State | undefined | null,
+  key: Key,
+): (value: State[Key]) => void {
+  return (value) => {
+    setProperty(requiredValue(read()), key, value);
+  };
+}
 
 export function requiredValue<Value>(value: Value): NonNullable<Value> {
   if (value === undefined || value === null) {

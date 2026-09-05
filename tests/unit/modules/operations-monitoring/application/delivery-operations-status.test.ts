@@ -40,6 +40,7 @@ describe('delivery operations status', () => {
     expect(status.deliveries).toMatchObject({
       oldestPendingAgeSeconds: 600,
       state: 'backlog',
+      uncertain: 0,
       worker: { state: 'running' },
     });
     expect(monitoring.isReady()).toBe(false);

@@ -21,6 +21,12 @@ export function renderDeliveryStatusCardPart1(
           <dt>{'Не доставлены'}</dt>
           <dd>{$props.deliveries.failed}</dd>
         </div>
+        {$props.deliveries.uncertain > 0 ? (
+          <div>
+            <dt>{'Требуют ручной проверки'}</dt>
+            <dd>{$props.deliveries.uncertain}</dd>
+          </div>
+        ) : null}
         <div>
           <dt>{'Обработчик очереди'}</dt>
           <dd>{$props.deliveries.worker.running ? 'Запущен' : 'Остановлен'}</dd>

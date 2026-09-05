@@ -45,4 +45,5 @@ export interface FailedDelivery {
   createdAt: Date;
   id: string;
   lastError: string;
+  outcomeUnknown: boolean;
 }

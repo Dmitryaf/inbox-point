@@ -206,6 +206,7 @@ describe('HTTP service status', () => {
             id: 'delivery-1',
             lastError:
               'Telegram API sendMessage failed: Forbidden: bot was blocked; private answer',
+            outcomeUnknown: false,
           },
         ],
         getDeliverySummary: () => ({ failed: 1, pending: 2 }),
@@ -277,6 +278,7 @@ describe('HTTP service status', () => {
           id: 'delivery-1',
           reason:
             'Бот не может написать клиенту. Возможно, клиент заблокировал бота.',
+          retryAllowed: true,
         },
       ],
       summary: { failed: 1, pending: 2 },

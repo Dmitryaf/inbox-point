@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { DeliveryOutcomeUnknownError } from '@/core/contracts/client-channel.js';
 import {
   telegramMessageSchema,
   telegramUpdateSchema,
@@ -276,6 +277,9 @@ export class TelegramApiClient implements TelegramGateway {
       if (isAbortError(error)) {
         throw error;
       }
+      if (method === 'sendMessage') {
+        throw new DeliveryOutcomeUnknownError('telegram');
+      }
       throw new Error(`Telegram API request failed for ${method}`);
     }
 
@@ -283,14 +287,12 @@ export class TelegramApiClient implements TelegramGateway {
     try {
       body = await response.json();
     } catch {
-      throw new Error(`Telegram API returned invalid JSON for ${method}`);
+      throw responseValidationError(method, 'invalid JSON');
     }
 
     const envelope = apiEnvelopeSchema.safeParse(body);
     if (!envelope.success) {
-      throw new Error(
-        `Telegram API returned an invalid response for ${method}`,
-      );
+      throw responseValidationError(method, 'an invalid response');
     }
     if (!response.ok || !envelope.data.ok) {
       const description =
@@ -300,10 +302,17 @@ export class TelegramApiClient implements TelegramGateway {
 
     const result = resultSchema.safeParse(envelope.data.result);
     if (!result.success) {
-      throw new Error(`Telegram API returned an invalid result for ${method}`);
+      throw responseValidationError(method, 'an invalid result');
     }
     return result.data;
   }
+}
+
+function responseValidationError(method: string, problem: string): Error {
+  if (method === 'sendMessage') {
+    return new DeliveryOutcomeUnknownError('telegram');
+  }
+  return new Error(`Telegram API returned ${problem} for ${method}`);
 }
 
 function isAbortError(error: unknown): boolean {

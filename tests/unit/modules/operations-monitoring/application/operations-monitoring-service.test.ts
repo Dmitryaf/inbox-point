@@ -40,6 +40,7 @@ describe('OperationsMonitoringService', () => {
         failed: 0,
         pending: 2,
         state: 'healthy',
+        uncertain: 0,
         worker: {
           lastCycleAt: '2026-09-04T12:01:04.000Z',
           running: true,

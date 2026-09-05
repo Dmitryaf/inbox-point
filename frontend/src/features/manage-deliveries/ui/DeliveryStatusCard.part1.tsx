@@ -21,16 +21,22 @@ export function renderDeliveryStatusCardPart1(
                   {failure.attempts}
                 </small>
               </div>
-              <button
-                disabled={retryingId !== ''}
-                type="button"
-                onClick={() => {
-                  void retry(failure.id);
-                }}
-                className="secondary-button"
-              >
-                {retryingId === failure.id ? 'Возвращаем…' : 'Повторить'}
-              </button>
+              {failure.retryAllowed ? (
+                <button
+                  disabled={retryingId !== ''}
+                  type="button"
+                  onClick={() => {
+                    void retry(failure.id);
+                  }}
+                  className="secondary-button"
+                >
+                  {retryingId === failure.id ? 'Возвращаем…' : 'Повторить'}
+                </button>
+              ) : (
+                <span className="status-pill status-pill--attention">
+                  {' Проверить вручную '}
+                </span>
+              )}
             </li>
           ))}
         </ul>

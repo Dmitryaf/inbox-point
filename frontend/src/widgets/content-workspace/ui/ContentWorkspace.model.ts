@@ -4,7 +4,13 @@ import {
   type WithDefaults,
 } from '@frontend/shared/lib/component-model';
 
-import { onMounted, ref, watch } from '@frontend/shared/lib/model-state';
+import {
+  computed,
+  onMounted,
+  ref,
+  watch,
+} from '@frontend/shared/lib/model-state';
+import { validateContentDraft } from '@frontend/entities/content/lib/content-validation';
 
 import type { EditorSection, WorkspaceView } from '../model/navigation';
 import { useContentWorkspace } from '../model/use-content-workspace';
@@ -27,6 +33,7 @@ export function createComponentModel(
   });
   const activeView = ref<WorkspaceView>('edit');
   const activeSection = ref<EditorSection>('core');
+  const validation = computed(() => validateContentDraft(workspace.draft));
   onMounted(() => void workspace.load());
   watch(
     () => props.authenticated,
@@ -39,5 +46,5 @@ export function createComponentModel(
   watch(workspace.dirty, (dirty) => emit('dirtyChange', dirty), {
     immediate: true,
   });
-  return { workspace, activeView, activeSection };
+  return { workspace, activeView, activeSection, validation };
 }

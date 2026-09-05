@@ -1,3 +1,5 @@
+import { classNames as $class } from '@frontend/shared/lib/component-view';
+
 import {
   requiredValue as $required,
   setProperty as $setProperty,
@@ -11,6 +13,7 @@ export function renderCoreSectionsFieldsPart1(
   $state: ReturnType<typeof createComponentModel>,
 ) {
   const draft = $state.draft.value;
+  const scheduleLength = $state.scheduleLength.value;
   return (
     <>
       <details open className="field-group">
@@ -45,9 +48,14 @@ export function renderCoreSectionsFieldsPart1(
             );
           })}
         />
-        <p className="counter">
-          {draft.schedule.length}
-          {' / 4000'}
+        <p
+          className={$class('counter', {
+            'counter--error': scheduleLength > 4000,
+          })}
+        >
+          {' Итоговый ответ: '}
+          {scheduleLength}
+          {' / 4000 '}
         </p>
         <SectionVisibilityControl
           contentPresent={Boolean(draft.schedule.trim())}

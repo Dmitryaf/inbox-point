@@ -26,6 +26,7 @@ export interface OperationsStatus {
     oldestPendingAt?: string;
     pending: number;
     state: 'backlog' | 'failed' | 'healthy' | 'stalled';
+    uncertain: number;
     worker: {
       lastCycleAt?: string;
       running: boolean;

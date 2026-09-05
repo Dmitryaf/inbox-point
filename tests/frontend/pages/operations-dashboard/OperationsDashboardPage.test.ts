@@ -39,6 +39,7 @@ describe('OperationsDashboardPage', () => {
               oldestPendingAt: '2026-09-04T11:59:30.000Z',
               pending: 3,
               state: 'failed',
+              uncertain: 0,
               worker: {
                 lastCycleAt: '2026-09-04T12:00:59.000Z',
                 running: true,

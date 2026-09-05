@@ -1,11 +1,18 @@
 import { randomUUID } from 'node:crypto';
 
-import type { ClientChannel } from '@/core/contracts/client-channel.js';
+import {
+  DeliveryOutcomeUnknownError,
+  type ClientChannel,
+} from '@/core/contracts/client-channel.js';
 import {
   silentDeliveryWorkerActivityReporter,
   type DeliveryWorkerActivityReporter,
 } from '@/core/contracts/delivery-worker-activity-reporter.js';
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
+import {
+  DeliveryFailurePolicy,
+  type DeliveryFailureContext,
+} from './delivery-failure-policy.js';
 import { waitForDelay } from './wait-for-delay.js';
 
 export interface DeliveryWorkerDependencies {
@@ -19,25 +26,13 @@ export interface DeliveryWorkerDependencies {
   retryBaseDelayMs?: number;
 }
 
-export interface DeliveryFailureContext {
-  attempt: number;
-  deliveryId: string;
-  final: boolean;
-  requestId: string;
-}
-
 export class DeliveryWorker {
   private readonly activity: DeliveryWorkerActivityReporter;
   private readonly channels: Map<string, ClientChannel>;
   private readonly clock: () => Date;
   private readonly createId: () => string;
-  private readonly maxAttempts: number;
-  private readonly onError: (
-    error: unknown,
-    context: DeliveryFailureContext,
-  ) => void;
+  private readonly failurePolicy: DeliveryFailurePolicy;
   private readonly repository: SupportRepository;
-  private readonly retryBaseDelayMs: number;
 
   public constructor(dependencies: DeliveryWorkerDependencies) {
     this.activity =
@@ -47,10 +42,14 @@ export class DeliveryWorker {
     );
     this.clock = dependencies.clock ?? (() => new Date());
     this.createId = dependencies.createId ?? randomUUID;
-    this.maxAttempts = dependencies.maxAttempts ?? 5;
-    this.onError = dependencies.onError ?? (() => undefined);
     this.repository = dependencies.repository;
-    this.retryBaseDelayMs = dependencies.retryBaseDelayMs ?? 5_000;
+    this.failurePolicy = new DeliveryFailurePolicy({
+      clock: this.clock,
+      maxAttempts: dependencies.maxAttempts ?? 5,
+      onError: dependencies.onError ?? (() => undefined),
+      repository: this.repository,
+      retryBaseDelayMs: dependencies.retryBaseDelayMs ?? 5_000,
+    });
   }
 
   public registerChannel(channel: ClientChannel): void {
@@ -61,13 +60,14 @@ export class DeliveryWorker {
     const deliveries = this.repository.findPendingDeliveries(this.clock(), 25);
     for (const delivery of deliveries) {
       const channel = this.channels.get(delivery.channel);
+      let sent: { externalMessageId: string };
       try {
         if (!channel) {
           throw new Error(
             `Client channel is not configured: ${delivery.channel}`,
           );
         }
-        const sent = await channel.send({
+        sent = await channel.send({
           conversationId: delivery.conversationId,
           idempotencyKey: delivery.idempotencyKey,
           ...(delivery.replyToExternalMessageId
@@ -75,7 +75,13 @@ export class DeliveryWorker {
             : {}),
           text: delivery.text,
         });
-        const sentAt = this.clock();
+      } catch (error: unknown) {
+        this.failurePolicy.record(delivery, error);
+        continue;
+      }
+
+      const sentAt = this.clock();
+      try {
         this.repository.completeDelivery(
           delivery.id,
           sent.externalMessageId,
@@ -90,28 +96,17 @@ export class DeliveryWorker {
           },
         );
       } catch (error: unknown) {
-        const message = safeErrorMessage(error);
-        const attempt = delivery.attempts + 1;
-        const final = attempt >= this.maxAttempts;
-        if (final) {
-          this.repository.markDeliveryFailed(delivery.id, message);
+        if (delivery.channel === 'telegram') {
+          this.failurePolicy.record(
+            delivery,
+            new DeliveryOutcomeUnknownError(
+              'telegram',
+              'delivery was accepted but persistence failed',
+            ),
+          );
         } else {
-          const retryDelay = Math.min(
-            this.retryBaseDelayMs * 2 ** delivery.attempts,
-            5 * 60_000,
-          );
-          this.repository.markDeliveryRetry(
-            delivery.id,
-            message,
-            new Date(this.clock().getTime() + retryDelay),
-          );
+          this.failurePolicy.record(delivery, error);
         }
-        this.onError(error, {
-          attempt,
-          deliveryId: delivery.id,
-          final,
-          requestId: delivery.requestId,
-        });
       }
     }
     return deliveries.length;
@@ -129,10 +124,4 @@ export class DeliveryWorker {
       this.activity.recordWorkerStopped(this.clock());
     }
   }
-}
-
-function safeErrorMessage(error: unknown): string {
-  return error instanceof Error
-    ? error.message.slice(0, 500)
-    : 'Unknown delivery error';
 }

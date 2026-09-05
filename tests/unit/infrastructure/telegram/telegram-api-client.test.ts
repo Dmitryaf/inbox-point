@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
+import { DeliveryOutcomeUnknownError } from '@/core/contracts/client-channel.js';
 import {
   isUnavailableForumTopicError,
   TelegramApiClient,
@@ -187,5 +188,27 @@ describe('TelegramApiClient', () => {
       new Error('Telegram API request failed for getUpdates'),
     );
     await expect(request).rejects.not.toThrowError(new RegExp(token));
+  });
+
+  it('marks a lost sendMessage response as an unknown delivery outcome', async () => {
+    const client = new TelegramApiClient(
+      'synthetic-token',
+      vi.fn(() => Promise.reject(new Error('connection reset'))),
+    );
+
+    await expect(
+      client.sendMessage({ chatId: 101, text: 'Ответ' }),
+    ).rejects.toBeInstanceOf(DeliveryOutcomeUnknownError);
+  });
+
+  it('marks an unreadable sendMessage response as an unknown outcome', async () => {
+    const client = new TelegramApiClient(
+      'synthetic-token',
+      vi.fn(() => Promise.resolve(new Response('not-json', { status: 200 }))),
+    );
+
+    await expect(
+      client.sendMessage({ chatId: 101, text: 'Ответ' }),
+    ).rejects.toBeInstanceOf(DeliveryOutcomeUnknownError);
   });
 });

@@ -27,11 +27,13 @@ export function createComponentModel() {
     if (!status.value) {
       return 'Проверяем состояние доставки…';
     }
-    const { failed, pending } = status.value.summary;
+    const { failed, pending, uncertain = 0 } = status.value.summary;
     if (failed === 0 && pending === 0) {
       return 'Все ответы доставлены.';
     }
-    return `Ожидают отправки: ${pending}. Не доставлено: ${failed}.`;
+    const manualCheck =
+      uncertain > 0 ? ` Требуют ручной проверки: ${uncertain}.` : '';
+    return `Ожидают отправки: ${pending}. Не доставлено: ${failed}.${manualCheck}`;
   });
   onMounted(() => {
     void refresh();

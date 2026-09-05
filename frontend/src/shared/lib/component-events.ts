@@ -1,3 +1,5 @@
+import { publish } from './model-events';
+
 export function invokeArgs(
   handler: (...args: never[]) => unknown,
   args: unknown[],
@@ -83,4 +85,42 @@ export function toggleCheckbox<Value>(
     return updated;
   }
   return checked;
+}
+import type * as React from 'react';
+export function eventCallback<Handler extends (...args: never[]) => unknown>(
+  handler: Handler,
+): (...args: Parameters<Handler>) => void {
+  return (...args) => {
+    Reflect.apply(handler, undefined, args);
+  };
+}
+interface NativeModifiers {
+  prevent?: boolean;
+  stop?: boolean;
+  self?: boolean;
+  key?: string;
+}
+export function nativeHandler(
+  handler: (...args: never[]) => unknown,
+  modifiers: NativeModifiers = {},
+): React.EventHandler<React.SyntheticEvent> {
+  return (event) => {
+    if (modifiers.self && event.currentTarget !== event.target) {
+      return;
+    }
+    if (modifiers.key && (!('key' in event) || event.key !== modifiers.key)) {
+      return;
+    }
+    if (modifiers.prevent) {
+      event.preventDefault();
+    }
+    if (modifiers.stop) {
+      event.stopPropagation();
+    }
+    try {
+      invokeHandler(handler, event);
+    } finally {
+      publish();
+    }
+  };
 }

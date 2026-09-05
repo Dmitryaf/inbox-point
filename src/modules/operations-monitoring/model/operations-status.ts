@@ -33,6 +33,7 @@ export interface DeliveryOperationsStatus {
   oldestPendingAt?: string;
   pending: number;
   state: 'backlog' | 'failed' | 'healthy' | 'stalled';
+  uncertain: number;
   worker: {
     lastCycleAt?: string;
     running: boolean;

@@ -46,6 +46,7 @@ interface FailedDeliveryRow {
   created_at: string;
   id: string;
   last_error: string | null;
+  outcome_unknown: number;
 }
 
 export class SqliteSupportRepository implements SupportRepository {
@@ -309,7 +310,7 @@ export class SqliteSupportRepository implements SupportRepository {
   public findFailedDeliveries(limit: number): readonly FailedDelivery[] {
     const rows = this.database
       .prepare(
-        `SELECT id, channel, attempts, last_error, created_at
+        `SELECT id, channel, attempts, last_error, created_at, outcome_unknown
          FROM deliveries
          WHERE status = 'failed'
          ORDER BY created_at DESC, id DESC
@@ -323,6 +324,7 @@ export class SqliteSupportRepository implements SupportRepository {
       createdAt: new Date(row.created_at),
       id: row.id,
       lastError: row.last_error ?? 'Unknown delivery error',
+      outcomeUnknown: row.outcome_unknown === 1,
     }));
   }
 
@@ -403,6 +405,7 @@ export class SqliteSupportRepository implements SupportRepository {
         `SELECT
           SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed,
           SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending,
+          SUM(CASE WHEN outcome_unknown = 1 THEN 1 ELSE 0 END) AS uncertain,
           MIN(CASE WHEN status = 'pending' THEN created_at END) AS oldest_pending_at
          FROM deliveries`,
       )
@@ -410,6 +413,7 @@ export class SqliteSupportRepository implements SupportRepository {
       failed: number | null;
       oldest_pending_at: string | null;
       pending: number | null;
+      uncertain: number | null;
     };
 
     return {
@@ -418,6 +422,7 @@ export class SqliteSupportRepository implements SupportRepository {
         ? { oldestPendingAt: new Date(row.oldest_pending_at) }
         : {}),
       pending: row.pending ?? 0,
+      ...((row.uncertain ?? 0) > 0 ? { uncertain: row.uncertain ?? 0 } : {}),
     };
   }
 
@@ -483,6 +488,19 @@ export class SqliteSupportRepository implements SupportRepository {
       .run(error, deliveryId);
   }
 
+  public markDeliveryOutcomeUnknown(deliveryId: string, error: string): void {
+    this.database
+      .prepare(
+        `UPDATE deliveries
+         SET status = 'failed',
+             attempts = attempts + 1,
+             last_error = ?,
+             outcome_unknown = 1
+         WHERE id = ? AND status = 'pending'`,
+      )
+      .run(error, deliveryId);
+  }
+
   public markDeliveryRetry(
     deliveryId: string,
     error: string,
@@ -530,7 +548,7 @@ export class SqliteSupportRepository implements SupportRepository {
              last_error = NULL,
              next_attempt_at = ?,
              sent_at = NULL
-         WHERE id = ? AND status = 'failed'`,
+         WHERE id = ? AND status = 'failed' AND outcome_unknown = 0`,
       )
       .run(retryAt.toISOString(), deliveryId);
 
@@ -600,6 +618,9 @@ export class SqliteSupportRepository implements SupportRepository {
         last_error TEXT,
         created_at TEXT NOT NULL,
         next_attempt_at TEXT,
+        outcome_unknown INTEGER NOT NULL DEFAULT 0 CHECK (
+          outcome_unknown IN (0, 1)
+        ),
         sent_at TEXT
       ) STRICT;
     `);
@@ -617,6 +638,11 @@ export class SqliteSupportRepository implements SupportRepository {
     if (!deliveryColumns.some((column) => column.name === 'next_attempt_at')) {
       this.database.exec(
         'ALTER TABLE deliveries ADD COLUMN next_attempt_at TEXT',
+      );
+    }
+    if (!deliveryColumns.some((column) => column.name === 'outcome_unknown')) {
+      this.database.exec(
+        'ALTER TABLE deliveries ADD COLUMN outcome_unknown INTEGER NOT NULL DEFAULT 0 CHECK (outcome_unknown IN (0, 1))',
       );
     }
 

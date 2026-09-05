@@ -12,3 +12,13 @@ export interface ClientChannel {
 
   send(message: OutgoingClientMessage): Promise<{ externalMessageId: string }>;
 }
+
+export class DeliveryOutcomeUnknownError extends Error {
+  public constructor(
+    channel: ClientChannelKind,
+    reason = 'delivery outcome is unknown',
+  ) {
+    super(`${channel} ${reason}`);
+    this.name = 'DeliveryOutcomeUnknownError';
+  }
+}
