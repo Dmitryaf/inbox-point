@@ -10,12 +10,14 @@ import {
   type ChannelStatusSnapshot,
 } from '@/modules/operations-monitoring/application/channel-status.js';
 import type { OperationsStatus } from '@/modules/operations-monitoring/model/operations-status.js';
+import type { ServiceControlState } from '@/modules/service-control/model/service-control-state.js';
 
 export interface OperationsMonitoringDependencies {
   clock?: () => Date;
   channelActivity: (channel: ClientChannelKind) => ChannelActivitySnapshot;
   deliveryActivity: () => DeliveryWorkerActivitySnapshot;
   deliverySummary: () => DeliverySummary;
+  intakeStatus?: () => ServiceControlState['channels'];
   pendingDeliveryStaleAfterMs?: number;
   pollStaleAfterMs?: number;
   startedAt: Date;
@@ -63,13 +65,24 @@ export class OperationsMonitoringService {
       deliveries.state !== 'healthy' ||
       channelNeedsAttention(telegram) ||
       channelNeedsAttention(vk);
+    const intake = this.dependencies.intakeStatus?.() ?? {
+      telegram: { mode: 'active' as const },
+      vk: { mode: 'active' as const },
+    };
+    const maintenance =
+      intake.telegram.mode === 'paused' || intake.vk.mode === 'paused';
 
     return {
       channels: { telegram, vk },
       deliveries,
+      intake,
       observedAt: observedAt.toISOString(),
       startedAt: this.dependencies.startedAt.toISOString(),
-      state: needsAttention ? 'attention' : 'healthy',
+      state: needsAttention
+        ? 'attention'
+        : maintenance
+          ? 'maintenance'
+          : 'healthy',
       uptimeSeconds: Math.max(
         0,
         Math.floor(

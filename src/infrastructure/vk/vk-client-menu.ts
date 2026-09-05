@@ -4,6 +4,10 @@ import {
   teacherButton,
 } from '@/core/application/client-information.js';
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
+import {
+  acceptingClientIntakePolicy,
+  type ClientIntakePolicy,
+} from '@/core/contracts/client-intake-policy.js';
 
 import type {
   VkGateway,
@@ -27,6 +31,7 @@ export class VkClientMenu implements VkClientMenuHandler {
     private readonly gateway: VkGateway,
     private readonly repository: SupportRepository,
     private readonly information: ClientInformationResolver = new ClientInformationCatalog(),
+    private readonly intakePolicy: ClientIntakePolicy = acceptingClientIntakePolicy,
   ) {}
 
   public async handle(message: VkMenuMessage): Promise<boolean> {
@@ -34,6 +39,9 @@ export class VkClientMenu implements VkClientMenuHandler {
       'vk',
       String(message.peerId),
     );
+    if (this.intakePolicy.isPaused('vk') && !activeRequest) {
+      return this.completeWithoutResponse(message);
+    }
     const response = resolveMenuResponse(
       message.text,
       Boolean(activeRequest),
@@ -53,11 +61,12 @@ export class VkClientMenu implements VkClientMenuHandler {
     }
 
     try {
+      const keyboard = createVkMainKeyboard(this.information);
       await this.gateway.sendMessage(
         message.peerId,
         response,
         createVkRandomId('vk-menu:' + message.externalEventId),
-        createVkMainKeyboard(this.information),
+        keyboard.buttons.length > 0 ? keyboard : undefined,
       );
       this.repository.completeEvent(
         'vk:menu',
@@ -69,6 +78,22 @@ export class VkClientMenu implements VkClientMenuHandler {
       this.repository.releaseEvent('vk:menu', message.externalEventId);
       throw error;
     }
+  }
+
+  private completeWithoutResponse(message: VkMenuMessage): boolean {
+    const claimed = this.repository.claimEvent(
+      'vk:menu',
+      message.externalEventId,
+      new Date(),
+    );
+    if (claimed) {
+      this.repository.completeEvent(
+        'vk:menu',
+        message.externalEventId,
+        new Date(),
+      );
+    }
+    return true;
   }
 }
 

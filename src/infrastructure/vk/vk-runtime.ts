@@ -9,6 +9,10 @@ import {
 } from '@/core/contracts/channel-activity-reporter.js';
 import type { ClientChannel } from '@/core/contracts/client-channel.js';
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
+import {
+  acceptingClientIntakePolicy,
+  type ClientIntakePolicy,
+} from '@/core/contracts/client-intake-policy.js';
 import type { SupportMessage } from '@/core/model/support-message.js';
 
 import { VkApiClient } from './vk-api-client.js';
@@ -39,6 +43,7 @@ export class VkRuntime {
     private readonly logger: VkRuntimeLogger,
     private readonly information: ClientInformationResolver = new ClientInformationCatalog(),
     private readonly activity: ChannelActivityReporter = silentChannelActivityReporter,
+    private readonly intakePolicy: ClientIntakePolicy = acceptingClientIntakePolicy,
   ) {}
 
   public get running(): boolean {
@@ -59,7 +64,12 @@ export class VkRuntime {
       new VkUpdateRouter(
         this.handoffHost,
         gateway,
-        new VkClientMenu(gateway, this.repository, this.information),
+        new VkClientMenu(
+          gateway,
+          this.repository,
+          this.information,
+          this.intakePolicy,
+        ),
       ),
       this.repository,
       {

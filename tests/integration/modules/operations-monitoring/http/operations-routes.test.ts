@@ -5,6 +5,9 @@ import { createApp } from '@/infrastructure/http/app.js';
 import { OperationsMonitoringService } from '@/modules/operations-monitoring/application/operations-monitoring-service.js';
 import { registerOperationsRoutes } from '@/modules/operations-monitoring/presentation/http/routes.js';
 import { OperationsAccess } from '@/modules/operations-monitoring/security/operations-access.js';
+import type { ServiceControlStore } from '@/modules/service-control/application/ports/service-control-store.js';
+import { ServiceControlService } from '@/modules/service-control/application/service-control-service.js';
+import { createDefaultServiceControlState } from '@/modules/service-control/model/service-control-state.js';
 
 const config: RuntimeConfig = {
   databasePath: './data/test.sqlite',
@@ -41,6 +44,7 @@ describe('operations monitoring routes', () => {
         assets: operationsAssets,
         secureCookies: true,
       },
+      createServiceControl(),
     );
 
     const unauthorized = await app.inject({
@@ -80,6 +84,12 @@ describe('operations monitoring routes', () => {
       remoteAddress: '192.0.2.10',
       url: '/api/ops/status',
     });
+    const serviceControl = await app.inject({
+      headers: { cookie },
+      method: 'GET',
+      remoteAddress: '192.0.2.10',
+      url: '/api/ops/service-control',
+    });
 
     expect(unauthorized.statusCode).toBe(401);
     expect(page.statusCode).toBe(200);
@@ -92,6 +102,13 @@ describe('operations monitoring routes', () => {
       '__Host-mh-ops-session=synthetic-operations-session',
     );
     expect(status.statusCode).toBe(200);
+    expect(serviceControl.statusCode).toBe(200);
+    expect(serviceControl.json()).toMatchObject({
+      channels: {
+        telegram: { mode: 'active' },
+        vk: { mode: 'active' },
+      },
+    });
     expect(status.json()).toMatchObject({
       channels: {
         telegram: { configured: true, running: true },
@@ -149,6 +166,14 @@ describe('operations monitoring routes', () => {
     expect(response.statusCode).toBe(200);
   });
 });
+
+function createServiceControl(): ServiceControlService {
+  const store: ServiceControlStore = {
+    load: () => Promise.resolve(undefined),
+    save: () => Promise.resolve(),
+  };
+  return new ServiceControlService(createDefaultServiceControlState(), store);
+}
 
 function createMonitoringService(): OperationsMonitoringService {
   return new OperationsMonitoringService({

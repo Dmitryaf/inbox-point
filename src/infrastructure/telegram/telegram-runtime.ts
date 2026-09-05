@@ -12,6 +12,10 @@ import {
 import type { ClientChannel } from '@/core/contracts/client-channel.js';
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
 import type { DeliveryWorkerActivityReporter } from '@/core/contracts/delivery-worker-activity-reporter.js';
+import {
+  acceptingClientIntakePolicy,
+  type ClientIntakePolicy,
+} from '@/core/contracts/client-intake-policy.js';
 import type { SupportMessage } from '@/core/model/support-message.js';
 import { TelegramApiClient } from '@/infrastructure/telegram/telegram-api-client.js';
 import { TelegramClientChannel } from '@/infrastructure/telegram/telegram-client-channel.js';
@@ -44,6 +48,7 @@ export class TelegramRuntime implements TelegramRuntimeControl {
     private readonly information: ClientInformationResolver = new ClientInformationCatalog(),
     private readonly activity: ChannelActivityReporter = silentChannelActivityReporter,
     private readonly deliveryActivity?: DeliveryWorkerActivityReporter,
+    private readonly intakePolicy: ClientIntakePolicy = acceptingClientIntakePolicy,
   ) {}
 
   public get running(): boolean {
@@ -84,6 +89,7 @@ export class TelegramRuntime implements TelegramRuntimeControl {
           this.repository,
           config.operatorChatId,
           this.information,
+          this.intakePolicy,
         ),
       ),
       config.pollTimeoutSeconds,

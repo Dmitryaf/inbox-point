@@ -13,6 +13,9 @@ import { OperationsMonitoringService } from '@/modules/operations-monitoring/app
 import { registerOperationsRoutes } from '@/modules/operations-monitoring/presentation/http/routes.js';
 import { registerReadinessRoute } from '@/modules/operations-monitoring/presentation/http/readiness-route.js';
 import { OperationsAccess } from '@/modules/operations-monitoring/security/operations-access.js';
+import { ServiceControlService } from '@/modules/service-control/application/service-control-service.js';
+import { FileServiceControlStore } from '@/modules/service-control/infrastructure/file-store/file-service-control-store.js';
+import { createDefaultServiceControlState } from '@/modules/service-control/model/service-control-state.js';
 import { SqliteBackupService } from '@/infrastructure/persistence/sqlite-backup-service.js';
 import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-support-repository.js';
 import { FileTelegramSettingsStore } from '@/infrastructure/persistence/telegram-settings-store.js';
@@ -26,6 +29,11 @@ import { VkSetupController } from '@/infrastructure/vk/vk-setup-controller.js';
 async function start(): Promise<void> {
   const startedAt = new Date();
   const config = loadRuntimeConfig(process.env);
+  const serviceControlStore = new FileServiceControlStore(
+    resolve(dirname(config.databasePath), 'service-control.json'),
+  );
+  const serviceControlState =
+    (await serviceControlStore.load()) ?? createDefaultServiceControlState();
   const repository = new SqliteSupportRepository(config.databasePath);
   const backupService = new SqliteBackupService(config.databasePath);
   const app = createApp(config);
@@ -41,6 +49,10 @@ async function start(): Promise<void> {
   const vkSettingsStore = new FileVkSettingsStore(
     resolve(dirname(config.databasePath), 'vk-settings.json'),
   );
+  const serviceControl = new ServiceControlService(
+    serviceControlState,
+    serviceControlStore,
+  );
   const telegramRuntime = new TelegramRuntime(
     repository,
     {
@@ -49,6 +61,7 @@ async function start(): Promise<void> {
     informationCatalog,
     channelActivity,
     deliveryActivity,
+    serviceControl,
   );
   const vkRuntime = new VkRuntime(
     telegramRuntime,
@@ -58,6 +71,7 @@ async function start(): Promise<void> {
     },
     informationCatalog,
     channelActivity,
+    serviceControl,
   );
   let closing = false;
 
@@ -128,11 +142,13 @@ async function start(): Promise<void> {
         allowLocalBypass: config.nodeEnv !== 'production',
         secureCookies: config.nodeEnv === 'production',
       },
+      serviceControl,
     );
     const operationsMonitoring = new OperationsMonitoringService({
       channelActivity: (channel) => channelActivity.snapshot(channel),
       deliveryActivity: () => deliveryActivity.snapshot(),
       deliverySummary: () => repository.getDeliverySummary(),
+      intakeStatus: () => serviceControl.getState().channels,
       startedAt,
       telegramStatus: () => setup.status(),
       vkStatus: () => vkSetup.status(),
@@ -146,6 +162,7 @@ async function start(): Promise<void> {
         allowLocalBypass: config.nodeEnv !== 'production',
         secureCookies: config.nodeEnv === 'production',
       },
+      serviceControl,
     );
     await app.listen({ host: config.host, port: config.port });
     const runtimeLogger = {

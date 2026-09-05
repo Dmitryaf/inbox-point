@@ -142,6 +142,25 @@ export class ClientInformationCatalog implements ClientInformationResolver {
   }
 }
 
+export function isAvailableInformationRequest(
+  information: ClientInformationResolver,
+  text: string,
+): boolean {
+  const normalized = text.trim();
+  if (information.getInformationButtons().includes(normalized)) {
+    return true;
+  }
+  if (
+    normalized.toLowerCase() === 'faq' &&
+    information.getInformationButtons().includes(faqButton)
+  ) {
+    return true;
+  }
+  return information
+    .getCustomSections()
+    .some((section) => section.label === normalized);
+}
+
 export function formatFaqResponse(items: readonly FaqItem[]): string {
   return `${faqButton}\n\n${items
     .map((item) => `❓ ${item.question}\n${item.answer}`)

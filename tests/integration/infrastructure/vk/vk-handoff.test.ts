@@ -11,6 +11,7 @@ import type {
   OperatorInbox,
 } from '@/core/contracts/operator-inbox.js';
 import type { SupportMessage } from '@/core/model/support-message.js';
+import type { ClientIntakePolicy } from '@/core/contracts/client-intake-policy.js';
 import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-support-repository.js';
 
 import type {
@@ -102,12 +103,17 @@ describe('VK handoff integration', () => {
   let repository: SqliteSupportRepository;
   let router: VkUpdateRouter;
   let service: HandoffService;
+  let vkPaused: boolean;
 
   beforeEach(() => {
     gateway = new FakeVkGateway();
     information = new ClientInformationCatalog();
     inbox = new FakeOperatorInbox();
     repository = new SqliteSupportRepository(':memory:');
+    vkPaused = false;
+    const intakePolicy: ClientIntakePolicy = {
+      isPaused: (channel) => channel === 'vk' && vkPaused,
+    };
     service = new HandoffService({
       operatorInbox: inbox,
       repository,
@@ -115,7 +121,7 @@ describe('VK handoff integration', () => {
     router = new VkUpdateRouter(
       service,
       gateway,
-      new VkClientMenu(gateway, repository, information),
+      new VkClientMenu(gateway, repository, information, intakePolicy),
     );
   });
 
@@ -189,6 +195,32 @@ describe('VK handoff integration', () => {
     expect(inbox.relayed).toHaveLength(0);
     expect(gateway.sent.at(-1)?.text).toContain('Расписание');
     expect(gateway.sent.at(-1)?.keyboard).toBeDefined();
+  });
+
+  it('redirects a new VK customer while intake is paused', async () => {
+    vkPaused = true;
+
+    await router.route(createMessageEvent());
+
+    expect(inbox.opened).toHaveLength(0);
+    expect(gateway.sent).toHaveLength(0);
+  });
+
+  it('continues an open VK conversation after intake is paused', async () => {
+    await router.route(createMessageEvent());
+    vkPaused = true;
+
+    await router.route(
+      createMessageEvent({
+        conversation_message_id: 8,
+        id: 502,
+        text: 'Уточнение',
+      }),
+    );
+
+    expect(inbox.opened).toHaveLength(1);
+    expect(inbox.relayed).toHaveLength(1);
+    expect(inbox.relayed[0]?.text).toBe('Уточнение');
   });
 
   it('shows and resolves the built-in FAQ without opening a request', async () => {

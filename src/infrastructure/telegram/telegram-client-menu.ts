@@ -1,14 +1,18 @@
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
 import {
+  acceptingClientIntakePolicy,
+  type ClientIntakePolicy,
+} from '@/core/contracts/client-intake-policy.js';
+import {
   ClientInformationCatalog,
   type ClientInformationResolver,
+  isAvailableInformationRequest,
   newQuestionButton,
   teacherButton,
 } from '@/core/application/client-information.js';
 
 import type {
   TelegramGateway,
-  TelegramReplyKeyboard,
   TelegramReplyMarkup,
 } from './telegram-api-client.js';
 import { isUnavailableForumTopicError } from './telegram-api-client.js';
@@ -29,6 +33,7 @@ export class TelegramClientMenu implements TelegramClientMenuHandler {
     private readonly repository: SupportRepository,
     private readonly operatorChatId: number,
     private readonly information: ClientInformationResolver = new ClientInformationCatalog(),
+    private readonly intakePolicy: ClientIntakePolicy = acceptingClientIntakePolicy,
   ) {}
 
   public async handle(message: TelegramMenuMessage): Promise<boolean> {
@@ -41,6 +46,7 @@ export class TelegramClientMenu implements TelegramClientMenuHandler {
       message.text,
       Boolean(activeRequest),
       this.information,
+      this.intakePolicy,
     );
     if (!response) {
       return false;
@@ -97,15 +103,29 @@ function resolveMenuResponse(
   text: string,
   hasActiveRequest: boolean,
   information: ClientInformationResolver,
+  intakePolicy: ClientIntakePolicy,
 ): MenuResponse | undefined {
   const normalized = text.trim();
   const command = parseCommand(normalized);
-  const mainMenu = createMainMenu(information);
+  const paused = intakePolicy.isPaused('telegram');
+  const mainMenu = createMainMenu(information, paused && !hasActiveRequest);
   const informationResponse = information.resolve(normalized);
-  if (informationResponse) {
+  if (
+    informationResponse &&
+    (!paused ||
+      hasActiveRequest ||
+      isAvailableInformationRequest(information, normalized))
+  ) {
     return {
       replyMarkup: mainMenu,
       text: informationResponse,
+    };
+  }
+
+  if (paused && !hasActiveRequest) {
+    return {
+      replyMarkup: mainMenu,
+      text: createPausedMessage(),
     };
   }
 
@@ -171,7 +191,8 @@ function resolveMenuResponse(
 
 function createMainMenu(
   information: ClientInformationResolver,
-): TelegramReplyKeyboard {
+  paused = false,
+): TelegramReplyMarkup {
   const informationRows = createButtonRows(
     information.getInformationButtons().map((text) => ({ text })),
   );
@@ -179,17 +200,27 @@ function createMainMenu(
     .getCustomSections()
     .map((section) => ({ text: section.label }));
   const customRows = createButtonRows(customButtons);
+  const actionRows = paused
+    ? []
+    : [[{ text: teacherButton }], [{ text: newQuestionButton }]];
+  const keyboard = [...informationRows, ...customRows, ...actionRows];
+  if (keyboard.length === 0) {
+    return { remove_keyboard: true };
+  }
   return {
     input_field_placeholder: 'Выберите действие',
     is_persistent: true,
-    keyboard: [
-      ...informationRows,
-      ...customRows,
-      [{ text: teacherButton }],
-      [{ text: newQuestionButton }],
-    ],
+    keyboard,
     resize_keyboard: true,
   };
+}
+
+function createPausedMessage(): string {
+  return [
+    'Бот временно не принимает новые обращения.',
+    '',
+    'Используйте резервный способ связи, указанный в описании бота.',
+  ].join('\n');
 }
 
 function createButtonRows(

@@ -9,6 +9,7 @@ import {
   teacherButton,
 } from '@/core/application/client-information.js';
 import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-support-repository.js';
+import type { ClientIntakePolicy } from '@/core/contracts/client-intake-policy.js';
 
 import type {
   GetUpdatesOptions,
@@ -98,11 +99,16 @@ describe('Telegram handoff integration', () => {
   let deliveryWorker: DeliveryWorker;
   let repository: SqliteSupportRepository;
   let router: TelegramUpdateRouter;
+  let telegramPaused: boolean;
 
   beforeEach(() => {
     gateway = new FakeTelegramGateway();
     information = new ClientInformationCatalog();
     repository = new SqliteSupportRepository(':memory:');
+    telegramPaused = false;
+    const intakePolicy: ClientIntakePolicy = {
+      isPaused: (channel) => channel === 'telegram' && telegramPaused,
+    };
     const handoff = new HandoffService({
       createId: (() => {
         let nextId = 1;
@@ -118,7 +124,13 @@ describe('Telegram handoff integration', () => {
     router = new TelegramUpdateRouter(
       handoff,
       -1_001,
-      new TelegramClientMenu(gateway, repository, -1_001, information),
+      new TelegramClientMenu(
+        gateway,
+        repository,
+        -1_001,
+        information,
+        intakePolicy,
+      ),
     );
   });
 
@@ -227,6 +239,30 @@ describe('Telegram handoff integration', () => {
       chatId: 101,
       text: 'Открытого обращения нет. Выберите нужный раздел в меню.',
     });
+  });
+
+  it('redirects a new customer while Telegram intake is paused', async () => {
+    telegramPaused = true;
+
+    await router.route(createPrivateUpdate(1, 501, 'Мне нужна помощь'));
+
+    expect(repository.findActiveRequest('telegram', '101')).toBeUndefined();
+    expect(gateway.sent).toHaveLength(1);
+    expect(gateway.sent[0]?.chatId).toBe(101);
+    expect(gateway.sent[0]?.text).toContain('в описании бота');
+  });
+
+  it('continues an open Telegram conversation after intake is paused', async () => {
+    await router.route(createPrivateUpdate(1, 501, 'Первый вопрос'));
+    telegramPaused = true;
+
+    await router.route(createPrivateUpdate(2, 502, 'Уточнение'));
+
+    expect(repository.findActiveRequest('telegram', '101')).toBeDefined();
+    expect(gateway.sent).toHaveLength(2);
+    expect(gateway.sent[1]?.chatId).toBe(-1_001);
+    expect(gateway.sent[1]?.messageThreadId).toBe(900);
+    expect(gateway.sent[1]?.text).toContain('Уточнение');
   });
 
   it('reports an active request instead of forwarding /start to operators', async () => {

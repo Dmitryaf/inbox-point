@@ -21,10 +21,19 @@ export interface OperationsStatus {
     vk: ChannelOperationsStatus;
   };
   deliveries: DeliveryOperationsStatus;
+  intake: {
+    telegram: ClientIntakeOperationsStatus;
+    vk: ClientIntakeOperationsStatus;
+  };
   observedAt: string;
   startedAt: string;
-  state: 'attention' | 'healthy';
+  state: 'attention' | 'healthy' | 'maintenance';
   uptimeSeconds: number;
+}
+
+export interface ClientIntakeOperationsStatus {
+  changedAt?: string;
+  mode: 'active' | 'paused';
 }
 
 export interface DeliveryOperationsStatus {

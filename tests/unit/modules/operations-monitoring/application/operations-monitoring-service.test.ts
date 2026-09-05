@@ -47,11 +47,48 @@ describe('OperationsMonitoringService', () => {
           state: 'running',
         },
       },
+      intake: {
+        telegram: { mode: 'active' },
+        vk: { mode: 'active' },
+      },
       observedAt: '2026-09-04T12:01:05.000Z',
       startedAt: '2026-09-04T12:00:00.000Z',
       state: 'healthy',
       uptimeSeconds: 65,
     });
+  });
+
+  it('reports intentional maintenance separately from a technical failure', () => {
+    const monitoring = new OperationsMonitoringService({
+      channelActivity: () => ({
+        lastSuccessfulPollAt: new Date('2026-09-04T12:01:00.000Z'),
+      }),
+      clock: () => new Date('2026-09-04T12:01:05.000Z'),
+      deliveryActivity: () => ({
+        lastCycleAt: new Date('2026-09-04T12:01:04.000Z'),
+        running: true,
+      }),
+      deliverySummary: () => ({ failed: 0, pending: 0 }),
+      intakeStatus: () => ({
+        telegram: {
+          changedAt: '2026-09-04T12:00:30.000Z',
+          mode: 'paused',
+        },
+        vk: { mode: 'active' },
+      }),
+      startedAt: new Date('2026-09-04T12:00:00.000Z'),
+      telegramStatus: () => ({ connected: true, source: 'local' }),
+      vkStatus: () => ({ connected: true, source: 'local' }),
+    });
+
+    expect(monitoring.getStatus()).toMatchObject({
+      intake: {
+        telegram: { mode: 'paused' },
+        vk: { mode: 'active' },
+      },
+      state: 'maintenance',
+    });
+    expect(monitoring.isReady()).toBe(true);
   });
 
   it('requires attention while the latest poll failure is not recovered', () => {
