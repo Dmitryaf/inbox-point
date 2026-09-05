@@ -228,16 +228,17 @@ final class TelegramStore implements AutoCloseable {
         }
     }
 
-    record DeliverySummary(long pending, long sent, long failed) { }
+    record DeliverySummary(long pending, long sent, long failed, String oldestPending) { }
 
     DeliverySummary summary() throws SQLException {
         try (var statement = connection.createStatement(); var row = statement.executeQuery("""
                 SELECT COUNT(*) FILTER (WHERE status = 'pending'),
-                    COUNT(*) FILTER (WHERE status = 'sent'), COUNT(*) FILTER (WHERE status = 'failed')
+                    COUNT(*) FILTER (WHERE status = 'sent'), COUNT(*) FILTER (WHERE status = 'failed'),
+                    MIN(created_at) FILTER (WHERE status = 'pending')
                 FROM deliveries
                 """)) {
             row.next();
-            return new DeliverySummary(row.getLong(1), row.getLong(2), row.getLong(3));
+            return new DeliverySummary(row.getLong(1), row.getLong(2), row.getLong(3), row.getString(4));
         }
     }
 

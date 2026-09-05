@@ -23,7 +23,8 @@
     "test": "vitest run",
     "typecheck": "npm run typecheck:frontend && npm run typecheck:frontend-tests",
     "typecheck:frontend": "tsc --noEmit -p frontend/tsconfig.json",
-    "typecheck:frontend-tests": "tsc --noEmit -p tests/frontend/tsconfig.json"
+    "typecheck:frontend-tests": "tsc --noEmit -p tests/frontend/tsconfig.json",
+    "start:availability-monitor": "node scripts/run-java.mjs availability-monitor"
   },
   "dependencies": {
     "react": "^19.3.1",

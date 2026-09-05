@@ -86,8 +86,8 @@ final class OperationsController {
             var now = Instant.now();
             var telegram = ChannelState.observe(runtime.status(), runtime.telegramPolling(), started, now);
             var vk = ChannelState.observe(runtime.vkStatus(), runtime.vkPolling(), started, now);
-            var delivery = runtime.deliveryCounts();
-            boolean attention = delivery.get("failed") > 0
+            var delivery = runtime.deliveryState(now);
+            boolean attention = !"healthy".equals(delivery.state())
                     || telegram.needsAttention() || vk.needsAttention();
             return ResponseEntity.ok(Map.of(
                     "state", attention ? "attention" : "healthy",
@@ -100,9 +100,10 @@ final class OperationsController {
     }
 
     boolean isReady() throws IOException, SQLException {
-        runtime.deliveryCounts();
         var now = Instant.now();
-        return ChannelState.observe(runtime.status(), runtime.telegramPolling(), started, now).ready()
+        var delivery = runtime.deliveryState(now);
+        return !"stalled".equals(delivery.state()) && !"backlog".equals(delivery.state())
+                && ChannelState.observe(runtime.status(), runtime.telegramPolling(), started, now).ready()
                 && ChannelState.observe(runtime.vkStatus(), runtime.vkPolling(), started, now).ready();
     }
 

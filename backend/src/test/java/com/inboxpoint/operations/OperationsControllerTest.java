@@ -52,6 +52,7 @@ class OperationsControllerTest {
             assertThat(status.path("state").asString()).isEqualTo("attention");
             assertThat(status.at("/channels/vk/configured").asBoolean()).isFalse();
             assertThat(status.at("/deliveries/failed").asLong()).isZero();
+            assertThat(status.at("/deliveries/worker/state").asString()).isEqualTo("inactive");
         }
     }
 }

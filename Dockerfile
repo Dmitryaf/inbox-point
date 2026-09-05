@@ -22,4 +22,5 @@ COPY --from=backend /backend/target/inbox-point-0.0.0-SNAPSHOT.jar ./inbox-point
 RUN install -d -m 0700 -o 1000 -g 1000 /app/data
 USER 1000:1000
 EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD ["java", "-jar", "/app/inbox-point.jar", "healthcheck"]
 CMD ["java", "-jar", "/app/inbox-point.jar"]

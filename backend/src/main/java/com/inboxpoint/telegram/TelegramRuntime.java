@@ -40,6 +40,7 @@ public final class TelegramRuntime {
     private final URI origin;
     private Thread poller;
     private Thread deliveries;
+    private volatile Instant lastDeliveryCycle;
     private final VkSetup vk;
     private final ChannelActivity activity = new ChannelActivity();
     private volatile Settings live;
@@ -213,6 +214,31 @@ public final class TelegramRuntime {
         return Map.of("fileName", name, "createdAt", createdAt.toString());
     }
 
+    public DeliveryState deliveryState(Instant now) throws IOException, SQLException {
+        try (var store = new TelegramStore(database)) {
+            var summary = store.summary();
+            var oldest = summary.oldestPending() == null ? null : Instant.parse(summary.oldestPending());
+            var age = oldest == null ? null : Math.max(0, Duration.between(oldest, now).toSeconds());
+            var cycle = lastDeliveryCycle;
+            boolean running = deliveries != null && deliveries.isAlive();
+            boolean stalled = summary.pending() > 0 && (!running || cycle == null
+                    || Duration.between(cycle, now).compareTo(Duration.ofMinutes(5)) > 0);
+            var worker = new DeliveryProcess(cycle == null ? null : cycle.toString(), running,
+                    stalled ? "stalled" : running ? "running" : "inactive");
+            var state = stalled ? "stalled" : age != null && age > 300 ? "backlog"
+                    : summary.failed() > 0 ? "failed" : "healthy";
+            return new DeliveryState(summary.pending(), summary.failed(), oldest == null ? null : oldest.toString(),
+                    age, state, worker);
+        }
+    }
+
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    public record DeliveryState(long pending, long failed, String oldestPendingAt, Long oldestPendingAgeSeconds,
+            String state, DeliveryProcess worker) { }
+
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    public record DeliveryProcess(String lastCycleAt, boolean running, String state) { }
+
     public Map<String, Long> deliveryCounts() throws IOException, SQLException {
         try (var store = new TelegramStore(database)) {
             var summary = store.summary();
@@ -223,7 +249,12 @@ public final class TelegramRuntime {
     private void deliver(String token) {
         try (var store = new TelegramStore(database); var transport = TelegramHttpTransport.open("", API_TIMEOUT)) {
             var api = new TelegramBotApi(transport, origin, token, API_TIMEOUT);
-            new TelegramDeliveryWorker(store, api, Clock.systemUTC(), vk::channel).run();
+            var worker = new TelegramDeliveryWorker(store, api, Clock.systemUTC(), vk::channel);
+            while (!Thread.currentThread().isInterrupted()) {
+                lastDeliveryCycle = Instant.now();
+                var processed = worker.runOnce();
+                Thread.sleep(Duration.ofMillis(processed > 0 ? 100 : 1000));
+            }
         } catch (InterruptedException stopping) {
             Thread.currentThread().interrupt();
         } catch (IOException | SQLException failure) {
