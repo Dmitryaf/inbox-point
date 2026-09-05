@@ -1,4 +1,14 @@
 import type * as React from 'react';
+export type ElementProps<
+  Tag extends React.ElementType,
+  Keys extends PropertyKey = keyof React.ComponentProps<Tag>,
+> = Pick<
+  React.ComponentProps<Tag>,
+  Extract<Keys, keyof React.ComponentProps<Tag>>
+> & {
+  key?: React.Key | null;
+  [attribute: `data-${string}` | `aria-${string}`]: unknown;
+};
 
 interface RootAttributes {
   [name: string]: unknown;

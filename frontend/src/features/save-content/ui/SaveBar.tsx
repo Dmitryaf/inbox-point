@@ -4,6 +4,7 @@ import {
 } from '@frontend/shared/lib/component-model';
 import { classNames as $class } from '@frontend/shared/lib/component-view';
 
+import { logicalOr as $or } from '@frontend/shared/lib/component-bindings';
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
 import {
@@ -30,13 +31,16 @@ export default function SaveBar($incomingProps: ComponentProps) {
         {...$attributes}
         className={$class('save-bar', $attributes.className)}
       >
-        <p role="status" className={$class({ changed: $props.dirty })}>
-          {$props.dirty
-            ? 'Есть несохранённые изменения'
-            : 'Все изменения сохранены'}
-        </p>
+        <div>
+          <span className="save-bar-label">{'Публикация'}</span>
+          <p role="status" className={$class({ changed: $props.dirty })}>
+            {$props.dirty
+              ? 'Есть несохранённые изменения'
+              : 'Все изменения сохранены'}
+          </p>
+        </div>
         <button
-          disabled={$props.saving || !$props.dirty}
+          disabled={$or($props.saving, () => !$props.dirty)}
           type="button"
           onClick={() => {
             void $emit('save');

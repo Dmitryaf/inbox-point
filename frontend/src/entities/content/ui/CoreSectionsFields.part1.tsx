@@ -15,8 +15,21 @@ export function renderCoreSectionsFieldsPart1(
     <>
       <details open className="field-group">
         <summary>
-          <strong>{'Расписание'}</strong>
-          <small>{draft.schedule.trim() ? 'Заполнено' : 'Не заполнено'}</small>
+          <span className="summary-copy">
+            <strong>{'Расписание'}</strong>
+            <span className="summary-action summary-action--open">
+              {' Открыть настройки раздела '}
+            </span>
+            <span className="summary-action summary-action--close">
+              {' Скрыть настройки раздела '}
+            </span>
+          </span>
+          <span className="summary-meta">
+            <small>
+              {draft.schedule.trim() ? 'Заполнено' : 'Не заполнено'}
+            </small>
+            <span aria-hidden="true" className="disclosure-chevron" />
+          </span>
         </summary>
         <label htmlFor="schedule">{'Текст для клиента'}</label>
         <textarea

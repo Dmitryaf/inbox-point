@@ -1,4 +1,11 @@
 import { isRef } from './model-state';
+type Falsy = undefined | null | false | '' | 0 | 0n;
+export function logicalOr<Value, Fallback>(
+  value: Value,
+  fallback: () => Fallback,
+): Exclude<Value, Falsy> | Fallback {
+  return value ? (value as Exclude<Value, Falsy>) : fallback();
+}
 
 export type ModelValue<Value> = Value extends { readonly value: infer Inner }
   ? Inner

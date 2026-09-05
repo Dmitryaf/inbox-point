@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 final class StaticFrontend {
     private static final Map<String, Asset> ASSETS = Map.ofEntries(
-            Map.entry("/", new Asset("index.html", "text/html;charset=UTF-8")),
             Map.entry("/setup", new Asset("index.html", "text/html;charset=UTF-8")),
             Map.entry("/setup/app.js", new Asset("app.js", "text/javascript;charset=UTF-8")),
             Map.entry("/manage", new Asset("index.html", "text/html;charset=UTF-8")),
@@ -27,20 +26,22 @@ final class StaticFrontend {
             Map.entry("/ops", new Asset("index.html", "text/html;charset=UTF-8")),
             Map.entry("/ops/app.js", new Asset("app.js", "text/javascript;charset=UTF-8")),
             Map.entry("/ops/style.css", new Asset("style.css", "text/css;charset=UTF-8")),
-            Map.entry("/app.js", new Asset("app.js", "text/javascript;charset=UTF-8")),
-            Map.entry("/style.css", new Asset("style.css", "text/css;charset=UTF-8")));
+            Map.entry("/setup/style.css", new Asset("style.css", "text/css;charset=UTF-8")));
 
     private final Path frontend;
     private final ContentAdmin admin;
     private final OperationsAdmin ops;
+    private final boolean development;
 
-    StaticFrontend(@Value("${inboxpoint.frontend.path:dist/frontend}") String directory, ContentAdmin admin, OperationsAdmin ops) {
+    StaticFrontend(@Value("${inboxpoint.frontend.path:dist/frontend}") String directory, ContentAdmin admin, OperationsAdmin ops,
+            @Value("${INBOXPOINT_ENV:development}") String environment) {
+        development = !"production".equals(environment);
         this.ops = ops;
         this.admin = admin;
         frontend = Path.of(directory);
     }
 
-    @GetMapping({"/", "/app.js", "/style.css", "/setup", "/setup/app.js", "/manage", "/manage/app.js", "/manage/style.css", "/ops", "/ops/app.js", "/ops/style.css"})
+    @GetMapping({"/setup", "/setup/app.js", "/setup/style.css", "/manage", "/manage/app.js", "/manage/style.css", "/ops", "/ops/app.js", "/ops/style.css"})
     ResponseEntity<byte[]> serve(HttpServletRequest request, HttpServletResponse response) throws IOException {
         var route = request.getRequestURI();
         var operations = route.startsWith("/ops");
@@ -53,21 +54,20 @@ final class StaticFrontend {
                     + "connect-src 'self'; frame-ancestors 'none'; form-action 'self'");
         }
         if (route.startsWith("/setup")) {
-            if (!LocalSetupAccess.allow(request, response)) {
+            if (!development || !LocalSetupAccess.allow(request, response)) {
                 return ResponseEntity.notFound().build();
             }
             response.setHeader("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; "
                     + "connect-src 'self'; frame-ancestors 'none'");
         }
         var asset = ASSETS.get(route);
-        var root = operations || content ? frontend : frontend.resolveSibling("legacy");
-        var file = root.resolve(asset.file());
+        var file = frontend.resolve(asset.file());
         if (!Files.isRegularFile(file)) {
             return ResponseEntity.notFound().build();
         }
         byte[] body = Files.readAllBytes(file);
-        if ((operations || content) && "index.html".equals(asset.file())) {
-            var prefix = operations ? "/ops/" : "/manage/";
+        if ("index.html".equals(asset.file())) {
+            var prefix = operations ? "/ops/" : content ? "/manage/" : "/setup/";
             body = new String(body, StandardCharsets.UTF_8).replace("=\"./", "=\"" + prefix)
                     .getBytes(StandardCharsets.UTF_8);
         }

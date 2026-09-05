@@ -7,6 +7,7 @@ import java.util.Map;
 import com.inboxpoint.operations.LocalSetupAccess;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,21 +20,23 @@ import tools.jackson.databind.JsonNode;
 @RequestMapping("/api/setup")
 final class TelegramSetupController {
     private final TelegramRuntime runtime;
+    private final boolean development;
 
-    TelegramSetupController(TelegramRuntime runtime) {
+    TelegramSetupController(TelegramRuntime runtime, @Value("${INBOXPOINT_ENV:development}") String environment) {
+        development = !"production".equals(environment);
         this.runtime = runtime;
     }
 
     @GetMapping("/status")
     ResponseEntity<?> status(HttpServletRequest request, HttpServletResponse response) {
-        return LocalSetupAccess.allow(request, response)
+        return development && LocalSetupAccess.allow(request, response)
                 ? ResponseEntity.ok(Map.of("connected", runtime.status().connected(), "locked", runtime.status().locked(),
                         "source", runtime.status().source(), "vk", runtime.vkStatus())) : error(404, "Not found");
     }
 
     @PostMapping("/telegram/discover")
     ResponseEntity<?> discover(@RequestBody JsonNode input, HttpServletRequest request, HttpServletResponse response) {
-        if (!LocalSetupAccess.allow(request, response)) {
+        if (!development || !LocalSetupAccess.allow(request, response)) {
             return error(404, "Not found");
         }
         try {
@@ -48,7 +51,7 @@ final class TelegramSetupController {
 
     @PostMapping("/telegram/connect")
     ResponseEntity<?> connect(@RequestBody JsonNode input, HttpServletRequest request, HttpServletResponse response) {
-        if (!LocalSetupAccess.allow(request, response)) {
+        if (!development || !LocalSetupAccess.allow(request, response)) {
             return error(404, "Not found");
         }
         var group = input.path("operatorChatId");
@@ -69,7 +72,7 @@ final class TelegramSetupController {
 
     @PostMapping("/vk/connect")
     ResponseEntity<?> connectVk(@RequestBody JsonNode input, HttpServletRequest request, HttpServletResponse response) {
-        if (!LocalSetupAccess.allow(request, response)) {
+        if (!development || !LocalSetupAccess.allow(request, response)) {
             return error(404, "Not found");
         }
         try {
@@ -87,7 +90,7 @@ final class TelegramSetupController {
 
     @GetMapping("/deliveries")
     ResponseEntity<?> deliveries(HttpServletRequest request, HttpServletResponse response) {
-        if (!LocalSetupAccess.allow(request, response)) {
+        if (!development || !LocalSetupAccess.allow(request, response)) {
             return error(404, "Not found");
         }
         try {
@@ -99,7 +102,7 @@ final class TelegramSetupController {
 
     @PostMapping("/deliveries/retry")
     ResponseEntity<?> retry(@RequestBody JsonNode input, HttpServletRequest request, HttpServletResponse response) {
-        if (!LocalSetupAccess.allow(request, response)) {
+        if (!development || !LocalSetupAccess.allow(request, response)) {
             return error(404, "Not found");
         }
         try {
@@ -113,7 +116,7 @@ final class TelegramSetupController {
 
     @PostMapping("/backups")
     ResponseEntity<?> backup(HttpServletRequest request, HttpServletResponse response) {
-        if (!LocalSetupAccess.allow(request, response)) {
+        if (!development || !LocalSetupAccess.allow(request, response)) {
             return error(404, "Not found");
         }
         try {
