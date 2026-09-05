@@ -78,6 +78,28 @@ class VkBridgeTest {
         }
     }
 
+    @Test
+    void persistsABatchBeforeDeliveryAndRecoversOnlyIncompleteClaims() throws Exception {
+        var database = directory.resolve("inbound.sqlite");
+        var event = new VkChannel.Message("vk-batch-1", 123, 456, "Synthetic", "An inbound message");
+        var now = java.time.Instant.parse("2026-09-01T08:00:00Z");
+        try (var store = new TelegramStore(database)) {
+            store.saveVkBatch(java.util.List.of(event, event), now);
+            assertThat(store.claim("client:vk", event.event(), now)).isTrue();
+            assertThat(store.claim("client:vk", "completed", now)).isTrue();
+            store.completeEvent("client:vk", "completed", now);
+        }
+        try (var restarted = new TelegramStore(database)) {
+            restarted.recoverInterrupted();
+            assertThat(restarted.nextVk()).isEqualTo(event);
+            assertThat(restarted.claim("client:vk", event.event(), now)).isTrue();
+            assertThat(restarted.claim("client:vk", "completed", now)).isFalse();
+            restarted.completeEvent("client:vk", event.event(), now);
+            restarted.deleteVk(event.event());
+            assertThat(restarted.nextVk()).isNull();
+        }
+    }
+
     private static JsonNode update(long id, long chat, long topic, String text) {
         var root = JsonMapper.shared().createObjectNode().put("update_id", id);
         var message = root.putObject("message").put("message_id", id).put("text", text).put("message_thread_id", topic);

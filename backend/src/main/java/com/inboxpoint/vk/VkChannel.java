@@ -5,6 +5,8 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.inboxpoint.operations.ChannelActivity;
 import tools.jackson.databind.JsonNode;
@@ -42,8 +44,10 @@ public final class VkChannel implements AutoCloseable {
         var cursor = server.initialCursor();
         while (!Thread.currentThread().isInterrupted()) {
             try {
+                sink.drain();
                 switch (api.poll(server, cursor, timeout)) {
                     case VkApiClient.Batch batch -> {
+                        var messages = new ArrayList<Message>();
                         for (var update : batch.updates()) {
                             if (update.path("group_id").asLong() != group
                                     || !"message_new".equals(update.path("type").asString(""))) {
@@ -57,9 +61,10 @@ public final class VkChannel implements AutoCloseable {
                             if (from == peer && peer > 0 && peer < FIRST_GROUP_CHAT && id > 0 && !text.isBlank()
                                     && message.path("out").asInt(0) == 0) {
                                 var event = update.path("event_id").asString("vk-message:" + peer + ":" + id);
-                                sink.receive(event, peer, id, api.userDisplayName(peer), text);
+                                messages.add(new Message(event, peer, id, api.userDisplayName(peer), text));
                             }
                         }
+                        sink.save(messages);
                         cursor = batch.cursor();
                         activity.succeeded();
                     }
@@ -86,9 +91,11 @@ public final class VkChannel implements AutoCloseable {
         http.close();
     }
 
-    @FunctionalInterface
+    public record Message(String event, long peer, long message, String name, String text) { }
+
     public interface Incoming {
-        void receive(String event, long peer, long message, String name, String text)
-                throws IOException, SQLException, InterruptedException;
+        void save(List<Message> batch) throws SQLException, IOException;
+
+        void drain() throws IOException, SQLException, InterruptedException;
     }
 }

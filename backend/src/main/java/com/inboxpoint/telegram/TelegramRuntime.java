@@ -15,6 +15,7 @@ import java.util.Map;
 
 import com.inboxpoint.content.ClientInformation;
 import com.inboxpoint.operations.ChannelActivity;
+import com.inboxpoint.vk.VkChannel;
 import com.inboxpoint.persistence.LocalJsonFile;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.LoggerFactory;
@@ -55,6 +56,9 @@ public final class TelegramRuntime {
 
     @EventListener(ApplicationReadyEvent.class)
     synchronized void start() throws IOException, SQLException, InterruptedException {
+        try (var store = new TelegramStore(database)) {
+            store.recoverInterrupted();
+        }
         if (environment.getProperty("TELEGRAM_ENABLED", Boolean.class, false)) {
             source = ENVIRONMENT;
             var config = new Settings(environment.getRequiredProperty("TELEGRAM_BOT_TOKEN"),
@@ -76,6 +80,27 @@ public final class TelegramRuntime {
         } catch (IOException | SQLException | RuntimeException failure) {
             LoggerFactory.getLogger(TelegramRuntime.class).warn("Saved Telegram connection could not be restored");
         }
+    }
+
+    private VkChannel.Incoming incomingVk() {
+        return new VkChannel.Incoming() {
+            @Override
+            public void save(List<VkChannel.Message> batch) throws IOException, SQLException {
+                try (var store = new TelegramStore(database)) {
+                    store.saveVkBatch(batch, Instant.now());
+                }
+            }
+
+            @Override
+            public void drain() throws IOException, SQLException, InterruptedException {
+                try (var store = new TelegramStore(database)) {
+                    for (var item = store.nextVk(); item != null; item = store.nextVk()) {
+                        receiveVk(item.event(), item.peer(), item.message(), item.name(), item.text());
+                        store.deleteVk(item.event());
+                    }
+                }
+            }
+        };
     }
 
     public synchronized Status status() {
@@ -131,7 +156,7 @@ public final class TelegramRuntime {
         poller = Thread.ofVirtual().name("telegram-handoff")
                 .start(() -> poll(database, origin, settings.token(), settings.group(), settings.timeout()));
         deliveries = Thread.ofVirtual().name("telegram-deliveries").start(() -> deliver(settings.token()));
-        vk.restore(this::receiveVk);
+        vk.restore(incomingVk());
     }
 
     public ChannelActivity.Snapshot vkPolling() {
@@ -150,7 +175,7 @@ public final class TelegramRuntime {
         if (!status().connected()) {
             throw new IllegalStateException("Сначала подключите Telegram.");
         }
-        vk.connect(token, community, this::receiveVk);
+        vk.connect(token, community, incomingVk());
     }
 
     private void receiveVk(String event, long peer, long message, String name, String text)

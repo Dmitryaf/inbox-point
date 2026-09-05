@@ -36,6 +36,7 @@ final class VkClientMenu {
         }
         try {
             api.send(peer, answer, "vk-menu:" + event, keyboard());
+            store.completeEvent("vk:menu", event, Instant.now());
             return true;
         } catch (IOException failure) {
             store.release("vk:menu", event);

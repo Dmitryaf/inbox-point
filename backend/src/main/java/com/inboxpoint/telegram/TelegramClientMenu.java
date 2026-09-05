@@ -43,9 +43,12 @@ final class TelegramClientMenu {
                 store.changeStatus(active.id(), false, now);
             }
             api.sendMessage(chat, null, response, keyboard());
+            store.completeEvent(SOURCE, event, now);
         } catch (TelegramBotApi.RequestFailed failure) {
             if (!failure.outcomeUnknown()) {
                 store.release(SOURCE, event);
+            } else {
+                store.completeEvent(SOURCE, event, now);
             }
             throw failure;
         }

@@ -64,6 +64,12 @@ public final class ClientInformation {
 
     public synchronized Map<String, Object> save(JsonNode input) throws IOException {
         var next = normalize(input);
+        for (var label : List.of(SCHEDULE, PRICES, ADDRESS)) {
+            var answer = resolve(label, next);
+            if (answer.length() > 4000) {
+                throw new IllegalArgumentException("Formatted answer is too long");
+            }
+        }
         var previous = state;
         var fieldNames = new ArrayList<>(FIELDS);
         fieldNames.add("customSections");
@@ -139,7 +145,10 @@ public final class ClientInformation {
     }
 
     public String resolve(String label) {
-        var snapshot = state.content();
+        return resolve(label, state.content());
+    }
+
+    private static String resolve(String label, Snapshot snapshot) {
         if (FAQ.equals(label) || "faq".equalsIgnoreCase(label)) {
             return snapshot.faq().isEmpty() ? FAQ + UNAVAILABLE : formatFaq(snapshot.faq());
         }

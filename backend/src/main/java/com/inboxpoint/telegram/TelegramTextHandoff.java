@@ -75,9 +75,12 @@ final class TelegramTextHandoff {
             } else {
                 relayQuestion("telegram", chat, Long.toString(externalMessage), text, displayName(sender));
             }
+            store.completeEvent(source, event, clock.instant());
         } catch (TelegramBotApi.RequestFailed failure) {
             if (!failure.outcomeUnknown()) {
                 store.release(source, event);
+            } else {
+                store.completeEvent(source, event, clock.instant());
             }
             throw failure;
         }
@@ -95,9 +98,12 @@ final class TelegramTextHandoff {
         }
         try {
             relayQuestion("vk", peer, peer + ":" + message, text, name);
+            store.completeEvent("client:vk", event, clock.instant());
         } catch (TelegramBotApi.RequestFailed failure) {
             if (!failure.outcomeUnknown()) {
                 store.release("client:vk", event);
+            } else {
+                store.completeEvent("client:vk", event, clock.instant());
             }
             throw failure;
         }
@@ -162,6 +168,7 @@ final class TelegramTextHandoff {
                 && (!active || store.activeRequest(request.channel(), request.conversation()) == null)) {
             store.changeStatus(request.id(), active, clock.instant());
         }
+        store.completeEvent("operator:telegram", event, clock.instant());
     }
 
     private void relayReply(long topic, long message, String text, String event)

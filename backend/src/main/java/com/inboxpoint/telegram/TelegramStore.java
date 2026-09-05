@@ -13,6 +13,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.inboxpoint.vk.VkChannel;
+import tools.jackson.databind.json.JsonMapper;
+
 import org.sqlite.SQLiteConfig;
 
 final class TelegramStore implements AutoCloseable {
@@ -38,8 +41,16 @@ final class TelegramStore implements AutoCloseable {
                 }
 
             }
-            ensureColumn("operator_message_id");
-            ensureColumn("next_attempt_at");
+            ensureColumn("deliveries", "operator_message_id", "TEXT");
+            ensureColumn("deliveries", "next_attempt_at", "TEXT");
+            ensureColumn("processed_events", "status", "TEXT NOT NULL DEFAULT 'completed'");
+            ensureColumn("processed_events", "completed_at", "TEXT");
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS inbound_events (
+                        source TEXT NOT NULL, external_event_id TEXT NOT NULL, payload TEXT NOT NULL,
+                        received_at TEXT NOT NULL, PRIMARY KEY (source, external_event_id)
+                    ) STRICT
+                    """);
         } catch (IOException | SQLException failure) {
             try {
                 connection.close();
@@ -50,15 +61,15 @@ final class TelegramStore implements AutoCloseable {
         }
     }
 
-    private void ensureColumn(String name) throws SQLException {
-        try (var statement = prepare("SELECT 1 FROM pragma_table_info('deliveries') WHERE name = ?", name);
+    private void ensureColumn(String table, String name, String definition) throws SQLException {
+        try (var statement = prepare("SELECT 1 FROM pragma_table_info(?) WHERE name = ?", table, name);
                 var columns = statement.executeQuery()) {
             if (columns.next()) {
                 return;
             }
         }
         try (var statement = connection.createStatement()) {
-            statement.execute("ALTER TABLE deliveries ADD COLUMN " + name + " TEXT");
+            statement.execute("ALTER TABLE " + table + " ADD COLUMN " + name + " " + definition);
         }
     }
 
@@ -107,13 +118,55 @@ final class TelegramStore implements AutoCloseable {
 
     boolean claim(String source, String event, Instant now) throws SQLException {
         return update("""
-                INSERT OR IGNORE INTO processed_events (source, external_event_id, claimed_at)
-                VALUES (?, ?, ?)
+                INSERT OR IGNORE INTO processed_events (source, external_event_id, claimed_at, status)
+                VALUES (?, ?, ?, 'processing')
                 """, source, event, now.toString()) == 1;
     }
 
     void release(String source, String event) throws SQLException {
-        update("DELETE FROM processed_events WHERE source = ? AND external_event_id = ?", source, event);
+        update("DELETE FROM processed_events WHERE source = ? AND external_event_id = ? AND status = 'processing'", source, event);
+    }
+
+    void completeEvent(String source, String event, Instant now) throws SQLException {
+        update("""
+                UPDATE processed_events SET status = 'completed', completed_at = ?
+                WHERE source = ? AND external_event_id = ? AND status = 'processing'
+                """, now.toString(), source, event);
+    }
+
+    void recoverInterrupted() throws SQLException {
+        update("DELETE FROM processed_events WHERE status = 'processing'");
+    }
+
+    void saveVkBatch(List<VkChannel.Message> batch, Instant now) throws SQLException {
+        connection.setAutoCommit(false);
+        try {
+            for (var item : batch) {
+                update("""
+                        INSERT OR IGNORE INTO inbound_events (source, external_event_id, payload, received_at)
+                        VALUES ('vk:long-poll', ?, ?, ?)
+                        """, item.event(), JsonMapper.shared().valueToTree(item).toString(), now.toString());
+            }
+            connection.commit();
+        } catch (SQLException | RuntimeException failure) {
+            connection.rollback();
+            throw failure;
+        } finally {
+            connection.setAutoCommit(true);
+        }
+    }
+
+    VkChannel.Message nextVk() throws SQLException {
+        try (var query = connection.createStatement(); var row = query.executeQuery("""
+                SELECT payload FROM inbound_events WHERE source = 'vk:long-poll'
+                ORDER BY received_at, rowid LIMIT 1
+                """)) {
+            return row.next() ? JsonMapper.shared().readValue(row.getString(1), VkChannel.Message.class) : null;
+        }
+    }
+
+    void deleteVk(String event) throws SQLException {
+        update("DELETE FROM inbound_events WHERE source = 'vk:long-poll' AND external_event_id = ?", event);
     }
 
     void link(String requestId, String direction, String customerMessage, String operatorMessage, Instant now)
