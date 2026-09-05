@@ -69,7 +69,7 @@ final class ManageContentController {
         if (!admin.available(request, response)) {
             return missing();
         }
-        return admin.authorized(request, response) ? ResponseEntity.ok(information.current()) : unauthorized();
+        return admin.authorized(request, response) ? ResponseEntity.ok(information.snapshot()) : unauthorized();
     }
 
     @GetMapping("/content/history")
@@ -92,8 +92,14 @@ final class ManageContentController {
         if (!ContentAdmin.sameOrigin(request)) {
             return error(403, "Запрос отклонён.");
         }
+        var version = input.path("version").asString("");
+        if (!version.matches("[0-9a-f]{64}") || !input.path("content").isObject()) {
+            return error(400, "Проверьте данные редактора.");
+        }
         try {
-            return ResponseEntity.ok(information.save(input));
+            return ResponseEntity.ok(information.save(input.path("content"), version));
+        } catch (ClientInformation.VersionConflict conflict) {
+            return error(409, "Информация уже изменилась в другой вкладке. Скопируйте свои правки и обновите страницу.");
         } catch (IllegalArgumentException invalid) {
             return error(400, "Проверьте названия и тексты кнопок. В FAQ после каждого вопроса должен быть ответ.");
         } catch (IOException unavailable) {
@@ -113,12 +119,17 @@ final class ManageContentController {
             return error(403, "Запрос отклонён.");
         }
         var revision = input.path("revision");
-        if (!revision.isIntegralNumber() || !revision.canConvertToInt() || revision.asInt() <= 0) {
+        var version = input.path("version").asString("");
+        if (!revision.isIntegralNumber() || !revision.canConvertToInt() || revision.asInt() <= 0
+                || !version.matches("[0-9a-f]{64}")) {
             return error(400, "Версия указана неверно.");
         }
         try {
-            return information.restore(revision.intValue()) ? ResponseEntity.ok(Map.of("restored", true))
-                    : error(404, "Эта версия больше недоступна для восстановления.");
+            var restored = information.restore(revision.intValue(), version);
+            return restored == null ? error(404, "Эта версия больше недоступна для восстановления.")
+                    : ResponseEntity.ok(restored);
+        } catch (ClientInformation.VersionConflict conflict) {
+            return error(409, "Информация уже изменилась в другой вкладке. Обновите страницу перед восстановлением версии.");
         } catch (IOException unavailable) {
             return error(500, "Не удалось восстановить информацию. Попробуйте ещё раз.");
         }

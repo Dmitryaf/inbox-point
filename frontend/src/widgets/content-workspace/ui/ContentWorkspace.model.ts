@@ -9,7 +9,7 @@ import { onMounted, ref, watch } from '@frontend/shared/lib/model-state';
 import type { EditorSection, WorkspaceView } from '../model/navigation';
 import { useContentWorkspace } from '../model/use-content-workspace';
 
-export type ComponentProps = EventProps<{
+export type ComponentProps = { authenticated: boolean } & EventProps<{
   dirtyChange: [dirty: boolean];
   unauthorized: [];
 }> &
@@ -17,9 +17,10 @@ export type ComponentProps = EventProps<{
 export const componentDefaults = {};
 type ResolvedProps = WithDefaults<ComponentProps, typeof componentDefaults>;
 export function createComponentModel(
-  _props: ResolvedProps,
+  $props: ResolvedProps,
   $emit: (event: string, ...args: unknown[]) => void,
 ) {
+  const props = $props;
   const emit = $emit;
   const workspace = useContentWorkspace({
     onUnauthorized: () => emit('unauthorized'),
@@ -27,6 +28,14 @@ export function createComponentModel(
   const activeView = ref<WorkspaceView>('edit');
   const activeSection = ref<EditorSection>('core');
   onMounted(() => void workspace.load());
+  watch(
+    () => props.authenticated,
+    (authenticated, previous) => {
+      if (authenticated && previous === false) {
+        void workspace.resumeAfterAuthentication();
+      }
+    },
+  );
   watch(workspace.dirty, (dirty) => emit('dirtyChange', dirty), {
     immediate: true,
   });

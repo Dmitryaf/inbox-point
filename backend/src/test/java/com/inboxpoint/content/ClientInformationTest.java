@@ -74,6 +74,19 @@ class ClientInformationTest {
     }
 
     @Test
+    void staleEditorsCannotOverwriteOrRestoreAChangedDocument() throws Exception {
+        var database = directory.resolve("editor-conflict.sqlite").toString();
+        var info = new ClientInformation(database);
+        var version = info.snapshot().version();
+        var first = info.save(JsonMapper.shared().createObjectNode().put("address", "Новый адрес"), version);
+        assertThat(first.version()).hasSize(64).isNotEqualTo(version);
+        assertThatThrownBy(() -> info.save(JsonMapper.shared().createObjectNode().put("address", "Старая вкладка"), version))
+                .isInstanceOf(ClientInformation.VersionConflict.class);
+        assertThatThrownBy(() -> info.restore(1, version)).isInstanceOf(ClientInformation.VersionConflict.class);
+        assertThat(new ClientInformation(database).snapshot()).isEqualTo(first);
+    }
+
+    @Test
     void publishesTrimmedAnswersOnlyOnSuccessfulSaveAndRestoresThemAfterRestart() throws Exception {
         var database = directory.resolve("inbox.sqlite").toString();
         var catalog = new ClientInformation(database);

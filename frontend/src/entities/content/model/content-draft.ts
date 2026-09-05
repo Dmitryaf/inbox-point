@@ -35,6 +35,10 @@ export function snapshotContent(content: ContentDraft): string {
   return JSON.stringify(content);
 }
 
+export function copyContentDraft(content: ContentDraft): ContentDraft {
+  return normalizeContentDraft(content);
+}
+
 export function hasContent(content: ContentDraft): boolean {
   return (
     (isSectionVisible(content, 'schedule') &&

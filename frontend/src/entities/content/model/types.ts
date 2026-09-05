@@ -31,3 +31,8 @@ export interface ContentChange {
   revision?: number;
   sections: string[];
 }
+
+export interface ContentSnapshot {
+  content: Partial<ContentDraft>;
+  version: string;
+}

@@ -1,12 +1,16 @@
 package com.inboxpoint.content;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Set;
@@ -57,6 +61,50 @@ public final class ClientInformation {
     public Map<String, Object> current() {
         return state.content().jsonFields();
     }
+
+    public ManagedSnapshot snapshot() {
+        var current = state.content();
+        var canonical = JsonMapper.shared().createObjectNode();
+        var fields = new java.util.TreeMap<String, Object>(current.jsonFields());
+        fields.forEach((key, value) -> {
+            if ("faq".equals(key)) {
+                var items = canonical.putArray(key);
+                for (var item : current.faq()) {
+                    items.addObject().put("answer", item.answer()).put("question", item.question());
+                }
+            } else {
+                canonical.set(key, JsonMapper.shared().valueToTree(value));
+            }
+        });
+        try {
+            var digest = MessageDigest.getInstance("SHA-256")
+                    .digest(canonical.toString().getBytes(StandardCharsets.UTF_8));
+            return new ManagedSnapshot(current.jsonFields(), HexFormat.of().formatHex(digest));
+        } catch (NoSuchAlgorithmException unavailable) {
+            throw new IllegalStateException("SHA-256 is unavailable", unavailable);
+        }
+    }
+
+    public synchronized ManagedSnapshot save(JsonNode input, String expected) throws IOException {
+        requireVersion(expected);
+        save(input);
+        return snapshot();
+    }
+
+    public synchronized ManagedSnapshot restore(int revision, String expected) throws IOException {
+        requireVersion(expected);
+        return restore(revision) ? snapshot() : null;
+    }
+
+    private void requireVersion(String expected) {
+        if (!snapshot().version().equals(expected)) {
+            throw new VersionConflict();
+        }
+    }
+
+    public record ManagedSnapshot(Map<String, Object> content, String version) { }
+
+    public static final class VersionConflict extends RuntimeException { }
 
     public List<Section> sections() {
         return state.content().custom();

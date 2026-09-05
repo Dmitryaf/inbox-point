@@ -6,6 +6,8 @@ import { describe, expect, it, vi } from 'vitest';
 import ContentManagementPage from '@frontend/pages/content-management/ui/ContentManagementPage';
 import { requestUrl, response } from '@test/frontend/support/fake-response';
 
+const initialVersion = 'a'.repeat(64);
+
 describe('content visibility', () => {
   it('hides a filled standard section from the client preview', async () => {
     vi.stubGlobal(
@@ -18,7 +20,12 @@ describe('content visibility', () => {
         if (url.endsWith('/history')) {
           return Promise.resolve(response({ history: [] }));
         }
-        return Promise.resolve(response({ schedule: 'Понедельник, 19:00' }));
+        return Promise.resolve(
+          response({
+            content: { schedule: 'Понедельник, 19:00' },
+            version: initialVersion,
+          }),
+        );
       }),
     );
 

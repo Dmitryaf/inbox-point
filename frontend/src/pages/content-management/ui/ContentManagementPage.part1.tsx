@@ -14,6 +14,7 @@ export function renderContentManagementPagePart1(
   $state: ReturnType<typeof createComponentModel>,
 ) {
   const session = $unref($state.session);
+  const workspaceActivated = $state.workspaceActivated.value;
   return (
     <>
       {session.booting.value ? (
@@ -37,10 +38,21 @@ export function renderContentManagementPagePart1(
                 />
               </div>
             </section>
-          ) : (
+          ) : null}
+          {session.authenticated.value ? (
             <>
               <AsyncMessage kind="error" text={session.error.value} />
+            </>
+          ) : null}
+          {workspaceActivated ? (
+            <div
+              style={Object.assign(
+                {},
+                { display: session.authenticated.value ? undefined : 'none' },
+              )}
+            >
               <ContentWorkspace
+                authenticated={session.authenticated.value}
                 onDirtyChange={$setter($state, 'hasUnsavedChanges')}
                 onUnauthorized={(...$args) => {
                   $invokeArgs(
@@ -49,8 +61,8 @@ export function renderContentManagementPagePart1(
                   );
                 }}
               />
-            </>
-          )}
+            </div>
+          ) : null}
         </main>
       )}
     </>

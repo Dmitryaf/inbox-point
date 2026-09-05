@@ -21,7 +21,11 @@ export function renderChangeHistoryPart1(
   const { $emit } = $state;
   return (
     <>
-      {$props.changes.length === 0 ? (
+      {$props.loading ? (
+        <p role="status" className="empty">
+          {'Обновляем историю…'}
+        </p>
+      ) : $props.changes.length === 0 ? (
         <p className="empty">{'Изменений пока нет.'}</p>
       ) : (
         <ol className="history-list">
