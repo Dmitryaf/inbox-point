@@ -39,8 +39,13 @@ export default function OperationsOverview($incomingProps: ComponentProps) {
           <ChannelStatusCard
             name="Telegram"
             channel={$props.status.channels.telegram}
+            intake={$props.status.intake.telegram}
           />
-          <ChannelStatusCard name="VK" channel={$props.status.channels.vk} />
+          <ChannelStatusCard
+            name="VK"
+            channel={$props.status.channels.vk}
+            intake={$props.status.intake.vk}
+          />
           <DeliveryStatusCard deliveries={$props.status.deliveries} />
         </div>
       </section>

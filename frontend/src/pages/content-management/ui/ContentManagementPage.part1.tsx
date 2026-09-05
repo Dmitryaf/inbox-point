@@ -6,6 +6,7 @@ import {
 } from '@frontend/shared/lib/component-bindings';
 
 import LoginForm from '@frontend/features/management-auth/ui/LoginForm';
+import ClientIntakeControl from '@frontend/features/control-client-intake/ui/ClientIntakeControl';
 import AsyncMessage from '@frontend/shared/ui/AsyncMessage';
 import ContentWorkspace from '@frontend/widgets/content-workspace/ui/ContentWorkspace';
 
@@ -39,6 +40,11 @@ export function renderContentManagementPagePart1(
           {session.authenticated.value ? (
             <>
               <AsyncMessage kind="error" text={session.error.value} />
+              <ClientIntakeControl
+                onUnauthorized={$callback(
+                  $required($unref($state.session)).expireSession,
+                )}
+              />
             </>
           ) : null}
           {workspaceActivated ? (

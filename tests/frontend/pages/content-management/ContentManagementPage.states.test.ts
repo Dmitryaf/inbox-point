@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import ContentManagementPage from '@frontend/pages/content-management/ui/ContentManagementPage';
 import { requestUrl, response } from '@test/frontend/support/fake-response';
+import { serviceControlResponse } from './content-management-test-helpers';
 
 const initialVersion = 'a'.repeat(64);
 
@@ -19,6 +20,9 @@ describe('ContentManagementPage states', () => {
         }
         if (url.endsWith('/history')) {
           return Promise.resolve(response({ history: [] }));
+        }
+        if (url.endsWith('/service-control')) {
+          return Promise.resolve(serviceControlResponse());
         }
         return Promise.resolve(
           response({ content: {}, version: initialVersion }),
@@ -47,6 +51,9 @@ describe('ContentManagementPage states', () => {
         }
         if (url.endsWith('/history')) {
           return Promise.resolve(response({ history: [] }));
+        }
+        if (url.endsWith('/service-control')) {
+          return Promise.resolve(serviceControlResponse());
         }
         if (options?.method === 'POST') {
           return Promise.resolve(
@@ -89,6 +96,9 @@ describe('ContentManagementPage states', () => {
         const url = requestUrl(input);
         if (url.endsWith('/session')) {
           return Promise.resolve(response({ authenticated: true }));
+        }
+        if (url.endsWith('/service-control')) {
+          return Promise.resolve(serviceControlResponse());
         }
         return Promise.resolve(
           response({ message: 'Войдите, чтобы изменить информацию.' }, 401),

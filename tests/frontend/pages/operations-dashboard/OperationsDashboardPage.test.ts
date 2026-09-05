@@ -15,6 +15,16 @@ describe('OperationsDashboardPage', () => {
         if (url.endsWith('/session')) {
           return Promise.resolve(response({ authenticated: true }));
         }
+        if (url.endsWith('/service-control')) {
+          return Promise.resolve(
+            response({
+              channels: {
+                telegram: { mode: 'paused' },
+                vk: { mode: 'active' },
+              },
+            }),
+          );
+        }
         return Promise.resolve(
           response({
             channels: {
@@ -46,6 +56,10 @@ describe('OperationsDashboardPage', () => {
                 state: 'running',
               },
             },
+            intake: {
+              telegram: { mode: 'paused' },
+              vk: { mode: 'active' },
+            },
             observedAt: '2026-09-04T12:01:00.000Z',
             startedAt: '2026-09-04T12:00:00.000Z',
             state: 'attention',
@@ -62,6 +76,9 @@ describe('OperationsDashboardPage', () => {
     const statusCards = wrapper.findAll('.status-card');
     expect(statusCards[0]?.text()).toContain('Telegram');
     expect(statusCards[0]?.text()).toContain('Запущен');
+    expect(statusCards[0]?.text()).toContain(
+      'Новые обращения приостановлены вручную',
+    );
     expect(statusCards[0]?.text()).toContain('Последняя успешная проверка');
     expect(statusCards[1]?.text()).toContain('VK');
     expect(statusCards[1]?.text()).toContain('Ошибка связи');

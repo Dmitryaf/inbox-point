@@ -6,6 +6,7 @@ import { unref as $unref } from '@frontend/shared/lib/model-state';
 import { requiredValue as $required } from '@frontend/shared/lib/component-bindings';
 
 import OperationsLoginForm from '@frontend/features/operations-auth/ui/OperationsLoginForm';
+import ClientIntakeControl from '@frontend/features/control-client-intake/ui/ClientIntakeControl';
 
 import OperationsOverview from '@frontend/widgets/operations-overview/ui/OperationsOverview';
 
@@ -61,6 +62,13 @@ export function renderOperationsDashboardPagePart1(
               {operations.error.value}
             </p>
           ) : null}
+          <ClientIntakeControl
+            scope="ops"
+            onChanged={$callback($required($unref($state.operations)).refresh)}
+            onUnauthorized={$callback(
+              $required($unref($state.session)).expireSession,
+            )}
+          />
           {operations.status.value ? (
             <OperationsOverview status={operations.status.value} />
           ) : (

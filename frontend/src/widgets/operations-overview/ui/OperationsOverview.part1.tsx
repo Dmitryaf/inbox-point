@@ -20,6 +20,7 @@ export function renderOperationsOverviewPart1(
       <article
         className={$class('summary-card card', {
           'summary-card--attention': $props.status.state === 'attention',
+          'summary-card--maintenance': $props.status.state === 'maintenance',
         })}
       >
         <div>
@@ -27,7 +28,9 @@ export function renderOperationsOverviewPart1(
           <h2 id="overview-title">
             {$props.status.state === 'healthy'
               ? 'Сервис работает'
-              : 'Нужно проверить'}
+              : $props.status.state === 'maintenance'
+                ? 'Приём обращений приостановлен'
+                : 'Нужно проверить'}
           </h2>
         </div>
         <dl className="summary-facts">
