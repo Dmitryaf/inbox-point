@@ -45,12 +45,11 @@ export class VkRuntime {
     return this.abortController !== undefined;
   }
 
-  public async start(config: VkRuntimeConfig): Promise<void> {
+  public start(config: VkRuntimeConfig): Promise<void> {
     if (this.running) {
       throw new Error('VK is already connected');
     }
     const gateway = new VkApiClient(config.accessToken);
-    await gateway.getLongPollServer(config.groupId);
     this.handoffHost.registerClientChannel(
       new VkClientChannel(gateway, this.information),
     );
@@ -86,6 +85,7 @@ export class VkRuntime {
         this.logger.error(error, 'VK poller stopped unexpectedly');
       }
     });
+    return Promise.resolve();
   }
 
   public async stop(): Promise<void> {

@@ -11,6 +11,11 @@ export interface VkRuntimeControl {
   stop(): Promise<void>;
 }
 
+export interface VkSetupGateway {
+  getLongPollServer(groupId: number): Promise<unknown>;
+  resolveCommunity(reference: string): Promise<number>;
+}
+
 export class VkSetupController {
   private source: VkSettingsSource;
 
@@ -18,6 +23,9 @@ export class VkSetupController {
     private readonly runtime: VkRuntimeControl,
     private readonly settingsStore: VkSettingsStore,
     source: VkSettingsSource,
+    private readonly createGateway: (accessToken: string) => VkSetupGateway = (
+      accessToken,
+    ) => new VkApiClient(accessToken),
   ) {
     this.source = source;
   }
@@ -36,12 +44,13 @@ export class VkSetupController {
 
   public async connect(accessToken: string, community: string): Promise<void> {
     this.assertMutable();
-    const client = new VkApiClient(accessToken);
+    const client = this.createGateway(accessToken);
     const config: VkRuntimeConfig = {
       accessToken,
       groupId: await client.resolveCommunity(community),
       pollTimeoutSeconds: 25,
     };
+    await client.getLongPollServer(config.groupId);
     await this.runtime.start(config);
     try {
       await this.settingsStore.save(config);

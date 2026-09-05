@@ -31,6 +31,7 @@ export interface TelegramRuntimeControl {
 }
 
 export class TelegramRuntime implements TelegramRuntimeControl {
+  private readonly clientChannels = new Map<string, ClientChannel>();
   private abortController: AbortController | undefined;
   private deliveryPromise: Promise<void> | undefined;
   private deliveryWorker: DeliveryWorker | undefined;
@@ -63,7 +64,7 @@ export class TelegramRuntime implements TelegramRuntimeControl {
     });
     const deliveryWorker = new DeliveryWorker({
       ...(this.deliveryActivity ? { activity: this.deliveryActivity } : {}),
-      channels: [clientChannel],
+      channels: [clientChannel, ...this.clientChannels.values()],
       onError: (error, context) =>
         this.logger.error(
           error,
@@ -132,10 +133,10 @@ export class TelegramRuntime implements TelegramRuntimeControl {
   }
 
   public registerClientChannel(channel: ClientChannel): void {
-    if (!this.deliveryWorker) {
-      throw new Error('Telegram operator workspace is not connected');
+    this.clientChannels.set(channel.kind, channel);
+    if (this.deliveryWorker) {
+      this.deliveryWorker.registerChannel(channel);
     }
-    this.deliveryWorker.registerChannel(channel);
   }
 
   public async stop(): Promise<void> {
