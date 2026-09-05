@@ -4,9 +4,17 @@ import {
 } from '@frontend/shared/lib/component-model';
 import { classNames as $class } from '@frontend/shared/lib/component-view';
 
+import {
+  modelSetter as $setter,
+  propertySetter as $propertySetter,
+} from '@frontend/shared/lib/component-bindings';
+
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
-import { renderContentEditorPart1 } from './ContentEditor.part1';
+import CoreSectionsFields from '@frontend/entities/content/ui/CoreSectionsFields';
+import CustomSectionsEditor from '@frontend/entities/content/ui/CustomSectionsEditor';
+import FaqEditor from '@frontend/entities/content/ui/FaqEditor';
+
 import {
   createComponentModel,
   componentDefaults,
@@ -23,11 +31,30 @@ export default function ContentEditor($incomingProps: ComponentProps) {
     componentDefaults,
     createComponentModel,
   );
+  const draft = $state.draft.value;
   const $attributes = inheritedAttributes($props);
   return (
     <ModelScopeProvider scope={$scope}>
       <div {...$attributes} className={$class('editor', $attributes.className)}>
-        {renderContentEditorPart1($state, $props)}
+        {$props.activeSection === 'core' ? (
+          <CoreSectionsFields
+            modelValue={draft}
+            onModelValueChange={$setter($state, 'draft')}
+          />
+        ) : $props.activeSection === 'faq' ? (
+          <FaqEditor
+            modelValue={draft}
+            onModelValueChange={$setter($state, 'draft')}
+          />
+        ) : (
+          <CustomSectionsEditor
+            modelValue={draft.customSections}
+            onModelValueChange={$propertySetter(
+              () => $state.draft.value,
+              'customSections',
+            )}
+          />
+        )}
       </div>
     </ModelScopeProvider>
   );

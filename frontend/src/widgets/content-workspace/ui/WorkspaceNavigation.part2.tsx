@@ -32,9 +32,7 @@ export function renderWorkspaceNavigationPart2(
               key={view.id}
               aria-pressed={$props.activeView === view.id}
               type="button"
-              onClick={() => {
-                void $emit('viewChange', view.id);
-              }}
+              onClick={() => void $emit('viewChange', view.id)}
               className={$class(
                 { active: $props.activeView === view.id },
                 'navigation-button',
@@ -52,9 +50,7 @@ export function renderWorkspaceNavigationPart2(
                 key={section.id}
                 aria-pressed={$props.activeSection === section.id}
                 type="button"
-                onClick={() => {
-                  void $emit('sectionChange', section.id);
-                }}
+                onClick={() => void $emit('sectionChange', section.id)}
                 className={$class(
                   { active: $props.activeSection === section.id },
                   'section-button',

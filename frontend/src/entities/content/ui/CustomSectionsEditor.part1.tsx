@@ -1,12 +1,9 @@
 import { renderList as $renderList } from '@frontend/shared/lib/component-view';
 
-import {
-  requiredValue as $required,
-  setProperty as $setProperty,
-} from '@frontend/shared/lib/component-bindings';
+import { requiredValue as $required } from '@frontend/shared/lib/component-bindings';
+import { textProperty as $textProperty } from '@frontend/shared/lib/component-inputs';
 
 import type { createComponentModel } from './CustomSectionsEditor.model';
-import { controlledChange as $controlledChange } from '@frontend/shared/lib/component-input-event';
 export function renderCustomSectionsEditorPart1(
   $state: ReturnType<typeof createComponentModel>,
 ) {
@@ -25,13 +22,7 @@ export function renderCustomSectionsEditorPart1(
             maxLength={40}
             required
             value={section.label ?? ''}
-            onChange={$controlledChange<HTMLInputElement>(($event) => {
-              $setProperty(
-                $required(section),
-                'label',
-                $event.currentTarget.value,
-              );
-            })}
+            onChange={$textProperty(() => section, 'label')}
           />
           <p className="counter">
             {section.label.length}
@@ -44,13 +35,7 @@ export function renderCustomSectionsEditorPart1(
             required
             rows={4}
             value={section.text ?? ''}
-            onChange={$controlledChange<HTMLTextAreaElement>(($event) => {
-              $setProperty(
-                $required(section),
-                'text',
-                $event.currentTarget.value,
-              );
-            })}
+            onChange={$textProperty(() => section, 'text')}
           />
           <p className="counter">
             {section.text.length}
@@ -59,9 +44,9 @@ export function renderCustomSectionsEditorPart1(
           <div className="item-actions">
             <button
               type="button"
-              onClick={() => {
-                void $required($state.sections.value).splice(index, 1);
-              }}
+              onClick={() =>
+                void $required($state.sections.value).splice(index, 1)
+              }
               className="danger"
             >
               {' Удалить раздел '}

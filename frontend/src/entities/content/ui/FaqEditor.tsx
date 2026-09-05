@@ -3,12 +3,10 @@ import {
   ModelScopeProvider,
 } from '@frontend/shared/lib/component-model';
 import { classNames as $class } from '@frontend/shared/lib/component-view';
-import { invokeHandler as $invoke } from '@frontend/shared/lib/component-events';
+import { nativeHandler as $nativeHandler } from '@frontend/shared/lib/component-events';
 
-import {
-  requiredValue as $required,
-  setProperty as $setProperty,
-} from '@frontend/shared/lib/component-bindings';
+import { propertySetter as $propertySetter } from '@frontend/shared/lib/component-bindings';
+
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
 import SectionVisibilityControl from './SectionVisibilityControl';
@@ -65,13 +63,10 @@ export default function FaqEditor($incomingProps: ComponentProps) {
           contentPresent={draft.faq.length > 0}
           section="faq"
           modelValue={draft.visibleSections}
-          onModelValueChange={($value) => {
-            $setProperty(
-              $required($state.draft.value),
-              'visibleSections',
-              $value,
-            );
-          }}
+          onModelValueChange={$propertySetter(
+            () => $state.draft.value,
+            'visibleSections',
+          )}
         />
         {draft.faq.length === 0 ? (
           <p className="empty">
@@ -82,9 +77,7 @@ export default function FaqEditor($incomingProps: ComponentProps) {
         <button
           disabled={draft.faq.length >= 20}
           type="button"
-          onClick={($event) => {
-            $invoke(add, $event);
-          }}
+          onClick={$nativeHandler(add)}
         >
           {' Добавить вопрос '}
         </button>

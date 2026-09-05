@@ -5,6 +5,7 @@ import {
 import { classNames as $class } from '@frontend/shared/lib/component-view';
 
 import { logicalOr as $or } from '@frontend/shared/lib/component-bindings';
+
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
 import {
@@ -44,9 +45,7 @@ export default function SaveBar($incomingProps: ComponentProps) {
             () => !$props.valid,
           )}
           type="button"
-          onClick={() => {
-            void $emit('save');
-          }}
+          onClick={() => void $emit('save')}
         >
           {$props.saving ? 'Сохраняем…' : 'Сохранить'}
         </button>

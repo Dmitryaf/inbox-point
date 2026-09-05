@@ -3,7 +3,7 @@ import {
   ModelScopeProvider,
 } from '@frontend/shared/lib/component-model';
 import { classNames as $class } from '@frontend/shared/lib/component-view';
-import { invokeHandler as $invoke } from '@frontend/shared/lib/component-events';
+import { nativeHandler as $nativeHandler } from '@frontend/shared/lib/component-events';
 
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
@@ -12,7 +12,6 @@ import {
   componentDefaults,
   type ComponentProps,
 } from './SectionVisibilityControl.model';
-import { controlledChange as $controlledChange } from '@frontend/shared/lib/component-input-event';
 
 export default function SectionVisibilityControl(
   $incomingProps: ComponentProps,
@@ -38,9 +37,7 @@ export default function SectionVisibilityControl(
         <input
           checked={visibleSections.includes($props.section)}
           type="checkbox"
-          onChange={$controlledChange<HTMLInputElement>(($event) => {
-            $invoke(updateVisibility, $event);
-          })}
+          onChange={$nativeHandler(updateVisibility)}
         />
         <span>
           {' Показывать кнопку клиентам '}

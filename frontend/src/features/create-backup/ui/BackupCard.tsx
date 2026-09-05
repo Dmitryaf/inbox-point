@@ -3,7 +3,7 @@ import {
   ModelScopeProvider,
 } from '@frontend/shared/lib/component-model';
 import { classNames as $class } from '@frontend/shared/lib/component-view';
-import { invokeHandler as $invoke } from '@frontend/shared/lib/component-events';
+import { nativeHandler as $nativeHandler } from '@frontend/shared/lib/component-events';
 
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
@@ -44,9 +44,7 @@ export default function BackupCard($incomingProps: ComponentProps) {
         <button
           disabled={pending}
           type="button"
-          onClick={($event) => {
-            $invoke(create, $event);
-          }}
+          onClick={$nativeHandler(create)}
         >
           {pending ? 'Создаём…' : 'Создать резервную копию'}
         </button>

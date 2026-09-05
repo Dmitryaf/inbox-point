@@ -1,5 +1,5 @@
 import { classNames as $class } from '@frontend/shared/lib/component-view';
-import { invokeArgs as $invokeArgs } from '@frontend/shared/lib/component-events';
+import { eventCallback as $callback } from '@frontend/shared/lib/component-events';
 
 import BackupCard from '@frontend/features/create-backup/ui/BackupCard';
 import DeliveryStatusCard from '@frontend/features/manage-deliveries/ui/DeliveryStatusCard';
@@ -33,16 +33,12 @@ export function renderSetupPagePart1(
           >
             <TelegramSetupCard
               status={status}
-              onConnected={(...$args) => {
-                $invokeArgs(markTelegramConnected, $args);
-              }}
+              onConnected={$callback(markTelegramConnected)}
             />
             <VkSetupCard
               status={status.vk}
               telegramConnected={status.connected}
-              onConnected={(...$args) => {
-                $invokeArgs(markVkConnected, $args);
-              }}
+              onConnected={$callback(markVkConnected)}
             />
           </div>
           <div className="setup-service-grid">

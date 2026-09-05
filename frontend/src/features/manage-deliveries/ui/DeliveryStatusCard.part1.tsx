@@ -25,9 +25,7 @@ export function renderDeliveryStatusCardPart1(
                 <button
                   disabled={retryingId !== ''}
                   type="button"
-                  onClick={() => {
-                    void retry(failure.id);
-                  }}
+                  onClick={() => void retry(failure.id)}
                   className="secondary-button"
                 >
                   {retryingId === failure.id ? 'Возвращаем…' : 'Повторить'}

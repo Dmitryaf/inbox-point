@@ -40,9 +40,7 @@ export function renderChangeHistoryPart1(
                   hasUnsavedChanges={$props.hasUnsavedChanges}
                   pending={$props.restoring}
                   revision={change.revision}
-                  onRestore={($event) => {
-                    void $emit('restore', $event);
-                  }}
+                  onRestore={($event) => void $emit('restore', $event)}
                 />
               ) : (
                 <small>{'Старая запись: восстановление недоступно'}</small>
