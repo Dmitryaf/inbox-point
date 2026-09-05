@@ -42,6 +42,11 @@ export default function ChannelStatusCard($incomingProps: ComponentProps) {
           </span>
         </div>
         <p>{$unref(connectionSourceLabel)($props.channel.source)}</p>
+        {$props.intake.mode === 'paused' ? (
+          <p className="channel-maintenance-note">
+            {' Новые обращения приостановлены вручную. '}
+          </p>
+        ) : null}
         {renderChannelStatusCardPart1($props)}
       </article>
     </ModelScopeProvider>

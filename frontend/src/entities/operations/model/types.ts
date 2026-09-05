@@ -33,8 +33,17 @@ export interface OperationsStatus {
       state: 'inactive' | 'running' | 'stalled';
     };
   };
+  intake: {
+    telegram: ClientIntakeOperationsStatus;
+    vk: ClientIntakeOperationsStatus;
+  };
   observedAt: string;
   startedAt: string;
-  state: 'attention' | 'healthy';
+  state: 'attention' | 'healthy' | 'maintenance';
   uptimeSeconds: number;
+}
+
+export interface ClientIntakeOperationsStatus {
+  changedAt?: string;
+  mode: 'active' | 'paused';
 }

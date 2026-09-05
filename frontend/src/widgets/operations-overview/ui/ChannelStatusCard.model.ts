@@ -5,10 +5,14 @@ import {
 
 import { computed } from '@frontend/shared/lib/model-state';
 
-import type { ChannelOperationsStatus } from '@frontend/entities/operations/model/types';
+import type {
+  ChannelOperationsStatus,
+  ClientIntakeOperationsStatus,
+} from '@frontend/entities/operations/model/types';
 
 export type ComponentProps = {
   channel: ChannelOperationsStatus;
+  intake: ClientIntakeOperationsStatus;
   name: string;
 } & ComponentAttributes;
 export const componentDefaults = {};

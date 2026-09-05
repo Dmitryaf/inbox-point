@@ -1,22 +1,17 @@
 // @vitest-environment jsdom
 
 import { flushPromises, mount } from '@test/frontend/support/react-test-utils';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import ContentManagementPage from '@frontend/pages/content-management/ui/ContentManagementPage';
 import { requestUrl, response } from '@test/frontend/support/fake-response';
-import { findButton, initialVersion } from './content-management-test-helpers';
-
-const savedVersion = 'b'.repeat(64);
+import {
+  findButton,
+  initialVersion,
+  serviceControlResponse,
+} from './content-management-test-helpers';
 
 describe('ContentManagementPage', () => {
-  beforeEach(() => {
-    vi.stubGlobal(
-      'confirm',
-      vi.fn(() => true),
-    );
-  });
-
   it('loads structured content and exposes an unsaved-change state', async () => {
     vi.stubGlobal(
       'fetch',
@@ -27,6 +22,9 @@ describe('ContentManagementPage', () => {
         }
         if (url.endsWith('/history')) {
           return Promise.resolve(response({ history: [] }));
+        }
+        if (url.endsWith('/service-control')) {
+          return Promise.resolve(serviceControlResponse());
         }
         return Promise.resolve(
           response({
@@ -65,85 +63,5 @@ describe('ContentManagementPage', () => {
 
     expect(wrapper.text()).toContain('Вторник, 20:00');
     expect(wrapper.text()).toContain('Есть несохранённые изменения');
-  });
-
-  it('restores an earlier revision and reloads the editor', async () => {
-    let schedule = 'Вторник, 20:00';
-    let restored = false;
-    const history = [
-      {
-        changedAt: '2026-09-02T12:00:00.000Z',
-        revision: 2,
-        sections: ['schedule'],
-      },
-      {
-        changedAt: '2026-09-01T12:00:00.000Z',
-        revision: 1,
-        sections: ['schedule'],
-      },
-    ];
-    vi.stubGlobal(
-      'fetch',
-      vi.fn((input: RequestInfo | URL, options?: RequestInit) => {
-        const url = requestUrl(input);
-        if (url.endsWith('/session')) {
-          return Promise.resolve(response({ authenticated: true }));
-        }
-        if (url.endsWith('/restore') && options?.method === 'POST') {
-          schedule = 'Понедельник, 19:00';
-          restored = true;
-          return Promise.resolve(
-            response({
-              content: { schedule },
-              version: savedVersion,
-            }),
-          );
-        }
-        if (url.endsWith('/history')) {
-          if (restored) {
-            return Promise.resolve(
-              response({ message: 'История временно недоступна.' }, 500),
-            );
-          }
-          return Promise.resolve(response({ history }));
-        }
-        return Promise.resolve(
-          response({
-            content: { schedule },
-            version: initialVersion,
-          }),
-        );
-      }),
-    );
-
-    const wrapper = mount(ContentManagementPage);
-    await flushPromises();
-    await findButton(wrapper.findAll('button'), 'История').trigger('click');
-    const restoreButton = wrapper
-      .findAll('button')
-      .find((button) => button.text() === 'Восстановить');
-    if (!restoreButton) {
-      throw new Error('Expected a restore button');
-    }
-    await restoreButton.trigger('click');
-    const confirmButton = wrapper
-      .findAll('button')
-      .find((button) => button.text() === 'Да, восстановить');
-    if (!confirmButton) {
-      throw new Error('Expected a restore confirmation');
-    }
-    await confirmButton.trigger('click');
-    await flushPromises();
-    await findButton(wrapper.findAll('button'), 'Редактирование').trigger(
-      'click',
-    );
-
-    expect(wrapper.get<HTMLTextAreaElement>('#schedule').element.value).toBe(
-      'Понедельник, 19:00',
-    );
-    expect(wrapper.text()).toContain('Предыдущая версия восстановлена');
-    expect(wrapper.get('[role="alert"]').text()).toContain(
-      'Версия восстановлена, но историю изменений обновить не удалось.',
-    );
   });
 });

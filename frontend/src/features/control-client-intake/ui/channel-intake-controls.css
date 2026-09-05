@@ -1,0 +1,80 @@
+.intake-channel-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+article {
+  align-items: center;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 0.9rem;
+  display: flex;
+  gap: 1.25rem;
+  justify-content: space-between;
+  min-width: 0;
+  padding: 1rem;
+}
+
+article > div {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.intake-channel-heading {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+p {
+  color: var(--color-text-muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.intake-status {
+  color: #256548;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.intake-status--paused {
+  color: var(--color-attention);
+}
+
+button {
+  flex: 0 0 auto;
+}
+
+@media (min-width: 760px) {
+  .intake-channel-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  article {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  article > div {
+    flex: 1;
+  }
+
+  button {
+    align-self: flex-start;
+  }
+}
+
+@media (max-width: 520px) {
+  article {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  button {
+    width: 100%;
+  }
+}

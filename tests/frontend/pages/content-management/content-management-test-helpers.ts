@@ -8,6 +8,15 @@ export function contentResponse(schedule: string) {
   return response({ content: { schedule }, version: initialVersion });
 }
 
+export function serviceControlResponse() {
+  return response({
+    channels: {
+      telegram: { mode: 'active' },
+      vk: { mode: 'active' },
+    },
+  });
+}
+
 export function findButton(buttons: DOMWrapper<Element>[], label: string) {
   const button = buttons.find((candidate) => candidate.text() === label);
   if (!button) {

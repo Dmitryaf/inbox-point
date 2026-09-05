@@ -57,6 +57,10 @@
   border-left-color: var(--color-attention);
 }
 
+.summary-card--maintenance {
+  border-left-color: var(--color-primary);
+}
+
 .summary-card h2,
 .summary-card .eyebrow {
   margin-bottom: 0;
@@ -119,6 +123,16 @@
   margin: 0.8rem 0 0;
   min-width: 0;
   padding-top: 0.75rem;
+}
+
+.status-card .channel-maintenance-note {
+  background: var(--color-attention-soft);
+  border-radius: 0.75rem;
+  color: var(--color-attention);
+  font-size: 0.82rem;
+  font-weight: 700;
+  margin-top: 0.75rem;
+  padding: 0.65rem 0.75rem;
 }
 
 .status-pill {
