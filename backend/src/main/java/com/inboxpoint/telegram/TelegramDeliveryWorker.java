@@ -9,11 +9,10 @@ import java.util.function.Supplier;
 import com.inboxpoint.vk.VkChannel;
 
 final class TelegramDeliveryWorker {
-    private static final int ATTEMPT_LIMIT = 5;
-
     private final TelegramStore store;
     private final TelegramBotApi api;
     private final Clock clock;
+    private final DeliveryFailurePolicy failures;
     private final Supplier<VkChannel> vk;
 
     TelegramDeliveryWorker(TelegramStore store, TelegramBotApi api, Clock clock) {
@@ -25,6 +24,7 @@ final class TelegramDeliveryWorker {
         this.store = store;
         this.api = api;
         this.clock = clock;
+        failures = new DeliveryFailurePolicy(store, clock);
     }
 
     void run() throws SQLException, InterruptedException {
@@ -44,13 +44,7 @@ final class TelegramDeliveryWorker {
                         ? vkChannel.send(item.conversation(), item.text(), item.key())
                         : api.sendMessage(item.conversation(), null, item.text());
             } catch (IOException failure) {
-                var uncertain = failure instanceof TelegramBotApi.RequestFailed telegram && telegram.outcomeUnknown();
-                if (uncertain || item.attempts() + 1 >= ATTEMPT_LIMIT) {
-                    store.failed(item.key(), uncertain);
-                } else {
-                    long delay = Math.min(5L << item.attempts(), 300);
-                    store.schedule(item.key(), clock.instant().plusSeconds(delay));
-                }
+                failures.record(item, failure);
                 continue;
             }
             store.complete(item, sent, clock.instant());

@@ -6,6 +6,11 @@ import {
   type ModelOptions,
   type ModelRef,
 } from '@frontend/shared/lib/component-props';
+import { computed } from '@frontend/shared/lib/model-state';
+import {
+  formatFaqResponse,
+  normalizeFaqItems,
+} from '@frontend/entities/content/lib/client-response-preview';
 import type { ContentDraft } from '@frontend/entities/content/model/types';
 
 export type ComponentProps = {
@@ -23,10 +28,15 @@ export function createComponentModel(
   ) => ModelRef<Value>,
 ) {
   const draft = $model<ContentDraft>('modelValue', { required: true });
+  const responseLength = computed(() =>
+    draft.value.faq.length > 0
+      ? formatFaqResponse(normalizeFaqItems(draft.value.faq)).length
+      : 0,
+  );
   function add(): void {
     if (draft.value.faq.length < 20) {
       draft.value.faq.push({ answer: '', question: '' });
     }
   }
-  return { draft, add };
+  return { draft, responseLength, add };
 }

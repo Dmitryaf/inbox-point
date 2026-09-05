@@ -203,7 +203,8 @@ public final class ClientInformation {
         return switch (label) {
             case SCHEDULE -> formatList(SCHEDULE, snapshot.standard().get("schedule"), "Расписание" + UNAVAILABLE);
             case PRICES -> formatList(PRICES, snapshot.standard().get("prices"), "Информация о ценах" + UNAVAILABLE);
-            case ADDRESS -> snapshot.standard().getOrDefault("address", "Информация об адресе" + UNAVAILABLE);
+            case ADDRESS -> snapshot.standard().containsKey("address")
+                    ? "Адрес\n\n" + snapshot.standard().get("address") : "Информация об адресе" + UNAVAILABLE;
             default -> snapshot.custom().stream()
                     .filter(section -> section.label().equals(label)).map(Section::text).findFirst().orElse(null);
         };

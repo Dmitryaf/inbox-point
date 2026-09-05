@@ -22,6 +22,7 @@ export interface DeliveryFailure {
   createdAt: string;
   id: string;
   reason: string;
+  retryAllowed: boolean;
 }
 
 export interface DeliveryStatus {
@@ -29,6 +30,7 @@ export interface DeliveryStatus {
   summary: {
     failed: number;
     pending: number;
+    uncertain?: number;
   };
 }
 

@@ -32,6 +32,11 @@
   text-align: right;
 }
 
+.counter--error {
+  color: var(--color-danger);
+  font-weight: 700;
+}
+
 .visibility-control {
   align-items: flex-start;
   color: var(--color-text);
@@ -223,28 +228,30 @@
   white-space: pre-wrap;
 }
 
-.preview > div {
-  border-top: 1px solid var(--color-border);
-  min-width: 0;
-  margin-top: 1.25rem;
-  padding-top: 1.25rem;
-}
-
-.preview dt {
-  color: var(--color-text);
-  font-size: 1rem;
-  font-weight: 800;
-  line-height: 1.35;
+.preview-response {
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 1rem;
   margin-top: 1rem;
+  min-width: 0;
+  padding: 1rem;
 }
 
-.preview dd {
+.preview-response-label {
   color: var(--color-text-muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin: 0 0 0.65rem;
+}
+
+.preview-response .preserve {
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text);
   font-size: 0.95rem;
-  font-weight: 450;
   line-height: 1.55;
-  margin: 0.3rem 0 0;
-  white-space: pre-wrap;
+  margin: 0;
+  overflow-wrap: anywhere;
+  padding-top: 0.65rem;
 }
 
 .history-list {
@@ -372,5 +379,30 @@
 
   .item-card {
     padding: 1.1rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .card,
+  .state-card,
+  .message,
+  .save-bar,
+  .status-card {
+    border-radius: 1rem;
+    padding: 0.85rem;
+  }
+
+  .item-card {
+    margin: 0.8rem 0;
+    padding: 0.75rem;
+  }
+
+  .section-heading {
+    gap: 0.65rem;
+  }
+
+  .section-heading h2,
+  .card > h2 {
+    font-size: 1.25rem;
   }
 }

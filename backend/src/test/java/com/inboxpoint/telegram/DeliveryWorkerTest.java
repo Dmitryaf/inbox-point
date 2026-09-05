@@ -18,6 +18,28 @@ class DeliveryWorkerTest {
     Path directory;
 
     @Test
+    void doesNotRepeatAnUncertainTelegramSendAndRefusesManualRetry() throws Exception {
+        var database = directory.resolve("uncertain.sqlite");
+        var time = Instant.parse("2026-09-01T08:00:00Z");
+        try (var server = new TelegramTestServer(request -> new TelegramTestServer.Response(500,
+                "{\"ok\":false,\"error_code\":500}")); var client = HttpClient.newHttpClient();
+                var store = new TelegramStore(database)) {
+            var api = new TelegramBotApi(client, server.origin(), TelegramTestServer.TOKEN, Duration.ofSeconds(3));
+            var request = new TelegramStore.Request("question", 123, 42, true, "telegram");
+            store.open(request, time);
+            store.queue(request, "reply", 702, "Answer", time);
+            var worker = new TelegramDeliveryWorker(store, api, Clock.fixed(time, ZoneOffset.UTC));
+            assertThat(worker.runOnce()).isEqualTo(1);
+            assertThat(worker.runOnce()).isZero();
+            assertThat(store.summary().uncertain()).isEqualTo(1);
+            var blocked = store.failures().getFirst();
+            assertThat(blocked.retryAllowed()).isFalse();
+            assertThat(store.retry(blocked.id(), time)).isFalse();
+            assertThat(server.requests()).hasSize(1);
+        }
+    }
+
+    @Test
     void retriesAConfirmedRejectionAfterTheDelayAndRecordsOneSuccessAcrossRestart() throws Exception {
         var database = directory.resolve("queued.sqlite");
         var submitted = Instant.parse("2026-09-01T08:00:00Z");

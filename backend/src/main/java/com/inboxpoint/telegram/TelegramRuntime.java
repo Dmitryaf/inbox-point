@@ -227,13 +227,13 @@ public final class TelegramRuntime {
                     stalled ? "stalled" : running ? "running" : "inactive");
             var state = stalled ? "stalled" : age != null && age > 300 ? "backlog"
                     : summary.failed() > 0 ? "failed" : "healthy";
-            return new DeliveryState(summary.pending(), summary.failed(), oldest == null ? null : oldest.toString(),
+            return new DeliveryState(summary.pending(), summary.failed(), summary.uncertain(), oldest == null ? null : oldest.toString(),
                     age, state, worker);
         }
     }
 
     @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
-    public record DeliveryState(long pending, long failed, String oldestPendingAt, Long oldestPendingAgeSeconds,
+    public record DeliveryState(long pending, long failed, long uncertain, String oldestPendingAt, Long oldestPendingAgeSeconds,
             String state, DeliveryProcess worker) { }
 
     @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)

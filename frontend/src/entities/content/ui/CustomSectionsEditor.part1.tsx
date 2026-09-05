@@ -33,6 +33,10 @@ export function renderCustomSectionsEditorPart1(
               );
             })}
           />
+          <p className="counter">
+            {section.label.length}
+            {' / 40'}
+          </p>
           <label htmlFor={`section-text-${index}`}>{'Текст для клиента'}</label>
           <textarea
             id={`section-text-${index}`}
@@ -48,6 +52,10 @@ export function renderCustomSectionsEditorPart1(
               );
             })}
           />
+          <p className="counter">
+            {section.text.length}
+            {' / 4000'}
+          </p>
           <div className="item-actions">
             <button
               type="button"

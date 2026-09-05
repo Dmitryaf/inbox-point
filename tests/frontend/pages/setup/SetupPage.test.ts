@@ -78,4 +78,47 @@ describe('SetupPage', () => {
 
     wrapper.unmount();
   });
+
+  it('does not offer an automatic retry for an uncertain delivery', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = requestUrl(input);
+        if (url.endsWith('/status')) {
+          return Promise.resolve(
+            response({
+              connected: true,
+              locked: true,
+              source: 'environment',
+              vk: { connected: false, locked: false, source: 'none' },
+            }),
+          );
+        }
+        return Promise.resolve(
+          response({
+            failures: [
+              {
+                attempts: 1,
+                channel: 'Telegram',
+                createdAt: '2026-09-05T10:00:00.000Z',
+                id: 'delivery-1',
+                reason: 'Проверьте диалог клиента вручную.',
+                retryAllowed: false,
+              },
+            ],
+            summary: { failed: 1, pending: 0, uncertain: 1 },
+          }),
+        );
+      }),
+    );
+
+    const wrapper = mount(SetupPage);
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Требуют ручной проверки: 1');
+    expect(wrapper.text()).toContain('Проверить вручную');
+    expect(wrapper.text()).not.toContain('Повторить');
+
+    wrapper.unmount();
+  });
 });

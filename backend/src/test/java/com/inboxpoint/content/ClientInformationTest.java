@@ -54,7 +54,7 @@ class ClientInformationTest {
         var restored = new ClientInformation(database);
         assertThat(restored.restore(99)).isFalse();
         assertThat(restored.restore(1)).isTrue();
-        assertThat(restored.resolve("Адрес")).isEqualTo("First");
+        assertThat(restored.resolve("Адрес")).contains("First");
         assertThat(restored.history()).extracting(ClientInformation.Change::revision).containsExactly(3, 2, 1);
     }
 
@@ -84,6 +84,20 @@ class ClientInformationTest {
                 .isInstanceOf(ClientInformation.VersionConflict.class);
         assertThatThrownBy(() -> info.restore(1, version)).isInstanceOf(ClientInformation.VersionConflict.class);
         assertThat(new ClientInformation(database).snapshot()).isEqualTo(first);
+    }
+
+    @Test
+    void publishedMenuResolvesTheSameSyntheticFixtureAsTheReactPreview() throws Exception {
+        var info = new ClientInformation(directory.resolve("preview.sqlite").toString());
+        var json = JsonMapper.shared();
+        var content = json.createObjectNode().put("schedule", "Пн, 18:00\n- Ср, 19:00")
+                .put("address", "  ул. Мира, 1  ");
+        content.putArray("faq").addObject().put("answer", "Напишите нам.").put("question", "Как записаться?");
+        info.save(content);
+        var actual = info.informationButtons().stream().map(label -> java.util.List.of(label, info.resolve(label))).toList();
+        var fixture = Path.of("..", "tests", "fixtures", "client-response-preview.json");
+        var observed = json.valueToTree(actual);
+        assertThat(observed).isEqualTo(json.readTree(java.nio.file.Files.readString(fixture)));
     }
 
     @Test

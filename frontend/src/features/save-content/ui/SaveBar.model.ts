@@ -4,15 +4,30 @@ import {
   type WithDefaults,
 } from '@frontend/shared/lib/component-model';
 
-export type ComponentProps = { dirty: boolean; saving: boolean } & EventProps<{
-  save: [];
-}> &
+import { computed } from '@frontend/shared/lib/model-state';
+
+export type ComponentProps = {
+  dirty: boolean;
+  saving: boolean;
+  validationMessage: string;
+  valid: boolean;
+} & EventProps<{ save: [] }> &
   ComponentAttributes;
 export const componentDefaults = {};
 type ResolvedProps = WithDefaults<ComponentProps, typeof componentDefaults>;
 export function createComponentModel(
-  _props: ResolvedProps,
+  $props: ResolvedProps,
   $emit: (event: string, ...args: unknown[]) => void,
 ) {
-  return { $emit };
+  const props = $props;
+  const statusMessage = computed(() => {
+    if (props.validationMessage) {
+      return props.validationMessage;
+    }
+    if (props.dirty) {
+      return 'Есть несохранённые изменения';
+    }
+    return 'Все изменения сохранены';
+  });
+  return { $emit, statusMessage };
 }

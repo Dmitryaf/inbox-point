@@ -1,3 +1,5 @@
+import { classNames as $class } from '@frontend/shared/lib/component-view';
+
 import {
   requiredValue as $required,
   setProperty as $setProperty,
@@ -11,6 +13,7 @@ export function renderCoreSectionsFieldsPart3(
   $state: ReturnType<typeof createComponentModel>,
 ) {
   const draft = $state.draft.value;
+  const addressLength = $state.addressLength.value;
   return (
     <>
       <details className="field-group">
@@ -43,9 +46,14 @@ export function renderCoreSectionsFieldsPart3(
             );
           })}
         />
-        <p className="counter">
-          {draft.address.length}
-          {' / 4000'}
+        <p
+          className={$class('counter', {
+            'counter--error': addressLength > 4000,
+          })}
+        >
+          {' Итоговый ответ: '}
+          {addressLength}
+          {' / 4000 '}
         </p>
         <SectionVisibilityControl
           contentPresent={Boolean(draft.address.trim())}

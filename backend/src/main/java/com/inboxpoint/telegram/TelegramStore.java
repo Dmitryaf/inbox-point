@@ -43,6 +43,9 @@ final class TelegramStore implements AutoCloseable {
             }
             ensureColumn("deliveries", "operator_message_id", "TEXT");
             ensureColumn("deliveries", "next_attempt_at", "TEXT");
+            ensureColumn("deliveries", "outcome_unknown", "INTEGER NOT NULL DEFAULT 0");
+            statement.execute("UPDATE deliveries SET outcome_unknown = 1 WHERE last_error = 'Uncertain Telegram result' "
+                    + "AND status = 'failed' AND outcome_unknown = 0");
             ensureColumn("processed_events", "status", "TEXT NOT NULL DEFAULT 'completed'");
             ensureColumn("processed_events", "completed_at", "TEXT");
             statement.execute("""
@@ -228,17 +231,17 @@ final class TelegramStore implements AutoCloseable {
         }
     }
 
-    record DeliverySummary(long pending, long sent, long failed, String oldestPending) { }
+    record DeliverySummary(long pending, long sent, long failed, String oldestPending, long uncertain) { }
 
     DeliverySummary summary() throws SQLException {
         try (var statement = connection.createStatement(); var row = statement.executeQuery("""
                 SELECT COUNT(*) FILTER (WHERE status = 'pending'),
                     COUNT(*) FILTER (WHERE status = 'sent'), COUNT(*) FILTER (WHERE status = 'failed'),
-                    MIN(created_at) FILTER (WHERE status = 'pending')
+                    MIN(created_at) FILTER (WHERE status = 'pending'), COUNT(*) FILTER (WHERE outcome_unknown = 1)
                 FROM deliveries
                 """)) {
             row.next();
-            return new DeliverySummary(row.getLong(1), row.getLong(2), row.getLong(3), row.getString(4));
+            return new DeliverySummary(row.getLong(1), row.getLong(2), row.getLong(3), row.getString(4), row.getLong(5));
         }
     }
 
@@ -249,25 +252,30 @@ final class TelegramStore implements AutoCloseable {
                 """, Long.toString(message), now.toString(), key);
     }
 
-    void failed(String key, boolean uncertain) throws SQLException {
-        update("UPDATE deliveries SET status = 'failed', attempts = attempts + 1, last_error = ? WHERE idempotency_key = ?",
-                uncertain ? "Uncertain Telegram result" : "Platform rejected delivery", key);
+    void failed(String key, boolean uncertain, String reason) throws SQLException {
+        update("""
+                UPDATE deliveries SET status = 'failed', attempts = attempts + 1, last_error = ?, outcome_unknown = ?
+                WHERE idempotency_key = ?
+                """, reason, uncertain ? 1 : 0, key);
     }
 
-    record PublicFailure(String id, String channel, int attempts, String createdAt, String reason) { }
+    record PublicFailure(String id, String channel, int attempts, String createdAt, String reason, boolean retryAllowed) { }
 
     List<PublicFailure> failures() throws SQLException {
         try (var statement = connection.createStatement(); var rows = statement.executeQuery("""
-                SELECT id, channel, attempts, created_at, last_error FROM deliveries
+                SELECT id, channel, attempts, created_at, last_error, outcome_unknown FROM deliveries
                 WHERE status = 'failed' ORDER BY julianday(created_at) DESC, id LIMIT 20
                 """)) {
             var result = new ArrayList<PublicFailure>();
             while (rows.next()) {
-                var reason = "Uncertain Telegram result".equals(rows.getString("last_error"))
-                        ? "Итог отправки неизвестен. Проверьте диалог клиента."
-                        : "Ответ не доставлен. Проверьте доступ к каналу и повторите отправку.";
+                var uncertain = rows.getInt("outcome_unknown") != 0;
+                var reason = uncertain
+                        ? "Канал мог принять ответ, но подтверждение не получено. Проверьте диалог клиента вручную."
+                        : "API 429".equals(rows.getString("last_error"))
+                                ? "Канал временно ограничил отправку. Повторите попытку позже."
+                                : "Ответ не доставлен. Проверьте доступ к каналу и повторите отправку.";
                 result.add(new PublicFailure(rows.getString("id"), "telegram".equals(rows.getString("channel"))
-                        ? "Telegram" : "VK", rows.getInt("attempts"), rows.getString("created_at"), reason));
+                        ? "Telegram" : "VK", rows.getInt("attempts"), rows.getString("created_at"), reason, !uncertain));
             }
             return result;
         }
@@ -276,7 +284,7 @@ final class TelegramStore implements AutoCloseable {
     boolean retry(String id, Instant now) throws SQLException {
         return update("""
                 UPDATE deliveries SET status = 'pending', attempts = 0, next_attempt_at = ?, last_error = NULL
-                WHERE id = ? AND status = 'failed' AND (last_error IS NULL OR last_error <> 'Uncertain Telegram result')
+                WHERE id = ? AND status = 'failed' AND outcome_unknown = 0
                 """, now.toString(), id) == 1;
     }
 

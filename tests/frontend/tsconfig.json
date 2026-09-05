@@ -2,6 +2,7 @@
   "extends": "../../frontend/tsconfig.json",
   "compilerOptions": {
     "paths": {
+      "@/*": ["../../src/*"],
       "@frontend/*": ["../../frontend/src/*"],
       "@test/*": ["../*"]
     },

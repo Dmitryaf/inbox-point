@@ -32,6 +32,7 @@ export default function FaqEditor($incomingProps: ComponentProps) {
   );
   const { add } = $state;
   const draft = $state.draft.value;
+  const responseLength = $state.responseLength.value;
   const $attributes = inheritedAttributes($props);
   return (
     <ModelScopeProvider scope={$scope}>
@@ -50,6 +51,16 @@ export default function FaqEditor($incomingProps: ComponentProps) {
           </span>
         </div>
         <p>{'Вопросы показываются клиенту в этом порядке.'}</p>
+        <p
+          aria-live="polite"
+          className={$class('counter', {
+            'counter--error': responseLength > 4000,
+          })}
+        >
+          {' Итоговый ответ: '}
+          {responseLength}
+          {' / 4000 '}
+        </p>
         <SectionVisibilityControl
           contentPresent={draft.faq.length > 0}
           section="faq"
