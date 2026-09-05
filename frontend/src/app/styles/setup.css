@@ -26,6 +26,7 @@
 
 .setup-channel-grid,
 .setup-service-grid {
+  align-items: start;
   display: grid;
   gap: 1rem;
   min-width: 0;
@@ -48,6 +49,24 @@
 
 .setup-steps li + li {
   margin-top: 0.35rem;
+}
+
+.setup-steps strong,
+.setup-steps span {
+  display: block;
+}
+
+.setup-steps span {
+  color: var(--color-text-muted);
+  margin-top: 0.2rem;
+}
+
+.setup-warning {
+  background: var(--color-attention-soft);
+  border-radius: 0.75rem;
+  color: var(--color-attention);
+  font-size: 0.84rem;
+  padding: 0.7rem 0.8rem;
 }
 
 .setup-card > label,
@@ -143,8 +162,17 @@
 
   .setup-channel-grid,
   .setup-service-grid {
-    align-items: start;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .setup-channel-grid.setup-channel-grid--mixed {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .setup-channel-grid--mixed .setup-steps,
+  .setup-channel-grid--mixed .setup-form,
+  .setup-channel-grid--mixed .setup-warning {
+    max-width: 46rem;
   }
 }
 

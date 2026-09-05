@@ -6,6 +6,8 @@ import {
   logicalOr as $or,
 } from '@frontend/shared/lib/component-bindings';
 
+import TelegramSetupInstructions from './TelegramSetupInstructions';
+
 import type { WithDefaults } from '@frontend/shared/lib/component-model';
 import type {
   createComponentModel,
@@ -27,17 +29,13 @@ export function renderTelegramSetupCardPart1(
     <>
       {$props.status.connected ? (
         <p className="setup-status setup-status--success">
-          {' Telegram подключён. '}
+          {
+            ' Telegram подключён. После перезапуска сервис восстановит подключение автоматически. '
+          }
         </p>
       ) : (
         <>
-          <ol className="setup-steps">
-            <li>{'Создайте закрытую группу и включите темы.'}</li>
-            <li>
-              {'Добавьте бота администратором с правом управлять темами.'}
-            </li>
-            <li>{'Напишите в группе любое сообщение.'}</li>
-          </ol>
+          <TelegramSetupInstructions />
           {$props.status.locked ? (
             <p className="setup-status">
               {' Подключение управляется настройками сервера. '}

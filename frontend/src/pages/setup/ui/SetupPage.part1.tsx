@@ -1,3 +1,4 @@
+import { classNames as $class } from '@frontend/shared/lib/component-view';
 import { invokeArgs as $invokeArgs } from '@frontend/shared/lib/component-events';
 
 import BackupCard from '@frontend/features/create-backup/ui/BackupCard';
@@ -24,7 +25,12 @@ export function renderSetupPagePart1(
         </p>
       ) : (
         <div className="setup-workspace">
-          <div className="setup-channel-grid">
+          <div
+            className={$class('setup-channel-grid', {
+              'setup-channel-grid--mixed':
+                status.connected !== status.vk.connected,
+            })}
+          >
             <TelegramSetupCard
               status={status}
               onConnected={(...$args) => {
