@@ -38,8 +38,7 @@ final class TelegramClientMenu {
         var active = store.activeRequest(chat);
         var trimmed = text.strip();
         var blocked = active == null && paused.test("telegram");
-        var published = information.informationButtons().contains(trimmed) || information.sections().stream()
-                .anyMatch(section -> section.label().equals(trimmed));
+        var published = information.isPublishedInformation(trimmed);
         var response = blocked && !published ? ClientInformation.INTAKE_PAUSED : response(trimmed, active != null);
         if (response == null) {
             return false;

@@ -30,14 +30,9 @@ final class VkClientMenu {
             throws IOException, SQLException, InterruptedException {
         var active = store.activeRequest("vk", peer);
         var label = text.strip();
-        if (active == null && paused.test("vk")) {
-            var now = Instant.now();
-            if (store.claim("vk:menu", event, now)) {
-                store.completeEvent("vk:menu", event, now);
-            }
-            return true;
-        }
-        var answer = response(label, active != null);
+        var blocked = active == null && paused.test("vk");
+        var answer = blocked && !information.isPublishedInformation(label)
+                ? ClientInformation.INTAKE_PAUSED : response(label, active != null);
         if (answer == null) {
             return false;
         }
@@ -45,7 +40,7 @@ final class VkClientMenu {
             return true;
         }
         try {
-            api.send(peer, answer, "vk-menu:" + event, keyboard());
+            api.send(peer, answer, "vk-menu:" + event, keyboard(blocked));
             store.completeEvent("vk:menu", event, Instant.now());
             return true;
         } catch (IOException failure) {
@@ -75,7 +70,7 @@ final class VkClientMenu {
         return null;
     }
 
-    private JsonNode keyboard() {
+    private JsonNode keyboard(boolean blocked) {
         var layout = JsonMapper.shared().createObjectNode().put("inline", false).put("one_time", false);
         var rows = layout.putArray("buttons");
         var standard = information.informationButtons();
@@ -89,7 +84,9 @@ final class VkClientMenu {
             rows.addArray().addObject().put("color", "secondary").putObject("action")
                     .put("label", section.label()).put("type", "text");
         }
-        rows.addArray().addObject().put("color", "primary").putObject("action").put("label", ASK).put("type", "text");
+        if (!blocked) {
+            rows.addArray().addObject().put("color", "primary").putObject("action").put("label", ASK).put("type", "text");
+        }
         return layout;
     }
 }

@@ -26,6 +26,40 @@ class VkBridgeTest {
     Path directory;
 
     @Test
+    void answersPublishedQuestionsDuringThePauseWithoutOfferingNewRequests() throws Exception {
+        var calls = new ArrayList<String>();
+        var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/method/messages.send", exchange -> {
+            try (exchange) {
+                calls.add(java.net.URLDecoder.decode(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8),
+                        StandardCharsets.UTF_8));
+                var body = "{\"response\":401}".getBytes(StandardCharsets.UTF_8);
+                exchange.sendResponseHeaders(200, body.length);
+                exchange.getResponseBody().write(body);
+            }
+        });
+        server.start();
+        var database = directory.resolve("pause.sqlite");
+        var information = new ClientInformation(database.toString());
+        information.save(JsonMapper.shared().createObjectNode().put("schedule", "Понедельник, 18:00"));
+        try (var store = new TelegramStore(database);
+                var community = new VkChannel(URI.create("http://127.0.0.1:" + server.getAddress().getPort()),
+                        "synthetic-vk-test-token")) {
+            var menu = new VkClientMenu(information, community, channel -> true);
+            assertThat(menu.handle(store, "pause", 123, "New question")).isTrue();
+            var label = information.informationButtons().getFirst();
+            assertThat(menu.handle(store, "information", 123, label)).isTrue();
+            assertThat(calls).hasSize(2);
+            assertThat(calls.getFirst()).contains(ClientInformation.INTAKE_PAUSED).doesNotContain(ClientInformation.ASK);
+            assertThat(calls.getLast()).contains("message=" + information.resolve(label));
+            store.open(new TelegramStore.Request("active", 123, 42, true, "vk"), java.time.Instant.now());
+            assertThat(menu.handle(store, "active", 123, "Follow-up")).isFalse();
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
     void keepsTheSameCustomerNumberSeparateAndReturnsRepliesToTheirOriginalChannels() throws Exception {
         var calls = new ArrayList<String>();
         var vk = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);

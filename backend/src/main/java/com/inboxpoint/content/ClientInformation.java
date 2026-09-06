@@ -27,8 +27,7 @@ import tools.jackson.databind.json.JsonMapper;
 @Component
 public final class ClientInformation {
     public static final String INTAKE_PAUSED =
-            "Бот временно не принимает новые обращения.\n\n"
-                    + "Используйте резервный способ связи, указанный в описании бота.";
+            "Сейчас новые обращения временно не принимаются. Попробуйте немного позже.";
     public static final String SCHEDULE = "Расписание";
     public static final String PRICES = "Цены";
     public static final String ADDRESS = "Адрес";
@@ -175,6 +174,10 @@ public final class ClientInformation {
             }
         }
 
+    }
+
+    public boolean isPublishedInformation(String label) {
+        return informationButtons().contains(label) || sections().stream().anyMatch(section -> section.label().equals(label));
     }
 
     public List<String> informationButtons() {
