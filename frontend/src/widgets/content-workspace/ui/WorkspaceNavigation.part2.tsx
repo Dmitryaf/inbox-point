@@ -22,6 +22,7 @@ export function renderWorkspaceNavigationPart2(
   $props: WithDefaults<ComponentProps, typeof componentDefaults>,
 ) {
   const { $emit } = $state;
+
   return (
     <>
       <aside className="dashboard-sidebar desktop-workspace-navigation">

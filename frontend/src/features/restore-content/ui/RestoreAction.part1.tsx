@@ -18,6 +18,7 @@ export function renderRestoreActionPart1(
   const { props } = $state;
   const confirming = $state.confirming.value;
   const $attributes = inheritedAttributes($props);
+
   return (
     <>
       {confirming ? (

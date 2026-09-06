@@ -13,6 +13,7 @@ export function renderSetupPagePart1(
   const { markTelegramConnected, markVkConnected } = $state;
   const status = $state.status.value;
   const error = $state.error.value;
+
   return (
     <>
       {error ? (

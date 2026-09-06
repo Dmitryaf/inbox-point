@@ -28,6 +28,7 @@ export function renderContentWorkspacePart1(
   const activeView = $state.activeView.value;
   const activeSection = $state.activeSection.value;
   const validation = $state.validation.value;
+
   return (
     <>
       {workspace.loading.value ? (

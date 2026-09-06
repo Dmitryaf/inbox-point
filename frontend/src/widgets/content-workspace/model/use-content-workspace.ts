@@ -78,14 +78,21 @@ export function useContentWorkspace(options: ContentWorkspaceOptions) {
     state.restoring.value = true;
     state.error.value = '';
     state.notice.value = '';
+    const draftAtStart = snapshotContent(state.draft);
     let restored = false;
     try {
       const result = await restoreContent(revision, state.version.value);
-      Object.assign(state.draft, normalizeContentDraft(result.content));
-      state.savedSnapshot.value = snapshotContent(state.draft);
+      const restoredContent = normalizeContentDraft(result.content);
+      const restoredSnapshot = snapshotContent(restoredContent);
+      if (snapshotContent(state.draft) === draftAtStart) {
+        Object.assign(state.draft, restoredContent);
+      }
+      state.savedSnapshot.value = restoredSnapshot;
       state.version.value = result.version;
       state.notice.value =
-        'Предыдущая версия восстановлена и уже доступна клиентам.';
+        snapshotContent(state.draft) === restoredSnapshot
+          ? 'Предыдущая версия восстановлена и уже доступна клиентам.'
+          : 'Предыдущая версия восстановлена. Ваши новые правки остались в редакторе и ещё не сохранены.';
       restored = true;
     } catch (cause: unknown) {
       state.reportFailure(cause);

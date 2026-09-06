@@ -8,6 +8,7 @@ export function renderFaqEditorPart1(
   $state: ReturnType<typeof createComponentModel>,
 ) {
   const draft = $state.draft.value;
+
   return (
     <>
       {$renderList(draft.faq, (item, index) => (

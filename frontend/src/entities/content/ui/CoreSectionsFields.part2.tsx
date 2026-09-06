@@ -11,6 +11,7 @@ export function renderCoreSectionsFieldsPart2(
 ) {
   const draft = $state.draft.value;
   const pricesLength = $state.pricesLength.value;
+
   return (
     <>
       <details className="field-group">

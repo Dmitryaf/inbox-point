@@ -7,6 +7,7 @@ export function renderDeliveryStatusCardPart1(
   const { retry } = $state;
   const retryingId = $state.retryingId.value;
   const status = $state.status.value;
+
   return (
     <>
       {status?.failures.length ? (

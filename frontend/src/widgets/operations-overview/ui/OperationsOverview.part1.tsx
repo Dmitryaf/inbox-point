@@ -15,6 +15,7 @@ export function renderOperationsOverviewPart1(
   $props: WithDefaults<ComponentProps, typeof componentDefaults>,
 ) {
   const observedAt = $state.observedAt.value;
+
   return (
     <>
       <article

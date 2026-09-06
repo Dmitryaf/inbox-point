@@ -25,6 +25,7 @@ export function renderTelegramSetupCardPart1(
   const selectedChatId = $state.selectedChatId.value;
   const chats = $state.chats.value;
   const message = $state.message.value;
+
   return (
     <>
       {$props.status.connected ? (

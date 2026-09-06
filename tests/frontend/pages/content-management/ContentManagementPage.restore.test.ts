@@ -63,6 +63,7 @@ describe('ContentManagementPage restore', () => {
     const wrapper = mount(ContentManagementPage);
     await flushPromises();
     await findButton(wrapper.findAll('button'), 'История').trigger('click');
+    await flushPromises();
     await findButton(wrapper.findAll('button'), 'Восстановить').trigger(
       'click',
     );
