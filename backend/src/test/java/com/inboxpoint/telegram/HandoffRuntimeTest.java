@@ -12,6 +12,28 @@ class HandoffRuntimeTest {
     Path directory;
 
     @Test
+    void fallbackTransfersAnExistingThreadToTheWebInbox() throws Exception {
+        var runtime = new HandoffRuntime(directory.resolve("unused.sqlite"), () -> false, () -> null);
+        var now = java.time.Instant.parse("2026-10-01T10:00:00Z");
+        var clock = java.time.Clock.fixed(now, java.time.ZoneOffset.UTC);
+        try (var store = new TelegramStore(directory.resolve("ownership.sqlite"))) {
+            var original = new TelegramStore.Request("first", 123, 42, true, "vk");
+            store.open(original, now);
+            assertThat(store.activeOperatorRequests()).isEmpty();
+            var service = new HandoffService(store, runtime.routingInbox(), clock, new ClientMessageQueue());
+            service.processVk("later", 123, 57, "Customer", "Follow-up");
+            assertThat(store.byTopic(42)).isNull();
+            assertThat(store.byId("first").topic()).isEqualTo("web:first");
+            assertThat(store.activeOperatorRequests()).extracting(TelegramRuntime.InboxRequest::id).containsExactly("first");
+            service.relayReply(42, 89, "Late Telegram reply", "telegram:late");
+            assertThat(store.pending(now, false, true)).isEmpty();
+            service.relayReply(store.byId("first"), "web:close", "/close", "web:close");
+            service.processVk("after-close", 123, 58, "Customer", "New question");
+            assertThat(store.activeRequest("vk", 123).id()).isNotEqualTo("first");
+        }
+    }
+
+    @Test
     void keepsTheConversationAndQueuesWebRepliesWithoutTelegram() throws Exception {
         var runtime = new HandoffRuntime(directory.resolve("unused.sqlite"), () -> false, () -> null);
         var now = java.time.Instant.parse("2026-10-01T10:00:00Z");

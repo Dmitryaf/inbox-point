@@ -14,8 +14,8 @@ final class SwitchableOperatorInbox implements OperatorInbox {
         return route("", target -> target.open(request, title));
     }
 
-    public String relay(String topic, String message, int offset, String text) throws InterruptedException {
-        return route(topic, target -> target.relay(topic, message, offset, text));
+    public Relay relay(String request, String topic, String message, int offset, String text) throws InterruptedException {
+        return route(topic, target -> target.relay(request, topic, message, offset, text));
     }
 
     public void close(String topic) throws InterruptedException {
@@ -28,7 +28,7 @@ final class SwitchableOperatorInbox implements OperatorInbox {
 
     public void notifyFailure(TelegramRuntime.DeliveryIncident delivery)
             throws TelegramBotApi.RequestFailed, InterruptedException {
-        if (delivery.operatorTopicId().startsWith("web:")) {
+        if (EmergencyOperatorInbox.isWebTopic(delivery.operatorTopicId())) {
             return;
         }
         var target = primary.get();
@@ -39,7 +39,7 @@ final class SwitchableOperatorInbox implements OperatorInbox {
     }
 
     private <T> T route(String topic, Operation<T> operation) throws InterruptedException {
-        var target = topic.startsWith("web:") ? null : primary.get();
+        var target = EmergencyOperatorInbox.isWebTopic(topic) ? null : primary.get();
         if (target != null) {
             try {
                 return operation.run(target);

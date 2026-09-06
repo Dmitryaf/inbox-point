@@ -3,12 +3,20 @@ package com.inboxpoint.telegram;
 final class EmergencyOperatorInbox implements OperatorInbox {
     @Override
     public String open(String request, String title) {
-        return "web:" + request;
+        return webTopic(request);
     }
 
     @Override
-    public String relay(String topic, String message, int offset, String text) {
-        return "web:" + message + ":" + offset;
+    public Relay relay(String request, String topic, String message, int offset, String text) {
+        return new Relay(isWebTopic(topic) ? topic : webTopic(request), "web:" + message + ":" + offset);
+    }
+
+    static boolean isWebTopic(String topic) {
+        return topic.startsWith("web:");
+    }
+
+    private static String webTopic(String request) {
+        return "web:" + request;
     }
 
     @Override

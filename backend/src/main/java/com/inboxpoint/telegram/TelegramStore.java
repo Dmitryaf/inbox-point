@@ -138,6 +138,11 @@ final class TelegramStore implements AutoCloseable {
                 """, request.id(), request.channel(), Long.toString(request.conversation()), request.topic(), now.toString(), displayName);
     }
 
+    boolean switchTopic(String id, String current, String replacement) throws SQLException {
+        return update("UPDATE support_requests SET operator_topic_id = ? WHERE id = ? AND operator_topic_id = ?",
+                replacement, id, current) == 1;
+    }
+
     void changeStatus(String id, boolean active, Instant now) throws SQLException {
         update("UPDATE support_requests SET status = ?, closed_at = ? WHERE id = ?",
                 active ? "active" : "closed", active ? null : now.toString(), id);
@@ -252,7 +257,7 @@ final class TelegramStore implements AutoCloseable {
                 SELECT r.id, r.channel, r.created_at, r.client_display_name, r.status,
                     MAX(m.created_at) AS latest_message_at
                 FROM support_requests r LEFT JOIN conversation_messages m ON m.request_id = r.id
-                WHERE r.status = 'active' GROUP BY r.id
+                WHERE r.status = 'active' AND r.operator_topic_id LIKE 'web:%' GROUP BY r.id
                 ORDER BY julianday(COALESCE(MAX(m.created_at), r.created_at)) DESC, r.id DESC LIMIT 50
                 """)) {
             var result = new ArrayList<TelegramRuntime.InboxRequest>();

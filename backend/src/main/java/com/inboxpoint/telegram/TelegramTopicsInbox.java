@@ -5,8 +5,8 @@ record TelegramTopicsInbox(TelegramBotApi api, long group) implements OperatorIn
         return Long.toString(api.createForumTopic(group, title));
     }
 
-    public String relay(String topic, String message, int offset, String text) throws TelegramBotApi.RequestFailed, InterruptedException {
-        return Long.toString(api.sendMessage(group, Long.parseLong(topic), text));
+    public Relay relay(String request, String topic, String message, int offset, String text) throws TelegramBotApi.RequestFailed, InterruptedException {
+        return new Relay(topic, Long.toString(api.sendMessage(group, Long.parseLong(topic), text)));
     }
 
     @Override
@@ -18,7 +18,7 @@ record TelegramTopicsInbox(TelegramBotApi api, long group) implements OperatorIn
                 ? "Не отправляйте ответ повторно вслепую. Владелец должен уточнить получение и разрешить инцидент в /ops."
                 : "Владелец может повторить доставку в /ops.";
         var reference = delivery.operatorMessageId() == null ? "" : "\nСообщение преподавателя: " + delivery.operatorMessageId();
-        relay(delivery.operatorTopicId(), delivery.id(), 0, heading + "\n\nКанал: " + delivery.channel() + reference + "\n\n" + next);
+        relay(delivery.requestId(), delivery.operatorTopicId(), delivery.id(), 0, heading + "\n\nКанал: " + delivery.channel() + reference + "\n\n" + next);
     }
 
     public void close(String topic) throws TelegramBotApi.RequestFailed, InterruptedException {

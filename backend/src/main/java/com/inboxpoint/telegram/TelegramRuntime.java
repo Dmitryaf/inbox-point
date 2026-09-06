@@ -242,7 +242,8 @@ public final class TelegramRuntime {
 
     public List<InboxMessage> inboxMessages(String id) throws IOException, SQLException {
         try (var store = new TelegramStore(database)) {
-            return store.byId(id) == null ? null : store.operatorMessages(id);
+            var request = store.byId(id);
+            return request == null || !EmergencyOperatorInbox.isWebTopic(request.topic()) ? null : store.operatorMessages(id);
         }
     }
 
@@ -250,7 +251,7 @@ public final class TelegramRuntime {
             throws IOException, SQLException, InterruptedException {
         try (var store = new TelegramStore(database)) {
             var request = store.byId(id);
-            if (request == null) {
+            if (request == null || !EmergencyOperatorInbox.isWebTopic(request.topic())) {
                 return "missing";
             }
             if (!request.active()) {

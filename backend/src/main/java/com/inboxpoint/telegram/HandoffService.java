@@ -59,7 +59,7 @@ final class HandoffService {
             }
         }
         var latest = store.latestRequest(channel, chat);
-        if (latest != null && (request == null || !latest.id().equals(request.id()))) {
+        if (latest != null && !EmergencyOperatorInbox.isWebTopic(latest.topic()) && (request == null || !latest.id().equals(request.id()))) {
             try {
                 inbox.reopen(latest.topic());
                 relayChunks(latest, message, name, "Клиент:\n\n", text);
@@ -87,12 +87,23 @@ final class HandoffService {
             throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
         store.recordMessage(request.id(), "client_to_operator", message, sender, text, clock.instant());
         var prefix = firstPrefix;
+        var topic = request.topic();
         for (int start = 0; start < text.length();) {
             var capacity = MESSAGE_LIMIT - prefix.codePointCount(0, prefix.length());
             var size = Math.min(text.codePointCount(start, text.length()), capacity);
             var end = text.offsetByCodePoints(start, size);
-            var sent = inbox.relay(request.topic(), request.channel() + ":" + message, start, prefix + text.substring(start, end));
-            store.link(request.id(), "client_to_operator", message, sent, clock.instant());
+            var sent = inbox.relay(request.id(), topic, request.channel() + ":" + message, start,
+                    prefix + text.substring(start, end));
+            if (!topic.equals(sent.topic())) {
+                if (!store.switchTopic(request.id(), topic, sent.topic())) {
+                    var current = store.byId(request.id());
+                    if (current == null || !current.topic().equals(sent.topic())) {
+                        throw new SQLException("Operator inbox changed concurrently");
+                    }
+                }
+                topic = sent.topic();
+            }
+            store.link(request.id(), "client_to_operator", message, sent.messageId(), clock.instant());
             start = end;
             prefix = "Клиент (продолжение):\n\n";
         }
