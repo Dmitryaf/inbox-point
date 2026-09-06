@@ -60,7 +60,9 @@ export interface SupportRepository extends InboundEventStore {
     channel: ClientChannelKind,
     conversationId: string,
   ): SupportRequest | undefined;
-  findActiveOperatorRequests(limit: number): readonly OperatorRequestSummary[];
+  findActiveWebOperatorRequests(
+    limit: number,
+  ): readonly OperatorRequestSummary[];
   findConversationMessages(
     requestId: string,
     limit: number,
@@ -97,4 +99,9 @@ export interface SupportRepository extends InboundEventStore {
   reopenRequest(requestId: string): void;
   recordConversationMessage(message: ConversationMessage): void;
   retryFailedDelivery(deliveryId: string, retryAt: Date): boolean;
+  switchOperatorTopic(
+    requestId: string,
+    expectedTopicId: string,
+    nextTopicId: string,
+  ): boolean;
 }

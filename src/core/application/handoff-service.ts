@@ -7,6 +7,7 @@ import {
 } from '@/core/contracts/operator-inbox.js';
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
 import type { OperatorMessage } from '@/core/model/operator-message.js';
+import { isWebOperatorTopic } from '@/core/model/operator-topic.js';
 import type { SupportMessage } from '@/core/model/support-message.js';
 
 export interface HandoffServiceDependencies {
@@ -69,7 +70,10 @@ export class HandoffService {
       message.channel,
       message.conversationId,
     );
-    if (previousRequest?.status === 'closed') {
+    if (
+      previousRequest?.status === 'closed' &&
+      !isWebOperatorTopic(previousRequest.operatorTopicId)
+    ) {
       try {
         await this.operatorInbox.reopenRequest(previousRequest.operatorTopicId);
         this.repository.reopenRequest(previousRequest.id);
@@ -106,8 +110,21 @@ export class HandoffService {
     const relayed = await this.operatorInbox.relayCustomerMessage(
       request.operatorTopicId,
       message,
-      { initial },
+      { initial, requestId: request.id },
     );
+    if (relayed.operatorTopicId !== request.operatorTopicId) {
+      const switched = this.repository.switchOperatorTopic(
+        request.id,
+        request.operatorTopicId,
+        relayed.operatorTopicId,
+      );
+      if (!switched) {
+        const current = this.repository.findRequestById(request.id);
+        if (current?.operatorTopicId !== relayed.operatorTopicId) {
+          throw new Error('The operator surface changed concurrently');
+        }
+      }
+    }
     for (const operatorMessageId of relayed.operatorMessageIds) {
       this.repository.addMessageLink({
         clientMessageId: message.externalMessageId,

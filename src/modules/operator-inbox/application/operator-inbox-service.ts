@@ -1,5 +1,6 @@
 import type { HandoffRuntime } from '@/core/application/handoff-runtime.js';
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
+import { isWebOperatorTopic } from '@/core/model/operator-topic.js';
 import type { SupportRequest } from '@/core/model/support-request.js';
 
 export interface OperatorInboxRequestView {
@@ -68,16 +69,18 @@ export class OperatorInboxService {
   }
 
   public getActiveRequests(limit = 50): readonly OperatorInboxRequestView[] {
-    return this.repository.findActiveOperatorRequests(limit).map((request) => ({
-      channel: request.channel,
-      createdAt: request.createdAt,
-      ...(request.displayName ? { displayName: request.displayName } : {}),
-      id: request.id,
-      ...(request.latestMessageAt
-        ? { latestMessageAt: request.latestMessageAt }
-        : {}),
-      status: request.status,
-    }));
+    return this.repository
+      .findActiveWebOperatorRequests(limit)
+      .map((request) => ({
+        channel: request.channel,
+        createdAt: request.createdAt,
+        ...(request.displayName ? { displayName: request.displayName } : {}),
+        id: request.id,
+        ...(request.latestMessageAt
+          ? { latestMessageAt: request.latestMessageAt }
+          : {}),
+        status: request.status,
+      }));
   }
 
   public getMessages(
@@ -123,7 +126,7 @@ export class OperatorInboxService {
 
   private requireRequest(requestId: string): SupportRequest {
     const request = this.repository.findRequestById(requestId);
-    if (!request) {
+    if (!request || !isWebOperatorTopic(request.operatorTopicId)) {
       throw new OperatorRequestNotFoundError();
     }
     return request;

@@ -4,7 +4,9 @@ import { HandoffRuntime } from '@/core/application/handoff-runtime.js';
 import {
   type OpenOperatorRequest,
   type OperatorInbox,
+  type RelayCustomerMessageOptions,
 } from '@/core/contracts/operator-inbox.js';
+import type { SupportMessage } from '@/core/model/support-message.js';
 import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-support-repository.js';
 
 class FakeOperatorInbox implements OperatorInbox {
@@ -20,22 +22,32 @@ class FakeOperatorInbox implements OperatorInbox {
     request: OpenOperatorRequest,
   ): Promise<{ topicId: string }> {
     this.opened.push(request);
-    return Promise.resolve({ topicId: 'topic-1' });
+    return Promise.resolve({ topicId: `topic-${this.opened.length}` });
   }
 
   public notifyDeliveryFailure(): Promise<void> {
     return Promise.resolve();
   }
 
-  public relayCustomerMessage(): Promise<{
+  public relayCustomerMessage(
+    operatorTopicId: string,
+    _message: SupportMessage,
+    _options: RelayCustomerMessageOptions,
+  ): Promise<{
     operatorMessageIds: readonly string[];
+    operatorTopicId: string;
   }> {
+    void _message;
+    void _options;
     this.relayCount += 1;
     if (this.failNextRelay) {
       this.failNextRelay = false;
       return Promise.reject(new Error('Telegram unavailable'));
     }
-    return Promise.resolve({ operatorMessageIds: ['operator-message-1'] });
+    return Promise.resolve({
+      operatorMessageIds: ['operator-message-1'],
+      operatorTopicId,
+    });
   }
 
   public reopenRequest(): Promise<void> {
@@ -146,7 +158,7 @@ describe('HandoffRuntime', () => {
     expect(repository.getDeliverySummary()).toEqual({ failed: 0, pending: 0 });
   });
 
-  it('keeps the request in the web inbox when Telegram relay fails', async () => {
+  it('moves a failed Telegram conversation exclusively to web until it closes', async () => {
     const repository = new SqliteSupportRepository(':memory:');
     repositories.push(repository);
     const errors: string[] = [];
@@ -172,12 +184,75 @@ describe('HandoffRuntime', () => {
     });
 
     const request = repository.findActiveRequest('vk', '101');
-    expect(request?.operatorTopicId).toBe('topic-1');
+    expect(request?.operatorTopicId).toBe(`web:${request?.id}`);
     expect(repository.findConversationMessages(request?.id ?? '', 20)).toEqual([
       expect.objectContaining({ text: 'Question during outage' }),
     ]);
     expect(errors).toContain(
       'Operator inbox relay failed; using emergency web inbox',
     );
+
+    await runtime.handleClientMessage('vk-event-2', {
+      channel: 'vk',
+      conversationId: '101',
+      displayName: 'VK Customer',
+      externalMessageId: 'vk-message-2',
+      receivedAt: new Date('2026-09-06T12:01:00.000Z'),
+      text: 'Follow-up during outage',
+    });
+    expect(inbox.relayCount).toBe(1);
+
+    await runtime.handleOperatorMessage('telegram-reply-after-takeover', {
+      externalMessageId: 'telegram-operator-message-1',
+      operatorTopicId: 'topic-1',
+      receivedAt: new Date('2026-09-06T12:02:00.000Z'),
+      text: 'Stale Telegram answer',
+    });
+    expect(
+      repository.findPendingDeliveries(
+        new Date('2100-01-01T00:00:00.000Z'),
+        10,
+      ),
+    ).toHaveLength(0);
+
+    const webTopicId = request?.operatorTopicId;
+    if (!request || !webTopicId) {
+      throw new Error('Expected a web-owned request');
+    }
+    const webReply = {
+      externalMessageId: 'web:reply-1',
+      operatorTopicId: webTopicId,
+      receivedAt: new Date('2026-09-06T12:03:00.000Z'),
+      text: 'Web answer',
+    };
+    await runtime.handleWebOperatorMessage('web-reply-event-1', webReply);
+    await runtime.handleWebOperatorMessage('web-reply-event-1', webReply);
+    expect(
+      repository.findPendingDeliveries(
+        new Date('2100-01-01T00:00:00.000Z'),
+        10,
+      ),
+    ).toEqual([expect.objectContaining({ text: 'Web answer' })]);
+
+    await runtime.handleWebOperatorMessage('web-close-event-1', {
+      externalMessageId: 'web:close-1',
+      operatorTopicId: webTopicId,
+      receivedAt: new Date('2026-09-06T12:04:00.000Z'),
+      text: '/close',
+    });
+    await runtime.handleClientMessage('vk-event-3', {
+      channel: 'vk',
+      conversationId: '101',
+      displayName: 'VK Customer',
+      externalMessageId: 'vk-message-3',
+      receivedAt: new Date('2026-09-06T12:05:00.000Z'),
+      text: 'New question after recovery',
+    });
+
+    const nextRequest = repository.findActiveRequest('vk', '101');
+    expect(nextRequest).toMatchObject({ operatorTopicId: 'topic-2' });
+    expect(nextRequest?.id).not.toBe(request.id);
+    expect(inbox.opened).toHaveLength(2);
+    expect(inbox.relayCount).toBe(2);
   });
 });

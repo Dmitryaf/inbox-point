@@ -50,7 +50,10 @@ export class TelegramTopicsInbox
     operatorTopicId: string,
     message: SupportMessage,
     options: RelayCustomerMessageOptions,
-  ): Promise<{ operatorMessageIds: readonly string[] }> {
+  ): Promise<{
+    operatorMessageIds: readonly string[];
+    operatorTopicId: string;
+  }> {
     try {
       const operatorMessageIds: string[] = [];
       for (const text of formatCustomerMessages(message, options)) {
@@ -61,7 +64,7 @@ export class TelegramTopicsInbox
         });
         operatorMessageIds.push(String(sent.messageId));
       }
-      return { operatorMessageIds };
+      return { operatorMessageIds, operatorTopicId };
     } catch (error: unknown) {
       if (isUnavailableForumTopicError(error)) {
         throw new OperatorConversationUnavailableError();

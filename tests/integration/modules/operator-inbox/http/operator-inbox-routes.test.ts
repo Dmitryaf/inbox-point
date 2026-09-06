@@ -50,6 +50,15 @@ describe('operator inbox routes', () => {
     if (!requestId) {
       throw new Error('Expected an active request');
     }
+    repository.createRequest({
+      channel: 'telegram',
+      conversationId: '202',
+      createdAt: new Date('2026-09-06T12:00:30.000Z'),
+      displayName: 'Telegram Customer',
+      id: 'telegram-request',
+      operatorTopicId: 'topic-1',
+      status: 'active',
+    });
     registerOperationsRoutes(
       app,
       createMonitoringService(),
@@ -90,6 +99,12 @@ describe('operator inbox routes', () => {
       method: 'GET',
       remoteAddress: '192.0.2.10',
       url: `/api/ops/inbox/requests/${requestId}/messages`,
+    });
+    const telegramMessages = await app.inject({
+      headers: { cookie },
+      method: 'GET',
+      remoteAddress: '192.0.2.10',
+      url: '/api/ops/inbox/requests/telegram-request/messages',
     });
     const crossOriginReply = await app.inject({
       headers: {
@@ -170,6 +185,7 @@ describe('operator inbox routes', () => {
     });
     expect(messages.body).not.toContain('externalMessageId');
     expect(messages.body).not.toContain('requestId');
+    expect(telegramMessages.statusCode).toBe(404);
     expect(crossOriginReply.statusCode).toBe(403);
     expect(reply.json()).toEqual({ queued: true });
     expect(duplicateReply.json()).toEqual({ queued: true });
