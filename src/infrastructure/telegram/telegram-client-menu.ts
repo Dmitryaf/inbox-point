@@ -1,6 +1,7 @@
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
 import {
   acceptingClientIntakePolicy,
+  pausedClientIntakeMessage,
   type ClientIntakePolicy,
 } from '@/core/contracts/client-intake-policy.js';
 import {
@@ -125,7 +126,7 @@ function resolveMenuResponse(
   if (paused && !hasActiveRequest) {
     return {
       replyMarkup: mainMenu,
-      text: createPausedMessage(),
+      text: pausedClientIntakeMessage,
     };
   }
 
@@ -213,14 +214,6 @@ function createMainMenu(
     keyboard,
     resize_keyboard: true,
   };
-}
-
-function createPausedMessage(): string {
-  return [
-    'Бот временно не принимает новые обращения.',
-    '',
-    'Используйте резервный способ связи, указанный в описании бота.',
-  ].join('\n');
 }
 
 function createButtonRows(

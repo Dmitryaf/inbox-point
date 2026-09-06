@@ -5,14 +5,18 @@ import { HandoffService } from '@/core/application/handoff-service.js';
 import {
   ClientInformationCatalog,
   faqButton,
+  teacherButton,
 } from '@/core/application/client-information.js';
+import {
+  pausedClientIntakeMessage,
+  type ClientIntakePolicy,
+} from '@/core/contracts/client-intake-policy.js';
 import type {
   OpenOperatorRequest,
   OperatorInbox,
   RelayCustomerMessageOptions,
 } from '@/core/contracts/operator-inbox.js';
 import type { SupportMessage } from '@/core/model/support-message.js';
-import type { ClientIntakePolicy } from '@/core/contracts/client-intake-policy.js';
 import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-support-repository.js';
 
 import type {
@@ -210,7 +214,39 @@ describe('VK handoff integration', () => {
     await router.route(createMessageEvent());
 
     expect(inbox.opened).toHaveLength(0);
-    expect(gateway.sent).toHaveLength(0);
+    expect(gateway.sent).toHaveLength(1);
+    expect(gateway.sent[0]?.text).toBe(pausedClientIntakeMessage);
+    expect(gateway.sent[0]?.keyboard).toBeUndefined();
+  });
+
+  it('keeps configured VK information available while intake is paused', async () => {
+    information.replace({
+      customSections: [{ label: 'Как добраться', text: 'Вход со двора.' }],
+      schedule: 'Понедельник 19:00',
+    });
+    vkPaused = true;
+
+    await router.route(createMessageEvent({ text: 'Расписание' }));
+    await router.route(
+      createMessageEvent({
+        conversation_message_id: 8,
+        id: 502,
+        text: 'Как добраться',
+      }),
+    );
+
+    expect(inbox.opened).toHaveLength(0);
+    expect(gateway.sent.map((message) => message.text)).toEqual([
+      'Расписание\n\n• Понедельник 19:00',
+      'Вход со двора.',
+    ]);
+    const labels = gateway.sent[0]?.keyboard?.buttons
+      .flat()
+      .map((button) => button.action.label);
+    expect(labels).toEqual(
+      expect.arrayContaining(['Расписание', 'Как добраться']),
+    );
+    expect(labels).not.toContain(teacherButton);
   });
 
   it('continues an open VK conversation after intake is paused', async () => {
@@ -224,10 +260,20 @@ describe('VK handoff integration', () => {
         text: 'Уточнение',
       }),
     );
+    await router.route(
+      createMessageEvent({
+        conversation_message_id: 9,
+        id: 503,
+        text: 'Расписание',
+      }),
+    );
 
     expect(inbox.opened).toHaveLength(1);
     expect(inbox.relayed).toHaveLength(2);
     expect(inbox.relayed[1]?.text).toBe('Уточнение');
+    expect(gateway.sent.at(-1)?.text).toBe(
+      'Расписание пока не добавлено. Вы можете задать вопрос преподавателю.',
+    );
   });
 
   it('shows and resolves the built-in FAQ without opening a request', async () => {
