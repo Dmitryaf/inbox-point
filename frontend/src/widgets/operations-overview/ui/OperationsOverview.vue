@@ -7,10 +7,14 @@ import ChannelStatusCard from './ChannelStatusCard.vue';
 import DeliveryStatusCard from './DeliveryStatusCard.vue';
 
 const props = defineProps<{
+  deliveryControlPending: 'pause' | 'resume' | undefined;
   pendingDeliveryId: string | undefined;
   status: OperationsStatus;
 }>();
-defineEmits<{ retryDelivery: [deliveryId: string] }>();
+defineEmits<{
+  changeDeliveryMode: [mode: 'pause' | 'resume'];
+  retryDelivery: [deliveryId: string];
+}>();
 
 const observedAt = computed(() =>
   new Intl.DateTimeFormat('ru-RU', {
@@ -18,6 +22,17 @@ const observedAt = computed(() =>
     timeStyle: 'medium',
   }).format(new Date(props.status.observedAt)),
 );
+const overallLabel = computed(() => {
+  if (props.status.state === 'healthy') {
+    return 'Сервис работает';
+  }
+  if (props.status.state === 'attention') {
+    return 'Нужно проверить';
+  }
+  return props.status.outbound.mode === 'paused'
+    ? 'Доставка ответов остановлена'
+    : 'Приём обращений приостановлен';
+});
 </script>
 
 <template>
@@ -32,13 +47,7 @@ const observedAt = computed(() =>
       <div>
         <p class="eyebrow">Общее состояние</p>
         <h2 id="overview-title">
-          {{
-            status.state === 'healthy'
-              ? 'Сервис работает'
-              : status.state === 'maintenance'
-                ? 'Приём обращений приостановлен'
-                : 'Нужно проверить'
-          }}
+          {{ overallLabel }}
         </h2>
       </div>
       <dl class="summary-facts">
@@ -66,7 +75,10 @@ const observedAt = computed(() =>
       />
       <DeliveryStatusCard
         :deliveries="status.deliveries"
+        :delivery-control-pending="deliveryControlPending"
+        :outbound="status.outbound"
         :pending-delivery-id="pendingDeliveryId"
+        @change-delivery-mode="$emit('changeDeliveryMode', $event)"
         @retry="$emit('retryDelivery', $event)"
       />
     </div>

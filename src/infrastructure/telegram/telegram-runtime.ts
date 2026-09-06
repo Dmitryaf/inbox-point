@@ -13,6 +13,10 @@ import type { ClientChannel } from '@/core/contracts/client-channel.js';
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
 import type { DeliveryWorkerActivityReporter } from '@/core/contracts/delivery-worker-activity-reporter.js';
 import {
+  activeOutboundDeliveryPolicy,
+  type OutboundDeliveryPolicy,
+} from '@/core/contracts/outbound-delivery-policy.js';
+import {
   acceptingClientIntakePolicy,
   type ClientIntakePolicy,
 } from '@/core/contracts/client-intake-policy.js';
@@ -49,6 +53,7 @@ export class TelegramRuntime implements TelegramRuntimeControl {
     private readonly activity: ChannelActivityReporter = silentChannelActivityReporter,
     private readonly deliveryActivity?: DeliveryWorkerActivityReporter,
     private readonly intakePolicy: ClientIntakePolicy = acceptingClientIntakePolicy,
+    private readonly deliveryPolicy: OutboundDeliveryPolicy = activeOutboundDeliveryPolicy,
   ) {}
 
   public get running(): boolean {
@@ -77,6 +82,7 @@ export class TelegramRuntime implements TelegramRuntimeControl {
             ? `Telegram delivery ${context.deliveryId} failed permanently after ${context.attempt} attempts`
             : `Telegram delivery ${context.deliveryId} failed on attempt ${context.attempt}; retrying`,
         ),
+      policy: this.deliveryPolicy,
       repository: this.repository,
     });
     const poller = new TelegramPoller(

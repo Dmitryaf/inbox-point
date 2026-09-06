@@ -68,6 +68,11 @@ describe('service control routes', () => {
       payload: {},
       url: '/api/manage/service-control/telegram/resume',
     });
+    const deliveryControl = await app.inject({
+      method: 'POST',
+      payload: {},
+      url: '/api/manage/service-control/delivery/pause',
+    });
 
     expect(paused.statusCode).toBe(200);
     expect(paused.json()).toMatchObject({
@@ -81,6 +86,7 @@ describe('service control routes', () => {
     expect(resumed.json()).toMatchObject({
       channels: { telegram: { mode: 'active' } },
     });
+    expect(deliveryControl.statusCode).toBe(404);
   });
 });
 

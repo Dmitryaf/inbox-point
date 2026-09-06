@@ -27,6 +27,17 @@ describe('OperationsDashboardPage', () => {
             }),
           );
         }
+        if (url.endsWith('/service-control/delivery/pause')) {
+          return Promise.resolve(
+            response({
+              channels: {
+                telegram: { mode: 'paused' },
+                vk: { mode: 'active' },
+              },
+              delivery: { mode: 'paused' },
+            }),
+          );
+        }
         return Promise.resolve(response(attentionOperationsStatus()));
       }),
     );
@@ -74,6 +85,20 @@ describe('OperationsDashboardPage', () => {
     ).toBeGreaterThan(1);
     expect(wrapper.text()).toContain(
       'Ответ поставлен в очередь повторной доставки.',
+    );
+
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Остановить доставку')
+      ?.trigger('click');
+    await flushPromises();
+
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/ops/service-control/delivery/pause',
+      expect.objectContaining({ method: 'POST' }),
+    );
+    expect(wrapper.text()).toContain(
+      'Исходящая доставка остановлена. Очередь сохранена.',
     );
 
     wrapper.unmount();

@@ -10,6 +10,10 @@ import {
 } from '@/core/contracts/delivery-worker-activity-reporter.js';
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
 import {
+  activeOutboundDeliveryPolicy,
+  type OutboundDeliveryPolicy,
+} from '@/core/contracts/outbound-delivery-policy.js';
+import {
   DeliveryFailurePolicy,
   type DeliveryFailureContext,
 } from './delivery-failure-policy.js';
@@ -22,6 +26,7 @@ export interface DeliveryWorkerDependencies {
   createId?: () => string;
   maxAttempts?: number;
   onError?: (error: unknown, context: DeliveryFailureContext) => void;
+  policy?: OutboundDeliveryPolicy;
   repository: SupportRepository;
   retryBaseDelayMs?: number;
 }
@@ -32,6 +37,7 @@ export class DeliveryWorker {
   private readonly clock: () => Date;
   private readonly createId: () => string;
   private readonly failurePolicy: DeliveryFailurePolicy;
+  private readonly policy: OutboundDeliveryPolicy;
   private readonly repository: SupportRepository;
 
   public constructor(dependencies: DeliveryWorkerDependencies) {
@@ -43,6 +49,7 @@ export class DeliveryWorker {
     this.clock = dependencies.clock ?? (() => new Date());
     this.createId = dependencies.createId ?? randomUUID;
     this.repository = dependencies.repository;
+    this.policy = dependencies.policy ?? activeOutboundDeliveryPolicy;
     this.failurePolicy = new DeliveryFailurePolicy({
       clock: this.clock,
       maxAttempts: dependencies.maxAttempts ?? 5,
@@ -57,8 +64,14 @@ export class DeliveryWorker {
   }
 
   public async processPending(): Promise<number> {
+    if (this.policy.isDeliveryPaused()) {
+      return 0;
+    }
     const deliveries = this.repository.findPendingDeliveries(this.clock(), 25);
     for (const delivery of deliveries) {
+      if (this.policy.isDeliveryPaused()) {
+        break;
+      }
       if (!this.repository.claimDeliveryAttempt(delivery.id, this.clock())) {
         continue;
       }

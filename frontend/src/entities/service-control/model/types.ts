@@ -8,6 +8,7 @@ export interface ChannelIntakeState {
 
 export interface ServiceControlState {
   channels: Record<ClientChannel, ChannelIntakeState>;
+  delivery: ChannelIntakeState;
 }
 
 export function parseServiceControlState(value: unknown): ServiceControlState {
@@ -16,8 +17,13 @@ export function parseServiceControlState(value: unknown): ServiceControlState {
   }
   const telegram = parseChannelState(value.channels.telegram);
   const vk = parseChannelState(value.channels.vk);
+  const delivery =
+    value.delivery === undefined
+      ? { mode: 'active' as const }
+      : parseChannelState(value.delivery);
   return {
     channels: { telegram, vk },
+    delivery,
   };
 }
 

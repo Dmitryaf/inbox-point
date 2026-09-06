@@ -26,9 +26,15 @@ export interface OperationsStatus {
     vk: ClientIntakeOperationsStatus;
   };
   observedAt: string;
+  outbound: OutboundDeliveryOperationsStatus;
   startedAt: string;
   state: 'attention' | 'healthy' | 'maintenance';
   uptimeSeconds: number;
+}
+
+export interface OutboundDeliveryOperationsStatus {
+  changedAt?: string;
+  mode: 'active' | 'paused';
 }
 
 export interface ClientIntakeOperationsStatus {
@@ -42,7 +48,7 @@ export interface DeliveryOperationsStatus {
   oldestPendingAgeSeconds?: number;
   oldestPendingAt?: string;
   pending: number;
-  state: 'backlog' | 'failed' | 'healthy' | 'stalled';
+  state: 'backlog' | 'failed' | 'healthy' | 'paused' | 'stalled';
   uncertain: number;
   worker: {
     lastCycleAt?: string;

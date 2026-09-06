@@ -4,6 +4,7 @@ import { onBeforeUnmount, ref, watch } from 'vue';
 import { useOperationsSession } from '@frontend/features/operations-auth/model/use-operations-session';
 import OperationsLoginForm from '@frontend/features/operations-auth/ui/OperationsLoginForm.vue';
 import ClientIntakeControl from '@frontend/features/control-client-intake/ui/ClientIntakeControl.vue';
+import { useOutboundDeliveryControl } from '@frontend/features/control-outbound-delivery/model/use-outbound-delivery-control';
 import { useOperationsStatus } from '@frontend/features/refresh-status/model/use-operations-status';
 import { useDeliveryRetry } from '@frontend/features/retry-delivery/model/use-delivery-retry';
 import OperationsOverview from '@frontend/widgets/operations-overview/ui/OperationsOverview.vue';
@@ -14,6 +15,10 @@ const session = useOperationsSession();
 const operations = useOperationsStatus(session.expireSession);
 const intakeControl = ref<{ refresh: () => Promise<void> }>();
 const deliveryRetry = useDeliveryRetry(refreshAll, session.expireSession);
+const deliveryControl = useOutboundDeliveryControl(
+  refreshAll,
+  session.expireSession,
+);
 let refreshTimer: ReturnType<typeof setInterval> | undefined;
 
 watch(session.authenticated, (authenticated) => {
@@ -127,13 +132,17 @@ function stopAutomaticRefresh(): void {
 
       <AsyncMessage kind="error" :text="deliveryRetry.error.value" />
       <AsyncMessage kind="success" :text="deliveryRetry.notice.value" />
+      <AsyncMessage kind="error" :text="deliveryControl.error.value" />
+      <AsyncMessage kind="success" :text="deliveryControl.notice.value" />
 
       <OperationsOverview
         v-if="operations.status.value"
+        :delivery-control-pending="deliveryControl.pendingMode.value"
         :pending-delivery-id="
           deliveryRetry.pendingDeliveryId.value || undefined
         "
         :status="operations.status.value"
+        @change-delivery-mode="deliveryControl.change"
         @retry-delivery="deliveryRetry.retry"
       />
       <section v-else class="card loading-card">

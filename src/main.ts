@@ -62,6 +62,7 @@ async function start(): Promise<void> {
     channelActivity,
     deliveryActivity,
     serviceControl,
+    serviceControl,
   );
   const vkRuntime = new VkRuntime(
     telegramRuntime,
@@ -149,6 +150,7 @@ async function start(): Promise<void> {
       deliveryActivity: () => deliveryActivity.snapshot(),
       deliveryFailures: () => repository.findFailedDeliveries(20),
       deliverySummary: () => repository.getDeliverySummary(),
+      deliveryControlStatus: () => serviceControl.getState().delivery,
       intakeStatus: () => serviceControl.getState().channels,
       startedAt,
       telegramStatus: () => setup.status(),

@@ -22,6 +22,7 @@ export function registerServiceControlRoutes(
   serviceControl: ServiceControlService,
   access: ServiceControlRouteAccess,
   basePath = '/api/manage/service-control',
+  allowDeliveryControl = false,
 ): void {
   app.get(basePath, { preHandler: access.requireAuthorization }, () =>
     serviceControl.getState(),
@@ -68,6 +69,41 @@ export function registerServiceControlRoutes(
       }
     },
   );
+
+  if (allowDeliveryControl) {
+    registerDeliveryControlRoutes(app, serviceControl, access, basePath);
+  }
+}
+
+function registerDeliveryControlRoutes(
+  app: FastifyInstance,
+  serviceControl: ServiceControlService,
+  access: ServiceControlRouteAccess,
+  basePath: string,
+): void {
+  for (const mode of ['pause', 'resume'] as const) {
+    app.post(
+      `${basePath}/delivery/${mode}`,
+      {
+        preHandler: [access.requireAuthorization, access.requireSameOrigin],
+      },
+      async (_request, reply) => {
+        try {
+          return mode === 'pause'
+            ? await serviceControl.pauseDelivery()
+            : await serviceControl.resumeDelivery();
+        } catch (error: unknown) {
+          app.log.error({ err: error }, 'Outbound delivery control failed');
+          return reply.code(500).send({
+            message:
+              mode === 'pause'
+                ? 'Не удалось остановить исходящую доставку.'
+                : 'Не удалось возобновить исходящую доставку.',
+          });
+        }
+      },
+    );
+  }
 }
 
 function parseChannel(params: unknown): ClientChannelKind | undefined {

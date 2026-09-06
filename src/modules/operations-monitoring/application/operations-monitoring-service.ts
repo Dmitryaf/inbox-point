@@ -20,6 +20,7 @@ export interface OperationsMonitoringDependencies {
   deliveryActivity: () => DeliveryWorkerActivitySnapshot;
   deliveryFailures?: () => readonly FailedDelivery[];
   deliverySummary: () => DeliverySummary;
+  deliveryControlStatus?: () => ServiceControlState['delivery'];
   intakeStatus?: () => ServiceControlState['channels'];
   pendingDeliveryStaleAfterMs?: number;
   pollStaleAfterMs?: number;
@@ -44,6 +45,9 @@ export class OperationsMonitoringService {
 
   public getStatus(): OperationsStatus {
     const observedAt = this.clock();
+    const outbound = this.dependencies.deliveryControlStatus?.() ?? {
+      mode: 'active' as const,
+    };
     const deliveryStatus = mapDeliveryStatus(
       this.dependencies.deliverySummary(),
       this.dependencies.deliveryActivity(),
@@ -55,6 +59,8 @@ export class OperationsMonitoringService {
       incidents: (this.dependencies.deliveryFailures?.() ?? []).map(
         mapDeliveryIncident,
       ),
+      state:
+        outbound.mode === 'paused' ? ('paused' as const) : deliveryStatus.state,
     };
     const telegram = mapChannelStatus(
       this.dependencies.telegramStatus(),
@@ -71,7 +77,7 @@ export class OperationsMonitoringService {
       this.pollStaleAfterMs,
     );
     const needsAttention =
-      deliveries.state !== 'healthy' ||
+      (deliveries.state !== 'healthy' && deliveries.state !== 'paused') ||
       channelNeedsAttention(telegram) ||
       channelNeedsAttention(vk);
     const intake = this.dependencies.intakeStatus?.() ?? {
@@ -79,13 +85,16 @@ export class OperationsMonitoringService {
       vk: { mode: 'active' as const },
     };
     const maintenance =
-      intake.telegram.mode === 'paused' || intake.vk.mode === 'paused';
+      intake.telegram.mode === 'paused' ||
+      intake.vk.mode === 'paused' ||
+      outbound.mode === 'paused';
 
     return {
       channels: { telegram, vk },
       deliveries,
       intake,
       observedAt: observedAt.toISOString(),
+      outbound,
       startedAt: this.dependencies.startedAt.toISOString(),
       state: needsAttention
         ? 'attention'

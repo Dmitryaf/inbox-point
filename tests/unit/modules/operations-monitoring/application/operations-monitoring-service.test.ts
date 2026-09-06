@@ -53,6 +53,7 @@ describe('OperationsMonitoringService', () => {
         vk: { mode: 'active' },
       },
       observedAt: '2026-09-04T12:01:05.000Z',
+      outbound: { mode: 'active' },
       startedAt: '2026-09-04T12:00:00.000Z',
       state: 'healthy',
       uptimeSeconds: 65,
@@ -87,6 +88,35 @@ describe('OperationsMonitoringService', () => {
         telegram: { mode: 'paused' },
         vk: { mode: 'active' },
       },
+      state: 'maintenance',
+    });
+    expect(monitoring.isReady()).toBe(true);
+  });
+
+  it('reports a paused delivery queue as maintenance instead of backlog', () => {
+    const monitoring = new OperationsMonitoringService({
+      channelActivity: () => ({
+        lastSuccessfulPollAt: new Date('2026-09-04T12:10:00.000Z'),
+      }),
+      clock: () => new Date('2026-09-04T12:10:00.000Z'),
+      deliveryActivity: () => ({ running: true }),
+      deliveryControlStatus: () => ({
+        changedAt: '2026-09-04T12:02:00.000Z',
+        mode: 'paused',
+      }),
+      deliverySummary: () => ({
+        failed: 0,
+        oldestPendingAt: new Date('2026-09-04T12:00:00.000Z'),
+        pending: 3,
+      }),
+      startedAt: new Date('2026-09-04T12:00:00.000Z'),
+      telegramStatus: () => ({ connected: true, source: 'local' }),
+      vkStatus: () => ({ connected: true, source: 'local' }),
+    });
+
+    expect(monitoring.getStatus()).toMatchObject({
+      deliveries: { pending: 3, state: 'paused' },
+      outbound: { mode: 'paused' },
       state: 'maintenance',
     });
     expect(monitoring.isReady()).toBe(true);

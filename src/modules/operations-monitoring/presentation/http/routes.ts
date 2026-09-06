@@ -41,6 +41,7 @@ export function registerOperationsRoutes(
       serviceControl,
       routeAccess,
       '/api/ops/service-control',
+      true,
     );
   }
 }

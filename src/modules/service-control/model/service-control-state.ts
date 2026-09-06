@@ -10,6 +10,12 @@ export interface ServiceControlState {
     telegram: ChannelIntakeState;
     vk: ChannelIntakeState;
   };
+  delivery: OutboundDeliveryState;
+}
+
+export interface OutboundDeliveryState {
+  changedAt?: string;
+  mode: ClientIntakeMode;
 }
 
 export function createDefaultServiceControlState(): ServiceControlState {
@@ -18,6 +24,7 @@ export function createDefaultServiceControlState(): ServiceControlState {
       telegram: { mode: 'active' },
       vk: { mode: 'active' },
     },
+    delivery: { mode: 'active' },
   };
 }
 
@@ -29,5 +36,6 @@ export function copyServiceControlState(
       telegram: { ...state.channels.telegram },
       vk: { ...state.channels.vk },
     },
+    delivery: { ...state.delivery },
   };
 }

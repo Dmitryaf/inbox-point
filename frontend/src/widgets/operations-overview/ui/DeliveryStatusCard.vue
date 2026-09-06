@@ -3,14 +3,23 @@ import { computed } from 'vue';
 
 import { formatUptime } from '@frontend/entities/operations/lib/status-format';
 import type { OperationsStatus } from '@frontend/entities/operations/model/types';
+import OutboundDeliveryControl from './OutboundDeliveryControl.vue';
 
 const props = defineProps<{
   deliveries: OperationsStatus['deliveries'];
+  deliveryControlPending: 'pause' | 'resume' | undefined;
+  outbound: OperationsStatus['outbound'];
   pendingDeliveryId: string | undefined;
 }>();
-defineEmits<{ retry: [deliveryId: string] }>();
+defineEmits<{
+  changeDeliveryMode: [mode: 'pause' | 'resume'];
+  retry: [deliveryId: string];
+}>();
 
 const state = computed(() => {
+  if (props.deliveries.state === 'paused') {
+    return { label: 'Доставка остановлена', tone: 'neutral' };
+  }
   if (props.deliveries.state === 'failed') {
     return { label: 'Есть ошибки', tone: 'attention' };
   }
@@ -61,6 +70,11 @@ function formatCreatedAt(value: string): string {
         <dd>{{ formatUptime(deliveries.oldestPendingAgeSeconds) }}</dd>
       </div>
     </dl>
+    <OutboundDeliveryControl
+      :outbound="outbound"
+      :pending="deliveryControlPending"
+      @change="$emit('changeDeliveryMode', $event)"
+    />
     <section
       v-if="deliveries.incidents.length > 0"
       class="delivery-incidents"
