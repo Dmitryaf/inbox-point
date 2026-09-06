@@ -62,12 +62,30 @@ final class HandoffRuntime {
             var worker = new TelegramDeliveryWorker(store, telegram::get, Clock.systemUTC(), vk, paused);
             while (!Thread.currentThread().isInterrupted()) {
                 lastCycle = Instant.now();
-                Thread.sleep(Duration.ofMillis(worker.runOnce() > 0 ? 100 : 1000));
+                var processed = worker.runOnce();
+                notifyFailures(store, inbox.get(), Clock.systemUTC());
+                Thread.sleep(Duration.ofMillis(processed > 0 ? 100 : 1000));
             }
         } catch (InterruptedException stopping) {
             Thread.currentThread().interrupt();
         } catch (IOException | SQLException failure) {
             LoggerFactory.getLogger(HandoffRuntime.class).warn("Delivery worker stopped");
+        }
+    }
+
+    static void notifyFailures(TelegramStore store, OperatorInbox target, Clock clock)
+            throws SQLException, InterruptedException {
+        if (target == null) {
+            return;
+        }
+        for (var failure : store.unnotified(clock.instant())) {
+            try {
+                target.notifyFailure(failure);
+            } catch (IOException unavailable) {
+                store.notificationRetry(failure.id(), clock.instant().plusSeconds(30));
+                continue;
+            }
+            store.notified(failure.id(), clock.instant());
         }
     }
 

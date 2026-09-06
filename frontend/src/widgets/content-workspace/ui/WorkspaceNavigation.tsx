@@ -4,7 +4,7 @@ import {
 } from '@frontend/shared/lib/component-model';
 
 import { renderWorkspaceNavigationPart1 } from './WorkspaceNavigation.part1';
-import { renderWorkspaceNavigationPart2 } from './WorkspaceNavigation.part2';
+import { renderWorkspaceNavigationPart3 } from './WorkspaceNavigation.part3';
 import {
   createComponentModel,
   componentDefaults,
@@ -25,7 +25,7 @@ export default function WorkspaceNavigation($incomingProps: ComponentProps) {
   return (
     <ModelScopeProvider scope={$scope}>
       {renderWorkspaceNavigationPart1($state, $props)}
-      {renderWorkspaceNavigationPart2($state, $props)}
+      {renderWorkspaceNavigationPart3($state, $props)}
     </ModelScopeProvider>
   );
 }

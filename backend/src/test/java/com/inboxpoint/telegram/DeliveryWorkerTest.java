@@ -18,6 +18,33 @@ class DeliveryWorkerTest {
     Path directory;
 
     @Test
+    void sendsOneOperatorNoticeAfterTheRetryDelayWithoutRequeuingTheClientReply() throws Exception {
+        var time = Instant.parse("2026-09-01T08:00:00Z");
+        var sends = new AtomicInteger();
+        try (var server = new TelegramTestServer(request -> {
+            assertThat(request.body().path("message_thread_id").asLong()).isEqualTo(42);
+            assertThat(request.body().path("text").asString()).contains("/ops");
+            return sends.incrementAndGet() == 1 ? new TelegramTestServer.Response(429, "{\"ok\":false,\"error_code\":429}")
+                    : TelegramTestServer.Response.message(501);
+        }); var client = HttpClient.newHttpClient(); var store = new TelegramStore(directory.resolve("notices.sqlite"))) {
+            var api = new TelegramBotApi(client, server.origin(), TelegramTestServer.TOKEN, Duration.ofSeconds(3));
+            var inbox = new TelegramTopicsInbox(api, -100123);
+            var request = new TelegramStore.Request("question", 123, 42, true, "telegram");
+            store.open(request, time);
+            store.queue(request, "notice", 703, "Answer", time);
+            store.failed("operator:notice", true, "timeout");
+            HandoffRuntime.notifyFailures(store, inbox, Clock.fixed(time, ZoneOffset.UTC));
+            HandoffRuntime.notifyFailures(store, inbox, Clock.fixed(time.plusSeconds(29), ZoneOffset.UTC));
+            assertThat(sends).hasValue(1);
+            HandoffRuntime.notifyFailures(store, inbox, Clock.fixed(time.plusSeconds(30), ZoneOffset.UTC));
+            HandoffRuntime.notifyFailures(store, inbox, Clock.fixed(time.plusSeconds(60), ZoneOffset.UTC));
+            assertThat(sends).hasValue(2);
+            assertThat(store.pending(time.plusSeconds(60), false)).isEmpty();
+            assertThat(store.summary().uncertain()).isEqualTo(1);
+        }
+    }
+
+    @Test
     void recordsAConfirmedOutcomeOnceAndOnlyRequeuesIfTheClientDidNotReceiveIt() throws Exception {
         var time = Instant.parse("2026-09-01T08:00:00Z");
         try (var store = new TelegramStore(directory.resolve("resolution.sqlite"))) {

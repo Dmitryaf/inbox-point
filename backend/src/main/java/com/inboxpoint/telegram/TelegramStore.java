@@ -47,6 +47,8 @@ final class TelegramStore implements AutoCloseable {
             ensureColumn("deliveries", "manual_resolution",
                     "TEXT CHECK (manual_resolution IN ('confirmed_received', 'confirmed_not_received'))");
             ensureColumn("deliveries", "resolved_at", "TEXT");
+            ensureColumn("deliveries", "operator_notified_at", "TEXT");
+            ensureColumn("deliveries", "notification_next_attempt_at", "TEXT");
             ensureColumn("deliveries", "attempt_started_at", "TEXT");
             statement.execute("UPDATE deliveries SET outcome_unknown = 1 WHERE last_error = 'Uncertain Telegram result' "
                     + "AND status = 'failed' AND outcome_unknown = 0");
@@ -274,7 +276,8 @@ final class TelegramStore implements AutoCloseable {
 
     void failed(String key, boolean uncertain, String reason) throws SQLException {
         update("""
-                UPDATE deliveries SET status = 'failed', attempts = attempts + 1, last_error = ?, outcome_unknown = ?, attempt_started_at = NULL
+                UPDATE deliveries SET status = 'failed', attempts = attempts + 1, last_error = ?, outcome_unknown = ?, attempt_started_at = NULL,
+                    operator_notified_at = NULL, notification_next_attempt_at = NULL
                 WHERE idempotency_key = ?
                 """, reason, uncertain ? 1 : 0, key);
     }
@@ -287,12 +290,23 @@ final class TelegramStore implements AutoCloseable {
     }
 
     List<TelegramRuntime.DeliveryIncident> incidents() throws SQLException {
-        try (var statement = connection.createStatement(); var rows = statement.executeQuery("""
+        return incidents("WHERE d.status = 'failed' ORDER BY julianday(d.created_at) DESC, d.id LIMIT 20");
+    }
+
+    List<TelegramRuntime.DeliveryIncident> unnotified(Instant now) throws SQLException {
+        return incidents("""
+                WHERE d.status = 'failed' AND d.operator_notified_at IS NULL
+                    AND julianday(COALESCE(d.notification_next_attempt_at, d.created_at)) <= julianday(?)
+                ORDER BY julianday(d.created_at), d.id LIMIT 10
+                """, now.toString());
+    }
+
+    private List<TelegramRuntime.DeliveryIncident> incidents(String selection, Object... parameters) throws SQLException {
+        try (var statement = prepare("""
                 SELECT d.id, d.channel, d.attempts, d.created_at, d.last_error, d.outcome_unknown,
                     d.operator_message_id, d.request_id, request.operator_topic_id
                 FROM deliveries d JOIN support_requests request ON request.id = d.request_id
-                WHERE d.status = 'failed' ORDER BY julianday(d.created_at) DESC, d.id LIMIT 20
-                """)) {
+                """ + selection, parameters); var rows = statement.executeQuery()) {
             var result = new ArrayList<TelegramRuntime.DeliveryIncident>();
             while (rows.next()) {
                 var uncertain = rows.getInt("outcome_unknown") != 0;
@@ -332,7 +346,8 @@ final class TelegramStore implements AutoCloseable {
 
     boolean retry(String id, Instant now) throws SQLException {
         return update("""
-                UPDATE deliveries SET status = 'pending', attempts = 0, next_attempt_at = ?, last_error = NULL, attempt_started_at = NULL
+                UPDATE deliveries SET status = 'pending', attempts = 0, next_attempt_at = ?, last_error = NULL, attempt_started_at = NULL,
+                    operator_notified_at = NULL, notification_next_attempt_at = NULL
                 WHERE id = ? AND status = 'failed' AND outcome_unknown = 0
                 """, now.toString(), id) == 1;
     }
@@ -350,9 +365,24 @@ final class TelegramStore implements AutoCloseable {
         return update("""
                 UPDATE deliveries SET status = 'pending', attempts = 0, external_message_id = NULL,
                     last_error = NULL, next_attempt_at = ?, outcome_unknown = 0, attempt_started_at = NULL,
-                    sent_at = NULL, manual_resolution = 'confirmed_not_received', resolved_at = ?
+                    sent_at = NULL, manual_resolution = 'confirmed_not_received', resolved_at = ?,
+                    operator_notified_at = NULL, notification_next_attempt_at = NULL
                 WHERE id = ? AND status = 'failed' AND outcome_unknown = 1
                 """, timestamp, timestamp, id) == 1;
+    }
+
+    void notified(String id, Instant now) throws SQLException {
+        update("""
+                UPDATE deliveries SET operator_notified_at = ?, notification_next_attempt_at = NULL
+                WHERE id = ? AND status = 'failed' AND operator_notified_at IS NULL
+                """, now.toString(), id);
+    }
+
+    void notificationRetry(String id, Instant now) throws SQLException {
+        update("""
+                UPDATE deliveries SET notification_next_attempt_at = ?
+                WHERE id = ? AND status = 'failed' AND operator_notified_at IS NULL
+                """, now.toString(), id);
     }
 
     void backup(Path destination) throws IOException, SQLException {

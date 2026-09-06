@@ -5,4 +5,9 @@ interface OperatorInbox {
     long relay(long topic, String text) throws TelegramBotApi.RequestFailed, InterruptedException;
     void close(long topic) throws TelegramBotApi.RequestFailed, InterruptedException;
     void reopen(long topic) throws TelegramBotApi.RequestFailed, InterruptedException;
+
+    default void notifyFailure(TelegramRuntime.DeliveryIncident delivery)
+            throws TelegramBotApi.RequestFailed, InterruptedException {
+        throw new TelegramBotApi.RequestFailed("Inbox does not support delivery notifications", false);
+    }
 }

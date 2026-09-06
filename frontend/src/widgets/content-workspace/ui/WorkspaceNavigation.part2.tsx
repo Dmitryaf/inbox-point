@@ -1,15 +1,8 @@
-import {
-  classNames as $class,
-  renderList as $renderList,
-} from '@frontend/shared/lib/component-view';
-
+import { renderList as $renderList } from '@frontend/shared/lib/component-view';
+import { nativeHandler as $nativeHandler } from '@frontend/shared/lib/component-events';
 import { unref as $unref } from '@frontend/shared/lib/model-state';
 
-import {
-  editorSections,
-  workspaceViews,
-} from '@frontend/widgets/content-workspace/model/navigation';
-import AppIcon from '@frontend/shared/ui/AppIcon';
+import { editorSections } from '@frontend/widgets/content-workspace/model/navigation';
 
 import type { WithDefaults } from '@frontend/shared/lib/component-model';
 import type {
@@ -21,48 +14,26 @@ export function renderWorkspaceNavigationPart2(
   $state: ReturnType<typeof createComponentModel>,
   $props: WithDefaults<ComponentProps, typeof componentDefaults>,
 ) {
-  const { $emit } = $state;
+  const { changeSection } = $state;
 
   return (
     <>
-      <aside className="dashboard-sidebar desktop-workspace-navigation">
-        <nav aria-label="Разделы управления" className="sidebar-group">
-          <p>{'Работа с информацией'}</p>
-          {$renderList($unref(workspaceViews), (view) => (
-            <button
-              key={view.id}
-              aria-pressed={$props.activeView === view.id}
-              type="button"
-              onClick={() => void $emit('viewChange', view.id)}
-              className={$class(
-                { active: $props.activeView === view.id },
-                'navigation-button',
-              )}
-            >
-              <AppIcon name={view.id} /> {view.label}
-            </button>
-          ))}
-        </nav>
-        {$props.activeView === 'edit' ? (
-          <nav aria-label="Разделы информации" className="sidebar-group">
-            <p>{'Разделы'}</p>
+      {$props.activeView === 'edit' ? (
+        <div className="mobile-navigation-field">
+          <label htmlFor="editor-section">{'Раздел'}</label>
+          <select
+            id="editor-section"
+            value={$props.activeSection}
+            onChange={$nativeHandler(changeSection)}
+          >
             {$renderList($unref(editorSections), (section) => (
-              <button
-                key={section.id}
-                aria-pressed={$props.activeSection === section.id}
-                type="button"
-                onClick={() => void $emit('sectionChange', section.id)}
-                className={$class(
-                  { active: $props.activeSection === section.id },
-                  'section-button',
-                )}
-              >
-                <AppIcon name={section.id} /> {section.label}
-              </button>
+              <option key={section.id} value={section.id}>
+                {section.label}
+              </option>
             ))}
-          </nav>
-        ) : null}
-      </aside>
+          </select>
+        </div>
+      ) : null}
     </>
   );
 }

@@ -6,7 +6,6 @@ import {
 import { unref as $unref } from '@frontend/shared/lib/model-state';
 import {
   modelSetter as $setter,
-  propertySetter as $propertySetter,
   requiredValue as $required,
 } from '@frontend/shared/lib/component-bindings';
 
@@ -14,11 +13,10 @@ import SaveBar from '@frontend/features/save-content/ui/SaveBar';
 import ContentSummary from '@frontend/entities/content/ui/ContentSummary';
 
 import AppIcon from '@frontend/shared/ui/AppIcon';
-import ChangeHistory from '@frontend/widgets/change-history/ui/ChangeHistory';
-import ContentEditor from '@frontend/widgets/content-editor/ui/ContentEditor';
-import ContentPreview from '@frontend/widgets/content-preview/ui/ContentPreview';
 
 import WorkspaceNavigation from './WorkspaceNavigation';
+
+import { renderContentWorkspacePart2 } from './ContentWorkspace.part2';
 
 import type { createComponentModel } from './ContentWorkspace.model';
 export function renderContentWorkspacePart1(
@@ -74,28 +72,7 @@ export function renderContentWorkspacePart1(
             onViewChange={$setter($state, 'activeView')}
           />
           <main className="workspace-panel">
-            {activeView === 'edit' ? (
-              <ContentEditor
-                activeSection={activeSection}
-                modelValue={workspace.draft}
-                onModelValueChange={$propertySetter(
-                  () => $unref($state.workspace),
-                  'draft',
-                )}
-              />
-            ) : activeView === 'preview' ? (
-              <ContentPreview content={workspace.draft} />
-            ) : (
-              <ChangeHistory
-                changes={workspace.history.value}
-                hasUnsavedChanges={workspace.dirty.value}
-                loading={workspace.historyLoading.value}
-                restoring={workspace.restoring.value}
-                onRestore={$callback(
-                  $required($unref($state.workspace)).restore,
-                )}
-              />
-            )}
+            {renderContentWorkspacePart2($state)}
           </main>
           <aside className="workspace-rail">
             <SaveBar

@@ -9,6 +9,18 @@ record TelegramTopicsInbox(TelegramBotApi api, long group) implements OperatorIn
         return api.sendMessage(group, topic, text);
     }
 
+    @Override
+    public void notifyFailure(TelegramRuntime.DeliveryIncident delivery)
+            throws TelegramBotApi.RequestFailed, InterruptedException {
+        var heading = delivery.outcomeUnknown() ? "⚠️ Не удалось подтвердить доставку ответа клиенту."
+                : "⚠️ Ответ клиенту не доставлен.";
+        var next = delivery.outcomeUnknown()
+                ? "Не отправляйте ответ повторно вслепую. Владелец должен уточнить получение и разрешить инцидент в /ops."
+                : "Владелец может повторить доставку в /ops.";
+        var reference = delivery.operatorMessageId() == null ? "" : "\nСообщение преподавателя: " + delivery.operatorMessageId();
+        relay(Long.parseLong(delivery.operatorTopicId()), heading + "\n\nКанал: " + delivery.channel() + reference + "\n\n" + next);
+    }
+
     public void close(long topic) throws TelegramBotApi.RequestFailed, InterruptedException {
         api.closeTopic(group, topic);
     }
