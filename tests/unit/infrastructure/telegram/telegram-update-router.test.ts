@@ -5,6 +5,10 @@ import type { SupportMessage } from '@/core/model/support-message.js';
 
 import type { TelegramUpdate } from '@/infrastructure/telegram/telegram-types.js';
 import type {
+  SendMessageOptions,
+  TelegramGateway,
+} from '@/infrastructure/telegram/telegram-api-client.js';
+import type {
   TelegramClientMenuHandler,
   TelegramMenuMessage,
 } from '@/infrastructure/telegram/telegram-client-menu.js';
@@ -66,6 +70,17 @@ class RecordingMenu implements TelegramClientMenuHandler {
   public handle(message: TelegramMenuMessage): Promise<boolean> {
     this.messages.push(message);
     return Promise.resolve(true);
+  }
+}
+
+class RecordingNotifier implements Pick<TelegramGateway, 'sendMessage'> {
+  public readonly messages: SendMessageOptions[] = [];
+
+  public sendMessage(
+    message: SendMessageOptions,
+  ): Promise<{ messageId: number }> {
+    this.messages.push(message);
+    return Promise.resolve({ messageId: 1 });
   }
 }
 
@@ -179,6 +194,49 @@ describe('TelegramUpdateRouter', () => {
       'reopened:77:900',
     ]);
   });
+
+  it('explains unsupported media to clients and operators', async () => {
+    const handler = new RecordingHandler();
+    const notifier = new RecordingNotifier();
+    const router = new TelegramUpdateRouter(
+      handler,
+      -1_001,
+      undefined,
+      notifier,
+    );
+
+    await router.route(
+      createUpdate({
+        chatId: 101,
+        chatType: 'private',
+        firstName: 'Test',
+        voice: {},
+      }),
+    );
+    await router.route(
+      createUpdate({
+        chatId: -1_001,
+        chatType: 'supergroup',
+        firstName: 'Operator',
+        messageThreadId: 900,
+        photo: [],
+      }),
+    );
+
+    expect(handler.clientMessages).toHaveLength(0);
+    expect(handler.operatorMessages).toHaveLength(0);
+    expect(notifier.messages).toEqual([
+      {
+        chatId: 101,
+        text: 'Сейчас можно отправить только текст. Напишите вопрос отдельным текстовым сообщением.',
+      },
+      {
+        chatId: -1_001,
+        messageThreadId: 900,
+        text: 'Это сообщение не отправлено клиенту: сейчас поддерживаются только текстовые ответы.',
+      },
+    ]);
+  });
 });
 
 interface UpdateOverrides {
@@ -188,7 +246,9 @@ interface UpdateOverrides {
   isBot?: boolean;
   lastName?: string;
   messageThreadId?: number;
-  text: string;
+  photo?: unknown;
+  text?: string;
+  voice?: unknown;
 }
 
 function createUpdate(overrides: UpdateOverrides): TelegramUpdate {
@@ -206,7 +266,9 @@ function createUpdate(overrides: UpdateOverrides): TelegramUpdate {
       ...(overrides.messageThreadId === undefined
         ? {}
         : { message_thread_id: overrides.messageThreadId }),
-      text: overrides.text,
+      ...(overrides.photo === undefined ? {} : { photo: overrides.photo }),
+      ...(overrides.text === undefined ? {} : { text: overrides.text }),
+      ...(overrides.voice === undefined ? {} : { voice: overrides.voice }),
     },
     update_id: 77,
   };

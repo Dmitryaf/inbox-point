@@ -13,15 +13,17 @@ export interface OpenOperatorRequest {
   title: string;
 }
 
+export interface RelayCustomerMessageOptions {
+  initial: boolean;
+}
+
 export interface OperatorInbox {
   closeRequest(operatorTopicId: string): Promise<void>;
-  openRequest(request: OpenOperatorRequest): Promise<{
-    operatorMessageId: string;
-    topicId: string;
-  }>;
+  openRequest(request: OpenOperatorRequest): Promise<{ topicId: string }>;
   reopenRequest(operatorTopicId: string): Promise<void>;
   relayCustomerMessage(
     operatorTopicId: string,
     message: SupportMessage,
-  ): Promise<{ operatorMessageId: string }>;
+    options: RelayCustomerMessageOptions,
+  ): Promise<{ operatorMessageIds: readonly string[] }>;
 }

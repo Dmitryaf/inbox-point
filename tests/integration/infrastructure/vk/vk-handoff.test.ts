@@ -9,6 +9,7 @@ import {
 import type {
   OpenOperatorRequest,
   OperatorInbox,
+  RelayCustomerMessageOptions,
 } from '@/core/contracts/operator-inbox.js';
 import type { SupportMessage } from '@/core/model/support-message.js';
 import type { ClientIntakePolicy } from '@/core/contracts/client-intake-policy.js';
@@ -75,20 +76,19 @@ class FakeOperatorInbox implements OperatorInbox {
 
   public openRequest(
     request: OpenOperatorRequest,
-  ): Promise<{ operatorMessageId: string; topicId: string }> {
+  ): Promise<{ topicId: string }> {
     this.opened.push(request);
-    return Promise.resolve({
-      operatorMessageId: 'telegram-question-1',
-      topicId: 'topic-1',
-    });
+    return Promise.resolve({ topicId: 'topic-1' });
   }
 
   public relayCustomerMessage(
     _operatorTopicId: string,
     message: SupportMessage,
-  ): Promise<{ operatorMessageId: string }> {
+    options: RelayCustomerMessageOptions,
+  ): Promise<{ operatorMessageIds: readonly string[] }> {
+    void options;
     this.relayed.push(message);
-    return Promise.resolve({ operatorMessageId: 'telegram-relay-1' });
+    return Promise.resolve({ operatorMessageIds: ['telegram-relay-1'] });
   }
 
   public reopenRequest(): Promise<void> {
@@ -145,6 +145,7 @@ describe('VK handoff integration', () => {
       },
       title: 'VK - VK Customer',
     });
+    expect(inbox.relayed).toHaveLength(1);
 
     await service.handleOperatorMessage('telegram-update-1', {
       externalMessageId: 'telegram-answer-1',
@@ -192,7 +193,7 @@ describe('VK handoff integration', () => {
     );
 
     expect(inbox.opened).toHaveLength(1);
-    expect(inbox.relayed).toHaveLength(0);
+    expect(inbox.relayed).toHaveLength(1);
     expect(gateway.sent.at(-1)?.text).toContain('Расписание');
     expect(gateway.sent.at(-1)?.keyboard).toBeDefined();
   });
@@ -219,8 +220,8 @@ describe('VK handoff integration', () => {
     );
 
     expect(inbox.opened).toHaveLength(1);
-    expect(inbox.relayed).toHaveLength(1);
-    expect(inbox.relayed[0]?.text).toBe('Уточнение');
+    expect(inbox.relayed).toHaveLength(2);
+    expect(inbox.relayed[1]?.text).toBe('Уточнение');
   });
 
   it('shows and resolves the built-in FAQ without opening a request', async () => {
@@ -284,6 +285,22 @@ describe('VK handoff integration', () => {
     await router.route(createMessageEvent({ peer_id: 2_000_000_001 }));
 
     expect(inbox.opened).toHaveLength(0);
+  });
+
+  it('explains that VK attachments are not supported', async () => {
+    await router.route(
+      createMessageEvent({
+        attachments: [{ type: 'audio_message' }],
+        text: '',
+      }),
+    );
+
+    expect(inbox.opened).toHaveLength(0);
+    expect(gateway.sent).toHaveLength(1);
+    expect(gateway.sent[0]).toMatchObject({
+      peerId: 101,
+      text: 'Сейчас можно отправить только текст. Напишите вопрос отдельным текстовым сообщением.',
+    });
   });
 });
 

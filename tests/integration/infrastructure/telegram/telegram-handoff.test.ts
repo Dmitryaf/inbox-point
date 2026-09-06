@@ -23,6 +23,8 @@ import type { TelegramUpdate } from '@/infrastructure/telegram/telegram-types.js
 import { TelegramUpdateRouter } from '@/infrastructure/telegram/telegram-update-router.js';
 
 class FakeTelegramGateway implements TelegramGateway {
+  public readonly createdTopics: number[] = [];
+  public failNextSend = false;
   public readonly reopened: number[] = [];
   public readonly sent: SendMessageOptions[] = [];
   public readonly unavailableTopics = new Set<number>();
@@ -49,7 +51,9 @@ class FakeTelegramGateway implements TelegramGateway {
   ): Promise<{ topicId: number }> {
     void chatId;
     void name;
-    return Promise.resolve({ topicId: this.nextTopicId++ });
+    const topicId = this.nextTopicId++;
+    this.createdTopics.push(topicId);
+    return Promise.resolve({ topicId });
   }
 
   public getUpdates(
@@ -78,6 +82,13 @@ class FakeTelegramGateway implements TelegramGateway {
   public sendMessage(
     options: SendMessageOptions,
   ): Promise<{ messageId: number }> {
+    if (this.failNextSend) {
+      this.failNextSend = false;
+      return Promise.reject(new Error('Temporary Telegram failure'));
+    }
+    if (Array.from(options.text).length > 4_096) {
+      return Promise.reject(new Error('Telegram text is too long'));
+    }
     if (
       options.messageThreadId !== undefined &&
       this.unavailableTopics.has(options.messageThreadId)
@@ -180,6 +191,43 @@ describe('Telegram handoff integration', () => {
       chatId: 101,
       text: 'Answer',
     });
+  });
+
+  it('splits a maximum-length customer message without creating extra topics', async () => {
+    const update = createPrivateUpdate(1, 501, 'Я'.repeat(4_096));
+
+    await router.route(update);
+    await router.route(update);
+
+    expect(gateway.createdTopics).toEqual([900]);
+    expect(gateway.sent).toHaveLength(2);
+    expect(gateway.sent.every((message) => message.text.length <= 4_096)).toBe(
+      true,
+    );
+    expect(
+      gateway.sent.reduce(
+        (count, message) =>
+          count +
+          Array.from(message.text).filter((value) => value === 'Я').length,
+        0,
+      ),
+    ).toBe(4_096);
+  });
+
+  it('retries a failed first relay in the already persisted topic', async () => {
+    const update = createPrivateUpdate(1, 501, 'Question');
+    gateway.failNextSend = true;
+
+    await expect(router.route(update)).rejects.toThrow(
+      'Temporary Telegram failure',
+    );
+    await router.route(update);
+
+    expect(gateway.createdTopics).toEqual([900]);
+    expect(repository.findActiveRequest('telegram', '101')).toMatchObject({
+      operatorTopicId: '900',
+    });
+    expect(gateway.sent).toHaveLength(1);
   });
 
   it('shows the menu without opening a request and hands off the actual question', async () => {

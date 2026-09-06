@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 const vkMessageSchema = z.object({
+  attachments: z.array(z.object({ type: z.string() }).passthrough()).optional(),
   conversation_message_id: z.number().int().nonnegative().optional(),
   date: z.number().int().nonnegative(),
   from_id: z.number().int(),

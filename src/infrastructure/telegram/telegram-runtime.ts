@@ -91,6 +91,7 @@ export class TelegramRuntime implements TelegramRuntimeControl {
           this.information,
           this.intakePolicy,
         ),
+        gateway,
       ),
       config.pollTimeoutSeconds,
       {

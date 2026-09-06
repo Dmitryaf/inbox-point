@@ -3,6 +3,7 @@ import type { SupportMessage } from '@/core/model/support-message.js';
 
 import type { TelegramUpdate } from './telegram-types.js';
 import type { TelegramClientMenuHandler } from './telegram-client-menu.js';
+import type { TelegramGateway } from './telegram-api-client.js';
 
 export interface TelegramUpdateHandler {
   handleClientMessage(
@@ -29,6 +30,7 @@ export class TelegramUpdateRouter {
     private readonly handoffService: TelegramUpdateHandler,
     private readonly operatorChatId: number,
     private readonly clientMenu?: TelegramClientMenuHandler,
+    private readonly notifier?: Pick<TelegramGateway, 'sendMessage'>,
   ) {}
 
   public async route(update: TelegramUpdate): Promise<void> {
@@ -56,26 +58,43 @@ export class TelegramUpdateRouter {
       }
     }
 
-    if (
-      !message?.text ||
-      !message.from ||
-      message.from.is_bot ||
-      message.text.trim().length === 0
-    ) {
+    if (!message?.from || message.from.is_bot) {
       return;
     }
 
     const externalEventId = String(update.update_id);
     const receivedAt = new Date(message.date * 1_000);
-
-    if (
+    const operatorTopicId =
       message.chat.id === this.operatorChatId &&
       message.chat.type === 'supergroup' &&
       message.message_thread_id !== undefined
-    ) {
+        ? message.message_thread_id
+        : undefined;
+
+    if (hasUnsupportedContent(message)) {
+      if (operatorTopicId !== undefined) {
+        await this.notifier?.sendMessage({
+          chatId: this.operatorChatId,
+          messageThreadId: operatorTopicId,
+          text: operatorUnsupportedMessage,
+        });
+      } else if (message.chat.type === 'private') {
+        await this.notifier?.sendMessage({
+          chatId: message.chat.id,
+          text: clientUnsupportedMessage,
+        });
+      }
+      return;
+    }
+
+    if (!message.text || message.text.trim().length === 0) {
+      return;
+    }
+
+    if (operatorTopicId !== undefined) {
       await this.handoffService.handleOperatorMessage(externalEventId, {
         externalMessageId: String(message.message_id),
-        operatorTopicId: String(message.message_thread_id),
+        operatorTopicId: String(operatorTopicId),
         receivedAt,
         text: message.text,
       });
@@ -104,6 +123,34 @@ export class TelegramUpdateRouter {
       text: message.text,
     });
   }
+}
+
+const clientUnsupportedMessage =
+  'Сейчас можно отправить только текст. Напишите вопрос отдельным текстовым сообщением.';
+const operatorUnsupportedMessage =
+  'Это сообщение не отправлено клиенту: сейчас поддерживаются только текстовые ответы.';
+
+const unsupportedContentFields = [
+  'animation',
+  'audio',
+  'contact',
+  'dice',
+  'document',
+  'paid_media',
+  'photo',
+  'poll',
+  'sticker',
+  'story',
+  'venue',
+  'video',
+  'video_note',
+  'voice',
+] as const;
+
+function hasUnsupportedContent(
+  message: NonNullable<TelegramUpdate['message']>,
+): boolean {
+  return unsupportedContentFields.some((field) => message[field] !== undefined);
 }
 
 interface TelegramDisplayUser {
