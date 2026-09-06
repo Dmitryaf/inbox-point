@@ -87,8 +87,9 @@ export function createOperationsRouteAccess(
 }
 
 function isOperationsUrl(url: string): boolean {
+  const path = url.split('?', 1)[0] ?? url;
   return (
-    url === '/ops' || url.startsWith('/ops/') || url.startsWith('/api/ops/')
+    path === '/ops' || path.startsWith('/ops/') || path.startsWith('/api/ops/')
   );
 }
 
