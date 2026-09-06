@@ -17,7 +17,7 @@ export type ComponentProps = ComponentAttributes;
 export const componentDefaults = {};
 
 export function createComponentModel() {
-  const refreshIntervalMs = 10_000;
+  const refreshIntervalMs = 10000;
   const status = ref<DeliveryStatus>();
   const message = ref('');
   const loading = ref(false);

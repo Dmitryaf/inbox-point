@@ -11,7 +11,9 @@ export type ComponentProps = {
   hasUnsavedChanges: boolean;
   loading: boolean;
   restoring: boolean;
-} & EventProps<{ restore: [revision: number] }> &
+} & EventProps<{
+  restore: [revision: number];
+}> &
   ComponentAttributes;
 export const componentDefaults = {};
 type ResolvedProps = WithDefaults<ComponentProps, typeof componentDefaults>;

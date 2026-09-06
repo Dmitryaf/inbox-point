@@ -6,10 +6,8 @@ import { classNames as $class } from '@frontend/shared/lib/component-view';
 
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
-import ChannelStatusCard from './ChannelStatusCard';
-import DeliveryStatusCard from './DeliveryStatusCard';
-
 import { renderOperationsOverviewPart1 } from './OperationsOverview.part1';
+import { renderOperationsOverviewPart2 } from './OperationsOverview.part2';
 import {
   createComponentModel,
   componentDefaults,
@@ -35,19 +33,7 @@ export default function OperationsOverview($incomingProps: ComponentProps) {
         className={$class('overview', $attributes.className)}
       >
         {renderOperationsOverviewPart1($state, $props)}
-        <div className="status-grid">
-          <ChannelStatusCard
-            name="Telegram"
-            channel={$props.status.channels.telegram}
-            intake={$props.status.intake.telegram}
-          />
-          <ChannelStatusCard
-            name="VK"
-            channel={$props.status.channels.vk}
-            intake={$props.status.intake.vk}
-          />
-          <DeliveryStatusCard deliveries={$props.status.deliveries} />
-        </div>
+        {renderOperationsOverviewPart2($state, $props)}
       </section>
     </ModelScopeProvider>
   );

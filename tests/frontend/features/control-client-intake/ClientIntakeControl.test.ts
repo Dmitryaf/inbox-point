@@ -75,6 +75,31 @@ describe('ClientIntakeControl', () => {
       expect.any(Object),
     );
   });
+
+  it('lets the owner retry after the initial state request fails', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        response({ message: 'Не удалось прочитать состояние.' }, 500),
+      )
+      .mockResolvedValueOnce(response(activeState()));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const wrapper = mount(ClientIntakeControl, { props: { scope: 'ops' } });
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Не удалось проверить');
+    const retry = wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Повторить проверку');
+    expect(retry).toBeDefined();
+
+    await retry?.trigger('click');
+    await flushPromises();
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(wrapper.text()).toContain('Приём включён');
+  });
 });
 
 function activeState() {

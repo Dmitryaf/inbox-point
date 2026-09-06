@@ -43,7 +43,7 @@ export function useClientIntakeControl(options: ClientIntakeControlOptions) {
     if (pausedChannels.value > 0) {
       return { label: `На паузе: ${pausedChannels.value}`, tone: 'paused' };
     }
-    return { label: 'Работает', tone: 'active' };
+    return { label: 'Приём включён', tone: 'active' };
   });
 
   onMounted(() => void load());
@@ -96,6 +96,7 @@ export function useClientIntakeControl(options: ClientIntakeControlOptions) {
   return {
     changeMode,
     error,
+    load,
     loading,
     notice,
     pendingChannel,

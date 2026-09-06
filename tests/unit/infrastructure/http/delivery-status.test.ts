@@ -10,10 +10,13 @@ describe('public delivery status', () => {
       createdAt: new Date('2026-09-05T10:00:00.000Z'),
       id: 'delivery-1',
       lastError: 'Telegram API request failed for sendMessage',
+      operatorMessageId: 'operator-message-1',
+      operatorTopicId: 'topic-1',
       outcomeUnknown: true,
+      requestId: 'request-1',
     });
 
     expect(failure.retryAllowed).toBe(false);
-    expect(failure.reason).toContain('Проверьте диалог клиента вручную');
+    expect(failure.reason).toContain('Автоматический повтор отключён');
   });
 });

@@ -22,7 +22,9 @@ export function createComponentModel(
     options?: ModelOptions<Value>,
   ) => ModelRef<Value>,
 ) {
-  const sections = $model<CustomSection[]>('modelValue', { required: true });
+  const sections = $model<CustomSection[]>('modelValue', {
+    required: true,
+  });
   function add(): void {
     if (sections.value.length < 6) {
       sections.value.push({ label: '', text: '' });

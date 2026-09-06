@@ -46,7 +46,10 @@ interface FailedDeliveryRow {
   created_at: string;
   id: string;
   last_error: string | null;
+  operator_message_id: string | null;
+  operator_topic_id: string;
   outcome_unknown: number;
+  request_id: string;
 }
 
 export class SqliteSupportRepository implements SupportRepository {
@@ -326,10 +329,20 @@ export class SqliteSupportRepository implements SupportRepository {
   public findFailedDeliveries(limit: number): readonly FailedDelivery[] {
     const rows = this.database
       .prepare(
-        `SELECT id, channel, attempts, last_error, created_at, outcome_unknown
-         FROM deliveries
-         WHERE status = 'failed'
-         ORDER BY created_at DESC, id DESC
+        `SELECT
+           delivery.id,
+           delivery.request_id,
+           delivery.operator_message_id,
+           delivery.channel,
+           delivery.attempts,
+           delivery.last_error,
+           delivery.created_at,
+           delivery.outcome_unknown,
+           request.operator_topic_id
+         FROM deliveries AS delivery
+         JOIN support_requests AS request ON request.id = delivery.request_id
+         WHERE delivery.status = 'failed'
+         ORDER BY delivery.created_at DESC, delivery.id DESC
          LIMIT ?`,
       )
       .all(limit) as unknown as FailedDeliveryRow[];
@@ -340,7 +353,12 @@ export class SqliteSupportRepository implements SupportRepository {
       createdAt: new Date(row.created_at),
       id: row.id,
       lastError: row.last_error ?? 'Unknown delivery error',
+      ...(row.operator_message_id
+        ? { operatorMessageId: row.operator_message_id }
+        : {}),
+      operatorTopicId: row.operator_topic_id,
       outcomeUnknown: row.outcome_unknown === 1,
+      requestId: row.request_id,
     }));
   }
 

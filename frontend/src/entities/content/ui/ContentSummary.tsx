@@ -8,6 +8,7 @@ import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
 import AppIcon from '@frontend/shared/ui/AppIcon';
 
+import { renderContentSummaryPart1 } from './ContentSummary.part1';
 import {
   createComponentModel,
   componentDefaults,
@@ -25,7 +26,6 @@ export default function ContentSummary($incomingProps: ComponentProps) {
     createComponentModel,
   );
   const totalCount = $state.totalCount.value;
-  const standardCount = $state.standardCount.value;
   const $attributes = inheritedAttributes($props);
   return (
     <ModelScopeProvider scope={$scope}>
@@ -45,23 +45,7 @@ export default function ContentSummary($incomingProps: ComponentProps) {
             </h3>
           </div>
         </div>
-        <dl className="content-facts">
-          <div>
-            <dt>{'Основные кнопки'}</dt>
-            <dd>
-              {standardCount}
-              {' из 4'}
-            </dd>
-          </div>
-          <div>
-            <dt>{'Частые вопросы'}</dt>
-            <dd>{$props.content.faq.length}</dd>
-          </div>
-          <div>
-            <dt>{'Свои разделы'}</dt>
-            <dd>{$props.content.customSections.length}</dd>
-          </div>
-        </dl>
+        {renderContentSummaryPart1($state, $props)}
         <p className="channel-note">
           <AppIcon name="check" />
           {' После сохранения изменения увидят клиенты Telegram и VK. '}

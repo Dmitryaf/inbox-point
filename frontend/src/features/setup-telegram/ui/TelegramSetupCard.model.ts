@@ -15,7 +15,9 @@ import type {
 } from '@frontend/entities/setup/model/types';
 import { errorMessage } from '@frontend/shared/lib/error-message';
 
-export type ComponentProps = { status: ChannelSetupStatus } & EventProps<{
+export type ComponentProps = {
+  status: ChannelSetupStatus;
+} & EventProps<{
   connected: [];
 }> &
   ComponentAttributes;

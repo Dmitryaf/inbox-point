@@ -22,6 +22,7 @@ export interface OperationsStatus {
   };
   deliveries: {
     failed: number;
+    incidents: readonly DeliveryIncident[];
     oldestPendingAgeSeconds?: number;
     oldestPendingAt?: string;
     pending: number;
@@ -41,6 +42,18 @@ export interface OperationsStatus {
   startedAt: string;
   state: 'attention' | 'healthy' | 'maintenance';
   uptimeSeconds: number;
+}
+
+export interface DeliveryIncident {
+  attempts: number;
+  channel: 'Telegram' | 'VK';
+  createdAt: string;
+  id: string;
+  operatorMessageId?: string;
+  operatorTopicId: string;
+  reason: string;
+  requestId: string;
+  retryAllowed: boolean;
 }
 
 export interface ClientIntakeOperationsStatus {

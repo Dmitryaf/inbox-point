@@ -3,12 +3,11 @@ import {
   ModelScopeProvider,
 } from '@frontend/shared/lib/component-model';
 import { classNames as $class } from '@frontend/shared/lib/component-view';
-import { nativeHandler as $nativeHandler } from '@frontend/shared/lib/component-events';
-import { unref as $unref } from '@frontend/shared/lib/model-state';
 
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
 import { renderOperationsDashboardPagePart1 } from './OperationsDashboardPage.part1';
+import { renderOperationsDashboardPagePart2 } from './OperationsDashboardPage.part2';
 import {
   createComponentModel,
   componentDefaults,
@@ -27,8 +26,6 @@ export default function OperationsDashboardPage(
     componentDefaults,
     createComponentModel,
   );
-  const { logout } = $state;
-  const session = $unref($state.session);
   const $attributes = inheritedAttributes($props);
   return (
     <ModelScopeProvider scope={$scope}>
@@ -36,25 +33,8 @@ export default function OperationsDashboardPage(
         {...$attributes}
         className={$class('ops-shell', $attributes.className)}
       >
-        <header className="ops-header">
-          <div>
-            <p className="brand">{'MESSENGER HANDOFF'}</p>
-            <h1>{'Состояние сервиса'}</h1>
-            <p className="page-intro">
-              {' Проверяйте подключения и доставку ответов школы. '}
-            </p>
-          </div>
-          {session.authenticated.value ? (
-            <button
-              type="button"
-              onClick={$nativeHandler(logout)}
-              className="secondary-button"
-            >
-              {' Выйти '}
-            </button>
-          ) : null}
-        </header>
         {renderOperationsDashboardPagePart1($state)}
+        {renderOperationsDashboardPagePart2($state, $scope)}
       </main>
     </ModelScopeProvider>
   );

@@ -11,7 +11,9 @@ export type ComponentProps = {
   saving: boolean;
   validationMessage: string;
   valid: boolean;
-} & EventProps<{ save: [] }> &
+} & EventProps<{
+  save: [];
+}> &
   ComponentAttributes;
 export const componentDefaults = {};
 type ResolvedProps = WithDefaults<ComponentProps, typeof componentDefaults>;

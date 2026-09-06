@@ -3,6 +3,7 @@ import type {
   SupportRepository,
 } from '@/core/contracts/support-repository.js';
 import type { FailedDelivery } from '@/core/model/support-request.js';
+import { mapDeliveryIncident } from '@/modules/operations-monitoring/application/delivery-incident.js';
 
 export interface PublicDeliveryFailure {
   attempts: number;
@@ -38,51 +39,13 @@ export function createPublicDeliveryStatus(
 export function mapDeliveryFailure(
   delivery: FailedDelivery,
 ): PublicDeliveryFailure {
+  const incident = mapDeliveryIncident(delivery);
   return {
-    attempts: delivery.attempts,
-    channel: delivery.channel === 'telegram' ? 'Telegram' : 'VK',
-    createdAt: delivery.createdAt.toISOString(),
-    id: delivery.id,
-    reason: delivery.outcomeUnknown
-      ? 'Канал мог принять ответ, но подтверждение не получено. Проверьте диалог клиента вручную: автоматический повтор отключён, чтобы не отправить дубликат.'
-      : explainDeliveryFailure(delivery.lastError, delivery.channel),
-    retryAllowed: !delivery.outcomeUnknown,
+    attempts: incident.attempts,
+    channel: incident.channel,
+    createdAt: incident.createdAt,
+    id: incident.id,
+    reason: incident.reason,
+    retryAllowed: incident.retryAllowed,
   };
-}
-
-function explainDeliveryFailure(
-  error: string,
-  channel: FailedDelivery['channel'],
-): string {
-  const normalized = error.toLowerCase();
-  if (
-    normalized.includes('blocked') ||
-    normalized.includes('chat not found') ||
-    normalized.includes('user is deactivated') ||
-    normalized.includes('forbidden')
-  ) {
-    return 'Бот не может написать клиенту. Возможно, клиент заблокировал бота.';
-  }
-  if (
-    normalized.includes('unauthorized') ||
-    normalized.includes('invalid token')
-  ) {
-    return channel === 'telegram'
-      ? 'Telegram не принимает подключение бота. Переподключите Telegram.'
-      : 'VK не принимает ключ сообщества. Переподключите VK.';
-  }
-  if (normalized.includes('too many requests') || normalized.includes('429')) {
-    return 'Канал временно ограничил отправку. Повторите попытку позже.';
-  }
-  if (
-    normalized.includes('request failed') ||
-    normalized.includes('network') ||
-    normalized.includes('timeout') ||
-    normalized.includes('econn')
-  ) {
-    return 'Не удалось связаться с каналом. Проверьте интернет и повторите попытку.';
-  }
-  return channel === 'telegram'
-    ? 'Telegram не доставил ответ. Проверьте подключение и повторите попытку.'
-    : 'VK не доставил ответ. Проверьте подключение и повторите попытку.';
 }

@@ -1,17 +1,22 @@
 import { type ComponentAttributes } from '@frontend/shared/lib/component-model';
 
-import { onBeforeUnmount, watch } from '@frontend/shared/lib/model-state';
+import { onBeforeUnmount, ref, watch } from '@frontend/shared/lib/model-state';
 import { useOperationsSession } from '@frontend/features/operations-auth/model/use-operations-session';
 
 import { useOperationsStatus } from '@frontend/features/refresh-status/model/use-operations-status';
+import { useDeliveryRetry } from '@frontend/features/retry-delivery/model/use-delivery-retry';
 
 export type ComponentProps = ComponentAttributes;
 export const componentDefaults = {};
 
 export function createComponentModel() {
-  const refreshIntervalMs = 30_000;
+  const refreshIntervalMs = 30000;
   const session = useOperationsSession();
   const operations = useOperationsStatus(session.expireSession);
+  const intakeControl = ref<{
+    refresh: () => Promise<void>;
+  }>();
+  const deliveryRetry = useDeliveryRetry(refreshAll, session.expireSession);
   let refreshTimer: ReturnType<typeof setInterval> | undefined;
   watch(session.authenticated, (authenticated) => {
     stopAutomaticRefresh();
@@ -19,9 +24,9 @@ export function createComponentModel() {
       operations.clear();
       return;
     }
-    void operations.refresh();
+    void refreshAll();
     refreshTimer = setInterval(() => {
-      void operations.refresh();
+      void refreshAll();
     }, refreshIntervalMs);
   });
   onBeforeUnmount(stopAutomaticRefresh);
@@ -31,11 +36,25 @@ export function createComponentModel() {
   async function logout(): Promise<void> {
     await session.endSession();
   }
+  async function refreshAll(): Promise<void> {
+    await Promise.all([
+      operations.refresh(),
+      intakeControl.value?.refresh() ?? Promise.resolve(),
+    ]);
+  }
   function stopAutomaticRefresh(): void {
     if (refreshTimer) {
       clearInterval(refreshTimer);
       refreshTimer = undefined;
     }
   }
-  return { session, operations, authenticate, logout };
+  return {
+    session,
+    operations,
+    intakeControl,
+    deliveryRetry,
+    authenticate,
+    logout,
+    refreshAll,
+  };
 }

@@ -10,7 +10,9 @@ export type ComponentProps = {
   hasUnsavedChanges: boolean;
   pending: boolean;
   revision: number;
-} & EventProps<{ restore: [revision: number] }> &
+} & EventProps<{
+  restore: [revision: number];
+}> &
   ComponentAttributes;
 export const componentDefaults = {};
 type ResolvedProps = WithDefaults<ComponentProps, typeof componentDefaults>;

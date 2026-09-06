@@ -1,11 +1,13 @@
 import type { FastifyInstance } from 'fastify';
 
+import type { SupportRepository } from '@/core/contracts/support-repository.js';
 import { loadFrontendAssets } from '@/infrastructure/http/frontend-assets.js';
 import type { OperationsMonitoringService } from '@/modules/operations-monitoring/application/operations-monitoring-service.js';
 import type { OperationsAccess } from '@/modules/operations-monitoring/security/operations-access.js';
 import type { ServiceControlService } from '@/modules/service-control/application/service-control-service.js';
 import { registerServiceControlRoutes } from '@/modules/service-control/presentation/http/service-control-routes.js';
 import { registerOperationsAssetRoutes } from './asset-routes.js';
+import { registerOperationsDeliveryRoutes } from './delivery-routes.js';
 import {
   createOperationsRouteAccess,
   type OperationsRouteOptions,
@@ -19,6 +21,7 @@ export function registerOperationsRoutes(
   access: OperationsAccess,
   options: OperationsRouteOptions,
   serviceControl?: ServiceControlService,
+  deliveries?: Pick<SupportRepository, 'retryFailedDelivery'>,
 ): void {
   const routeAccess = createOperationsRouteAccess(app, access, options);
   const assets = options.assets ?? loadFrontendAssets('/ops');
@@ -31,6 +34,7 @@ export function registerOperationsRoutes(
     options.secureCookies,
   );
   registerOperationsStatusRoutes(app, monitoring, routeAccess);
+  registerOperationsDeliveryRoutes(app, deliveries, routeAccess);
   if (serviceControl) {
     registerServiceControlRoutes(
       app,

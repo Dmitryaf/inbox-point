@@ -30,6 +30,7 @@ export function mapDeliveryStatus(
 
   return {
     failed: summary.failed,
+    incidents: [],
     ...(oldestPendingAgeMs === undefined || !summary.oldestPendingAt
       ? {}
       : {
