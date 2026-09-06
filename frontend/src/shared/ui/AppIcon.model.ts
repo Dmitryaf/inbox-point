@@ -9,7 +9,9 @@ export type AppIconName =
   | 'faq'
   | 'history'
   | 'preview';
-export type ComponentProps = { name: AppIconName } & ComponentAttributes;
+export type ComponentProps = {
+  name: AppIconName;
+} & ComponentAttributes;
 export const componentDefaults = {};
 
 export function createComponentModel() {

@@ -10,7 +10,9 @@ import type { ContentDraft } from '@frontend/entities/content/model/types';
 
 import type { EditorSection } from '@frontend/widgets/content-workspace/model/navigation';
 
-export type ComponentProps = { activeSection: EditorSection } & {
+export type ComponentProps = {
+  activeSection: EditorSection;
+} & {
   modelValue: ContentDraft;
   onModelValueChange?: (value: ContentDraft) => void;
 } & ComponentAttributes;

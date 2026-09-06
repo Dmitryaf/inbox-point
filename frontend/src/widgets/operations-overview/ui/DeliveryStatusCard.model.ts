@@ -1,4 +1,5 @@
 import {
+  type EventProps,
   type ComponentAttributes,
   type WithDefaults,
 } from '@frontend/shared/lib/component-model';
@@ -9,10 +10,17 @@ import type { OperationsStatus } from '@frontend/entities/operations/model/types
 
 export type ComponentProps = {
   deliveries: OperationsStatus['deliveries'];
-} & ComponentAttributes;
+  pendingDeliveryId: string | undefined;
+} & EventProps<{
+  retry: [deliveryId: string];
+}> &
+  ComponentAttributes;
 export const componentDefaults = {};
 type ResolvedProps = WithDefaults<ComponentProps, typeof componentDefaults>;
-export function createComponentModel($props: ResolvedProps) {
+export function createComponentModel(
+  $props: ResolvedProps,
+  $emit: (event: string, ...args: unknown[]) => void,
+) {
   const props = $props;
   const state = computed(() => {
     if (props.deliveries.state === 'failed') {
@@ -26,5 +34,11 @@ export function createComponentModel($props: ResolvedProps) {
     }
     return { label: 'Работает', tone: 'healthy' };
   });
-  return { state };
+  function formatCreatedAt(value: string): string {
+    return new Intl.DateTimeFormat('ru-RU', {
+      dateStyle: 'short',
+      timeStyle: 'short',
+    }).format(new Date(value));
+  }
+  return { $emit, state, formatCreatedAt };
 }

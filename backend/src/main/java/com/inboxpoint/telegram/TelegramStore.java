@@ -275,23 +275,52 @@ final class TelegramStore implements AutoCloseable {
     record PublicFailure(String id, String channel, int attempts, String createdAt, String reason, boolean retryAllowed) { }
 
     List<PublicFailure> failures() throws SQLException {
+        return incidents().stream().map(item -> new PublicFailure(item.id(), item.channel(), item.attempts(),
+                item.createdAt(), item.reason(), item.retryAllowed())).toList();
+    }
+
+    List<TelegramRuntime.DeliveryIncident> incidents() throws SQLException {
         try (var statement = connection.createStatement(); var rows = statement.executeQuery("""
-                SELECT id, channel, attempts, created_at, last_error, outcome_unknown FROM deliveries
-                WHERE status = 'failed' ORDER BY julianday(created_at) DESC, id LIMIT 20
+                SELECT d.id, d.channel, d.attempts, d.created_at, d.last_error, d.outcome_unknown,
+                    d.operator_message_id, d.request_id, request.operator_topic_id
+                FROM deliveries d JOIN support_requests request ON request.id = d.request_id
+                WHERE d.status = 'failed' ORDER BY julianday(d.created_at) DESC, d.id LIMIT 20
                 """)) {
-            var result = new ArrayList<PublicFailure>();
+            var result = new ArrayList<TelegramRuntime.DeliveryIncident>();
             while (rows.next()) {
                 var uncertain = rows.getInt("outcome_unknown") != 0;
+                var telegram = "telegram".equals(rows.getString("channel"));
                 var reason = uncertain
-                        ? "Канал мог принять ответ, но подтверждение не получено. Проверьте диалог клиента вручную."
-                        : "API 429".equals(rows.getString("last_error"))
-                                ? "Канал временно ограничил отправку. Повторите попытку позже."
-                                : "Ответ не доставлен. Проверьте доступ к каналу и повторите отправку.";
-                result.add(new PublicFailure(rows.getString("id"), "telegram".equals(rows.getString("channel"))
-                        ? "Telegram" : "VK", rows.getInt("attempts"), rows.getString("created_at"), reason, !uncertain));
+                        ? "Канал мог принять ответ, но подтверждение не получено. Автоматический повтор отключён, чтобы не отправить дубликат."
+                        : failureReason(rows.getString("last_error"), telegram);
+                result.add(new TelegramRuntime.DeliveryIncident(rows.getString("id"), telegram ? "Telegram" : "VK",
+                        rows.getInt("attempts"), rows.getString("created_at"), reason, !uncertain,
+                        rows.getString("request_id"), rows.getString("operator_topic_id"), rows.getString("operator_message_id")));
             }
             return result;
         }
+    }
+
+    private static String failureReason(String error, boolean telegram) {
+        var normalized = error == null ? "" : error.toLowerCase(java.util.Locale.ROOT);
+        if (normalized.contains("blocked") || normalized.contains("chat not found")
+                || normalized.contains("user is deactivated") || normalized.contains("forbidden")
+                || normalized.equals("api 403")) {
+            return "Бот не может написать клиенту. Возможно, клиент заблокировал бота.";
+        }
+        if (normalized.contains("unauthorized") || normalized.contains("invalid token") || normalized.equals("api 401")) {
+            return telegram ? "Telegram не принимает подключение бота. Переподключите Telegram."
+                    : "VK не принимает ключ сообщества. Переподключите VK.";
+        }
+        if (normalized.contains("too many requests") || normalized.contains("429")) {
+            return "Канал временно ограничил отправку. Повторите попытку позже.";
+        }
+        if (normalized.contains("request failed") || normalized.contains("network")
+                || normalized.contains("timeout") || normalized.contains("econn")) {
+            return "Не удалось связаться с каналом. Проверьте интернет и повторите попытку.";
+        }
+        return telegram ? "Telegram не доставил ответ. Проверьте подключение и повторите попытку."
+                : "VK не доставил ответ. Проверьте подключение и повторите попытку.";
     }
 
     boolean retry(String id, Instant now) throws SQLException {

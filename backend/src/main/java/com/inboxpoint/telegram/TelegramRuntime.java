@@ -221,7 +221,7 @@ public final class TelegramRuntime {
         }
     }
 
-    boolean retry(String id) throws IOException, SQLException {
+    public boolean retry(String id) throws IOException, SQLException {
         try (var store = new TelegramStore(database)) {
             return store.retry(id, Instant.now());
         }
@@ -251,13 +251,17 @@ public final class TelegramRuntime {
             var state = stalled ? "stalled" : age != null && age > 300 ? "backlog"
                     : summary.failed() > 0 ? "failed" : "healthy";
             return new DeliveryState(summary.pending(), summary.failed(), summary.uncertain(), oldest == null ? null : oldest.toString(),
-                    age, state, worker);
+                    age, state, worker, store.incidents());
         }
     }
 
     @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
     public record DeliveryState(long pending, long failed, long uncertain, String oldestPendingAt, Long oldestPendingAgeSeconds,
-            String state, DeliveryProcess worker) { }
+            String state, DeliveryProcess worker, java.util.List<DeliveryIncident> incidents) { }
+
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    public record DeliveryIncident(String id, String channel, int attempts, String createdAt, String reason,
+            boolean retryAllowed, String requestId, String operatorTopicId, String operatorMessageId) { }
 
     @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
     public record DeliveryProcess(String lastCycleAt, boolean running, String state) { }

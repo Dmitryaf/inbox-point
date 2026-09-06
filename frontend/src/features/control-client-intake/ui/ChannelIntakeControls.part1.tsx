@@ -31,7 +31,7 @@ export function renderChannelIntakeControlsPart1(
               >
                 {$props.state.channels[channel].mode === 'paused'
                   ? 'На паузе'
-                  : 'Работает'}
+                  : 'Приём включён'}
               </span>
             </div>
             <p data-r-0bf4defe="">{pauseExplanation(channel)}</p>
@@ -44,7 +44,9 @@ export function renderChannelIntakeControlsPart1(
               className="danger"
               data-r-0bf4defe=""
             >
-              {' Приостановить '}
+              {$props.pendingChannel === channel
+                ? 'Приостанавливаем…'
+                : 'Приостановить'}
             </button>
           ) : (
             <button
@@ -53,7 +55,9 @@ export function renderChannelIntakeControlsPart1(
               onClick={() => void $emit('change', channel, 'active')}
               data-r-0bf4defe=""
             >
-              {' Возобновить '}
+              {$props.pendingChannel === channel
+                ? 'Возобновляем…'
+                : 'Возобновить'}
             </button>
           )}
         </article>

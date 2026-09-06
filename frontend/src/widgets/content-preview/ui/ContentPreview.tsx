@@ -2,13 +2,11 @@ import {
   useComponentModel,
   ModelScopeProvider,
 } from '@frontend/shared/lib/component-model';
-import {
-  classNames as $class,
-  renderList as $renderList,
-} from '@frontend/shared/lib/component-view';
+import { classNames as $class } from '@frontend/shared/lib/component-view';
 
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
+import { renderContentPreviewPart1 } from './ContentPreview.part1';
 import {
   createComponentModel,
   componentDefaults,
@@ -25,7 +23,6 @@ export default function ContentPreview($incomingProps: ComponentProps) {
     componentDefaults,
     createComponentModel,
   );
-  const responses = $state.responses.value;
   const $attributes = inheritedAttributes($props);
   return (
     <ModelScopeProvider scope={$scope}>
@@ -36,22 +33,7 @@ export default function ContentPreview($incomingProps: ComponentProps) {
       >
         <p className="step">{'Предпросмотр'}</p>
         <h2 id="preview-title">{'Что увидит клиент'}</h2>
-        {responses.length === 0 ? (
-          <p className="empty">
-            {' Заполните разделы — здесь появится будущий ответ. '}
-          </p>
-        ) : (
-          $renderList(responses, (response) => (
-            <article key={response.label} className="preview-response">
-              <p className="preview-response-label">
-                {'Кнопка «'}
-                {response.label}
-                {'»'}
-              </p>
-              <p className="preserve">{response.text}</p>
-            </article>
-          ))
-        )}
+        {renderContentPreviewPart1($state)}
       </section>
     </ModelScopeProvider>
   );

@@ -35,6 +35,11 @@ class DeliveryWorkerTest {
             assertThat(store.summary().uncertain()).isEqualTo(1);
             var failure = store.failures().getFirst();
             assertThat(failure.retryAllowed()).isFalse();
+            var incident = store.incidents().getFirst();
+            assertThat(incident.id()).isEqualTo(failure.id());
+            assertThat(incident.requestId()).isNotBlank();
+            assertThat(incident.operatorTopicId()).isNotBlank();
+            assertThat(incident.operatorMessageId()).isNotBlank();
             assertThat(store.retry(failure.id(), time)).isFalse();
         }
     }

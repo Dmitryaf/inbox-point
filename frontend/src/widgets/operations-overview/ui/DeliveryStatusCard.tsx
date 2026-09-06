@@ -7,6 +7,7 @@ import { classNames as $class } from '@frontend/shared/lib/component-view';
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
 import { renderDeliveryStatusCardPart1 } from './DeliveryStatusCard.part1';
+import { renderDeliveryStatusCardPart2 } from './DeliveryStatusCard.part2';
 import {
   createComponentModel,
   componentDefaults,
@@ -38,6 +39,7 @@ export default function DeliveryStatusCard($incomingProps: ComponentProps) {
           </span>
         </div>
         {renderDeliveryStatusCardPart1($props)}
+        {renderDeliveryStatusCardPart2($state, $props)}
       </article>
     </ModelScopeProvider>
   );

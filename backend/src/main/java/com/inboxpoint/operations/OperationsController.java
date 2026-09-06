@@ -13,6 +13,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -89,13 +90,39 @@ final class OperationsController {
             var delivery = runtime.deliveryState(now);
             boolean attention = !"healthy".equals(delivery.state())
                     || telegram.needsAttention() || vk.needsAttention();
+            var intake = runtime.serviceControl().current().channels();
+            boolean maintenance = intake.values().stream().anyMatch(item -> "paused".equals(item.mode()));
             return ResponseEntity.ok(Map.of(
-                    "state", attention ? "attention" : "healthy",
+                    "state", attention ? "attention" : maintenance ? "maintenance" : "healthy",
                     "channels", Map.of("telegram", telegram, "vk", vk),
-                    "deliveries", delivery, "intake", runtime.serviceControl().current().channels(), "observedAt", now.toString(), "startedAt", started.toString(),
+                    "deliveries", delivery, "intake", intake, "observedAt", now.toString(), "startedAt", started.toString(),
                     "uptimeSeconds", Math.max(0, Duration.between(started, now).toSeconds())));
         } catch (IOException | SQLException unavailable) {
             return message(503, "Не удалось прочитать состояние сервиса.");
+        }
+    }
+
+    @PostMapping("/deliveries/{id}/retry")
+    ResponseEntity<?> retryDelivery(@PathVariable String id, HttpServletRequest request, HttpServletResponse response) {
+        if (!admin.available(request, response)) {
+            return message(404, "Not found");
+        }
+        if (!admin.authorized(request, response)) {
+            return message(401, "Введите пароль мониторинга.");
+        }
+        if (!PasswordSessions.sameOrigin(request)) {
+            return message(403, "Запрос отклонён.");
+        }
+        if (id.length() > 100) {
+            return message(404, "Ответ не найден.");
+        }
+        try {
+            if (!runtime.retry(id)) {
+                return message(409, "Ответ уже отправляется, больше не требует повтора или нуждается в ручной проверке.");
+            }
+            return ResponseEntity.ok(Map.of("queued", true));
+        } catch (IOException | SQLException unavailable) {
+            return message(503, "Управление доставкой пока недоступно.");
         }
     }
 

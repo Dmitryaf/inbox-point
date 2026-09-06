@@ -15,7 +15,9 @@ import { validateContentDraft } from '@frontend/entities/content/lib/content-val
 import type { EditorSection, WorkspaceView } from '../model/navigation';
 import { useContentWorkspace } from '../model/use-content-workspace';
 
-export type ComponentProps = { authenticated: boolean } & EventProps<{
+export type ComponentProps = {
+  authenticated: boolean;
+} & EventProps<{
   dirtyChange: [dirty: boolean];
   unauthorized: [];
 }> &

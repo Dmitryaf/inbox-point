@@ -1,5 +1,4 @@
 import '@frontend/features/control-client-intake/ui/channel-intake-controls.react-data-r-0bf4defe.css';
-
 import {
   useComponentModel,
   ModelScopeProvider,

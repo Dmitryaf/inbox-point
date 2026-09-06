@@ -6,7 +6,9 @@ import {
 
 import { ref } from '@frontend/shared/lib/model-state';
 
-export type ComponentProps = { pending: boolean } & EventProps<{
+export type ComponentProps = {
+  pending: boolean;
+} & EventProps<{
   submit: [password: string];
 }> &
   ComponentAttributes;

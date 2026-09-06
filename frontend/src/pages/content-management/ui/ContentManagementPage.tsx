@@ -3,12 +3,11 @@ import {
   ModelScopeProvider,
 } from '@frontend/shared/lib/component-model';
 import { classNames as $class } from '@frontend/shared/lib/component-view';
-import { nativeHandler as $nativeHandler } from '@frontend/shared/lib/component-events';
-import { unref as $unref } from '@frontend/shared/lib/model-state';
 
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
 import { renderContentManagementPagePart1 } from './ContentManagementPage.part1';
+import { renderContentManagementPagePart2 } from './ContentManagementPage.part2';
 import {
   createComponentModel,
   componentDefaults,
@@ -25,29 +24,12 @@ export default function ContentManagementPage($incomingProps: ComponentProps) {
     componentDefaults,
     createComponentModel,
   );
-  const { logOut } = $state;
-  const session = $unref($state.session);
   const $attributes = inheritedAttributes($props);
   return (
     <ModelScopeProvider scope={$scope}>
       <div {...$attributes} className={$class('shell', $attributes.className)}>
-        <header className="hero">
-          <div>
-            <p className="eyebrow">{'Messenger Handoff'}</p>
-            <h1>{'Информация для клиентов'}</h1>
-            <p>{'Обновите ответы, которые клиенты видят в Telegram и VK.'}</p>
-          </div>
-          {session.authenticated.value ? (
-            <button
-              type="button"
-              onClick={$nativeHandler(logOut)}
-              className="secondary-button"
-            >
-              {' Выйти '}
-            </button>
-          ) : null}
-        </header>
         {renderContentManagementPagePart1($state)}
+        {renderContentManagementPagePart2($state)}
       </div>
     </ModelScopeProvider>
   );

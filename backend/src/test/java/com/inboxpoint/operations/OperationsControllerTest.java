@@ -52,6 +52,14 @@ class OperationsControllerTest {
             assertThat(status.path("state").asString()).isEqualTo("attention");
             assertThat(status.at("/channels/vk/configured").asBoolean()).isFalse();
             assertThat(status.at("/deliveries/failed").asLong()).isZero();
+            assertThat(status.at("/deliveries/incidents").isArray()).isTrue();
+            var retryUri = URI.create(base + "/deliveries/missing/retry");
+            var anonymousRetry = client.send(HttpRequest.newBuilder(retryUri).POST(HttpRequest.BodyPublishers.noBody()).build(),
+                    HttpResponse.BodyHandlers.ofString());
+            assertThat(anonymousRetry.statusCode()).isEqualTo(401);
+            var retry = client.send(HttpRequest.newBuilder(retryUri).header("Cookie", cookie)
+                    .POST(HttpRequest.BodyPublishers.noBody()).build(), HttpResponse.BodyHandlers.ofString());
+            assertThat(retry.statusCode()).isEqualTo(409);
             assertThat(status.at("/deliveries/worker/state").asString()).isEqualTo("inactive");
         }
     }

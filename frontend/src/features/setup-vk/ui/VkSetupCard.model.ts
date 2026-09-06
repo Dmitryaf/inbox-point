@@ -12,7 +12,9 @@ import { errorMessage } from '@frontend/shared/lib/error-message';
 export type ComponentProps = {
   status: ChannelSetupStatus;
   telegramConnected: boolean;
-} & EventProps<{ connected: [] }> &
+} & EventProps<{
+  connected: [];
+}> &
   ComponentAttributes;
 export const componentDefaults = {};
 type ResolvedProps = WithDefaults<ComponentProps, typeof componentDefaults>;
