@@ -62,10 +62,11 @@ public final class VkChannel implements AutoCloseable {
                             long peer = message.path("peer_id").asLong();
                             long id = message.path("conversation_message_id").asLong(message.path("id").asLong());
                             var text = message.path("text").asString("");
-                            if (from == peer && peer > 0 && peer < FIRST_GROUP_CHAT && id > 0 && !text.isBlank()
+                            var unsupported = message.path("attachments").isArray() && !message.path("attachments").isEmpty();
+                            if (from == peer && peer > 0 && peer < FIRST_GROUP_CHAT && id > 0 && (unsupported || !text.isBlank())
                                     && message.path("out").asInt(0) == 0) {
                                 var event = update.path("event_id").asString("vk-message:" + peer + ":" + id);
-                                messages.add(new Message(event, peer, id, api.userDisplayName(peer), text));
+                                messages.add(new Message(event, peer, id, unsupported ? "" : api.userDisplayName(peer), text, unsupported));
                             }
                         }
                         sink.save(messages);
@@ -95,7 +96,11 @@ public final class VkChannel implements AutoCloseable {
         http.close();
     }
 
-    public record Message(String event, long peer, long message, String name, String text) { }
+    public record Message(String event, long peer, long message, String name, String text, boolean unsupported) {
+        public Message(String event, long peer, long message, String name, String text) {
+            this(event, peer, message, name, text, false);
+        }
+    }
 
     public interface Incoming {
         void save(List<Message> batch) throws SQLException, IOException;

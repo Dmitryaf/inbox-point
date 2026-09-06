@@ -103,7 +103,20 @@ public final class TelegramRuntime {
                 }
                 try (var store = new TelegramStore(database)) {
                     for (var item = store.nextVk(); item != null; item = store.nextVk()) {
-                        receiveVk(item.event(), item.peer(), item.message(), item.name(), item.text());
+                        if (item.unsupported()) {
+                            var source = "vk:unsupported";
+                            if (store.claim(source, item.event(), Instant.now())) {
+                                try {
+                                    vk.channel().send(item.peer(), TelegramTextHandoff.TEXT_ONLY, "vk-attachment:" + item.event());
+                                    store.completeEvent(source, item.event(), Instant.now());
+                                } catch (IOException failure) {
+                                    store.release(source, item.event());
+                                    throw failure;
+                                }
+                            }
+                        } else {
+                            receiveVk(item.event(), item.peer(), item.message(), item.name(), item.text());
+                        }
                         store.deleteVk(item.event());
                     }
                 }

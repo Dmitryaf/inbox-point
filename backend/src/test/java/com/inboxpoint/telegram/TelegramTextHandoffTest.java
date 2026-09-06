@@ -55,6 +55,31 @@ class TelegramTextHandoffTest {
         }
     }
 
+    @Test
+    void givesATextOnlyNoticeAndSplitsLongQuestionsOnCodePointBoundaries() throws Exception {
+        try (var server = new TelegramTestServer(call -> switch (call.method()) {
+            case "createForumTopic" -> TelegramTestServer.Response.ok("{\"message_thread_id\":42}");
+            case "sendMessage" -> TelegramTestServer.Response.message(101);
+            default -> throw new AssertionError("Unexpected method " + call.method());
+        }); var http = HttpClient.newHttpClient();
+                var store = new TelegramStore(directory.resolve("message.sqlite"))) {
+            var api = new TelegramBotApi(http, server.origin(), TelegramTestServer.TOKEN, Duration.ofSeconds(3));
+            var handoff = new TelegramTextHandoff(-100123, store, api, Clock.systemUTC(),
+                    new ClientInformation(directory.resolve("settings.sqlite").toString()));
+            var unsupported = update(1, 123, "private", 0, "");
+            ((tools.jackson.databind.node.ObjectNode) unsupported.path("message")).putArray("photo");
+            handoff.process(unsupported);
+            assertThat(store.activeRequest(123)).isNull();
+            assertThat(server.requests().getFirst().body().path("text").asString()).contains("только текст");
+            handoff.process(update(2, 123, "private", 0, "🙂".repeat(5000)));
+            var relays = server.requests().stream().filter(call -> call.body().path("message_thread_id").asLong() == 42).toList();
+            assertThat(relays).hasSize(2).allSatisfy(call -> {
+                var text = call.body().path("text").asString();
+                assertThat(text.codePointCount(0, text.length())).isLessThanOrEqualTo(4096);
+            });
+        }
+    }
+
     private static JsonNode update(long id, long chat, String type, long topic, String text) {
         var root = JsonMapper.shared().createObjectNode().put("update_id", id);
         var message = root.putObject("message").put("message_id", id + 100)

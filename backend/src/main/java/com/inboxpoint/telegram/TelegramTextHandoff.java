@@ -3,6 +3,7 @@ package com.inboxpoint.telegram;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.time.Clock;
+import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.function.Predicate;
@@ -12,6 +13,11 @@ import tools.jackson.databind.JsonNode;
 
 final class TelegramTextHandoff {
     record OperatorChat(long id, boolean isForum, String title, String type) { }
+
+    private static final int MESSAGE_LIMIT = 4096;
+    private static final List<String> UNSUPPORTED = List.of("animation", "audio", "contact", "dice", "document",
+            "paid_media", "photo", "poll", "sticker", "story", "venue", "video", "video_note", "voice");
+    static final String TEXT_ONLY = "Сейчас можно отправить только текст. Напишите вопрос отдельным текстовым сообщением.";
 
     private final long operatorGroup;
     private final TelegramStore store;
@@ -48,16 +54,43 @@ final class TelegramTextHandoff {
         }
         var sender = message.path("from");
         var text = message.path("text").asString("");
-        if (sender.isMissingNode() || sender.path("is_bot").asBoolean(false) || text.isBlank()) {
+        if (sender.isMissingNode() || sender.path("is_bot").asBoolean(false)) {
             return;
         }
         if (externalMessage <= 0 || (!operator && (chat <= 0 || !"private".equals(type)))) {
+            return;
+        }
+        if (UNSUPPORTED.stream().anyMatch(message::has)) {
+            notifyUnsupported(chat, topic, event, operator);
+            return;
+        }
+        if (text.isBlank()) {
             return;
         }
         if (operator) {
             processText(chat, topic, externalMessage, text, event, sender, true);
         } else {
             queue.run("telegram", chat, () -> processText(chat, topic, externalMessage, text, event, sender, false));
+        }
+    }
+
+    private void notifyUnsupported(long chat, long topic, String event, boolean operator)
+            throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
+        var source = "telegram:unsupported";
+        if (!store.claim(source, event, clock.instant())) {
+            return;
+        }
+        try {
+            api.sendMessage(chat, operator ? topic : null, operator
+                    ? "Это сообщение не отправлено клиенту: сейчас поддерживаются только текстовые ответы." : TEXT_ONLY);
+            store.completeEvent(source, event, clock.instant());
+        } catch (TelegramBotApi.RequestFailed failure) {
+            if (failure.outcomeUnknown()) {
+                store.completeEvent(source, event, clock.instant());
+            } else {
+                store.release(source, event);
+            }
+            throw failure;
         }
     }
 
@@ -122,8 +155,7 @@ final class TelegramTextHandoff {
         var request = store.activeRequest(channel, chat);
         if (request != null) {
             try {
-                var sent = api.sendMessage(operatorGroup, request.topic(), "Customer:\n\n" + text);
-                store.link(request.id(), "client_to_operator", message, Long.toString(sent), clock.instant());
+                relayChunks(request, message, "Клиент:\n\n", text);
                 return;
             } catch (TelegramBotApi.RequestFailed failure) {
                 if (failure.topicProblem() != TelegramBotApi.TopicProblem.MISSING
@@ -137,9 +169,8 @@ final class TelegramTextHandoff {
         if (latest != null && (request == null || !latest.id().equals(request.id()))) {
             try {
                 api.reopenTopic(operatorGroup, latest.topic());
-                var sent = api.sendMessage(operatorGroup, latest.topic(), "Customer:\n\n" + text);
+                relayChunks(latest, message, "Клиент:\n\n", text);
                 store.changeStatus(latest.id(), true, clock.instant());
-                store.link(latest.id(), "client_to_operator", message, Long.toString(sent), clock.instant());
                 return;
             } catch (TelegramBotApi.RequestFailed failure) {
                 if (failure.topicProblem() != TelegramBotApi.TopicProblem.MISSING
@@ -154,10 +185,23 @@ final class TelegramTextHandoff {
         request = new TelegramStore.Request(UUID.randomUUID().toString(), chat,
                 api.createForumTopic(operatorGroup, title), true, channel);
         store.open(request, clock.instant());
-        var body = "New " + platform + " request\nCustomer: " + name + "\nRequest: " + request.id() + "\n\n" + text
-                + "\n\nReply here to answer the customer. Use /close to close the request.";
-        var sent = api.sendMessage(operatorGroup, request.topic(), body);
-        store.link(request.id(), "client_to_operator", message, Long.toString(sent), clock.instant());
+        var prefix = "Новое обращение из " + platform + "\nКлиент: " + name
+                + "\n\nОтветьте сообщением в этой теме.\nЧтобы закрыть обращение, отправьте /close.\n\nВопрос:\n";
+        relayChunks(request, message, prefix, text);
+    }
+
+    private void relayChunks(TelegramStore.Request request, String message, String firstPrefix, String text)
+            throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
+        var prefix = firstPrefix;
+        for (int start = 0; start < text.length();) {
+            var capacity = MESSAGE_LIMIT - prefix.codePointCount(0, prefix.length());
+            var size = Math.min(text.codePointCount(start, text.length()), capacity);
+            var end = text.offsetByCodePoints(start, size);
+            var sent = api.sendMessage(operatorGroup, request.topic(), prefix + text.substring(start, end));
+            store.link(request.id(), "client_to_operator", message, Long.toString(sent), clock.instant());
+            start = end;
+            prefix = "Клиент (продолжение):\n\n";
+        }
     }
 
     private void reconcileTopic(long topic, String event, boolean active) throws SQLException {
