@@ -1,0 +1,44 @@
+import {
+  classNames as $class,
+  renderList as $renderList,
+} from '@frontend/shared/lib/component-view';
+
+import { logicalOr as $or } from '@frontend/shared/lib/component-bindings';
+
+import type { WithDefaults } from '@frontend/shared/lib/component-model';
+import type {
+  createComponentModel,
+  ComponentProps,
+  componentDefaults,
+} from './OperatorRequestList.model';
+export function renderOperatorRequestListPart1(
+  $state: ReturnType<typeof createComponentModel>,
+  $props: WithDefaults<ComponentProps, typeof componentDefaults>,
+) {
+  const { $emit, channelName, formatDate } = $state;
+
+  return (
+    <>
+      {$renderList($props.requests, (request) => (
+        <button
+          key={request.id}
+          type="button"
+          aria-pressed={request.id === $props.selectedRequestId}
+          onClick={() => void $emit('select', request.id)}
+          className={$class('operator-request-button', {
+            'operator-request-button--selected':
+              request.id === $props.selectedRequestId,
+          })}
+        >
+          <strong>{$or(request.displayName, () => 'Клиент')}</strong>
+          <span>{channelName(request.channel)}</span>
+          <time
+            dateTime={$or(request.latestMessageAt, () => request.createdAt)}
+          >
+            {formatDate($or(request.latestMessageAt, () => request.createdAt))}
+          </time>
+        </button>
+      ))}
+    </>
+  );
+}

@@ -17,16 +17,20 @@ final class TelegramClientMenu {
 
     private final TelegramStore store;
     private final TelegramBotApi api;
-    private final long group;
+    private final OperatorInbox inbox;
     private final ClientInformation information;
     private final Predicate<String> paused;
 
     TelegramClientMenu(TelegramStore store, TelegramBotApi api, long group, ClientInformation information, Predicate<String> paused) {
+        this(store, api, new TelegramTopicsInbox(api, group), information, paused);
+    }
+
+    TelegramClientMenu(TelegramStore store, TelegramBotApi api, OperatorInbox inbox, ClientInformation information, Predicate<String> paused) {
         this.paused = paused;
         this.information = information;
         this.store = store;
         this.api = api;
-        this.group = group;
+        this.inbox = inbox;
     }
 
     boolean handle(long chat, String event, String text, Instant now)
@@ -45,7 +49,7 @@ final class TelegramClientMenu {
         }
         try {
             if (RESET.equals(trimmed) && active != null) {
-                api.closeTopic(group, active.topic());
+                inbox.close(active.topic());
                 store.changeStatus(active.id(), false, now);
             }
             api.sendMessage(chat, null, response, keyboard(blocked));

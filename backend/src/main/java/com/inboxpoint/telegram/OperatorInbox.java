@@ -1,10 +1,10 @@
 package com.inboxpoint.telegram;
 
 interface OperatorInbox {
-    long open(String title) throws TelegramBotApi.RequestFailed, InterruptedException;
-    long relay(long topic, String text) throws TelegramBotApi.RequestFailed, InterruptedException;
-    void close(long topic) throws TelegramBotApi.RequestFailed, InterruptedException;
-    void reopen(long topic) throws TelegramBotApi.RequestFailed, InterruptedException;
+    String open(String request, String title) throws TelegramBotApi.RequestFailed, InterruptedException;
+    String relay(String topic, String message, int offset, String text) throws TelegramBotApi.RequestFailed, InterruptedException;
+    void close(String topic) throws TelegramBotApi.RequestFailed, InterruptedException;
+    void reopen(String topic) throws TelegramBotApi.RequestFailed, InterruptedException;
 
     default void notifyFailure(TelegramRuntime.DeliveryIncident delivery)
             throws TelegramBotApi.RequestFailed, InterruptedException {

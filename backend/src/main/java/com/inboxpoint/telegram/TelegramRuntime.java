@@ -98,10 +98,7 @@ public final class TelegramRuntime {
 
             @Override
             public void drain() throws IOException, SQLException, InterruptedException {
-                var inbox = handoff.operatorInbox();
-                if (inbox == null) {
-                    return;
-                }
+                var inbox = handoff.routingInbox();
                 try (var store = new TelegramStore(database)) {
                     for (var item = store.nextVk(); item != null; item = store.nextVk()) {
                         if (item.unsupported()) {
@@ -237,6 +234,43 @@ public final class TelegramRuntime {
         }
     }
 
+    public List<InboxRequest> inboxRequests() throws IOException, SQLException {
+        try (var store = new TelegramStore(database)) {
+            return store.activeOperatorRequests();
+        }
+    }
+
+    public List<InboxMessage> inboxMessages(String id) throws IOException, SQLException {
+        try (var store = new TelegramStore(database)) {
+            return store.byId(id) == null ? null : store.operatorMessages(id);
+        }
+    }
+
+    public String inboxAction(String id, String key, String text, boolean close)
+            throws IOException, SQLException, InterruptedException {
+        try (var store = new TelegramStore(database)) {
+            var request = store.byId(id);
+            if (request == null) {
+                return "missing";
+            }
+            if (!request.active()) {
+                return close ? "ok" : "closed";
+            }
+            var event = "web:" + (close ? "close:" : "reply:") + id + ":" + key;
+            var service = new HandoffService(store, handoff.routingInbox(), Clock.systemUTC(), queue);
+            service.relayReply(request, event, close ? "/close" : text, event);
+            return "ok";
+        }
+    }
+
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    public record InboxRequest(String id, String channel, String createdAt, String displayName, String latestMessageAt,
+            String status) { }
+
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    public record InboxMessage(String id, String direction, String text, String senderName, String createdAt,
+            String deliveryStatus, Boolean deliveryOutcomeUnknown) { }
+
     public DeliveryState deliveryState(Instant now) throws IOException, SQLException {
         try (var store = new TelegramStore(database)) {
             var summary = store.summary();
@@ -295,7 +329,7 @@ public final class TelegramRuntime {
             var unregisterClient = handoff.registerTelegram(api);
             var unregisterInbox = handoff.registerOperatorInbox(new TelegramTopicsInbox(api, group));
             try {
-                var handler = new TelegramTextHandoff(group, store, api, Clock.systemUTC(), information, queue, serviceControl::intakePaused);
+                var handler = new TelegramTextHandoff(group, store, api, Clock.systemUTC(), information, queue, serviceControl::intakePaused, handoff.routingInbox());
                 new TelegramPoller(api, handler, timeout, activity).run();
             } finally {
                 unregisterInbox.run();

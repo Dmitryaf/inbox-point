@@ -54,8 +54,8 @@ class VkBridgeTest {
             handoff.processVk("vk-1", 123, 22, "VK customer", "Question in VK");
             handoff.processVk("vk-1", 123, 22, "VK customer", "Question in VK");
             handoff.process(update(1, 123, 0, "Question in Telegram"));
-            assertThat(store.activeRequest("vk", 123).topic()).isEqualTo(41);
-            assertThat(store.activeRequest("telegram", 123).topic()).isEqualTo(42);
+            assertThat(store.activeRequest("vk", 123).topic()).isEqualTo("41");
+            assertThat(store.activeRequest("telegram", 123).topic()).isEqualTo("42");
             handoff.process(update(2, -100123, 41, "Answer to VK"));
             handoff.process(update(3, -100123, 42, "Answer to Telegram"));
             var worker = new TelegramDeliveryWorker(store, api, Clock.systemUTC(), () -> community);

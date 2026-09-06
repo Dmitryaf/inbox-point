@@ -41,7 +41,7 @@ class TelegramTextHandoffTest {
             handoff.process(update(5, -100123, "supergroup", 42, "Closed reply"));
             assertThat(store.activeRequest(123)).isNull();
             handoff.process(update(6, -100123, "supergroup", 42, "/reopen"));
-            assertThat(store.activeRequest(123).topic()).isEqualTo(42);
+            assertThat(store.activeRequest(123).topic()).isEqualTo("42");
 
             var calls = server.requests();
             assertThat(calls).extracting(TelegramTestServer.Request::method)

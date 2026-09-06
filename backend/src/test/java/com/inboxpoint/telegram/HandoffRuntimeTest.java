@@ -12,6 +12,32 @@ class HandoffRuntimeTest {
     Path directory;
 
     @Test
+    void keepsTheConversationAndQueuesWebRepliesWithoutTelegram() throws Exception {
+        var runtime = new HandoffRuntime(directory.resolve("unused.sqlite"), () -> false, () -> null);
+        var now = java.time.Instant.parse("2026-10-01T10:00:00Z");
+        var clock = java.time.Clock.fixed(now, java.time.ZoneOffset.UTC);
+        try (var store = new TelegramStore(directory.resolve("web.sqlite"))) {
+            var service = new HandoffService(store, runtime.routingInbox(), clock, new ClientMessageQueue());
+            service.processVk("update", 123, 56, "Customer", "Question from VK");
+            var request = store.activeRequest("vk", 123);
+            assertThat(request.topic()).isEqualTo("web:" + request.id());
+            assertThat(store.activeOperatorRequests()).singleElement().satisfies(view -> {
+                assertThat(view.channel()).isEqualTo("vk");
+                assertThat(view.displayName()).isEqualTo("Customer");
+            });
+            service.relayReply(request, "web:reply", "Operator answer", "web:reply");
+            service.relayReply(request, "web:reply", "Operator answer", "web:reply");
+            assertThat(store.operatorMessages(request.id())).hasSize(2).anySatisfy(message -> {
+                assertThat(message.direction()).isEqualTo("operator_to_client");
+                assertThat(message.deliveryStatus()).isEqualTo("pending");
+            });
+            assertThat(store.pending(now, false, true)).hasSize(1);
+            service.relayReply(request, "web:close", "/close", "web:close");
+            assertThat(store.activeOperatorRequests()).isEmpty();
+        }
+    }
+
+    @Test
     void startsWithoutTelegramAndUnregistersOnlyTheCurrentInbox() throws Exception {
         var runtime = new HandoffRuntime(directory.resolve("service.sqlite"), () -> false, () -> null);
         var first = new TelegramTopicsInbox(null, 10);

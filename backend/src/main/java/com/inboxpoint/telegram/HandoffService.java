@@ -48,7 +48,7 @@ final class HandoffService {
         var request = store.activeRequest(channel, chat);
         if (request != null) {
             try {
-                relayChunks(request, message, "Клиент:\n\n", text);
+                relayChunks(request, message, name, "Клиент:\n\n", text);
                 return;
             } catch (TelegramBotApi.RequestFailed failure) {
                 if (failure.topicProblem() != TelegramBotApi.TopicProblem.MISSING
@@ -62,7 +62,7 @@ final class HandoffService {
         if (latest != null && (request == null || !latest.id().equals(request.id()))) {
             try {
                 inbox.reopen(latest.topic());
-                relayChunks(latest, message, "Клиент:\n\n", text);
+                relayChunks(latest, message, name, "Клиент:\n\n", text);
                 store.changeStatus(latest.id(), true, clock.instant());
                 return;
             } catch (TelegramBotApi.RequestFailed failure) {
@@ -75,23 +75,24 @@ final class HandoffService {
         var platform = "telegram".equals(channel) ? "Telegram" : "VK";
         var title = ("telegram".equals(channel) ? "TG" : "VK") + " - " + name;
         title = title.substring(0, title.offsetByCodePoints(0, Math.min(128, title.codePointCount(0, title.length()))));
-        request = new TelegramStore.Request(UUID.randomUUID().toString(), chat,
-                inbox.open(title), true, channel);
-        store.open(request, clock.instant());
+        var requestId = UUID.randomUUID().toString();
+        request = new TelegramStore.Request(requestId, chat, inbox.open(requestId, title), true, channel);
+        store.open(request, name, clock.instant());
         var prefix = "Новое обращение из " + platform + "\nКлиент: " + name
                 + "\n\nОтветьте сообщением в этой теме.\nЧтобы закрыть обращение, отправьте /close.\n\nВопрос:\n";
-        relayChunks(request, message, prefix, text);
+        relayChunks(request, message, name, prefix, text);
     }
 
-    private void relayChunks(TelegramStore.Request request, String message, String firstPrefix, String text)
+    private void relayChunks(TelegramStore.Request request, String message, String sender, String firstPrefix, String text)
             throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
+        store.recordMessage(request.id(), "client_to_operator", message, sender, text, clock.instant());
         var prefix = firstPrefix;
         for (int start = 0; start < text.length();) {
             var capacity = MESSAGE_LIMIT - prefix.codePointCount(0, prefix.length());
             var size = Math.min(text.codePointCount(start, text.length()), capacity);
             var end = text.offsetByCodePoints(start, size);
-            var sent = inbox.relay(request.topic(), prefix + text.substring(start, end));
-            store.link(request.id(), "client_to_operator", message, Long.toString(sent), clock.instant());
+            var sent = inbox.relay(request.topic(), request.channel() + ":" + message, start, prefix + text.substring(start, end));
+            store.link(request.id(), "client_to_operator", message, sent, clock.instant());
             start = end;
             prefix = "Клиент (продолжение):\n\n";
         }
@@ -112,6 +113,13 @@ final class HandoffService {
     void relayReply(long topic, long message, String text, String event)
             throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
         var request = store.byTopic(topic);
+        if (request != null) {
+            relayReply(request, Long.toString(message), text, event);
+        }
+    }
+
+    void relayReply(TelegramStore.Request request, String message, String text, String event)
+            throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
         if (request == null) {
             return;
         }
@@ -119,13 +127,13 @@ final class HandoffService {
         switch (command) {
             case "/close" -> {
                 if (request.active()) {
-                    inbox.close(topic);
+                    inbox.close(request.topic());
                     store.changeStatus(request.id(), false, clock.instant());
                 }
             }
             case "/reopen" -> {
                 if (!request.active() && store.activeRequest(request.channel(), request.conversation()) == null) {
-                    inbox.reopen(topic);
+                    inbox.reopen(request.topic());
                     store.changeStatus(request.id(), true, clock.instant());
                 }
             }

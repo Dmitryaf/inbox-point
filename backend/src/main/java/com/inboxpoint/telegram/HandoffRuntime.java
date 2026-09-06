@@ -18,6 +18,7 @@ final class HandoffRuntime {
     private final BooleanSupplier paused;
     private final Supplier<VkChannel> vk;
     private final AtomicReference<OperatorInbox> inbox = new AtomicReference<>();
+    private final OperatorInbox routingInbox = new SwitchableOperatorInbox(inbox::get);
     private final AtomicReference<TelegramBotApi> telegram = new AtomicReference<>();
     private volatile Thread deliveries;
     private volatile Instant lastCycle;
@@ -30,6 +31,10 @@ final class HandoffRuntime {
 
     OperatorInbox operatorInbox() {
         return inbox.get();
+    }
+
+    OperatorInbox routingInbox() {
+        return routingInbox;
     }
 
     Runnable registerOperatorInbox(OperatorInbox target) {
@@ -63,7 +68,7 @@ final class HandoffRuntime {
             while (!Thread.currentThread().isInterrupted()) {
                 lastCycle = Instant.now();
                 var processed = worker.runOnce();
-                notifyFailures(store, inbox.get(), Clock.systemUTC());
+                notifyFailures(store, routingInbox, Clock.systemUTC());
                 Thread.sleep(Duration.ofMillis(processed > 0 ? 100 : 1000));
             }
         } catch (InterruptedException stopping) {

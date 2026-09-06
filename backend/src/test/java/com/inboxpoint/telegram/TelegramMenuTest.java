@@ -44,9 +44,9 @@ class TelegramMenuTest {
             assertThat(server.requests()).hasSize(1);
             assertThat(server.requests().getFirst().body().at("/reply_markup/is_persistent").asBoolean()).isTrue();
             handoff.process(update(2, "First question"));
-            assertThat(store.activeRequest(123).topic()).isEqualTo(41);
+            assertThat(store.activeRequest(123).topic()).isEqualTo("41");
             handoff.process(update(3, "Second message"));
-            assertThat(store.activeRequest(123).topic()).isEqualTo(42);
+            assertThat(store.activeRequest(123).topic()).isEqualTo("42");
             assertThat(store.byTopic(41).active()).isFalse();
             handoff.process(update(4, "Начать новый вопрос"));
             assertThat(store.activeRequest(123)).isNull();

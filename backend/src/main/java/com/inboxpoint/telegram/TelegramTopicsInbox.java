@@ -1,12 +1,12 @@
 package com.inboxpoint.telegram;
 
 record TelegramTopicsInbox(TelegramBotApi api, long group) implements OperatorInbox {
-    public long open(String title) throws TelegramBotApi.RequestFailed, InterruptedException {
-        return api.createForumTopic(group, title);
+    public String open(String request, String title) throws TelegramBotApi.RequestFailed, InterruptedException {
+        return Long.toString(api.createForumTopic(group, title));
     }
 
-    public long relay(long topic, String text) throws TelegramBotApi.RequestFailed, InterruptedException {
-        return api.sendMessage(group, topic, text);
+    public String relay(String topic, String message, int offset, String text) throws TelegramBotApi.RequestFailed, InterruptedException {
+        return Long.toString(api.sendMessage(group, Long.parseLong(topic), text));
     }
 
     @Override
@@ -18,14 +18,14 @@ record TelegramTopicsInbox(TelegramBotApi api, long group) implements OperatorIn
                 ? "Не отправляйте ответ повторно вслепую. Владелец должен уточнить получение и разрешить инцидент в /ops."
                 : "Владелец может повторить доставку в /ops.";
         var reference = delivery.operatorMessageId() == null ? "" : "\nСообщение преподавателя: " + delivery.operatorMessageId();
-        relay(Long.parseLong(delivery.operatorTopicId()), heading + "\n\nКанал: " + delivery.channel() + reference + "\n\n" + next);
+        relay(delivery.operatorTopicId(), delivery.id(), 0, heading + "\n\nКанал: " + delivery.channel() + reference + "\n\n" + next);
     }
 
-    public void close(long topic) throws TelegramBotApi.RequestFailed, InterruptedException {
-        api.closeTopic(group, topic);
+    public void close(String topic) throws TelegramBotApi.RequestFailed, InterruptedException {
+        api.closeTopic(group, Long.parseLong(topic));
     }
 
-    public void reopen(long topic) throws TelegramBotApi.RequestFailed, InterruptedException {
-        api.reopenTopic(group, topic);
+    public void reopen(String topic) throws TelegramBotApi.RequestFailed, InterruptedException {
+        api.reopenTopic(group, Long.parseLong(topic));
     }
 }

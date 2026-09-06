@@ -30,13 +30,18 @@ final class TelegramTextHandoff {
 
     TelegramTextHandoff(long operatorGroup, TelegramStore store, TelegramBotApi api, Clock clock,
             ClientInformation information, ClientMessageQueue queue, Predicate<String> paused) {
+        this(operatorGroup, store, api, clock, information, queue, paused, new TelegramTopicsInbox(api, operatorGroup));
+    }
+
+    TelegramTextHandoff(long operatorGroup, TelegramStore store, TelegramBotApi api, Clock clock,
+            ClientInformation information, ClientMessageQueue queue, Predicate<String> paused, OperatorInbox inbox) {
         this.queue = queue;
-        this.handoff = new HandoffService(store, new TelegramTopicsInbox(api, operatorGroup), clock, queue);
+        this.handoff = new HandoffService(store, inbox, clock, queue);
         this.operatorGroup = operatorGroup;
         this.store = store;
         this.api = api;
         this.clock = clock;
-        this.menu = new TelegramClientMenu(store, api, operatorGroup, information, paused);
+        this.menu = new TelegramClientMenu(store, api, inbox, information, paused);
     }
 
     void process(JsonNode update) throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {

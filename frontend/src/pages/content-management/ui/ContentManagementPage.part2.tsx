@@ -52,9 +52,7 @@ export function renderContentManagementPagePart2(
             <div
               style={Object.assign(
                 {},
-                {
-                  display: session.authenticated.value ? undefined : 'none',
-                },
+                { display: session.authenticated.value ? undefined : 'none' },
               )}
             >
               <ContentWorkspace

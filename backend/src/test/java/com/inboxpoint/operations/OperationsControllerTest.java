@@ -50,6 +50,13 @@ class OperationsControllerTest {
             var current = client.send(HttpRequest.newBuilder(URI.create(base + "/status")).header("Cookie", cookie)
                     .GET().build(), HttpResponse.BodyHandlers.ofString());
             assertThat(current.statusCode()).isEqualTo(200);
+            var listUri = URI.create(base + "/inbox/requests");
+            var anonymousInbox = client.send(HttpRequest.newBuilder(listUri).GET().build(), HttpResponse.BodyHandlers.ofString());
+            assertThat(anonymousInbox.statusCode()).isEqualTo(401);
+            var inbox = client.send(HttpRequest.newBuilder(listUri).header("Cookie", cookie).GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+            assertThat(inbox.statusCode()).isEqualTo(200);
+            assertThat(JsonMapper.shared().readTree(inbox.body()).path("requests").isEmpty()).isTrue();
             var status = JsonMapper.shared().readTree(current.body());
             assertThat(status.path("state").asString()).isEqualTo("attention");
             assertThat(status.at("/channels/vk/configured").asBoolean()).isFalse();

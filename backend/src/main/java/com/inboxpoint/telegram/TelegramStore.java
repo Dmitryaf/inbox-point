@@ -52,6 +52,7 @@ final class TelegramStore implements AutoCloseable {
             ensureColumn("deliveries", "attempt_started_at", "TEXT");
             statement.execute("UPDATE deliveries SET outcome_unknown = 1 WHERE last_error = 'Uncertain Telegram result' "
                     + "AND status = 'failed' AND outcome_unknown = 0");
+            ensureColumn("support_requests", "client_display_name", "TEXT");
             ensureColumn("processed_events", "status", "TEXT NOT NULL DEFAULT 'completed'");
             ensureColumn("processed_events", "completed_at", "TEXT");
             statement.execute("""
@@ -82,7 +83,11 @@ final class TelegramStore implements AutoCloseable {
         }
     }
 
-    record Request(String id, long conversation, long topic, boolean active, String channel) { }
+    record Request(String id, long conversation, String topic, boolean active, String channel) {
+        Request(String id, long conversation, long topic, boolean active, String channel) {
+            this(id, conversation, Long.toString(topic), active, channel);
+        }
+    }
 
     Request activeRequest(long conversation) throws SQLException {
         return activeRequest("telegram", conversation);
@@ -99,7 +104,15 @@ final class TelegramStore implements AutoCloseable {
     }
 
     Request byTopic(long topic) throws SQLException {
-        return request("operator_topic_id = ?", Long.toString(topic));
+        return byTopic(Long.toString(topic));
+    }
+
+    Request byTopic(String topic) throws SQLException {
+        return request("operator_topic_id = ?", topic);
+    }
+
+    Request byId(String id) throws SQLException {
+        return request("id = ?", id);
     }
 
     private Request request(String predicate, Object... values) throws SQLException {
@@ -108,16 +121,21 @@ final class TelegramStore implements AutoCloseable {
                 FROM support_requests WHERE
                 """ + " " + predicate, values); var rows = statement.executeQuery()) {
             return rows.next() ? new Request(rows.getString("id"), rows.getLong("external_conversation_id"),
-                    rows.getLong("operator_topic_id"), "active".equals(rows.getString("status")),
+                    rows.getString("operator_topic_id"), "active".equals(rows.getString("status")),
                     rows.getString("channel")) : null;
         }
     }
 
     void open(Request request, Instant now) throws SQLException {
+        open(request, null, now);
+    }
+
+    void open(Request request, String displayName, Instant now) throws SQLException {
         update("""
-                INSERT INTO support_requests (id, channel, external_conversation_id, operator_topic_id, status, created_at)
-                VALUES (?, ?, ?, ?, 'active', ?)
-                """, request.id(), request.channel(), Long.toString(request.conversation()), Long.toString(request.topic()), now.toString());
+                INSERT INTO support_requests (id, channel, external_conversation_id, operator_topic_id, status,
+                    created_at, client_display_name)
+                VALUES (?, ?, ?, ?, 'active', ?, ?)
+                """, request.id(), request.channel(), Long.toString(request.conversation()), request.topic(), now.toString(), displayName);
     }
 
     void changeStatus(String id, boolean active, Instant now) throws SQLException {
@@ -193,13 +211,79 @@ final class TelegramStore implements AutoCloseable {
     }
 
     void queue(Request request, String event, long message, String text, Instant now) throws SQLException {
+        queue(request, event, Long.toString(message), text, now);
+    }
+
+    void queue(Request request, String event, String message, String text, Instant now) throws SQLException {
+        connection.setAutoCommit(false);
+        try {
+            recordMessage(request.id(), "operator_to_client", message, null, text, now);
+            insertDelivery(request, event, message, text, now);
+            connection.commit();
+        } catch (SQLException failure) {
+            connection.rollback();
+            throw failure;
+        } finally {
+            connection.setAutoCommit(true);
+        }
+    }
+
+    private void insertDelivery(Request request, String event, String message, String text, Instant now) throws SQLException {
         update("""
                 INSERT OR IGNORE INTO deliveries
                     (id, request_id, idempotency_key, operator_message_id, channel,
                     external_conversation_id, text, status, created_at, next_attempt_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
-                """, UUID.randomUUID().toString(), request.id(), "operator:" + event, Long.toString(message), request.channel(),
+                """, UUID.randomUUID().toString(), request.id(), "operator:" + event, message, request.channel(),
                 Long.toString(request.conversation()), text, now.toString(), now.toString());
+    }
+
+    void recordMessage(String request, String direction, String message, String sender, String text, Instant now)
+            throws SQLException {
+        update("""
+                INSERT OR IGNORE INTO conversation_messages
+                    (id, request_id, direction, external_message_id, sender_name, text, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, UUID.randomUUID().toString(), request, direction, message, sender, text, now.toString());
+    }
+
+    List<TelegramRuntime.InboxRequest> activeOperatorRequests() throws SQLException {
+        try (var statement = connection.createStatement(); var rows = statement.executeQuery("""
+                SELECT r.id, r.channel, r.created_at, r.client_display_name, r.status,
+                    MAX(m.created_at) AS latest_message_at
+                FROM support_requests r LEFT JOIN conversation_messages m ON m.request_id = r.id
+                WHERE r.status = 'active' GROUP BY r.id
+                ORDER BY julianday(COALESCE(MAX(m.created_at), r.created_at)) DESC, r.id DESC LIMIT 50
+                """)) {
+            var result = new ArrayList<TelegramRuntime.InboxRequest>();
+            while (rows.next()) {
+                result.add(new TelegramRuntime.InboxRequest(rows.getString("id"), rows.getString("channel"),
+                        rows.getString("created_at"), rows.getString("client_display_name"),
+                        rows.getString("latest_message_at"), rows.getString("status")));
+            }
+            return result;
+        }
+    }
+
+    List<TelegramRuntime.InboxMessage> operatorMessages(String request) throws SQLException {
+        try (var statement = prepare("""
+                SELECT * FROM (
+                    SELECT m.id, m.direction, m.sender_name, m.text, m.created_at,
+                        d.status AS delivery_status, d.outcome_unknown
+                    FROM conversation_messages m LEFT JOIN deliveries d ON m.direction = 'operator_to_client'
+                        AND m.request_id = d.request_id AND m.external_message_id = d.operator_message_id
+                    WHERE m.request_id = ? ORDER BY julianday(m.created_at) DESC, m.rowid DESC LIMIT 200
+                ) ORDER BY julianday(created_at), id
+                """, request); var rows = statement.executeQuery()) {
+            var result = new ArrayList<TelegramRuntime.InboxMessage>();
+            while (rows.next()) {
+                var status = rows.getString("delivery_status");
+                result.add(new TelegramRuntime.InboxMessage(rows.getString("id"), rows.getString("direction"),
+                        rows.getString("text"), rows.getString("sender_name"), rows.getString("created_at"),
+                        status, status == null ? null : rows.getInt("outcome_unknown") != 0));
+            }
+            return result;
+        }
     }
 
     record Pending(String key, String request, String operatorMessage, long conversation, String text, int attempts, String channel) { }

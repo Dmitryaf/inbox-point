@@ -23,6 +23,20 @@ CREATE TABLE IF NOT EXISTS message_links (
   created_at TEXT NOT NULL
 ) STRICT;
 
+CREATE TABLE IF NOT EXISTS conversation_messages (
+  id TEXT PRIMARY KEY,
+  request_id TEXT NOT NULL REFERENCES support_requests(id),
+  direction TEXT NOT NULL CHECK (direction IN ('client_to_operator', 'operator_to_client')),
+  external_message_id TEXT NOT NULL,
+  sender_name TEXT,
+  text TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  UNIQUE (request_id, direction, external_message_id)
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS conversation_messages_by_request
+  ON conversation_messages(request_id, created_at);
+
 CREATE TABLE IF NOT EXISTS processed_events (
   source TEXT NOT NULL,
   external_event_id TEXT NOT NULL,
