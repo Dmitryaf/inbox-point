@@ -34,6 +34,9 @@ export function renderOperationsOverviewPart2(
           onChangeDeliveryMode={($event) =>
             void $emit('changeDeliveryMode', $event)
           }
+          onResolve={(id, resolution) =>
+            $emit('resolveDelivery', id, resolution)
+          }
           onRetry={($event) => void $emit('retryDelivery', $event)}
         />
       </div>

@@ -237,6 +237,12 @@ public final class TelegramRuntime {
         return Map.of("fileName", name, "createdAt", createdAt.toString());
     }
 
+    public boolean resolve(String id, boolean received) throws IOException, SQLException {
+        try (var store = new TelegramStore(database)) {
+            return store.resolve(id, received, Instant.now());
+        }
+    }
+
     public DeliveryState deliveryState(Instant now) throws IOException, SQLException {
         try (var store = new TelegramStore(database)) {
             var summary = store.summary();
@@ -261,7 +267,7 @@ public final class TelegramRuntime {
 
     @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
     public record DeliveryIncident(String id, String channel, int attempts, String createdAt, String reason,
-            boolean retryAllowed, String requestId, String operatorTopicId, String operatorMessageId) { }
+            boolean retryAllowed, boolean outcomeUnknown, String requestId, String operatorTopicId, String operatorMessageId) { }
 
     @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
     public record DeliveryProcess(String lastCycleAt, boolean running, String state) { }

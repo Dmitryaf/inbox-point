@@ -44,6 +44,9 @@ final class TelegramStore implements AutoCloseable {
             ensureColumn("deliveries", "operator_message_id", "TEXT");
             ensureColumn("deliveries", "next_attempt_at", "TEXT");
             ensureColumn("deliveries", "outcome_unknown", "INTEGER NOT NULL DEFAULT 0");
+            ensureColumn("deliveries", "manual_resolution",
+                    "TEXT CHECK (manual_resolution IN ('confirmed_received', 'confirmed_not_received'))");
+            ensureColumn("deliveries", "resolved_at", "TEXT");
             ensureColumn("deliveries", "attempt_started_at", "TEXT");
             statement.execute("UPDATE deliveries SET outcome_unknown = 1 WHERE last_error = 'Uncertain Telegram result' "
                     + "AND status = 'failed' AND outcome_unknown = 0");
@@ -294,7 +297,7 @@ final class TelegramStore implements AutoCloseable {
                         ? "Канал мог принять ответ, но подтверждение не получено. Автоматический повтор отключён, чтобы не отправить дубликат."
                         : failureReason(rows.getString("last_error"), telegram);
                 result.add(new TelegramRuntime.DeliveryIncident(rows.getString("id"), telegram ? "Telegram" : "VK",
-                        rows.getInt("attempts"), rows.getString("created_at"), reason, !uncertain,
+                        rows.getInt("attempts"), rows.getString("created_at"), reason, !uncertain, uncertain,
                         rows.getString("request_id"), rows.getString("operator_topic_id"), rows.getString("operator_message_id")));
             }
             return result;
@@ -328,6 +331,24 @@ final class TelegramStore implements AutoCloseable {
                 UPDATE deliveries SET status = 'pending', attempts = 0, next_attempt_at = ?, last_error = NULL, attempt_started_at = NULL
                 WHERE id = ? AND status = 'failed' AND outcome_unknown = 0
                 """, now.toString(), id) == 1;
+    }
+
+    boolean resolve(String id, boolean received, Instant now) throws SQLException {
+        var timestamp = now.toString();
+        if (received) {
+            return update("""
+                    UPDATE deliveries SET status = 'sent', last_error = NULL, next_attempt_at = NULL,
+                        outcome_unknown = 0, attempt_started_at = NULL, sent_at = ?,
+                        manual_resolution = 'confirmed_received', resolved_at = ?
+                    WHERE id = ? AND status = 'failed' AND outcome_unknown = 1
+                    """, timestamp, timestamp, id) == 1;
+        }
+        return update("""
+                UPDATE deliveries SET status = 'pending', attempts = 0, external_message_id = NULL,
+                    last_error = NULL, next_attempt_at = ?, outcome_unknown = 0, attempt_started_at = NULL,
+                    sent_at = NULL, manual_resolution = 'confirmed_not_received', resolved_at = ?
+                WHERE id = ? AND status = 'failed' AND outcome_unknown = 1
+                """, timestamp, timestamp, id) == 1;
     }
 
     void backup(Path destination) throws IOException, SQLException {

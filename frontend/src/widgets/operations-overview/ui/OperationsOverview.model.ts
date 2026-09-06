@@ -14,6 +14,10 @@ export type ComponentProps = {
   status: OperationsStatus;
 } & EventProps<{
   changeDeliveryMode: [mode: 'pause' | 'resume'];
+  resolveDelivery: [
+    deliveryId: string,
+    resolution: 'not_received' | 'received',
+  ];
   retryDelivery: [deliveryId: string];
 }> &
   ComponentAttributes;

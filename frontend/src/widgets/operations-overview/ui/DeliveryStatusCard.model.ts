@@ -15,6 +15,7 @@ export type ComponentProps = {
   pendingDeliveryId: string | undefined;
 } & EventProps<{
   changeDeliveryMode: [mode: 'pause' | 'resume'];
+  resolve: [deliveryId: string, resolution: 'not_received' | 'received'];
   retry: [deliveryId: string];
 }> &
   ComponentAttributes;
@@ -40,11 +41,5 @@ export function createComponentModel(
     }
     return { label: 'Работает', tone: 'healthy' };
   });
-  function formatCreatedAt(value: string): string {
-    return new Intl.DateTimeFormat('ru-RU', {
-      dateStyle: 'short',
-      timeStyle: 'short',
-    }).format(new Date(value));
-  }
-  return { $emit, state, formatCreatedAt };
+  return { $emit, state };
 }

@@ -106,14 +106,9 @@ final class OperationsController {
 
     @PostMapping("/deliveries/{id}/retry")
     ResponseEntity<?> retryDelivery(@PathVariable String id, HttpServletRequest request, HttpServletResponse response) {
-        if (!admin.available(request, response)) {
-            return message(404, "Not found");
-        }
-        if (!admin.authorized(request, response)) {
-            return message(401, "Введите пароль мониторинга.");
-        }
-        if (!PasswordSessions.sameOrigin(request)) {
-            return message(403, "Запрос отклонён.");
+        var denied = deliveryAccess(request, response);
+        if (denied != null) {
+            return denied;
         }
         if (id.length() > 100) {
             return message(404, "Ответ не найден.");
@@ -126,6 +121,38 @@ final class OperationsController {
         } catch (IOException | SQLException unavailable) {
             return message(503, "Управление доставкой пока недоступно.");
         }
+    }
+
+    @PostMapping("/deliveries/{id}/resolve")
+    ResponseEntity<?> resolveDelivery(@PathVariable String id, @RequestBody(required = false) JsonNode input,
+            HttpServletRequest request, HttpServletResponse response) {
+        var denied = deliveryAccess(request, response);
+        if (denied != null) {
+            return denied;
+        }
+        var choice = input == null ? "" : input.path("resolution").asString("");
+        var received = "received".equals(choice);
+        if (id.length() > 100 || !received && !"not_received".equals(choice)) {
+            return message(400, "Не удалось уточнить доставку.");
+        }
+        try {
+            if (!runtime.resolve(id, received)) {
+                return message(409, "Ответ уже обработан или не требует ручной проверки.");
+            }
+            return ResponseEntity.ok(Map.of("queued", !received, "resolved", true));
+        } catch (IOException | SQLException unavailable) {
+            return message(503, "Управление доставкой пока недоступно.");
+        }
+    }
+
+    private ResponseEntity<?> deliveryAccess(HttpServletRequest request, HttpServletResponse response) {
+        if (!admin.available(request, response)) {
+            return message(404, "Not found");
+        }
+        if (!admin.authorized(request, response)) {
+            return message(401, "Введите пароль мониторинга.");
+        }
+        return PasswordSessions.sameOrigin(request) ? null : message(403, "Запрос отклонён.");
     }
 
     boolean isReady() throws IOException, SQLException {

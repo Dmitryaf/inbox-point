@@ -18,6 +18,30 @@ class DeliveryWorkerTest {
     Path directory;
 
     @Test
+    void recordsAConfirmedOutcomeOnceAndOnlyRequeuesIfTheClientDidNotReceiveIt() throws Exception {
+        var time = Instant.parse("2026-09-01T08:00:00Z");
+        try (var store = new TelegramStore(directory.resolve("resolution.sqlite"))) {
+            var request = new TelegramStore.Request("question", 123, 42, true, "telegram");
+            store.open(request, time);
+            store.queue(request, "first", 702, "Answer one", time);
+            store.failed("operator:first", true, "timeout");
+            var first = store.incidents().getFirst();
+            assertThat(first.outcomeUnknown()).isTrue();
+            assertThat(store.resolve(first.id(), true, time)).isTrue();
+            assertThat(store.resolve(first.id(), false, time)).isFalse();
+            assertThat(store.summary().sent()).isEqualTo(1);
+            assertThat(store.pending(time, false)).isEmpty();
+            store.queue(request, "second", 703, "Answer two", time);
+            store.failed("operator:second", true, "timeout");
+            var second = store.incidents().getFirst();
+            assertThat(store.resolve(second.id(), false, time)).isTrue();
+            assertThat(store.resolve(second.id(), true, time)).isFalse();
+            assertThat(store.pending(time, false)).hasSize(1);
+            assertThat(store.summary().uncertain()).isZero();
+        }
+    }
+
+    @Test
     void leavesPendingDeliveryUntouchedUntilThePersistedStopIsLifted() throws Exception {
         var database = directory.resolve("paused.sqlite");
         var time = Instant.parse("2026-09-01T08:00:00Z");
