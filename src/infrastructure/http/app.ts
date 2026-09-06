@@ -186,10 +186,11 @@ export function registerSetupRoutes(
 }
 
 function isSetupUrl(url: string): boolean {
+  const path = url.split('?', 1)[0] ?? url;
   return (
-    url === '/setup' ||
-    url.startsWith('/setup/') ||
-    url.startsWith('/api/setup/')
+    path === '/setup' ||
+    path.startsWith('/setup/') ||
+    path.startsWith('/api/setup/')
   );
 }
 

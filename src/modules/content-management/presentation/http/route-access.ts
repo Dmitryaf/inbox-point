@@ -87,10 +87,11 @@ export function createManagementRouteAccess(
 }
 
 function isManagementUrl(url: string): boolean {
+  const path = url.split('?', 1)[0] ?? url;
   return (
-    url === '/manage' ||
-    url.startsWith('/manage/') ||
-    url.startsWith('/api/manage/')
+    path === '/manage' ||
+    path.startsWith('/manage/') ||
+    path.startsWith('/api/manage/')
   );
 }
 

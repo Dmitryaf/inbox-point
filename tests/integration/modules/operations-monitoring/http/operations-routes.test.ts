@@ -57,6 +57,11 @@ describe('operations monitoring routes', () => {
       remoteAddress: '192.0.2.10',
       url: '/ops',
     });
+    const pageWithQuery = await app.inject({
+      method: 'GET',
+      remoteAddress: '192.0.2.10',
+      url: '/ops?test=1',
+    });
     const crossOrigin = await app.inject({
       headers: {
         host: 'example.test',
@@ -96,6 +101,8 @@ describe('operations monitoring routes', () => {
     expect(page.headers['content-security-policy']).toContain(
       "default-src 'none'",
     );
+    expect(pageWithQuery.headers['cache-control']).toBe('no-store');
+    expect(pageWithQuery.headers['x-frame-options']).toBe('DENY');
     expect(crossOrigin.statusCode).toBe(403);
     expect(login.statusCode).toBe(200);
     expect(login.headers['set-cookie']).toContain(

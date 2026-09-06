@@ -170,12 +170,17 @@ describe('HTTP service status', () => {
     );
 
     const page = await app.inject({ method: 'GET', url: '/setup' });
+    const pageWithQuery = await app.inject({
+      method: 'GET',
+      url: '/setup?test=1',
+    });
     const api = await app.inject({
       method: 'GET',
       url: '/api/setup/status',
     });
 
     expect(page.statusCode).toBe(404);
+    expect(pageWithQuery.statusCode).toBe(404);
     expect(api.statusCode).toBe(404);
   });
 

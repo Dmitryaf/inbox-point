@@ -81,6 +81,11 @@ describe('managed content routes', () => {
       remoteAddress: '192.0.2.10',
       url: '/manage',
     });
+    const pageWithQuery = await app.inject({
+      method: 'GET',
+      remoteAddress: '192.0.2.10',
+      url: '/manage?test=1',
+    });
     const unauthorized = await app.inject({
       method: 'GET',
       remoteAddress: '192.0.2.10',
@@ -204,6 +209,8 @@ describe('managed content routes', () => {
     expect(page.headers['content-security-policy']).toContain(
       "default-src 'none'",
     );
+    expect(pageWithQuery.headers['cache-control']).toBe('no-store');
+    expect(pageWithQuery.headers['x-frame-options']).toBe('DENY');
     expect(unauthorized.statusCode).toBe(401);
     expect(crossOrigin.statusCode).toBe(403);
     expect(wrong.statusCode).toBe(401);
