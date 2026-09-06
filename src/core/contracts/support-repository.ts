@@ -1,8 +1,10 @@
 import type {
+  ConversationMessage,
   FailedDelivery,
   MessageLink,
   PendingDelivery,
   QueuedDelivery,
+  OperatorRequestSummary,
   SupportRequest,
 } from '@/core/model/support-request.js';
 import type { ClientChannelKind } from '@/core/model/support-message.js';
@@ -58,6 +60,11 @@ export interface SupportRepository extends InboundEventStore {
     channel: ClientChannelKind,
     conversationId: string,
   ): SupportRequest | undefined;
+  findActiveOperatorRequests(limit: number): readonly OperatorRequestSummary[];
+  findConversationMessages(
+    requestId: string,
+    limit: number,
+  ): readonly ConversationMessage[];
   findFailedDeliveries(limit: number): readonly FailedDelivery[];
   findUnnotifiedFailedDeliveries(
     availableBefore: Date,
@@ -68,6 +75,7 @@ export interface SupportRepository extends InboundEventStore {
     conversationId: string,
   ): SupportRequest | undefined;
   findRequestByTopicId(topicId: string): SupportRequest | undefined;
+  findRequestById(requestId: string): SupportRequest | undefined;
   findPendingDeliveries(
     availableBefore: Date,
     limit: number,
@@ -87,5 +95,6 @@ export interface SupportRepository extends InboundEventStore {
   ): void;
   releaseEvent(source: string, externalEventId: string): void;
   reopenRequest(requestId: string): void;
+  recordConversationMessage(message: ConversationMessage): void;
   retryFailedDelivery(deliveryId: string, retryAt: Date): boolean;
 }

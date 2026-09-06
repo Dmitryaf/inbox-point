@@ -14,6 +14,7 @@ import { OperationsMonitoringService } from '@/modules/operations-monitoring/app
 import { registerOperationsRoutes } from '@/modules/operations-monitoring/presentation/http/routes.js';
 import { registerReadinessRoute } from '@/modules/operations-monitoring/presentation/http/readiness-route.js';
 import { OperationsAccess } from '@/modules/operations-monitoring/security/operations-access.js';
+import { OperatorInboxService } from '@/modules/operator-inbox/application/operator-inbox-service.js';
 import { ServiceControlService } from '@/modules/service-control/application/service-control-service.js';
 import { FileServiceControlStore } from '@/modules/service-control/infrastructure/file-store/file-service-control-store.js';
 import { createDefaultServiceControlState } from '@/modules/service-control/model/service-control-state.js';
@@ -167,6 +168,7 @@ async function start(): Promise<void> {
       vkStatus: () => vkSetup.status(),
     });
     registerReadinessRoute(app, operationsMonitoring);
+    const operatorInbox = new OperatorInboxService(repository, handoffRuntime);
     registerOperationsRoutes(
       app,
       operationsMonitoring,
@@ -177,6 +179,7 @@ async function start(): Promise<void> {
       },
       serviceControl,
       repository,
+      operatorInbox,
     );
     await app.listen({ host: config.host, port: config.port });
     const runtimeLogger = {

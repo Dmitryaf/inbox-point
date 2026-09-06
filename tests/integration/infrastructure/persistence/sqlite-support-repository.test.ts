@@ -251,7 +251,7 @@ describe('SqliteSupportRepository', () => {
     repository.close();
   });
 
-  it('adds operator notification columns to an existing delivery database', () => {
+  it('adds inbox and notification storage to an existing database', () => {
     const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-test-'));
     temporaryDirectories.push(directory);
     const databasePath = join(directory, 'handoff.sqlite');
@@ -260,6 +260,8 @@ describe('SqliteSupportRepository', () => {
 
     const legacyDatabase = new DatabaseSync(databasePath);
     legacyDatabase.exec(`
+      DROP TABLE conversation_messages;
+      ALTER TABLE support_requests DROP COLUMN client_display_name;
       ALTER TABLE deliveries DROP COLUMN operator_notified_at;
       ALTER TABLE deliveries DROP COLUMN notification_next_attempt_at;
     `);
@@ -278,7 +280,91 @@ describe('SqliteSupportRepository', () => {
         'notification_next_attempt_at',
       ]),
     );
+    const requestColumns = database
+      .prepare('PRAGMA table_info(support_requests)')
+      .all() as { name: string }[];
+    expect(requestColumns.map((column) => column.name)).toContain(
+      'client_display_name',
+    );
+    expect(
+      database
+        .prepare(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'conversation_messages'",
+        )
+        .get(),
+    ).toEqual({ name: 'conversation_messages' });
     database.close();
+  });
+
+  it('returns the durable operator conversation with delivery state', () => {
+    const repository = new SqliteSupportRepository(':memory:');
+    const createdAt = new Date('2026-09-06T12:00:00.000Z');
+    repository.createRequest({
+      channel: 'vk',
+      conversationId: '101',
+      createdAt,
+      displayName: 'Test Customer',
+      id: 'request-1',
+      operatorTopicId: 'web:request-1',
+      status: 'active',
+    });
+    repository.recordConversationMessage({
+      createdAt,
+      direction: 'client_to_operator',
+      externalMessageId: 'client-message-1',
+      id: 'message-1',
+      requestId: 'request-1',
+      senderName: 'Test Customer',
+      text: 'Question',
+    });
+    repository.recordConversationMessage({
+      createdAt: new Date(createdAt.getTime() + 1_000),
+      direction: 'operator_to_client',
+      externalMessageId: 'web:reply-1',
+      id: 'message-2',
+      requestId: 'request-1',
+      text: 'Answer',
+    });
+    repository.recordConversationMessage({
+      createdAt,
+      direction: 'client_to_operator',
+      externalMessageId: 'client-message-1',
+      id: 'duplicate-message',
+      requestId: 'request-1',
+      senderName: 'Test Customer',
+      text: 'Duplicate question',
+    });
+    repository.enqueueDelivery({
+      channel: 'vk',
+      conversationId: '101',
+      createdAt: new Date(createdAt.getTime() + 1_000),
+      id: 'delivery-1',
+      idempotencyKey: 'operator:reply-1',
+      operatorMessageId: 'web:reply-1',
+      requestId: 'request-1',
+      text: 'Answer',
+    });
+
+    expect(repository.findActiveOperatorRequests(10)).toEqual([
+      expect.objectContaining({
+        displayName: 'Test Customer',
+        id: 'request-1',
+        latestMessageAt: new Date(createdAt.getTime() + 1_000),
+      }),
+    ]);
+    expect(repository.findConversationMessages('request-1', 20)).toEqual([
+      expect.objectContaining({
+        direction: 'client_to_operator',
+        text: 'Question',
+      }),
+      expect.objectContaining({
+        deliveryOutcomeUnknown: false,
+        deliveryStatus: 'pending',
+        direction: 'operator_to_client',
+        text: 'Answer',
+      }),
+    ]);
+    repository.close();
   });
 
   it('releases an interrupted event claim when the process restarts', () => {

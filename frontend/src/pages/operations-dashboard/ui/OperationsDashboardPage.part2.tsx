@@ -9,6 +9,7 @@ import { requiredValue as $required } from '@frontend/shared/lib/component-bindi
 import OperationsLoginForm from '@frontend/features/operations-auth/ui/OperationsLoginForm';
 import ClientIntakeControl from '@frontend/features/control-client-intake/ui/ClientIntakeControl';
 
+import OperatorInbox from '@frontend/widgets/operator-inbox/ui/OperatorInbox';
 import AsyncMessage from '@frontend/shared/ui/AsyncMessage';
 
 import { renderOperationsDashboardPagePart3 } from './OperationsDashboardPage.part3';
@@ -19,7 +20,7 @@ export function renderOperationsDashboardPagePart2(
   $state: ReturnType<typeof createComponentModel>,
   $scope: ModelScope,
 ) {
-  const { refreshAll, authenticate } = $state;
+  const { refreshAll } = $state;
   const session = $unref($state.session);
   const operations = $unref($state.operations);
   const deliveryRetry = $unref($state.deliveryRetry);
@@ -41,7 +42,7 @@ export function renderOperationsDashboardPagePart2(
             ) : null}
             <OperationsLoginForm
               pending={session.pending.value}
-              onSubmit={$callback(authenticate)}
+              onSubmit={$callback($unref($state.authenticate))}
             />
           </div>
         </section>
@@ -80,6 +81,10 @@ export function renderOperationsDashboardPagePart2(
           <AsyncMessage kind="success" text={deliveryRetry.notice.value} />
           <AsyncMessage kind="error" text={deliveryControl.error.value} />
           <AsyncMessage kind="success" text={deliveryControl.notice.value} />
+          <OperatorInbox
+            onUnauthorized={session.expireSession}
+            ref={$templateRef($state, 'operatorInbox', $scope)}
+          />
           {renderOperationsDashboardPagePart3($state)}
         </section>
       )}

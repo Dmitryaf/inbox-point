@@ -17,6 +17,9 @@ export function createComponentModel() {
   const intakeControl = ref<{
     refresh: () => Promise<void>;
   }>();
+  const operatorInbox = ref<{
+    refresh: () => Promise<void>;
+  }>();
   const deliveryRetry = useDeliveryRetry(refreshAll, session.expireSession);
   const deliveryControl = useOutboundDeliveryControl(
     refreshAll,
@@ -35,15 +38,12 @@ export function createComponentModel() {
     }, refreshIntervalMs);
   });
   onBeforeUnmount(stopAutomaticRefresh);
-  async function authenticate(password: string): Promise<void> {
-    await session.authenticate(password);
-  }
-  async function logout(): Promise<void> {
-    await session.endSession();
-  }
+  const authenticate = (password: string) => session.authenticate(password);
+  const logout = () => session.endSession();
   async function refreshAll(): Promise<void> {
     await Promise.all([
       operations.refresh(),
+      operatorInbox.value?.refresh() ?? Promise.resolve(),
       intakeControl.value?.refresh() ?? Promise.resolve(),
     ]);
   }
@@ -57,6 +57,7 @@ export function createComponentModel() {
     session,
     operations,
     intakeControl,
+    operatorInbox,
     deliveryRetry,
     deliveryControl,
     authenticate,

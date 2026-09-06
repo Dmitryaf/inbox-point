@@ -5,7 +5,6 @@ import type { createComponentModel } from './OperationsDashboardPage.model';
 export function renderOperationsDashboardPagePart1(
   $state: ReturnType<typeof createComponentModel>,
 ) {
-  const { logout } = $state;
   const session = $unref($state.session);
 
   return (
@@ -21,7 +20,7 @@ export function renderOperationsDashboardPagePart1(
         {session.authenticated.value ? (
           <button
             type="button"
-            onClick={$nativeHandler(logout)}
+            onClick={$nativeHandler($unref($state.logout))}
             className="secondary-button"
           >
             {' Выйти '}

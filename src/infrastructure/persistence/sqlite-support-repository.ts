@@ -8,8 +8,10 @@ import type {
   SupportRepository,
 } from '@/core/contracts/support-repository.js';
 import type {
+  ConversationMessage,
   FailedDelivery,
   MessageLink,
+  OperatorRequestSummary,
   PendingDelivery,
   QueuedDelivery,
   SupportRequest,
@@ -19,12 +21,29 @@ import type { ClientChannelKind } from '@/core/model/support-message.js';
 
 interface SupportRequestRow {
   channel: ClientChannelKind;
+  client_display_name: string | null;
   closed_at: string | null;
   created_at: string;
   external_conversation_id: string;
   id: string;
   operator_topic_id: string;
   status: SupportRequestStatus;
+}
+
+interface OperatorRequestSummaryRow extends SupportRequestRow {
+  latest_message_at: string | null;
+}
+
+interface ConversationMessageRow {
+  created_at: string;
+  delivery_outcome_unknown: number | null;
+  delivery_status: 'failed' | 'pending' | 'sent' | null;
+  direction: ConversationMessage['direction'];
+  external_message_id: string;
+  id: string;
+  request_id: string;
+  sender_name: string | null;
+  text: string;
 }
 
 interface DeliveryRow {
@@ -256,16 +275,18 @@ export class SqliteSupportRepository implements SupportRepository {
           id,
           channel,
           external_conversation_id,
+          client_display_name,
           operator_topic_id,
           status,
           created_at,
           closed_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         request.id,
         request.channel,
         request.conversationId,
+        request.displayName ?? null,
         request.operatorTopicId,
         request.status,
         request.createdAt.toISOString(),
@@ -358,6 +379,7 @@ export class SqliteSupportRepository implements SupportRepository {
           id,
           channel,
           external_conversation_id,
+          client_display_name,
           operator_topic_id,
           status,
           created_at,
@@ -372,6 +394,85 @@ export class SqliteSupportRepository implements SupportRepository {
       .get(channel, conversationId) as SupportRequestRow | undefined;
 
     return row ? mapRequest(row) : undefined;
+  }
+
+  public findActiveOperatorRequests(
+    limit: number,
+  ): readonly OperatorRequestSummary[] {
+    const rows = this.database
+      .prepare(
+        `SELECT
+          request.id,
+          request.channel,
+          request.external_conversation_id,
+          request.client_display_name,
+          request.operator_topic_id,
+          request.status,
+          request.created_at,
+          request.closed_at,
+          MAX(message.created_at) AS latest_message_at
+        FROM support_requests AS request
+        LEFT JOIN conversation_messages AS message
+          ON message.request_id = request.id
+        WHERE request.status = 'active'
+        GROUP BY request.id
+        ORDER BY COALESCE(MAX(message.created_at), request.created_at) DESC,
+                 request.id DESC
+        LIMIT ?`,
+      )
+      .all(limit) as unknown as OperatorRequestSummaryRow[];
+
+    return rows.map((row) => ({
+      ...mapRequest(row),
+      ...(row.latest_message_at
+        ? { latestMessageAt: new Date(row.latest_message_at) }
+        : {}),
+    }));
+  }
+
+  public findConversationMessages(
+    requestId: string,
+    limit: number,
+  ): readonly ConversationMessage[] {
+    const rows = this.database
+      .prepare(
+        `SELECT *
+         FROM (
+           SELECT
+             message.id,
+             message.request_id,
+             message.direction,
+             message.external_message_id,
+             message.sender_name,
+             message.text,
+             message.created_at,
+             delivery.status AS delivery_status,
+             delivery.outcome_unknown AS delivery_outcome_unknown
+           FROM conversation_messages AS message
+           LEFT JOIN deliveries AS delivery
+             ON delivery.request_id = message.request_id
+            AND delivery.operator_message_id = message.external_message_id
+           WHERE message.request_id = ?
+           ORDER BY message.created_at DESC, message.id DESC
+           LIMIT ?
+         )
+         ORDER BY created_at, id`,
+      )
+      .all(requestId, limit) as unknown as ConversationMessageRow[];
+
+    return rows.map((row) => ({
+      createdAt: new Date(row.created_at),
+      ...(row.delivery_outcome_unknown !== null
+        ? { deliveryOutcomeUnknown: row.delivery_outcome_unknown === 1 }
+        : {}),
+      ...(row.delivery_status ? { deliveryStatus: row.delivery_status } : {}),
+      direction: row.direction,
+      externalMessageId: row.external_message_id,
+      id: row.id,
+      requestId: row.request_id,
+      ...(row.sender_name ? { senderName: row.sender_name } : {}),
+      text: row.text,
+    }));
   }
 
   public findFailedDeliveries(limit: number): readonly FailedDelivery[] {
@@ -448,6 +549,7 @@ export class SqliteSupportRepository implements SupportRepository {
           id,
           channel,
           external_conversation_id,
+          client_display_name,
           operator_topic_id,
           status,
           created_at,
@@ -497,6 +599,7 @@ export class SqliteSupportRepository implements SupportRepository {
           id,
           channel,
           external_conversation_id,
+          client_display_name,
           operator_topic_id,
           status,
           created_at,
@@ -505,6 +608,26 @@ export class SqliteSupportRepository implements SupportRepository {
         WHERE operator_topic_id = ?`,
       )
       .get(topicId) as SupportRequestRow | undefined;
+
+    return row ? mapRequest(row) : undefined;
+  }
+
+  public findRequestById(requestId: string): SupportRequest | undefined {
+    const row = this.database
+      .prepare(
+        `SELECT
+          id,
+          channel,
+          external_conversation_id,
+          client_display_name,
+          operator_topic_id,
+          status,
+          created_at,
+          closed_at
+        FROM support_requests
+        WHERE id = ?`,
+      )
+      .get(requestId) as SupportRequestRow | undefined;
 
     return row ? mapRequest(row) : undefined;
   }
@@ -682,6 +805,30 @@ export class SqliteSupportRepository implements SupportRepository {
       .run(requestId);
   }
 
+  public recordConversationMessage(message: ConversationMessage): void {
+    this.database
+      .prepare(
+        `INSERT OR IGNORE INTO conversation_messages (
+          id,
+          request_id,
+          direction,
+          external_message_id,
+          sender_name,
+          text,
+          created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        message.id,
+        message.requestId,
+        message.direction,
+        message.externalMessageId,
+        message.senderName ?? null,
+        message.text,
+        message.createdAt.toISOString(),
+      );
+  }
+
   public retryFailedDelivery(deliveryId: string, retryAt: Date): boolean {
     const result = this.database
       .prepare(
@@ -708,6 +855,7 @@ export class SqliteSupportRepository implements SupportRepository {
         id TEXT PRIMARY KEY,
         channel TEXT NOT NULL CHECK (channel IN ('telegram', 'vk')),
         external_conversation_id TEXT NOT NULL,
+        client_display_name TEXT,
         operator_topic_id TEXT NOT NULL UNIQUE,
         status TEXT NOT NULL CHECK (status IN ('active', 'closed')),
         created_at TEXT NOT NULL,
@@ -728,6 +876,22 @@ export class SqliteSupportRepository implements SupportRepository {
         operator_message_id TEXT NOT NULL,
         created_at TEXT NOT NULL
       ) STRICT;
+
+      CREATE TABLE IF NOT EXISTS conversation_messages (
+        id TEXT PRIMARY KEY,
+        request_id TEXT NOT NULL REFERENCES support_requests(id),
+        direction TEXT NOT NULL CHECK (
+          direction IN ('client_to_operator', 'operator_to_client')
+        ),
+        external_message_id TEXT NOT NULL,
+        sender_name TEXT,
+        text TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        UNIQUE (request_id, direction, external_message_id)
+      ) STRICT;
+
+      CREATE INDEX IF NOT EXISTS conversation_messages_by_request
+        ON conversation_messages(request_id, created_at, id);
 
       CREATE TABLE IF NOT EXISTS processed_events (
         source TEXT NOT NULL,
@@ -777,6 +941,17 @@ export class SqliteSupportRepository implements SupportRepository {
         sent_at TEXT
       ) STRICT;
     `);
+
+    const requestColumns = this.database
+      .prepare('PRAGMA table_info(support_requests)')
+      .all() as unknown as { name: string }[];
+    if (
+      !requestColumns.some((column) => column.name === 'client_display_name')
+    ) {
+      this.database.exec(
+        'ALTER TABLE support_requests ADD COLUMN client_display_name TEXT',
+      );
+    }
 
     const deliveryColumns = this.database
       .prepare('PRAGMA table_info(deliveries)')
@@ -876,6 +1051,9 @@ function mapRequest(row: SupportRequestRow): SupportRequest {
     ...(row.closed_at ? { closedAt: new Date(row.closed_at) } : {}),
     conversationId: row.external_conversation_id,
     createdAt: new Date(row.created_at),
+    ...(row.client_display_name
+      ? { displayName: row.client_display_name }
+      : {}),
     id: row.id,
     operatorTopicId: row.operator_topic_id,
     status: row.status,

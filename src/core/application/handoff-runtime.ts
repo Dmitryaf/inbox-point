@@ -1,4 +1,5 @@
 import { DeliveryWorker } from '@/core/application/delivery-worker.js';
+import { EmergencyOperatorInbox } from '@/core/application/emergency-operator-inbox.js';
 import { HandoffService } from '@/core/application/handoff-service.js';
 import { SwitchableOperatorInbox } from '@/core/application/switchable-operator-inbox.js';
 import type { ClientChannel } from '@/core/contracts/client-channel.js';
@@ -23,10 +24,18 @@ export class HandoffRuntime {
   private deliveryPromise: Promise<void> | undefined;
   private readonly handoffService: HandoffService;
   private readonly logger: HandoffRuntimeDependencies['logger'];
-  private readonly operatorInbox = new SwitchableOperatorInbox();
+  private readonly operatorInbox: SwitchableOperatorInbox;
 
   public constructor(dependencies: HandoffRuntimeDependencies) {
     this.logger = dependencies.logger;
+    this.operatorInbox = new SwitchableOperatorInbox(
+      new EmergencyOperatorInbox(),
+      (error, operation) =>
+        dependencies.logger.error(
+          error,
+          `Operator inbox ${operation} failed; using emergency web inbox`,
+        ),
+    );
     this.handoffService = new HandoffService({
       operatorInbox: this.operatorInbox,
       repository: dependencies.repository,
@@ -70,6 +79,17 @@ export class HandoffRuntime {
     message: OperatorMessage,
   ): Promise<void> {
     return this.handoffService.handleOperatorMessage(externalEventId, message);
+  }
+
+  public handleWebOperatorMessage(
+    externalEventId: string,
+    message: OperatorMessage,
+  ): Promise<void> {
+    return this.handoffService.handleOperatorMessage(
+      externalEventId,
+      message,
+      'operator:web',
+    );
   }
 
   public handleOperatorTopicClosed(
