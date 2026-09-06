@@ -2,6 +2,7 @@ import { dirname, resolve } from 'node:path';
 
 import { loadRuntimeConfig } from '@/config/runtime-config.js';
 import { ClientInformationCatalog } from '@/core/application/client-information.js';
+import { HandoffRuntime } from '@/core/application/handoff-runtime.js';
 import { createApp, registerSetupRoutes } from '@/infrastructure/http/app.js';
 import { ContentManagementService } from '@/modules/content-management/application/content-management-service.js';
 import { FileContentSettingsStore } from '@/modules/content-management/infrastructure/file-store/file-content-settings-store.js';
@@ -53,19 +54,26 @@ async function start(): Promise<void> {
     serviceControlState,
     serviceControlStore,
   );
+  const handoffRuntime = new HandoffRuntime({
+    activity: deliveryActivity,
+    deliveryPolicy: serviceControl,
+    logger: {
+      error: (error, message) => app.log.error({ err: error }, message),
+    },
+    repository,
+  });
   const telegramRuntime = new TelegramRuntime(
+    handoffRuntime,
     repository,
     {
       error: (error, message) => app.log.error({ err: error }, message),
     },
     informationCatalog,
     channelActivity,
-    deliveryActivity,
-    serviceControl,
     serviceControl,
   );
   const vkRuntime = new VkRuntime(
-    telegramRuntime,
+    handoffRuntime,
     repository,
     {
       error: (error, message) => app.log.error({ err: error }, message),
@@ -85,6 +93,7 @@ async function start(): Promise<void> {
     await app.close();
     await vkRuntime.stop();
     await telegramRuntime.stop();
+    await handoffRuntime.stop();
     repository.close();
   };
 
@@ -92,6 +101,7 @@ async function start(): Promise<void> {
   process.once('SIGTERM', () => void close('SIGTERM'));
 
   try {
+    handoffRuntime.start();
     try {
       informationCatalog.replace((await contentSettingsStore.load()) ?? {});
     } catch (error: unknown) {
@@ -210,6 +220,7 @@ async function start(): Promise<void> {
     await app.close();
     await vkRuntime.stop();
     await telegramRuntime.stop();
+    await handoffRuntime.stop();
     repository.close();
     throw error;
   }

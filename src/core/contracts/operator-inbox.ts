@@ -7,6 +7,13 @@ export class OperatorConversationUnavailableError extends Error {
   }
 }
 
+export class OperatorInboxUnavailableError extends Error {
+  public constructor() {
+    super('The operator inbox is unavailable');
+    this.name = 'OperatorInboxUnavailableError';
+  }
+}
+
 export interface OpenOperatorRequest {
   requestId: string;
   source: SupportMessage;

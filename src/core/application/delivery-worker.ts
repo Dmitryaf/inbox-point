@@ -63,26 +63,32 @@ export class DeliveryWorker {
     this.channels.set(channel.kind, channel);
   }
 
+  public unregisterChannel(channel: ClientChannel): void {
+    if (this.channels.get(channel.kind) === channel) {
+      this.channels.delete(channel.kind);
+    }
+  }
+
   public async processPending(): Promise<number> {
     if (this.policy.isDeliveryPaused()) {
       return 0;
     }
     const deliveries = this.repository.findPendingDeliveries(this.clock(), 25);
+    let processed = 0;
     for (const delivery of deliveries) {
       if (this.policy.isDeliveryPaused()) {
         break;
       }
-      if (!this.repository.claimDeliveryAttempt(delivery.id, this.clock())) {
+      const channel = this.channels.get(delivery.channel);
+      if (
+        !channel ||
+        !this.repository.claimDeliveryAttempt(delivery.id, this.clock())
+      ) {
         continue;
       }
-      const channel = this.channels.get(delivery.channel);
+      processed += 1;
       let sent: { externalMessageId: string };
       try {
-        if (!channel) {
-          throw new Error(
-            `Client channel is not configured: ${delivery.channel}`,
-          );
-        }
         sent = await channel.send({
           conversationId: delivery.conversationId,
           idempotencyKey: delivery.idempotencyKey,
@@ -125,7 +131,7 @@ export class DeliveryWorker {
         }
       }
     }
-    return deliveries.length;
+    return processed;
   }
 
   public async run(signal: AbortSignal): Promise<void> {

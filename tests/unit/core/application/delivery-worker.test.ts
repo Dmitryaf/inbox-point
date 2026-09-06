@@ -110,6 +110,20 @@ describe('DeliveryWorker', () => {
     expect(repository.getDeliverySummary()).toEqual({ failed: 0, pending: 0 });
   });
 
+  it('does not use a client channel after that adapter unregisters', async () => {
+    enqueueDelivery(repository);
+    const worker = createWorker(repository, channel, () => now, 1);
+
+    worker.unregisterChannel(channel);
+    expect(await worker.processPending()).toBe(0);
+
+    expect(channel.sent).toHaveLength(0);
+    expect(repository.getDeliverySummary()).toMatchObject({
+      failed: 0,
+      pending: 1,
+    });
+  });
+
   it('stops retrying after the configured attempt limit', async () => {
     enqueueDelivery(repository);
     channel.failuresRemaining = 3;
