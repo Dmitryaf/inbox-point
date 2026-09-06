@@ -213,6 +213,74 @@ describe('SqliteSupportRepository', () => {
     database.close();
   });
 
+  it('persists retry state for operator failure notifications', () => {
+    const repository = new SqliteSupportRepository(':memory:');
+    const failedAt = new Date('2026-09-06T12:00:00.000Z');
+    const retryAt = new Date('2026-09-06T12:00:30.000Z');
+    repository.createRequest({
+      channel: 'vk',
+      conversationId: '101',
+      createdAt: failedAt,
+      id: 'request-1',
+      operatorTopicId: 'topic-1',
+      status: 'active',
+    });
+    repository.enqueueDelivery({
+      channel: 'vk',
+      conversationId: '101',
+      createdAt: failedAt,
+      id: 'delivery-1',
+      idempotencyKey: 'operator:update-1',
+      operatorMessageId: 'operator-message-1',
+      requestId: 'request-1',
+      text: 'Private answer',
+    });
+    repository.markDeliveryFailed('delivery-1', 'Channel unavailable');
+
+    expect(repository.findUnnotifiedFailedDeliveries(failedAt, 10)).toEqual([
+      expect.objectContaining({ id: 'delivery-1', operatorTopicId: 'topic-1' }),
+    ]);
+    repository.markDeliveryFailureNotificationRetry('delivery-1', retryAt);
+    expect(repository.findUnnotifiedFailedDeliveries(failedAt, 10)).toEqual([]);
+    expect(repository.findUnnotifiedFailedDeliveries(retryAt, 10)).toHaveLength(
+      1,
+    );
+
+    repository.markDeliveryFailureNotified('delivery-1', retryAt);
+    expect(repository.findUnnotifiedFailedDeliveries(retryAt, 10)).toEqual([]);
+    repository.close();
+  });
+
+  it('adds operator notification columns to an existing delivery database', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-test-'));
+    temporaryDirectories.push(directory);
+    const databasePath = join(directory, 'handoff.sqlite');
+    const current = new SqliteSupportRepository(databasePath);
+    current.close();
+
+    const legacyDatabase = new DatabaseSync(databasePath);
+    legacyDatabase.exec(`
+      ALTER TABLE deliveries DROP COLUMN operator_notified_at;
+      ALTER TABLE deliveries DROP COLUMN notification_next_attempt_at;
+    `);
+    legacyDatabase.close();
+
+    const migrated = new SqliteSupportRepository(databasePath);
+    migrated.close();
+    const database = new DatabaseSync(databasePath);
+    const columns = database.prepare('PRAGMA table_info(deliveries)').all() as {
+      name: string;
+    }[];
+
+    expect(columns.map((column) => column.name)).toEqual(
+      expect.arrayContaining([
+        'operator_notified_at',
+        'notification_next_attempt_at',
+      ]),
+    );
+    database.close();
+  });
+
   it('releases an interrupted event claim when the process restarts', () => {
     const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-test-'));
     temporaryDirectories.push(directory);

@@ -8,6 +8,7 @@ import {
   type ChannelActivityReporter,
 } from '@/core/contracts/channel-activity-reporter.js';
 import type { ClientChannel } from '@/core/contracts/client-channel.js';
+import type { DeliveryIncidentNotifier } from '@/core/contracts/delivery-incident-notifier.js';
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
 import {
   acceptingClientIntakePolicy,
@@ -36,7 +37,9 @@ export interface TelegramRuntimeControl {
 
 export interface TelegramHandoffHost extends TelegramUpdateHandler {
   registerClientChannel(channel: ClientChannel): () => void;
-  registerOperatorInbox(inbox: OperatorInbox): () => void;
+  registerOperatorInbox(
+    inbox: OperatorInbox & DeliveryIncidentNotifier,
+  ): () => void;
 }
 
 export class TelegramRuntime implements TelegramRuntimeControl {

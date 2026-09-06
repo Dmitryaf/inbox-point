@@ -4,17 +4,14 @@ import {
   nativeHandler as $nativeHandler,
 } from '@frontend/shared/lib/component-events';
 import { unref as $unref } from '@frontend/shared/lib/model-state';
-import {
-  requiredValue as $required,
-  logicalOr as $or,
-} from '@frontend/shared/lib/component-bindings';
+import { requiredValue as $required } from '@frontend/shared/lib/component-bindings';
 
 import OperationsLoginForm from '@frontend/features/operations-auth/ui/OperationsLoginForm';
 import ClientIntakeControl from '@frontend/features/control-client-intake/ui/ClientIntakeControl';
 
-import OperationsOverview from '@frontend/widgets/operations-overview/ui/OperationsOverview';
 import AsyncMessage from '@frontend/shared/ui/AsyncMessage';
 
+import { renderOperationsDashboardPagePart3 } from './OperationsDashboardPage.part3';
 import type { ModelScope } from '@frontend/shared/lib/model-state';
 
 import type { createComponentModel } from './OperationsDashboardPage.model';
@@ -83,29 +80,7 @@ export function renderOperationsDashboardPagePart2(
           <AsyncMessage kind="success" text={deliveryRetry.notice.value} />
           <AsyncMessage kind="error" text={deliveryControl.error.value} />
           <AsyncMessage kind="success" text={deliveryControl.notice.value} />
-          {operations.status.value ? (
-            <OperationsOverview
-              deliveryControlPending={deliveryControl.pendingMode.value}
-              pendingDeliveryId={$or(
-                deliveryRetry.pendingDeliveryId.value,
-                () => undefined,
-              )}
-              status={operations.status.value}
-              onChangeDeliveryMode={$callback(
-                $required($unref($state.deliveryControl)).change,
-              )}
-              onResolveDelivery={$callback(
-                $required($unref($state.deliveryRetry)).resolve,
-              )}
-              onRetryDelivery={$callback(
-                $required($unref($state.deliveryRetry)).retry,
-              )}
-            />
-          ) : (
-            <section className="card loading-card">
-              <p>{'Получаем состояние сервиса…'}</p>
-            </section>
-          )}
+          {renderOperationsDashboardPagePart3($state)}
         </section>
       )}
     </>

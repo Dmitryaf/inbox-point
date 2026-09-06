@@ -2,6 +2,7 @@ import { DeliveryWorker } from '@/core/application/delivery-worker.js';
 import { HandoffService } from '@/core/application/handoff-service.js';
 import { SwitchableOperatorInbox } from '@/core/application/switchable-operator-inbox.js';
 import type { ClientChannel } from '@/core/contracts/client-channel.js';
+import type { DeliveryIncidentNotifier } from '@/core/contracts/delivery-incident-notifier.js';
 import type { DeliveryWorkerActivityReporter } from '@/core/contracts/delivery-worker-activity-reporter.js';
 import type { OperatorInbox } from '@/core/contracts/operator-inbox.js';
 import type { OutboundDeliveryPolicy } from '@/core/contracts/outbound-delivery-policy.js';
@@ -33,6 +34,12 @@ export class HandoffRuntime {
     this.deliveryWorker = new DeliveryWorker({
       ...(dependencies.activity ? { activity: dependencies.activity } : {}),
       channels: [],
+      incidentNotifier: this.operatorInbox,
+      onNotificationError: (error, deliveryId) =>
+        dependencies.logger.error(
+          error,
+          `Delivery ${deliveryId} operator notification failed; retrying`,
+        ),
       onError: (error, context) =>
         dependencies.logger.error(
           error,
@@ -92,7 +99,9 @@ export class HandoffRuntime {
     return () => this.deliveryWorker.unregisterChannel(channel);
   }
 
-  public registerOperatorInbox(inbox: OperatorInbox): () => void {
+  public registerOperatorInbox(
+    inbox: OperatorInbox & DeliveryIncidentNotifier,
+  ): () => void {
     return this.operatorInbox.register(inbox);
   }
 

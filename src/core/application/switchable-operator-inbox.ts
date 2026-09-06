@@ -4,10 +4,16 @@ import {
   type OperatorInbox,
   type RelayCustomerMessageOptions,
 } from '@/core/contracts/operator-inbox.js';
+import type { DeliveryIncidentNotifier } from '@/core/contracts/delivery-incident-notifier.js';
+import type { FailedDelivery } from '@/core/model/support-request.js';
 import type { SupportMessage } from '@/core/model/support-message.js';
 
-export class SwitchableOperatorInbox implements OperatorInbox {
-  private inbox: OperatorInbox | undefined;
+type ActiveOperatorInbox = OperatorInbox & DeliveryIncidentNotifier;
+
+export class SwitchableOperatorInbox
+  implements OperatorInbox, DeliveryIncidentNotifier
+{
+  private inbox: ActiveOperatorInbox | undefined;
 
   public closeRequest(operatorTopicId: string): Promise<void> {
     return this.requireInbox().closeRequest(operatorTopicId);
@@ -19,7 +25,11 @@ export class SwitchableOperatorInbox implements OperatorInbox {
     return this.requireInbox().openRequest(request);
   }
 
-  public register(inbox: OperatorInbox): () => void {
+  public notifyDeliveryFailure(delivery: FailedDelivery): Promise<void> {
+    return this.requireInbox().notifyDeliveryFailure(delivery);
+  }
+
+  public register(inbox: ActiveOperatorInbox): () => void {
     this.inbox = inbox;
     return () => {
       if (this.inbox === inbox) {
@@ -44,7 +54,7 @@ export class SwitchableOperatorInbox implements OperatorInbox {
     return this.requireInbox().reopenRequest(operatorTopicId);
   }
 
-  private requireInbox(): OperatorInbox {
+  private requireInbox(): ActiveOperatorInbox {
     if (!this.inbox) {
       throw new OperatorInboxUnavailableError();
     }

@@ -4,6 +4,8 @@ import type {
   ClientChannel,
   OutgoingClientMessage,
 } from '@/core/contracts/client-channel.js';
+import type { DeliveryIncidentNotifier } from '@/core/contracts/delivery-incident-notifier.js';
+import type { FailedDelivery } from '@/core/model/support-request.js';
 import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-support-repository.js';
 
 import { DeliveryWorker } from '@/core/application/delivery-worker.js';
@@ -24,6 +26,20 @@ class FakeClientChannel implements ClientChannel {
     return Promise.resolve({
       externalMessageId: `client-message-${this.sent.length}`,
     });
+  }
+}
+
+class FakeDeliveryIncidentNotifier implements DeliveryIncidentNotifier {
+  public failuresRemaining = 0;
+  public readonly notifications: FailedDelivery[] = [];
+
+  public notifyDeliveryFailure(delivery: FailedDelivery): Promise<void> {
+    this.notifications.push(delivery);
+    if (this.failuresRemaining > 0) {
+      this.failuresRemaining -= 1;
+      return Promise.reject(new Error('Temporary operator inbox failure'));
+    }
+    return Promise.resolve();
   }
 }
 
@@ -108,6 +124,42 @@ describe('DeliveryWorker', () => {
     expect(await worker.processPending()).toBe(1);
     expect(channel.sent).toHaveLength(1);
     expect(repository.getDeliverySummary()).toEqual({ failed: 0, pending: 0 });
+  });
+
+  it('retries an operator failure notification while client delivery is paused', async () => {
+    enqueueDelivery(repository);
+    channel.failuresRemaining = 1;
+    const notifier = new FakeDeliveryIncidentNotifier();
+    notifier.failuresRemaining = 1;
+    let paused = false;
+    const notificationErrors: string[] = [];
+    const worker = new DeliveryWorker({
+      channels: [channel],
+      clock: () => now,
+      incidentNotifier: notifier,
+      maxAttempts: 1,
+      notificationRetryDelayMs: 30_000,
+      onNotificationError: (_error, deliveryId) => {
+        notificationErrors.push(deliveryId);
+      },
+      policy: { isDeliveryPaused: () => paused },
+      repository,
+    });
+
+    expect(await worker.processPending()).toBe(1);
+    expect(channel.sent).toHaveLength(1);
+    expect(notifier.notifications).toHaveLength(1);
+    expect(notificationErrors).toEqual(['delivery-1']);
+    expect(repository.findUnnotifiedFailedDeliveries(now, 10)).toHaveLength(0);
+
+    paused = true;
+    now = new Date(now.getTime() + 30_000);
+    expect(await worker.processPending()).toBe(0);
+
+    expect(channel.sent).toHaveLength(1);
+    expect(notifier.notifications).toHaveLength(2);
+    expect(repository.findUnnotifiedFailedDeliveries(now, 10)).toHaveLength(0);
+    expect(repository.getDeliverySummary()).toEqual({ failed: 1, pending: 0 });
   });
 
   it('does not use a client channel after that adapter unregisters', async () => {
