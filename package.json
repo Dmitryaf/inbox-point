@@ -19,6 +19,8 @@
     "format:check": "prettier --check .",
     "lint": "eslint .",
     "prepare": "husky",
+    "snapshot:create": "node scripts/run-java.mjs snapshot-create",
+    "snapshot:restore": "node scripts/run-java.mjs snapshot-restore",
     "start": "node scripts/run-java.mjs start",
     "test": "vitest run",
     "typecheck": "npm run typecheck:frontend && npm run typecheck:frontend-tests",

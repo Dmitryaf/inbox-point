@@ -5,19 +5,28 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.file.Path;
+import java.sql.SQLException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Map;
 
+import com.inboxpoint.persistence.ServiceSnapshot;
 import com.inboxpoint.telegram.TelegramAlert;
 
 public final class ServiceCommands {
     private ServiceCommands() { }
 
     public static boolean handles(String command) {
-        return "healthcheck".equals(command) || "availability-monitor".equals(command);
+        return "healthcheck".equals(command) || "availability-monitor".equals(command)
+                || "snapshot-create".equals(command) || "snapshot-restore".equals(command);
     }
 
-    public static int run(String command, Map<String, String> environment) {
+    public static int run(String[] args, Map<String, String> environment) {
+        var command = args[0];
+        if (command.startsWith("snapshot-")) {
+            return snapshot(args, environment);
+        }
         try (var http = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).build()) {
             if ("healthcheck".equals(command)) {
                 int port = number(environment, "PORT", 3000, 1, 65535);
@@ -41,6 +50,25 @@ public final class ServiceCommands {
             return 0;
         } catch (IOException | IllegalArgumentException invalid) {
             System.err.println("Service check or monitor could not initialize or continue.");
+            return 1;
+        }
+    }
+
+    private static int snapshot(String[] args, Map<String, String> environment) {
+        try {
+            if ("snapshot-create".equals(args[0])) {
+                var database = Path.of(environment.getOrDefault("DATABASE_PATH", "./data/messenger-handoff.sqlite"));
+                var days = number(environment, "CLOSED_REQUEST_RETENTION_DAYS", 7, 1, 365);
+                System.out.println(new ServiceSnapshot(database, days).create(Instant.now()));
+            } else {
+                if (args.length != 3) {
+                    throw new IllegalArgumentException("Snapshot directory and new restore directory are required");
+                }
+                System.out.println(ServiceSnapshot.restore(Path.of(args[1]), Path.of(args[2])));
+            }
+            return 0;
+        } catch (IOException | SQLException | RuntimeException failure) {
+            System.err.println("Service snapshot command failed (" + failure.getClass().getSimpleName() + ")");
             return 1;
         }
     }

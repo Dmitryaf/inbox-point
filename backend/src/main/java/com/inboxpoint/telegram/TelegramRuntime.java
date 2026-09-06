@@ -41,6 +41,8 @@ public final class TelegramRuntime {
     private final Path settingsFile;
     private final URI origin;
     private Thread poller;
+    private Thread retention;
+    private final int retentionDays;
     private final HandoffRuntime handoff;
     private final VkSetup vk;
     private final ChannelActivity activity = new ChannelActivity();
@@ -49,6 +51,10 @@ public final class TelegramRuntime {
     TelegramRuntime(Environment environment, ClientInformation information) {
         this.information = information;
         this.environment = environment;
+        retentionDays = environment.getProperty("CLOSED_REQUEST_RETENTION_DAYS", Integer.class, 7);
+        if (retentionDays < 1 || retentionDays > 365) {
+            throw new IllegalArgumentException("Invalid closed request retention days");
+        }
         database = Path.of(environment.getProperty("DATABASE_PATH", "./data/messenger-handoff.sqlite"));
         serviceControl = new LocalServiceControl(database);
         settingsFile = database.toAbsolutePath().resolveSibling("telegram-settings.json");
@@ -61,6 +67,10 @@ public final class TelegramRuntime {
     synchronized void start() throws IOException, SQLException, InterruptedException {
         try (var store = new TelegramStore(database)) {
             store.recoverInterrupted();
+            runRetention(store);
+        }
+        if (retention == null || !retention.isAlive()) {
+            retention = Thread.ofVirtual().name("request-retention").start(this::retainInBackground);
         }
         handoff.start();
         vk.restore(incomingVk());
@@ -84,6 +94,29 @@ public final class TelegramRuntime {
             source = NONE;
         } catch (IOException | SQLException | RuntimeException failure) {
             LoggerFactory.getLogger(TelegramRuntime.class).warn("Saved Telegram connection could not be restored");
+        }
+    }
+
+    private void runRetention(TelegramStore store) throws SQLException {
+        var result = store.purge(Instant.now().minus(Duration.ofDays(retentionDays)));
+        if (result.skippedRequests() > 0) {
+            LoggerFactory.getLogger(TelegramRuntime.class).warn("Retention kept {} requests with unfinished deliveries",
+                    result.skippedRequests());
+        }
+    }
+
+    private void retainInBackground() {
+        while (!Thread.currentThread().isInterrupted()) {
+            try {
+                Thread.sleep(Duration.ofHours(6));
+                try (var store = new TelegramStore(database)) {
+                    runRetention(store);
+                }
+            } catch (InterruptedException stopping) {
+                Thread.currentThread().interrupt();
+            } catch (IOException | SQLException failure) {
+                LoggerFactory.getLogger(TelegramRuntime.class).warn("Scheduled retention cleanup failed");
+            }
         }
     }
 
@@ -316,6 +349,10 @@ public final class TelegramRuntime {
 
     @PreDestroy
     synchronized void stop() throws InterruptedException {
+        if (retention != null) {
+            retention.interrupt();
+            retention.join(Duration.ofSeconds(2));
+        }
         handoff.stop();
         vk.stop();
         if (poller != null) {

@@ -52,6 +52,11 @@ final class TelegramStore implements AutoCloseable {
             ensureColumn("deliveries", "attempt_started_at", "TEXT");
             statement.execute("UPDATE deliveries SET outcome_unknown = 1 WHERE last_error = 'Uncertain Telegram result' "
                     + "AND status = 'failed' AND outcome_unknown = 0");
+            try (var version = statement.executeQuery("PRAGMA user_version")) {
+                if (version.next() && version.getInt(1) > 1) {
+                    throw new SQLException("Unsupported SQLite schema version");
+                }
+            }
             ensureColumn("support_requests", "client_display_name", "TEXT");
             ensureColumn("processed_events", "status", "TEXT NOT NULL DEFAULT 'completed'");
             ensureColumn("processed_events", "completed_at", "TEXT");
@@ -61,6 +66,7 @@ final class TelegramStore implements AutoCloseable {
                         received_at TEXT NOT NULL, PRIMARY KEY (source, external_event_id)
                     ) STRICT
                     """);
+            statement.execute("PRAGMA user_version = 1");
         } catch (IOException | SQLException failure) {
             try {
                 connection.close();
@@ -472,6 +478,10 @@ final class TelegramStore implements AutoCloseable {
                 UPDATE deliveries SET notification_next_attempt_at = ?
                 WHERE id = ? AND status = 'failed' AND operator_notified_at IS NULL
                 """, now.toString(), id);
+    }
+
+    com.inboxpoint.persistence.SqliteRetention.Result purge(Instant cutoff) throws SQLException {
+        return com.inboxpoint.persistence.SqliteRetention.purge(connection, cutoff);
     }
 
     void backup(Path destination) throws IOException, SQLException {
