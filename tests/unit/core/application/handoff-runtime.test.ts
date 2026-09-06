@@ -2,14 +2,15 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { HandoffRuntime } from '@/core/application/handoff-runtime.js';
 import {
-  OperatorInboxUnavailableError,
   type OpenOperatorRequest,
   type OperatorInbox,
 } from '@/core/contracts/operator-inbox.js';
 import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-support-repository.js';
 
 class FakeOperatorInbox implements OperatorInbox {
+  public failNextRelay = false;
   public readonly opened: OpenOperatorRequest[] = [];
+  public relayCount = 0;
 
   public closeRequest(): Promise<void> {
     return Promise.resolve();
@@ -29,6 +30,11 @@ class FakeOperatorInbox implements OperatorInbox {
   public relayCustomerMessage(): Promise<{
     operatorMessageIds: readonly string[];
   }> {
+    this.relayCount += 1;
+    if (this.failNextRelay) {
+      this.failNextRelay = false;
+      return Promise.reject(new Error('Telegram unavailable'));
+    }
     return Promise.resolve({ operatorMessageIds: ['operator-message-1'] });
   }
 
@@ -46,7 +52,7 @@ describe('HandoffRuntime', () => {
     }
   });
 
-  it('fails closed and releases the event while no operator inbox is available', async () => {
+  it('stores an emergency web request while no Telegram inbox is available', async () => {
     const repository = new SqliteSupportRepository(':memory:');
     repositories.push(repository);
     const runtime = new HandoffRuntime({
@@ -62,17 +68,39 @@ describe('HandoffRuntime', () => {
       text: 'Question',
     };
 
-    await expect(
-      runtime.handleClientMessage('vk-event-1', message),
-    ).rejects.toBeInstanceOf(OperatorInboxUnavailableError);
-    expect(repository.findActiveRequest('vk', '101')).toBeUndefined();
+    await runtime.handleClientMessage('vk-event-1', message);
+    const emergencyRequest = repository.findActiveRequest('vk', '101');
+    expect(emergencyRequest).toMatchObject({
+      displayName: 'VK Customer',
+    });
+    expect(emergencyRequest?.operatorTopicId.startsWith('web:')).toBe(true);
+    expect(
+      repository.findConversationMessages(emergencyRequest?.id ?? '', 20),
+    ).toEqual([
+      expect.objectContaining({
+        direction: 'client_to_operator',
+        senderName: 'VK Customer',
+        text: 'Question',
+      }),
+    ]);
 
     const inbox = new FakeOperatorInbox();
     runtime.registerOperatorInbox(inbox);
-    await runtime.handleClientMessage('vk-event-1', message);
+    await runtime.handleClientMessage('vk-event-follow-up', {
+      ...message,
+      externalMessageId: 'vk-message-follow-up',
+      text: 'Follow-up question',
+    });
+    expect(inbox.relayCount).toBe(0);
+    await runtime.handleClientMessage('vk-event-2', {
+      ...message,
+      conversationId: '102',
+      externalMessageId: 'vk-message-2',
+    });
 
     expect(inbox.opened).toHaveLength(1);
-    expect(repository.findActiveRequest('vk', '101')).toMatchObject({
+    expect(inbox.relayCount).toBe(1);
+    expect(repository.findActiveRequest('vk', '102')).toMatchObject({
       operatorTopicId: 'topic-1',
     });
   });
@@ -116,5 +144,40 @@ describe('HandoffRuntime', () => {
     await runtime.stop();
 
     expect(repository.getDeliverySummary()).toEqual({ failed: 0, pending: 0 });
+  });
+
+  it('keeps the request in the web inbox when Telegram relay fails', async () => {
+    const repository = new SqliteSupportRepository(':memory:');
+    repositories.push(repository);
+    const errors: string[] = [];
+    const runtime = new HandoffRuntime({
+      logger: {
+        error: (_error, message) => {
+          errors.push(message);
+        },
+      },
+      repository,
+    });
+    const inbox = new FakeOperatorInbox();
+    inbox.failNextRelay = true;
+    runtime.registerOperatorInbox(inbox);
+
+    await runtime.handleClientMessage('vk-event-1', {
+      channel: 'vk',
+      conversationId: '101',
+      displayName: 'VK Customer',
+      externalMessageId: 'vk-message-1',
+      receivedAt: new Date('2026-09-06T12:00:00.000Z'),
+      text: 'Question during outage',
+    });
+
+    const request = repository.findActiveRequest('vk', '101');
+    expect(request?.operatorTopicId).toBe('topic-1');
+    expect(repository.findConversationMessages(request?.id ?? '', 20)).toEqual([
+      expect.objectContaining({ text: 'Question during outage' }),
+    ]);
+    expect(errors).toContain(
+      'Operator inbox relay failed; using emergency web inbox',
+    );
   });
 });

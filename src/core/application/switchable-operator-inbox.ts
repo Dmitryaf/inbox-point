@@ -9,23 +9,46 @@ import type { FailedDelivery } from '@/core/model/support-request.js';
 import type { SupportMessage } from '@/core/model/support-message.js';
 
 type ActiveOperatorInbox = OperatorInbox & DeliveryIncidentNotifier;
+type FallbackOperation = 'close' | 'open' | 'relay' | 'reopen';
 
 export class SwitchableOperatorInbox
   implements OperatorInbox, DeliveryIncidentNotifier
 {
   private inbox: ActiveOperatorInbox | undefined;
 
-  public closeRequest(operatorTopicId: string): Promise<void> {
-    return this.requireInbox().closeRequest(operatorTopicId);
+  public constructor(
+    private readonly fallback: OperatorInbox,
+    private readonly onFallback: (
+      error: unknown,
+      operation: FallbackOperation,
+    ) => void = () => undefined,
+  ) {}
+
+  public async closeRequest(operatorTopicId: string): Promise<void> {
+    if (isEmergencyTopic(operatorTopicId)) {
+      return this.fallback.closeRequest(operatorTopicId);
+    }
+    await this.runWithFallback(
+      'close',
+      (inbox) => inbox.closeRequest(operatorTopicId),
+      () => this.fallback.closeRequest(operatorTopicId),
+    );
   }
 
-  public openRequest(
+  public async openRequest(
     request: OpenOperatorRequest,
   ): Promise<{ topicId: string }> {
-    return this.requireInbox().openRequest(request);
+    return this.runWithFallback(
+      'open',
+      (inbox) => inbox.openRequest(request),
+      () => this.fallback.openRequest(request),
+    );
   }
 
   public notifyDeliveryFailure(delivery: FailedDelivery): Promise<void> {
+    if (isEmergencyTopic(delivery.operatorTopicId)) {
+      return Promise.resolve();
+    }
     return this.requireInbox().notifyDeliveryFailure(delivery);
   }
 
@@ -38,20 +61,52 @@ export class SwitchableOperatorInbox
     };
   }
 
-  public relayCustomerMessage(
+  public async relayCustomerMessage(
     operatorTopicId: string,
     message: SupportMessage,
     options: RelayCustomerMessageOptions,
   ): Promise<{ operatorMessageIds: readonly string[] }> {
-    return this.requireInbox().relayCustomerMessage(
-      operatorTopicId,
-      message,
-      options,
+    if (isEmergencyTopic(operatorTopicId)) {
+      return this.fallback.relayCustomerMessage(
+        operatorTopicId,
+        message,
+        options,
+      );
+    }
+    return this.runWithFallback(
+      'relay',
+      (inbox) => inbox.relayCustomerMessage(operatorTopicId, message, options),
+      () =>
+        this.fallback.relayCustomerMessage(operatorTopicId, message, options),
     );
   }
 
-  public reopenRequest(operatorTopicId: string): Promise<void> {
-    return this.requireInbox().reopenRequest(operatorTopicId);
+  public async reopenRequest(operatorTopicId: string): Promise<void> {
+    if (isEmergencyTopic(operatorTopicId)) {
+      return this.fallback.reopenRequest(operatorTopicId);
+    }
+    await this.runWithFallback(
+      'reopen',
+      (inbox) => inbox.reopenRequest(operatorTopicId),
+      () => this.fallback.reopenRequest(operatorTopicId),
+    );
+  }
+
+  private async runWithFallback<T>(
+    operation: FallbackOperation,
+    runPrimary: (inbox: ActiveOperatorInbox) => Promise<T>,
+    runFallback: () => Promise<T>,
+  ): Promise<T> {
+    const inbox = this.inbox;
+    if (!inbox) {
+      return runFallback();
+    }
+    try {
+      return await runPrimary(inbox);
+    } catch (error: unknown) {
+      this.onFallback(error, operation);
+      return runFallback();
+    }
   }
 
   private requireInbox(): ActiveOperatorInbox {
@@ -60,4 +115,8 @@ export class SwitchableOperatorInbox
     }
     return this.inbox;
   }
+}
+
+function isEmergencyTopic(operatorTopicId: string): boolean {
+  return operatorTopicId.startsWith('web:');
 }

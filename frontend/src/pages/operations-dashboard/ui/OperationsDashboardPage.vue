@@ -8,12 +8,14 @@ import { useOutboundDeliveryControl } from '@frontend/features/control-outbound-
 import { useOperationsStatus } from '@frontend/features/refresh-status/model/use-operations-status';
 import { useDeliveryRetry } from '@frontend/features/retry-delivery/model/use-delivery-retry';
 import OperationsOverview from '@frontend/widgets/operations-overview/ui/OperationsOverview.vue';
+import OperatorInbox from '@frontend/widgets/operator-inbox/ui/OperatorInbox.vue';
 import AsyncMessage from '@frontend/shared/ui/AsyncMessage.vue';
 
 const refreshIntervalMs = 30_000;
 const session = useOperationsSession();
 const operations = useOperationsStatus(session.expireSession);
 const intakeControl = ref<{ refresh: () => Promise<void> }>();
+const operatorInbox = ref<{ refresh: () => Promise<void> }>();
 const deliveryRetry = useDeliveryRetry(refreshAll, session.expireSession);
 const deliveryControl = useOutboundDeliveryControl(
   refreshAll,
@@ -36,17 +38,13 @@ watch(session.authenticated, (authenticated) => {
 
 onBeforeUnmount(stopAutomaticRefresh);
 
-async function authenticate(password: string): Promise<void> {
-  await session.authenticate(password);
-}
-
-async function logout(): Promise<void> {
-  await session.endSession();
-}
+const authenticate = (password: string) => session.authenticate(password);
+const logout = () => session.endSession();
 
 async function refreshAll(): Promise<void> {
   await Promise.all([
     operations.refresh(),
+    operatorInbox.value?.refresh() ?? Promise.resolve(),
     intakeControl.value?.refresh() ?? Promise.resolve(),
   ]);
 }
@@ -134,6 +132,11 @@ function stopAutomaticRefresh(): void {
       <AsyncMessage kind="success" :text="deliveryRetry.notice.value" />
       <AsyncMessage kind="error" :text="deliveryControl.error.value" />
       <AsyncMessage kind="success" :text="deliveryControl.notice.value" />
+
+      <OperatorInbox
+        ref="operatorInbox"
+        :on-unauthorized="session.expireSession"
+      />
 
       <OperationsOverview
         v-if="operations.status.value"

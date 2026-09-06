@@ -7,9 +7,26 @@ export interface SupportRequest {
   closedAt?: Date;
   conversationId: string;
   createdAt: Date;
+  displayName?: string;
   id: string;
   operatorTopicId: string;
   status: SupportRequestStatus;
+}
+
+export interface OperatorRequestSummary extends SupportRequest {
+  latestMessageAt?: Date;
+}
+
+export interface ConversationMessage {
+  createdAt: Date;
+  deliveryOutcomeUnknown?: boolean;
+  deliveryStatus?: 'failed' | 'pending' | 'sent';
+  direction: MessageDirection;
+  externalMessageId: string;
+  id: string;
+  requestId: string;
+  senderName?: string;
+  text: string;
 }
 
 export type MessageDirection = 'client_to_operator' | 'operator_to_client';

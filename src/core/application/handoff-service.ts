@@ -94,6 +94,15 @@ export class HandoffService {
     message: SupportMessage,
     initial = false,
   ): Promise<void> {
+    this.repository.recordConversationMessage({
+      createdAt: message.receivedAt,
+      direction: 'client_to_operator',
+      externalMessageId: message.externalMessageId,
+      id: this.createId(),
+      requestId: request.id,
+      senderName: message.displayName,
+      text: message.text,
+    });
     const relayed = await this.operatorInbox.relayCustomerMessage(
       request.operatorTopicId,
       message,
@@ -124,6 +133,7 @@ export class HandoffService {
       channel: message.channel,
       conversationId: message.conversationId,
       createdAt,
+      displayName: message.displayName,
       id: requestId,
       operatorTopicId: opened.topicId,
       status: 'active',
@@ -138,8 +148,9 @@ export class HandoffService {
   public async handleOperatorMessage(
     externalEventId: string,
     message: OperatorMessage,
+    source = 'operator:telegram',
   ): Promise<void> {
-    await this.handleEvent('operator:telegram', externalEventId, async () => {
+    await this.handleEvent(source, externalEventId, async () => {
       const request = this.repository.findRequestByTopicId(
         message.operatorTopicId,
       );
@@ -170,6 +181,14 @@ export class HandoffService {
       }
 
       const idempotencyKey = `operator:${externalEventId}`;
+      this.repository.recordConversationMessage({
+        createdAt: message.receivedAt,
+        direction: 'operator_to_client',
+        externalMessageId: message.externalMessageId,
+        id: this.createId(),
+        requestId: request.id,
+        text: message.text,
+      });
       this.repository.enqueueDelivery({
         channel: request.channel,
         conversationId: request.conversationId,
