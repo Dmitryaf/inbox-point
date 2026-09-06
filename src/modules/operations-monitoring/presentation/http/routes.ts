@@ -21,7 +21,12 @@ export function registerOperationsRoutes(
   access: OperationsAccess,
   options: OperationsRouteOptions,
   serviceControl?: ServiceControlService,
-  deliveries?: Pick<SupportRepository, 'retryFailedDelivery'>,
+  deliveries?: Pick<
+    SupportRepository,
+    | 'confirmUnknownDeliveryNotReceived'
+    | 'confirmUnknownDeliveryReceived'
+    | 'retryFailedDelivery'
+  >,
 ): void {
   const routeAccess = createOperationsRouteAccess(app, access, options);
   const assets = options.assets ?? loadFrontendAssets('/ops');

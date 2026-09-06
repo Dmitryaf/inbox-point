@@ -13,6 +13,10 @@ const props = defineProps<{
 }>();
 defineEmits<{
   changeDeliveryMode: [mode: 'pause' | 'resume'];
+  resolveDelivery: [
+    deliveryId: string,
+    resolution: 'not_received' | 'received',
+  ];
   retryDelivery: [deliveryId: string];
 }>();
 
@@ -79,6 +83,7 @@ const overallLabel = computed(() => {
         :outbound="status.outbound"
         :pending-delivery-id="pendingDeliveryId"
         @change-delivery-mode="$emit('changeDeliveryMode', $event)"
+        @resolve="(id, resolution) => $emit('resolveDelivery', id, resolution)"
         @retry="$emit('retryDelivery', $event)"
       />
     </div>

@@ -141,6 +141,52 @@ export class SqliteSupportRepository implements SupportRepository {
       .run(closedAt.toISOString(), requestId);
   }
 
+  public confirmUnknownDeliveryNotReceived(
+    deliveryId: string,
+    retryAt: Date,
+  ): boolean {
+    const result = this.database
+      .prepare(
+        `UPDATE deliveries
+         SET status = 'pending',
+             attempts = 0,
+             external_message_id = NULL,
+             last_error = NULL,
+             next_attempt_at = ?,
+             outcome_unknown = 0,
+             attempt_started_at = NULL,
+             sent_at = NULL,
+             manual_resolution = 'confirmed_not_received',
+             resolved_at = ?
+         WHERE id = ? AND status = 'failed' AND outcome_unknown = 1`,
+      )
+      .run(retryAt.toISOString(), retryAt.toISOString(), deliveryId);
+
+    return Number(result.changes) === 1;
+  }
+
+  public confirmUnknownDeliveryReceived(
+    deliveryId: string,
+    confirmedAt: Date,
+  ): boolean {
+    const result = this.database
+      .prepare(
+        `UPDATE deliveries
+         SET status = 'sent',
+             last_error = NULL,
+             next_attempt_at = NULL,
+             outcome_unknown = 0,
+             attempt_started_at = NULL,
+             sent_at = ?,
+             manual_resolution = 'confirmed_received',
+             resolved_at = ?
+         WHERE id = ? AND status = 'failed' AND outcome_unknown = 1`,
+      )
+      .run(confirmedAt.toISOString(), confirmedAt.toISOString(), deliveryId);
+
+    return Number(result.changes) === 1;
+  }
+
   public completeEvent(
     source: string,
     externalEventId: string,
@@ -660,6 +706,10 @@ export class SqliteSupportRepository implements SupportRepository {
         outcome_unknown INTEGER NOT NULL DEFAULT 0 CHECK (
           outcome_unknown IN (0, 1)
         ),
+        manual_resolution TEXT CHECK (
+          manual_resolution IN ('confirmed_received', 'confirmed_not_received')
+        ),
+        resolved_at TEXT,
         sent_at TEXT
       ) STRICT;
     `);
@@ -673,6 +723,16 @@ export class SqliteSupportRepository implements SupportRepository {
       this.database.exec(
         'ALTER TABLE deliveries ADD COLUMN operator_message_id TEXT',
       );
+    }
+    if (
+      !deliveryColumns.some((column) => column.name === 'manual_resolution')
+    ) {
+      this.database.exec(
+        "ALTER TABLE deliveries ADD COLUMN manual_resolution TEXT CHECK (manual_resolution IN ('confirmed_received', 'confirmed_not_received'))",
+      );
+    }
+    if (!deliveryColumns.some((column) => column.name === 'resolved_at')) {
+      this.database.exec('ALTER TABLE deliveries ADD COLUMN resolved_at TEXT');
     }
     if (!deliveryColumns.some((column) => column.name === 'next_attempt_at')) {
       this.database.exec(

@@ -143,6 +143,7 @@ function stopAutomaticRefresh(): void {
         "
         :status="operations.status.value"
         @change-delivery-mode="deliveryControl.change"
+        @resolve-delivery="deliveryRetry.resolve"
         @retry-delivery="deliveryRetry.retry"
       />
       <section v-else class="card loading-card">

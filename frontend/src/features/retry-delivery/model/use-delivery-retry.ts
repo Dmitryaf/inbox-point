@@ -1,6 +1,9 @@
 import { ref } from 'vue';
 
-import { retryOperationsDelivery } from '@frontend/entities/operations/api/operations-api';
+import {
+  resolveOperationsDelivery,
+  retryOperationsDelivery,
+} from '@frontend/entities/operations/api/operations-api';
 import { HttpError } from '@frontend/shared/api/http-client';
 import { errorMessage } from '@frontend/shared/lib/error-message';
 
@@ -20,12 +23,40 @@ export function useDeliveryRetry(
     ) {
       return;
     }
+    await execute(
+      deliveryId,
+      () => retryOperationsDelivery(deliveryId),
+      'Ответ поставлен в очередь повторной доставки.',
+    );
+  }
+
+  async function resolve(
+    deliveryId: string,
+    resolution: 'not_received' | 'received',
+  ): Promise<void> {
+    if (!confirmResolution(resolution)) {
+      return;
+    }
+    await execute(
+      deliveryId,
+      () => resolveOperationsDelivery(deliveryId, resolution),
+      resolution === 'received'
+        ? 'Доставка отмечена как подтверждённая клиентом.'
+        : 'Неполученный ответ поставлен в очередь повторной доставки.',
+    );
+  }
+
+  async function execute(
+    deliveryId: string,
+    action: () => Promise<void>,
+    successNotice: string,
+  ): Promise<void> {
     pendingDeliveryId.value = deliveryId;
     error.value = '';
     notice.value = '';
     try {
-      await retryOperationsDelivery(deliveryId);
-      notice.value = 'Ответ поставлен в очередь повторной доставки.';
+      await action();
+      notice.value = successNotice;
       await refresh();
     } catch (cause: unknown) {
       if (cause instanceof HttpError && cause.status === 401) {
@@ -38,5 +69,15 @@ export function useDeliveryRetry(
     }
   }
 
-  return { error, notice, pendingDeliveryId, retry };
+  return { error, notice, pendingDeliveryId, resolve, retry };
+}
+
+function confirmResolution(resolution: 'not_received' | 'received'): boolean {
+  return resolution === 'received'
+    ? window.confirm(
+        'Подтвердить, что клиент получил ответ? Инцидент будет закрыт без повторной отправки.',
+      )
+    : window.confirm(
+        'Подтвердить, что клиент не получил ответ, и отправить его повторно?',
+      );
 }

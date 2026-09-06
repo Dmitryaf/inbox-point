@@ -3,6 +3,7 @@ import { computed } from 'vue';
 
 import { formatUptime } from '@frontend/entities/operations/lib/status-format';
 import type { OperationsStatus } from '@frontend/entities/operations/model/types';
+import DeliveryIncidentList from './DeliveryIncidentList.vue';
 import OutboundDeliveryControl from './OutboundDeliveryControl.vue';
 
 const props = defineProps<{
@@ -13,6 +14,7 @@ const props = defineProps<{
 }>();
 defineEmits<{
   changeDeliveryMode: [mode: 'pause' | 'resume'];
+  resolve: [deliveryId: string, resolution: 'not_received' | 'received'];
   retry: [deliveryId: string];
 }>();
 
@@ -31,13 +33,6 @@ const state = computed(() => {
   }
   return { label: 'Работает', tone: 'healthy' };
 });
-
-function formatCreatedAt(value: string): string {
-  return new Intl.DateTimeFormat('ru-RU', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-  }).format(new Date(value));
-}
 </script>
 
 <template>
@@ -75,54 +70,11 @@ function formatCreatedAt(value: string): string {
       :pending="deliveryControlPending"
       @change="$emit('changeDeliveryMode', $event)"
     />
-    <section
-      v-if="deliveries.incidents.length > 0"
-      class="delivery-incidents"
-      aria-labelledby="delivery-incidents-title"
-    >
-      <h4 id="delivery-incidents-title">Недоставленные ответы</h4>
-      <ol>
-        <li v-for="incident in deliveries.incidents" :key="incident.id">
-          <div class="delivery-incident-heading">
-            <strong>{{ incident.channel }}</strong>
-            <time :datetime="incident.createdAt">
-              {{ formatCreatedAt(incident.createdAt) }}
-            </time>
-          </div>
-          <p>{{ incident.reason }}</p>
-          <dl class="delivery-incident-context">
-            <div>
-              <dt>Обращение</dt>
-              <dd>{{ incident.requestId }}</dd>
-            </div>
-            <div>
-              <dt>Тема преподавателя</dt>
-              <dd>{{ incident.operatorTopicId }}</dd>
-            </div>
-            <div v-if="incident.operatorMessageId">
-              <dt>Сообщение преподавателя</dt>
-              <dd>{{ incident.operatorMessageId }}</dd>
-            </div>
-          </dl>
-          <button
-            v-if="incident.retryAllowed"
-            class="secondary-button"
-            type="button"
-            :disabled="Boolean(pendingDeliveryId)"
-            @click="$emit('retry', incident.id)"
-          >
-            {{
-              pendingDeliveryId === incident.id
-                ? 'Ставим в очередь…'
-                : 'Повторить доставку'
-            }}
-          </button>
-          <p v-else class="delivery-incident-note">
-            Уточните получение через тему обращения. Повтор без проверки может
-            отправить клиенту дубликат.
-          </p>
-        </li>
-      </ol>
-    </section>
+    <DeliveryIncidentList
+      :incidents="deliveries.incidents"
+      :pending-delivery-id="pendingDeliveryId"
+      @resolve="(id, resolution) => $emit('resolve', id, resolution)"
+      @retry="$emit('retry', $event)"
+    />
   </article>
 </template>

@@ -13,6 +13,7 @@ export function mapDeliveryIncident(
       ? { operatorMessageId: delivery.operatorMessageId }
       : {}),
     operatorTopicId: delivery.operatorTopicId,
+    outcomeUnknown: delivery.outcomeUnknown,
     reason: delivery.outcomeUnknown
       ? 'Канал мог принять ответ, но подтверждение не получено. Автоматический повтор отключён, чтобы не отправить дубликат.'
       : explainDeliveryFailure(delivery.lastError, delivery.channel),

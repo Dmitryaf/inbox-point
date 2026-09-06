@@ -11,3 +11,16 @@ export function retryOperationsDelivery(deliveryId: string): Promise<void> {
     { body: '{}', method: 'POST' },
   );
 }
+
+export function resolveOperationsDelivery(
+  deliveryId: string,
+  resolution: 'not_received' | 'received',
+): Promise<void> {
+  return request(
+    `/api/ops/deliveries/${encodeURIComponent(deliveryId)}/resolve`,
+    {
+      body: JSON.stringify({ resolution }),
+      method: 'POST',
+    },
+  );
+}

@@ -154,6 +154,7 @@ describe('OperationsMonitoringService', () => {
         id: 'delivery-1',
         operatorMessageId: 'operator-message-17',
         operatorTopicId: 'topic-42',
+        outcomeUnknown: false,
         reason:
           'Не удалось связаться с каналом. Проверьте интернет и повторите попытку.',
         requestId: 'request-9',

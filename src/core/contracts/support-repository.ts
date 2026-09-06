@@ -34,6 +34,11 @@ export interface SupportRepository extends InboundEventStore {
   addMessageLink(link: MessageLink): void;
   claimDeliveryAttempt(deliveryId: string, startedAt: Date): boolean;
   claimEvent(source: string, externalEventId: string, claimedAt: Date): boolean;
+  confirmUnknownDeliveryNotReceived(deliveryId: string, retryAt: Date): boolean;
+  confirmUnknownDeliveryReceived(
+    deliveryId: string,
+    confirmedAt: Date,
+  ): boolean;
   close(): void;
   closeRequest(requestId: string, closedAt: Date): void;
   completeEvent(

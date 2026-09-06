@@ -152,6 +152,67 @@ describe('SqliteSupportRepository', () => {
     second.close();
   });
 
+  it('records an explicit resolution for deliveries with an unknown outcome', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-test-'));
+    temporaryDirectories.push(directory);
+    const databasePath = join(directory, 'handoff.sqlite');
+    const repository = new SqliteSupportRepository(databasePath);
+    const createdAt = new Date('2026-09-06T12:00:00.000Z');
+    repository.createRequest({
+      channel: 'telegram',
+      conversationId: '101',
+      createdAt,
+      id: 'request-1',
+      operatorTopicId: 'topic-1',
+      status: 'active',
+    });
+    for (const index of [1, 2]) {
+      repository.enqueueDelivery({
+        channel: 'telegram',
+        conversationId: '101',
+        createdAt: new Date(createdAt.getTime() + index * 1_000),
+        id: `delivery-${index}`,
+        idempotencyKey: `operator:update-${index}`,
+        operatorMessageId: `operator-message-${index}`,
+        requestId: 'request-1',
+        text: `Answer ${index}`,
+      });
+      repository.markDeliveryOutcomeUnknown(
+        `delivery-${index}`,
+        'confirmation was lost',
+      );
+    }
+
+    expect(
+      repository.confirmUnknownDeliveryReceived('delivery-1', createdAt),
+    ).toBe(true);
+    expect(
+      repository.confirmUnknownDeliveryNotReceived('delivery-2', createdAt),
+    ).toBe(true);
+    expect(repository.getDeliverySummary()).toMatchObject({
+      failed: 0,
+      pending: 1,
+    });
+    expect(repository.findPendingDeliveries(createdAt, 10)).toEqual([
+      expect.objectContaining({ id: 'delivery-2' }),
+    ]);
+    expect(
+      repository.confirmUnknownDeliveryReceived('delivery-1', createdAt),
+    ).toBe(false);
+    repository.close();
+
+    const database = new DatabaseSync(databasePath);
+    expect(
+      database
+        .prepare('SELECT id, manual_resolution FROM deliveries ORDER BY id')
+        .all(),
+    ).toEqual([
+      { id: 'delivery-1', manual_resolution: 'confirmed_received' },
+      { id: 'delivery-2', manual_resolution: 'confirmed_not_received' },
+    ]);
+    database.close();
+  });
+
   it('releases an interrupted event claim when the process restarts', () => {
     const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-test-'));
     temporaryDirectories.push(directory);
