@@ -1,6 +1,7 @@
 import type {
   OpenOperatorRequest,
   OperatorInbox,
+  RelayCustomerMessageOptions,
 } from '@/core/contracts/operator-inbox.js';
 import { OperatorConversationUnavailableError } from '@/core/contracts/operator-inbox.js';
 import type { SupportMessage } from '@/core/model/support-message.js';
@@ -23,36 +24,32 @@ export class TelegramTopicsInbox implements OperatorInbox {
     );
   }
 
-  public async openRequest(request: OpenOperatorRequest): Promise<{
-    operatorMessageId: string;
-    topicId: string;
-  }> {
+  public async openRequest(
+    request: OpenOperatorRequest,
+  ): Promise<{ topicId: string }> {
     const topic = await this.gateway.createForumTopic(
       this.operatorChatId,
       request.title,
     );
-    const sent = await this.gateway.sendMessage({
-      chatId: this.operatorChatId,
-      messageThreadId: topic.topicId,
-      text: formatInitialMessage(request),
-    });
-    return {
-      operatorMessageId: String(sent.messageId),
-      topicId: String(topic.topicId),
-    };
+    return { topicId: String(topic.topicId) };
   }
 
   public async relayCustomerMessage(
     operatorTopicId: string,
     message: SupportMessage,
-  ): Promise<{ operatorMessageId: string }> {
+    options: RelayCustomerMessageOptions,
+  ): Promise<{ operatorMessageIds: readonly string[] }> {
     try {
-      const sent = await this.gateway.sendMessage({
-        chatId: this.operatorChatId,
-        messageThreadId: Number(operatorTopicId),
-        text: `Клиент:\n\n${message.text}`,
-      });
-      return { operatorMessageId: String(sent.messageId) };
+      const operatorMessageIds: string[] = [];
+      for (const text of formatCustomerMessages(message, options)) {
+        const sent = await this.gateway.sendMessage({
+          chatId: this.operatorChatId,
+          messageThreadId: Number(operatorTopicId),
+          text,
+        });
+        operatorMessageIds.push(String(sent.messageId));
+      }
+      return { operatorMessageIds };
     } catch (error: unknown) {
       if (isUnavailableForumTopicError(error)) {
         throw new OperatorConversationUnavailableError();
@@ -76,16 +73,38 @@ export class TelegramTopicsInbox implements OperatorInbox {
   }
 }
 
-function formatInitialMessage(request: OpenOperatorRequest): string {
-  const channelName = request.source.channel === 'telegram' ? 'Telegram' : 'VK';
-  return [
-    `Новое обращение из ${channelName}`,
-    `Клиент: ${request.source.displayName}`,
-    '',
-    'Вопрос:',
-    request.source.text,
-    '',
-    'Ответьте сообщением в этой теме.',
-    'Чтобы закрыть обращение, отправьте /close.',
-  ].join('\n');
+const telegramTextLimit = 4_096;
+
+function formatCustomerMessages(
+  message: SupportMessage,
+  options: RelayCustomerMessageOptions,
+): readonly string[] {
+  const channelName = message.channel === 'telegram' ? 'Telegram' : 'VK';
+  const firstPrefix = options.initial
+    ? [
+        `Новое обращение из ${channelName}`,
+        `Клиент: ${message.displayName}`,
+        '',
+        'Ответьте сообщением в этой теме.',
+        'Чтобы закрыть обращение, отправьте /close.',
+        '',
+        'Вопрос:',
+        '',
+      ].join('\n')
+    : 'Клиент:\n\n';
+  const continuationPrefix = 'Клиент (продолжение):\n\n';
+  const characters = Array.from(message.text);
+  const messages: string[] = [];
+  let offset = 0;
+  let prefix = firstPrefix;
+
+  while (offset < characters.length) {
+    const capacity = telegramTextLimit - Array.from(prefix).length;
+    const chunk = characters.slice(offset, offset + capacity).join('');
+    messages.push(prefix + chunk);
+    offset += capacity;
+    prefix = continuationPrefix;
+  }
+
+  return messages;
 }

@@ -92,19 +92,23 @@ export class HandoffService {
       operatorTopicId: string;
     },
     message: SupportMessage,
+    initial = false,
   ): Promise<void> {
     const relayed = await this.operatorInbox.relayCustomerMessage(
       request.operatorTopicId,
       message,
+      { initial },
     );
-    this.repository.addMessageLink({
-      clientMessageId: message.externalMessageId,
-      createdAt: this.clock(),
-      direction: 'client_to_operator',
-      id: this.createId(),
-      operatorMessageId: relayed.operatorMessageId,
-      requestId: request.id,
-    });
+    for (const operatorMessageId of relayed.operatorMessageIds) {
+      this.repository.addMessageLink({
+        clientMessageId: message.externalMessageId,
+        createdAt: this.clock(),
+        direction: 'client_to_operator',
+        id: this.createId(),
+        operatorMessageId,
+        requestId: request.id,
+      });
+    }
   }
 
   private async openClientRequest(message: SupportMessage): Promise<void> {
@@ -124,14 +128,11 @@ export class HandoffService {
       operatorTopicId: opened.topicId,
       status: 'active',
     });
-    this.repository.addMessageLink({
-      clientMessageId: message.externalMessageId,
-      createdAt,
-      direction: 'client_to_operator',
-      id: this.createId(),
-      operatorMessageId: opened.operatorMessageId,
-      requestId,
-    });
+    await this.relayClientMessage(
+      { id: requestId, operatorTopicId: opened.topicId },
+      message,
+      true,
+    );
   }
 
   public async handleOperatorMessage(

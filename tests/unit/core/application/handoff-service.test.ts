@@ -4,6 +4,7 @@ import { HandoffService } from '@/core/application/handoff-service.js';
 import type {
   OpenOperatorRequest,
   OperatorInbox,
+  RelayCustomerMessageOptions,
 } from '@/core/contracts/operator-inbox.js';
 import type { SupportMessage } from '@/core/model/support-message.js';
 import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-support-repository.js';
@@ -15,6 +16,7 @@ class FakeOperatorInbox implements OperatorInbox {
   public readonly opened: OpenOperatorRequest[] = [];
   public readonly reopened: string[] = [];
   public readonly relayed: {
+    initial: boolean;
     message: SupportMessage;
     operatorTopicId: string;
   }[] = [];
@@ -26,7 +28,7 @@ class FakeOperatorInbox implements OperatorInbox {
 
   public async openRequest(
     request: OpenOperatorRequest,
-  ): Promise<{ operatorMessageId: string; topicId: string }> {
+  ): Promise<{ topicId: string }> {
     this.opened.push(request);
     const openNumber = this.opened.length;
 
@@ -38,19 +40,17 @@ class FakeOperatorInbox implements OperatorInbox {
       await this.firstOpenGate;
     }
 
-    return {
-      operatorMessageId: `operator-message-${openNumber}`,
-      topicId: `topic-${openNumber}`,
-    };
+    return { topicId: `topic-${openNumber}` };
   }
 
   public relayCustomerMessage(
     operatorTopicId: string,
     message: SupportMessage,
-  ): Promise<{ operatorMessageId: string }> {
-    this.relayed.push({ message, operatorTopicId });
+    options: RelayCustomerMessageOptions,
+  ): Promise<{ operatorMessageIds: readonly string[] }> {
+    this.relayed.push({ initial: options.initial, message, operatorTopicId });
     return Promise.resolve({
-      operatorMessageId: `relay-${this.relayed.length}`,
+      operatorMessageIds: [`relay-${this.relayed.length}`],
     });
   }
 
@@ -108,6 +108,12 @@ describe('HandoffService', () => {
     expect(inbox.opened).toHaveLength(1);
     expect(inbox.relayed).toEqual([
       {
+        initial: true,
+        message: createClientMessage('message-1', 'First'),
+        operatorTopicId: 'topic-1',
+      },
+      {
+        initial: false,
         message: createClientMessage('message-2', 'Second'),
         operatorTopicId: 'topic-1',
       },
@@ -139,6 +145,12 @@ describe('HandoffService', () => {
     expect(inbox.opened).toHaveLength(1);
     expect(inbox.relayed).toEqual([
       {
+        initial: true,
+        message: createClientMessage('message-1', 'First'),
+        operatorTopicId: 'topic-1',
+      },
+      {
+        initial: false,
         message: createClientMessage('message-2', 'Second'),
         operatorTopicId: 'topic-1',
       },
@@ -166,6 +178,12 @@ describe('HandoffService', () => {
     expect(inbox.reopened).toEqual(['topic-1']);
     expect(inbox.relayed).toEqual([
       {
+        initial: true,
+        message: createClientMessage('message-1', 'First'),
+        operatorTopicId: 'topic-1',
+      },
+      {
+        initial: false,
         message: createClientMessage('message-2', 'New question'),
         operatorTopicId: 'topic-1',
       },
