@@ -16,6 +16,54 @@ afterEach(() => {
 });
 
 describe('SqliteSupportRepository', () => {
+  it('marks an interrupted delivery attempt as unknown after restart', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-test-'));
+    temporaryDirectories.push(directory);
+    const databasePath = join(directory, 'handoff.sqlite');
+    const createdAt = new Date('2026-09-06T12:00:00.000Z');
+
+    const first = new SqliteSupportRepository(databasePath);
+    first.createRequest({
+      channel: 'telegram',
+      conversationId: '101',
+      createdAt,
+      id: 'request-1',
+      operatorTopicId: 'topic-1',
+      status: 'active',
+    });
+    for (const index of [1, 2]) {
+      first.enqueueDelivery({
+        channel: 'telegram',
+        conversationId: '101',
+        createdAt: new Date(createdAt.getTime() + index * 1_000),
+        id: `delivery-${index}`,
+        idempotencyKey: `operator:update-${index}`,
+        operatorMessageId: `operator-message-${index}`,
+        requestId: 'request-1',
+        text: `Answer ${index}`,
+      });
+    }
+    expect(first.claimDeliveryAttempt('delivery-1', createdAt)).toBe(true);
+    first.close();
+
+    const second = new SqliteSupportRepository(databasePath);
+    expect(second.getDeliverySummary()).toEqual({
+      failed: 1,
+      oldestPendingAt: new Date(createdAt.getTime() + 2_000),
+      pending: 1,
+      uncertain: 1,
+    });
+    expect(second.findFailedDeliveries(10)[0]).toMatchObject({
+      attempts: 1,
+      id: 'delivery-1',
+      outcomeUnknown: true,
+    });
+    expect(second.findPendingDeliveries(new Date('2026-09-07'), 10)).toEqual([
+      expect.objectContaining({ id: 'delivery-2' }),
+    ]);
+    second.close();
+  });
+
   it('restores request and duplicate-event state after restart', () => {
     const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-test-'));
     temporaryDirectories.push(directory);

@@ -59,6 +59,9 @@ export class DeliveryWorker {
   public async processPending(): Promise<number> {
     const deliveries = this.repository.findPendingDeliveries(this.clock(), 25);
     for (const delivery of deliveries) {
+      if (!this.repository.claimDeliveryAttempt(delivery.id, this.clock())) {
+        continue;
+      }
       const channel = this.channels.get(delivery.channel);
       let sent: { externalMessageId: string };
       try {

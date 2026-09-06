@@ -65,6 +65,7 @@ export class SqliteSupportRepository implements SupportRepository {
     this.database.exec('PRAGMA synchronous = FULL');
     this.migrate();
     this.releaseInterruptedEvents();
+    this.markInterruptedDeliveriesUnknown();
   }
 
   public addMessageLink(link: MessageLink): void {
@@ -105,6 +106,20 @@ export class SqliteSupportRepository implements SupportRepository {
         ) VALUES (?, ?, ?, 'processing', NULL)`,
       )
       .run(source, externalEventId, claimedAt.toISOString());
+
+    return Number(result.changes) === 1;
+  }
+
+  public claimDeliveryAttempt(deliveryId: string, startedAt: Date): boolean {
+    const result = this.database
+      .prepare(
+        `UPDATE deliveries
+         SET attempt_started_at = ?
+         WHERE id = ?
+           AND status = 'pending'
+           AND attempt_started_at IS NULL`,
+      )
+      .run(startedAt.toISOString(), deliveryId);
 
     return Number(result.changes) === 1;
   }
@@ -167,6 +182,7 @@ export class SqliteSupportRepository implements SupportRepository {
                attempts = attempts + 1,
                external_message_id = ?,
                last_error = NULL,
+               attempt_started_at = NULL,
                sent_at = ?
            WHERE id = ? AND status = 'pending'`,
         )
@@ -439,6 +455,7 @@ export class SqliteSupportRepository implements SupportRepository {
           delivery.created_at
          FROM deliveries AS delivery
          WHERE delivery.status = 'pending'
+           AND delivery.attempt_started_at IS NULL
            AND COALESCE(delivery.next_attempt_at, delivery.created_at) <= ?
            AND NOT EXISTS (
              SELECT 1
@@ -482,8 +499,9 @@ export class SqliteSupportRepository implements SupportRepository {
         `UPDATE deliveries
          SET status = 'failed',
              attempts = attempts + 1,
-             last_error = ?
-         WHERE id = ?`,
+             last_error = ?,
+             attempt_started_at = NULL
+         WHERE id = ? AND status = 'pending'`,
       )
       .run(error, deliveryId);
   }
@@ -495,7 +513,8 @@ export class SqliteSupportRepository implements SupportRepository {
          SET status = 'failed',
              attempts = attempts + 1,
              last_error = ?,
-             outcome_unknown = 1
+             outcome_unknown = 1,
+             attempt_started_at = NULL
          WHERE id = ? AND status = 'pending'`,
       )
       .run(error, deliveryId);
@@ -511,7 +530,8 @@ export class SqliteSupportRepository implements SupportRepository {
         `UPDATE deliveries
          SET attempts = attempts + 1,
              last_error = ?,
-             next_attempt_at = ?
+             next_attempt_at = ?,
+             attempt_started_at = NULL
          WHERE id = ? AND status = 'pending'`,
       )
       .run(error, nextAttemptAt.toISOString(), deliveryId);
@@ -547,6 +567,7 @@ export class SqliteSupportRepository implements SupportRepository {
              external_message_id = NULL,
              last_error = NULL,
              next_attempt_at = ?,
+             attempt_started_at = NULL,
              sent_at = NULL
          WHERE id = ? AND status = 'failed' AND outcome_unknown = 0`,
       )
@@ -645,6 +666,13 @@ export class SqliteSupportRepository implements SupportRepository {
         'ALTER TABLE deliveries ADD COLUMN outcome_unknown INTEGER NOT NULL DEFAULT 0 CHECK (outcome_unknown IN (0, 1))',
       );
     }
+    if (
+      !deliveryColumns.some((column) => column.name === 'attempt_started_at')
+    ) {
+      this.database.exec(
+        'ALTER TABLE deliveries ADD COLUMN attempt_started_at TEXT',
+      );
+    }
 
     const eventColumns = this.database
       .prepare('PRAGMA table_info(processed_events)')
@@ -666,6 +694,20 @@ export class SqliteSupportRepository implements SupportRepository {
     // found during repository startup therefore belongs to an interrupted run.
     this.database
       .prepare("DELETE FROM processed_events WHERE status = 'processing'")
+      .run();
+  }
+
+  private markInterruptedDeliveriesUnknown(): void {
+    this.database
+      .prepare(
+        `UPDATE deliveries
+         SET status = 'failed',
+             attempts = attempts + 1,
+             last_error = 'Delivery was interrupted after the attempt started',
+             outcome_unknown = 1,
+             attempt_started_at = NULL
+         WHERE status = 'pending' AND attempt_started_at IS NOT NULL`,
+      )
       .run();
   }
 }
