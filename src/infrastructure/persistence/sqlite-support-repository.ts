@@ -17,6 +17,7 @@ import type {
   SupportRequest,
   SupportRequestStatus,
 } from '@/core/model/support-request.js';
+import { webOperatorTopicPrefix } from '@/core/model/operator-topic.js';
 import type { ClientChannelKind } from '@/core/model/support-message.js';
 
 interface SupportRequestRow {
@@ -396,7 +397,7 @@ export class SqliteSupportRepository implements SupportRepository {
     return row ? mapRequest(row) : undefined;
   }
 
-  public findActiveOperatorRequests(
+  public findActiveWebOperatorRequests(
     limit: number,
   ): readonly OperatorRequestSummary[] {
     const rows = this.database
@@ -415,12 +416,16 @@ export class SqliteSupportRepository implements SupportRepository {
         LEFT JOIN conversation_messages AS message
           ON message.request_id = request.id
         WHERE request.status = 'active'
+          AND request.operator_topic_id LIKE ?
         GROUP BY request.id
         ORDER BY COALESCE(MAX(message.created_at), request.created_at) DESC,
                  request.id DESC
         LIMIT ?`,
       )
-      .all(limit) as unknown as OperatorRequestSummaryRow[];
+      .all(
+        `${webOperatorTopicPrefix}%`,
+        limit,
+      ) as unknown as OperatorRequestSummaryRow[];
 
     return rows.map((row) => ({
       ...mapRequest(row),
@@ -845,6 +850,24 @@ export class SqliteSupportRepository implements SupportRepository {
          WHERE id = ? AND status = 'failed' AND outcome_unknown = 0`,
       )
       .run(retryAt.toISOString(), deliveryId);
+
+    return Number(result.changes) === 1;
+  }
+
+  public switchOperatorTopic(
+    requestId: string,
+    expectedTopicId: string,
+    nextTopicId: string,
+  ): boolean {
+    const result = this.database
+      .prepare(
+        `UPDATE support_requests
+         SET operator_topic_id = ?
+         WHERE id = ?
+           AND operator_topic_id = ?
+           AND status = 'active'`,
+      )
+      .run(nextTopicId, requestId, expectedTopicId);
 
     return Number(result.changes) === 1;
   }

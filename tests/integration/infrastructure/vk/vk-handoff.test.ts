@@ -82,13 +82,19 @@ class FakeOperatorInbox implements OperatorInbox {
   }
 
   public relayCustomerMessage(
-    _operatorTopicId: string,
+    operatorTopicId: string,
     message: SupportMessage,
     options: RelayCustomerMessageOptions,
-  ): Promise<{ operatorMessageIds: readonly string[] }> {
+  ): Promise<{
+    operatorMessageIds: readonly string[];
+    operatorTopicId: string;
+  }> {
     void options;
     this.relayed.push(message);
-    return Promise.resolve({ operatorMessageIds: ['telegram-relay-1'] });
+    return Promise.resolve({
+      operatorMessageIds: ['telegram-relay-1'],
+      operatorTopicId,
+    });
   }
 
   public reopenRequest(): Promise<void> {

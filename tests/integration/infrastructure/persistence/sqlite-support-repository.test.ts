@@ -251,6 +251,49 @@ describe('SqliteSupportRepository', () => {
     repository.close();
   });
 
+  it('switches an active request to a new operator topic conditionally', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-test-'));
+    temporaryDirectories.push(directory);
+    const databasePath = join(directory, 'handoff.sqlite');
+    const repository = new SqliteSupportRepository(databasePath);
+    repository.createRequest({
+      channel: 'telegram',
+      conversationId: '101',
+      createdAt: new Date('2026-09-06T12:00:00.000Z'),
+      id: 'request-1',
+      operatorTopicId: 'topic-1',
+      status: 'active',
+    });
+
+    expect(
+      repository.switchOperatorTopic(
+        'request-1',
+        'another-topic',
+        'web:request-1',
+      ),
+    ).toBe(false);
+    expect(
+      repository.switchOperatorTopic('request-1', 'topic-1', 'web:request-1'),
+    ).toBe(true);
+    expect(
+      repository.switchOperatorTopic('request-1', 'topic-1', 'web:request-1'),
+    ).toBe(false);
+    expect(repository.findRequestById('request-1')).toMatchObject({
+      operatorTopicId: 'web:request-1',
+    });
+    expect(repository.findRequestByTopicId('topic-1')).toBeUndefined();
+    repository.close();
+
+    const restored = new SqliteSupportRepository(databasePath);
+    expect(restored.findRequestById('request-1')).toMatchObject({
+      operatorTopicId: 'web:request-1',
+    });
+    expect(restored.findActiveWebOperatorRequests(10)).toEqual([
+      expect.objectContaining({ id: 'request-1' }),
+    ]);
+    restored.close();
+  });
+
   it('adds inbox and notification storage to an existing database', () => {
     const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-test-'));
     temporaryDirectories.push(directory);
@@ -308,6 +351,15 @@ describe('SqliteSupportRepository', () => {
       operatorTopicId: 'web:request-1',
       status: 'active',
     });
+    repository.createRequest({
+      channel: 'telegram',
+      conversationId: '202',
+      createdAt,
+      displayName: 'Telegram Customer',
+      id: 'request-2',
+      operatorTopicId: 'topic-2',
+      status: 'active',
+    });
     repository.recordConversationMessage({
       createdAt,
       direction: 'client_to_operator',
@@ -345,7 +397,7 @@ describe('SqliteSupportRepository', () => {
       text: 'Answer',
     });
 
-    expect(repository.findActiveOperatorRequests(10)).toEqual([
+    expect(repository.findActiveWebOperatorRequests(10)).toEqual([
       expect.objectContaining({
         displayName: 'Test Customer',
         id: 'request-1',

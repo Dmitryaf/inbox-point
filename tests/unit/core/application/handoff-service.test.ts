@@ -47,10 +47,14 @@ class FakeOperatorInbox implements OperatorInbox {
     operatorTopicId: string,
     message: SupportMessage,
     options: RelayCustomerMessageOptions,
-  ): Promise<{ operatorMessageIds: readonly string[] }> {
+  ): Promise<{
+    operatorMessageIds: readonly string[];
+    operatorTopicId: string;
+  }> {
     this.relayed.push({ initial: options.initial, message, operatorTopicId });
     return Promise.resolve({
       operatorMessageIds: [`relay-${this.relayed.length}`],
+      operatorTopicId,
     });
   }
 

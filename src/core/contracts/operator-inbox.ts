@@ -22,6 +22,12 @@ export interface OpenOperatorRequest {
 
 export interface RelayCustomerMessageOptions {
   initial: boolean;
+  requestId: string;
+}
+
+export interface RelayedCustomerMessage {
+  operatorMessageIds: readonly string[];
+  operatorTopicId: string;
 }
 
 export interface OperatorInbox {
@@ -32,5 +38,5 @@ export interface OperatorInbox {
     operatorTopicId: string,
     message: SupportMessage,
     options: RelayCustomerMessageOptions,
-  ): Promise<{ operatorMessageIds: readonly string[] }>;
+  ): Promise<RelayedCustomerMessage>;
 }

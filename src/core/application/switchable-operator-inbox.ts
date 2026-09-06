@@ -6,6 +6,7 @@ import {
 } from '@/core/contracts/operator-inbox.js';
 import type { DeliveryIncidentNotifier } from '@/core/contracts/delivery-incident-notifier.js';
 import type { FailedDelivery } from '@/core/model/support-request.js';
+import { isWebOperatorTopic } from '@/core/model/operator-topic.js';
 import type { SupportMessage } from '@/core/model/support-message.js';
 
 type ActiveOperatorInbox = OperatorInbox & DeliveryIncidentNotifier;
@@ -25,7 +26,7 @@ export class SwitchableOperatorInbox
   ) {}
 
   public async closeRequest(operatorTopicId: string): Promise<void> {
-    if (isEmergencyTopic(operatorTopicId)) {
+    if (isWebOperatorTopic(operatorTopicId)) {
       return this.fallback.closeRequest(operatorTopicId);
     }
     await this.runWithFallback(
@@ -46,7 +47,7 @@ export class SwitchableOperatorInbox
   }
 
   public notifyDeliveryFailure(delivery: FailedDelivery): Promise<void> {
-    if (isEmergencyTopic(delivery.operatorTopicId)) {
+    if (isWebOperatorTopic(delivery.operatorTopicId)) {
       return Promise.resolve();
     }
     return this.requireInbox().notifyDeliveryFailure(delivery);
@@ -65,8 +66,11 @@ export class SwitchableOperatorInbox
     operatorTopicId: string,
     message: SupportMessage,
     options: RelayCustomerMessageOptions,
-  ): Promise<{ operatorMessageIds: readonly string[] }> {
-    if (isEmergencyTopic(operatorTopicId)) {
+  ): Promise<{
+    operatorMessageIds: readonly string[];
+    operatorTopicId: string;
+  }> {
+    if (isWebOperatorTopic(operatorTopicId)) {
       return this.fallback.relayCustomerMessage(
         operatorTopicId,
         message,
@@ -82,7 +86,7 @@ export class SwitchableOperatorInbox
   }
 
   public async reopenRequest(operatorTopicId: string): Promise<void> {
-    if (isEmergencyTopic(operatorTopicId)) {
+    if (isWebOperatorTopic(operatorTopicId)) {
       return this.fallback.reopenRequest(operatorTopicId);
     }
     await this.runWithFallback(
@@ -115,8 +119,4 @@ export class SwitchableOperatorInbox
     }
     return this.inbox;
   }
-}
-
-function isEmergencyTopic(operatorTopicId: string): boolean {
-  return operatorTopicId.startsWith('web:');
 }
