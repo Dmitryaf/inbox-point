@@ -11,24 +11,10 @@ import {
   serviceControlResponse,
 } from './content-management-test-helpers';
 
-const savedVersion = 'b'.repeat(64);
-
-describe('ContentManagementPage restore', () => {
-  it('restores an earlier revision and reloads the editor', async () => {
-    let schedule = 'Вторник, 20:00';
-    let restored = false;
-    const history = [
-      {
-        changedAt: '2026-09-02T12:00:00.000Z',
-        revision: 2,
-        sections: ['schedule'],
-      },
-      {
-        changedAt: '2026-09-01T12:00:00.000Z',
-        revision: 1,
-        sections: ['schedule'],
-      },
-    ];
+describe('ContentManagementPage restore concurrency', () => {
+  it('keeps edits made while a revision is being restored', async () => {
+    const restoreResponse =
+      Promise.withResolvers<ReturnType<typeof response>>();
     vi.stubGlobal(
       'fetch',
       vi.fn((input: RequestInfo | URL, options?: RequestInit) => {
@@ -37,25 +23,34 @@ describe('ContentManagementPage restore', () => {
           return Promise.resolve(response({ authenticated: true }));
         }
         if (url.endsWith('/restore') && options?.method === 'POST') {
-          schedule = 'Понедельник, 19:00';
-          restored = true;
-          return Promise.resolve(
-            response({ content: { schedule }, version: savedVersion }),
-          );
+          return restoreResponse.promise;
         }
         if (url.endsWith('/history')) {
-          if (restored) {
-            return Promise.resolve(
-              response({ message: 'История временно недоступна.' }, 500),
-            );
-          }
-          return Promise.resolve(response({ history }));
+          return Promise.resolve(
+            response({
+              history: [
+                {
+                  changedAt: '2026-09-02T12:00:00.000Z',
+                  revision: 2,
+                  sections: ['schedule'],
+                },
+                {
+                  changedAt: '2026-09-01T12:00:00.000Z',
+                  revision: 1,
+                  sections: ['schedule'],
+                },
+              ],
+            }),
+          );
         }
         if (url.endsWith('/service-control')) {
           return Promise.resolve(serviceControlResponse());
         }
         return Promise.resolve(
-          response({ content: { schedule }, version: initialVersion }),
+          response({
+            content: { schedule: 'Вторник, 20:00' },
+            version: initialVersion,
+          }),
         );
       }),
     );
@@ -70,17 +65,24 @@ describe('ContentManagementPage restore', () => {
     await findButton(wrapper.findAll('button'), 'Да, восстановить').trigger(
       'click',
     );
-    await flushPromises();
     await findButton(wrapper.findAll('button'), 'Редактирование').trigger(
       'click',
     );
+    await wrapper.get('#schedule').setValue('Новая несохранённая правка');
+
+    restoreResponse.resolve(
+      response({
+        content: { schedule: 'Понедельник, 19:00' },
+        version: 'b'.repeat(64),
+      }),
+    );
+    await flushPromises();
 
     expect(wrapper.get<HTMLTextAreaElement>('#schedule').element.value).toBe(
-      'Понедельник, 19:00',
+      'Новая несохранённая правка',
     );
-    expect(wrapper.text()).toContain('Предыдущая версия восстановлена');
-    expect(wrapper.get('[role="alert"]').text()).toContain(
-      'Версия восстановлена, но историю изменений обновить не удалось.',
+    expect(wrapper.text()).toContain(
+      'Ваши новые правки остались в редакторе и ещё не сохранены',
     );
   });
 });
