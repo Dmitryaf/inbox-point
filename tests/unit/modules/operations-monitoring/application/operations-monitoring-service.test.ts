@@ -38,6 +38,7 @@ describe('OperationsMonitoringService', () => {
       },
       deliveries: {
         failed: 0,
+        incidents: [],
         pending: 2,
         state: 'healthy',
         uncertain: 0,
@@ -89,6 +90,46 @@ describe('OperationsMonitoringService', () => {
       state: 'maintenance',
     });
     expect(monitoring.isReady()).toBe(true);
+  });
+
+  it('exposes only operator-side context for failed deliveries', () => {
+    const monitoring = new OperationsMonitoringService({
+      channelActivity: () => ({}),
+      clock: () => new Date('2026-09-04T12:01:05.000Z'),
+      deliveryActivity: () => ({ running: true }),
+      deliveryFailures: () => [
+        {
+          attempts: 5,
+          channel: 'vk',
+          createdAt: new Date('2026-09-04T12:01:00.000Z'),
+          id: 'delivery-1',
+          lastError: 'network timeout',
+          operatorMessageId: 'operator-message-17',
+          operatorTopicId: 'topic-42',
+          outcomeUnknown: false,
+          requestId: 'request-9',
+        },
+      ],
+      deliverySummary: () => ({ failed: 1, pending: 0 }),
+      startedAt: new Date('2026-09-04T12:00:00.000Z'),
+      telegramStatus: () => ({ connected: true, source: 'local' }),
+      vkStatus: () => ({ connected: true, source: 'local' }),
+    });
+
+    expect(monitoring.getStatus().deliveries.incidents).toEqual([
+      {
+        attempts: 5,
+        channel: 'VK',
+        createdAt: '2026-09-04T12:01:00.000Z',
+        id: 'delivery-1',
+        operatorMessageId: 'operator-message-17',
+        operatorTopicId: 'topic-42',
+        reason:
+          'Не удалось связаться с каналом. Проверьте интернет и повторите попытку.',
+        requestId: 'request-9',
+        retryAllowed: true,
+      },
+    ]);
   });
 
   it('requires attention while the latest poll failure is not recovered', () => {

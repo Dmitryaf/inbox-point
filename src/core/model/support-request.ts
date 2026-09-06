@@ -45,5 +45,8 @@ export interface FailedDelivery {
   createdAt: Date;
   id: string;
   lastError: string;
+  operatorMessageId?: string;
+  operatorTopicId: string;
   outcomeUnknown: boolean;
+  requestId: string;
 }

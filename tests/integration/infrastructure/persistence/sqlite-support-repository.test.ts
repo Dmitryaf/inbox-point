@@ -56,8 +56,12 @@ describe('SqliteSupportRepository', () => {
     expect(second.findFailedDeliveries(10)[0]).toMatchObject({
       attempts: 1,
       id: 'delivery-1',
+      operatorMessageId: 'operator-message-1',
+      operatorTopicId: 'topic-1',
       outcomeUnknown: true,
+      requestId: 'request-1',
     });
+    expect(second.retryFailedDelivery('delivery-1', new Date())).toBe(false);
     expect(second.findPendingDeliveries(new Date('2026-09-07'), 10)).toEqual([
       expect.objectContaining({ id: 'delivery-2' }),
     ]);

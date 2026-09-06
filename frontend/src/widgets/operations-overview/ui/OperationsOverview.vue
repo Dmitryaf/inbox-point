@@ -6,7 +6,11 @@ import type { OperationsStatus } from '@frontend/entities/operations/model/types
 import ChannelStatusCard from './ChannelStatusCard.vue';
 import DeliveryStatusCard from './DeliveryStatusCard.vue';
 
-const props = defineProps<{ status: OperationsStatus }>();
+const props = defineProps<{
+  pendingDeliveryId: string | undefined;
+  status: OperationsStatus;
+}>();
+defineEmits<{ retryDelivery: [deliveryId: string] }>();
 
 const observedAt = computed(() =>
   new Intl.DateTimeFormat('ru-RU', {
@@ -60,7 +64,11 @@ const observedAt = computed(() =>
         :channel="status.channels.vk"
         :intake="status.intake.vk"
       />
-      <DeliveryStatusCard :deliveries="status.deliveries" />
+      <DeliveryStatusCard
+        :deliveries="status.deliveries"
+        :pending-delivery-id="pendingDeliveryId"
+        @retry="$emit('retryDelivery', $event)"
+      />
     </div>
   </section>
 </template>

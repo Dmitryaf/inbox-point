@@ -47,7 +47,7 @@ function pauseExplanation(channel: ClientChannel): string {
             {{
               state.channels[channel].mode === 'paused'
                 ? 'На паузе'
-                : 'Работает'
+                : 'Приём включён'
             }}
           </span>
         </div>
@@ -60,7 +60,7 @@ function pauseExplanation(channel: ClientChannel): string {
         :disabled="Boolean(pendingChannel)"
         @click="$emit('change', channel, 'paused')"
       >
-        Приостановить
+        {{ pendingChannel === channel ? 'Приостанавливаем…' : 'Приостановить' }}
       </button>
       <button
         v-else
@@ -68,7 +68,7 @@ function pauseExplanation(channel: ClientChannel): string {
         :disabled="Boolean(pendingChannel)"
         @click="$emit('change', channel, 'active')"
       >
-        Возобновить
+        {{ pendingChannel === channel ? 'Возобновляем…' : 'Возобновить' }}
       </button>
     </article>
   </div>

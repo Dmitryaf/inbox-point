@@ -1,15 +1,19 @@
 <script setup lang="ts">
-import { onBeforeUnmount, watch } from 'vue';
+import { onBeforeUnmount, ref, watch } from 'vue';
 
 import { useOperationsSession } from '@frontend/features/operations-auth/model/use-operations-session';
 import OperationsLoginForm from '@frontend/features/operations-auth/ui/OperationsLoginForm.vue';
 import ClientIntakeControl from '@frontend/features/control-client-intake/ui/ClientIntakeControl.vue';
 import { useOperationsStatus } from '@frontend/features/refresh-status/model/use-operations-status';
+import { useDeliveryRetry } from '@frontend/features/retry-delivery/model/use-delivery-retry';
 import OperationsOverview from '@frontend/widgets/operations-overview/ui/OperationsOverview.vue';
+import AsyncMessage from '@frontend/shared/ui/AsyncMessage.vue';
 
 const refreshIntervalMs = 30_000;
 const session = useOperationsSession();
 const operations = useOperationsStatus(session.expireSession);
+const intakeControl = ref<{ refresh: () => Promise<void> }>();
+const deliveryRetry = useDeliveryRetry(refreshAll, session.expireSession);
 let refreshTimer: ReturnType<typeof setInterval> | undefined;
 
 watch(session.authenticated, (authenticated) => {
@@ -19,9 +23,9 @@ watch(session.authenticated, (authenticated) => {
     return;
   }
 
-  void operations.refresh();
+  void refreshAll();
   refreshTimer = setInterval(() => {
-    void operations.refresh();
+    void refreshAll();
   }, refreshIntervalMs);
 });
 
@@ -33,6 +37,13 @@ async function authenticate(password: string): Promise<void> {
 
 async function logout(): Promise<void> {
   await session.endSession();
+}
+
+async function refreshAll(): Promise<void> {
+  await Promise.all([
+    operations.refresh(),
+    intakeControl.value?.refresh() ?? Promise.resolve(),
+  ]);
 }
 
 function stopAutomaticRefresh(): void {
@@ -93,7 +104,7 @@ function stopAutomaticRefresh(): void {
           class="secondary-button"
           :disabled="operations.loading.value"
           type="button"
-          @click="operations.refresh"
+          @click="refreshAll"
         >
           {{ operations.loading.value ? 'Обновляем…' : 'Обновить' }}
         </button>
@@ -108,14 +119,22 @@ function stopAutomaticRefresh(): void {
       </p>
 
       <ClientIntakeControl
+        ref="intakeControl"
         scope="ops"
-        @changed="operations.refresh"
+        @changed="refreshAll"
         @unauthorized="session.expireSession"
       />
 
+      <AsyncMessage kind="error" :text="deliveryRetry.error.value" />
+      <AsyncMessage kind="success" :text="deliveryRetry.notice.value" />
+
       <OperationsOverview
         v-if="operations.status.value"
+        :pending-delivery-id="
+          deliveryRetry.pendingDeliveryId.value || undefined
+        "
         :status="operations.status.value"
+        @retry-delivery="deliveryRetry.retry"
       />
       <section v-else class="card loading-card">
         <p>Получаем состояние сервиса…</p>

@@ -13,6 +13,7 @@ const control = useClientIntakeControl({
   onUnauthorized: () => emit('unauthorized'),
   scope: props.scope,
 });
+defineExpose({ refresh: control.load });
 </script>
 
 <template>
@@ -44,6 +45,15 @@ const control = useClientIntakeControl({
       </p>
       <AsyncMessage kind="error" :text="control.error.value" />
       <AsyncMessage kind="success" :text="control.notice.value" />
+      <button
+        v-if="control.error.value && !control.state.value"
+        class="secondary-button"
+        type="button"
+        :disabled="control.loading.value"
+        @click="control.load"
+      >
+        Повторить проверку
+      </button>
       <p
         v-if="control.loading.value"
         class="intake-control-state"

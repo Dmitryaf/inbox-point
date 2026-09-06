@@ -5,9 +5,11 @@ import { describe, expect, it, vi } from 'vitest';
 
 import OperationsDashboardPage from '@frontend/pages/operations-dashboard/ui/OperationsDashboardPage.vue';
 import { requestUrl, response } from '@test/frontend/support/fake-response';
+import { attentionOperationsStatus } from './operations-status-fixture';
 
 describe('OperationsDashboardPage', () => {
   it('shows actionable channel and delivery state for the owner', async () => {
+    const confirmMock = vi.spyOn(window, 'confirm').mockReturnValue(true);
     vi.stubGlobal(
       'fetch',
       vi.fn((input: RequestInfo | URL) => {
@@ -25,47 +27,7 @@ describe('OperationsDashboardPage', () => {
             }),
           );
         }
-        return Promise.resolve(
-          response({
-            channels: {
-              telegram: {
-                configured: true,
-                lastSuccessfulPollAt: '2026-09-04T12:00:30.000Z',
-                running: true,
-                source: 'environment',
-                state: 'running',
-              },
-              vk: {
-                configured: true,
-                lastFailedPollAt: '2026-09-04T12:00:45.000Z',
-                running: false,
-                source: 'local',
-                state: 'poll_failed',
-              },
-            },
-            deliveries: {
-              failed: 2,
-              oldestPendingAgeSeconds: 90,
-              oldestPendingAt: '2026-09-04T11:59:30.000Z',
-              pending: 3,
-              state: 'failed',
-              uncertain: 0,
-              worker: {
-                lastCycleAt: '2026-09-04T12:00:59.000Z',
-                running: true,
-                state: 'running',
-              },
-            },
-            intake: {
-              telegram: { mode: 'paused' },
-              vk: { mode: 'active' },
-            },
-            observedAt: '2026-09-04T12:01:00.000Z',
-            startedAt: '2026-09-04T12:00:00.000Z',
-            state: 'attention',
-            uptimeSeconds: 60,
-          }),
-        );
+        return Promise.resolve(response(attentionOperationsStatus()));
       }),
     );
 
@@ -86,6 +48,33 @@ describe('OperationsDashboardPage', () => {
     expect(statusCards[2]?.text()).toContain('Ожидают отправки3');
     expect(statusCards[2]?.text()).toContain('Не доставлены2');
     expect(statusCards[2]?.text()).toContain('Обработчик очередиЗапущен');
+    expect(statusCards[2]?.text()).toContain('Обращениеrequest-9');
+    expect(statusCards[2]?.text()).toContain('Тема преподавателяtopic-42');
+    expect(statusCards[2]?.text()).toContain(
+      'Сообщение преподавателяoperator-message-17',
+    );
+
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Повторить доставку')
+      ?.trigger('click');
+    await flushPromises();
+
+    expect(confirmMock).toHaveBeenCalled();
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/ops/deliveries/delivery-1/retry',
+      expect.objectContaining({ method: 'POST' }),
+    );
+    expect(
+      vi
+        .mocked(fetch)
+        .mock.calls.filter(([input]) =>
+          requestUrl(input).endsWith('/service-control'),
+        ).length,
+    ).toBeGreaterThan(1);
+    expect(wrapper.text()).toContain(
+      'Ответ поставлен в очередь повторной доставки.',
+    );
 
     wrapper.unmount();
   });

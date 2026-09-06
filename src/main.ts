@@ -147,6 +147,7 @@ async function start(): Promise<void> {
     const operationsMonitoring = new OperationsMonitoringService({
       channelActivity: (channel) => channelActivity.snapshot(channel),
       deliveryActivity: () => deliveryActivity.snapshot(),
+      deliveryFailures: () => repository.findFailedDeliveries(20),
       deliverySummary: () => repository.getDeliverySummary(),
       intakeStatus: () => serviceControl.getState().channels,
       startedAt,
@@ -163,6 +164,7 @@ async function start(): Promise<void> {
         secureCookies: config.nodeEnv === 'production',
       },
       serviceControl,
+      repository,
     );
     await app.listen({ host: config.host, port: config.port });
     const runtimeLogger = {

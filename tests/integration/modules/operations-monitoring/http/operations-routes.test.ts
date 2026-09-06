@@ -32,6 +32,7 @@ afterEach(async () => {
 describe('operations monitoring routes', () => {
   it('returns status only through the separate owner session', async () => {
     const app = createApp(config);
+    const retriedDeliveries: string[] = [];
     apps.add(app);
     registerOperationsRoutes(
       app,
@@ -45,6 +46,12 @@ describe('operations monitoring routes', () => {
         secureCookies: true,
       },
       createServiceControl(),
+      {
+        retryFailedDelivery: (deliveryId) => {
+          retriedDeliveries.push(deliveryId);
+          return true;
+        },
+      },
     );
 
     const unauthorized = await app.inject({
@@ -95,6 +102,16 @@ describe('operations monitoring routes', () => {
       remoteAddress: '192.0.2.10',
       url: '/api/ops/service-control',
     });
+    const retry = await app.inject({
+      headers: {
+        cookie,
+        host: 'example.test',
+        origin: 'https://example.test',
+      },
+      method: 'POST',
+      remoteAddress: '192.0.2.10',
+      url: '/api/ops/deliveries/delivery-1/retry',
+    });
 
     expect(unauthorized.statusCode).toBe(401);
     expect(page.statusCode).toBe(200);
@@ -110,6 +127,8 @@ describe('operations monitoring routes', () => {
     );
     expect(status.statusCode).toBe(200);
     expect(serviceControl.statusCode).toBe(200);
+    expect(retry.statusCode).toBe(200);
+    expect(retriedDeliveries).toEqual(['delivery-1']);
     expect(serviceControl.json()).toMatchObject({
       channels: {
         telegram: { mode: 'active' },

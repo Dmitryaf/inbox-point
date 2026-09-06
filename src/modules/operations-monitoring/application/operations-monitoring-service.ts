@@ -1,8 +1,10 @@
 import type { DeliverySummary } from '@/core/contracts/support-repository.js';
 import type { ClientChannelKind } from '@/core/model/support-message.js';
+import type { FailedDelivery } from '@/core/model/support-request.js';
 import type { ChannelActivitySnapshot } from '@/modules/operations-monitoring/application/channel-activity-monitor.js';
 import type { DeliveryWorkerActivitySnapshot } from '@/modules/operations-monitoring/application/delivery-worker-activity-monitor.js';
 import { mapDeliveryStatus } from '@/modules/operations-monitoring/application/delivery-status.js';
+import { mapDeliveryIncident } from '@/modules/operations-monitoring/application/delivery-incident.js';
 import {
   channelIsReady,
   channelNeedsAttention,
@@ -16,6 +18,7 @@ export interface OperationsMonitoringDependencies {
   clock?: () => Date;
   channelActivity: (channel: ClientChannelKind) => ChannelActivitySnapshot;
   deliveryActivity: () => DeliveryWorkerActivitySnapshot;
+  deliveryFailures?: () => readonly FailedDelivery[];
   deliverySummary: () => DeliverySummary;
   intakeStatus?: () => ServiceControlState['channels'];
   pendingDeliveryStaleAfterMs?: number;
@@ -41,12 +44,18 @@ export class OperationsMonitoringService {
 
   public getStatus(): OperationsStatus {
     const observedAt = this.clock();
-    const deliveries = mapDeliveryStatus(
+    const deliveryStatus = mapDeliveryStatus(
       this.dependencies.deliverySummary(),
       this.dependencies.deliveryActivity(),
       observedAt,
       this.pendingDeliveryStaleAfterMs,
     );
+    const deliveries = {
+      ...deliveryStatus,
+      incidents: (this.dependencies.deliveryFailures?.() ?? []).map(
+        mapDeliveryIncident,
+      ),
+    };
     const telegram = mapChannelStatus(
       this.dependencies.telegramStatus(),
       this.dependencies.channelActivity('telegram'),
