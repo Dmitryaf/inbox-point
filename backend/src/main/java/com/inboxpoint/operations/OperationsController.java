@@ -88,14 +88,16 @@ final class OperationsController {
             var telegram = ChannelState.observe(runtime.status(), runtime.telegramPolling(), started, now);
             var vk = ChannelState.observe(runtime.vkStatus(), runtime.vkPolling(), started, now);
             var delivery = runtime.deliveryState(now);
-            boolean attention = !"healthy".equals(delivery.state())
+            boolean attention = !"healthy".equals(delivery.state()) && !"paused".equals(delivery.state())
                     || telegram.needsAttention() || vk.needsAttention();
-            var intake = runtime.serviceControl().current().channels();
-            boolean maintenance = intake.values().stream().anyMatch(item -> "paused".equals(item.mode()));
+            var control = runtime.serviceControl().current();
+            var intake = control.channels();
+            boolean maintenance = "paused".equals(control.delivery().mode())
+                    || intake.values().stream().anyMatch(item -> "paused".equals(item.mode()));
             return ResponseEntity.ok(Map.of(
                     "state", attention ? "attention" : maintenance ? "maintenance" : "healthy",
                     "channels", Map.of("telegram", telegram, "vk", vk),
-                    "deliveries", delivery, "intake", intake, "observedAt", now.toString(), "startedAt", started.toString(),
+                    "deliveries", delivery, "intake", intake, "outbound", control.delivery(), "observedAt", now.toString(), "startedAt", started.toString(),
                     "uptimeSeconds", Math.max(0, Duration.between(started, now).toSeconds())));
         } catch (IOException | SQLException unavailable) {
             return message(503, "Не удалось прочитать состояние сервиса.");

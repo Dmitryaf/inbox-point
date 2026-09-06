@@ -18,6 +18,32 @@ class DeliveryWorkerTest {
     Path directory;
 
     @Test
+    void leavesPendingDeliveryUntouchedUntilThePersistedStopIsLifted() throws Exception {
+        var database = directory.resolve("paused.sqlite");
+        var time = Instant.parse("2026-09-01T08:00:00Z");
+        var control = new com.inboxpoint.operations.LocalServiceControl(database);
+        control.setDelivery(true, time);
+        var reopened = new com.inboxpoint.operations.LocalServiceControl(database);
+        assertThat(reopened.deliveryPaused()).isTrue();
+        assertThat(reopened.intakePaused("telegram")).isFalse();
+        try (var server = new TelegramTestServer(request -> TelegramTestServer.Response.message(501));
+                var client = HttpClient.newHttpClient(); var store = new TelegramStore(database)) {
+            var api = new TelegramBotApi(client, server.origin(), TelegramTestServer.TOKEN, Duration.ofSeconds(3));
+            var request = new TelegramStore.Request("question", 123, 42, true, "telegram");
+            store.open(request, time);
+            store.queue(request, "reply", 702, "Answer", time);
+            var worker = new TelegramDeliveryWorker(store, api, Clock.fixed(time, ZoneOffset.UTC), () -> null,
+                    reopened::deliveryPaused);
+            assertThat(worker.runOnce()).isZero();
+            assertThat(server.requests()).isEmpty();
+            assertThat(store.summary().pending()).isEqualTo(1);
+            reopened.setDelivery(false, time.plusSeconds(1));
+            assertThat(worker.runOnce()).isEqualTo(1);
+            assertThat(store.summary().sent()).isEqualTo(1);
+        }
+    }
+
+    @Test
     void quarantinesAnAttemptThatWasInFlightWhenTheProcessStopped() throws Exception {
         var database = directory.resolve("interrupted.sqlite");
         var time = Instant.parse("2026-09-01T08:00:00Z");

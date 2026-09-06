@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Duration;
+import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
 import com.inboxpoint.vk.VkChannel;
@@ -14,13 +15,19 @@ final class TelegramDeliveryWorker {
     private final Clock clock;
     private final DeliveryFailurePolicy failures;
     private final Supplier<VkChannel> vk;
+    private final BooleanSupplier paused;
 
     TelegramDeliveryWorker(TelegramStore store, TelegramBotApi api, Clock clock) {
         this(store, api, clock, () -> null);
     }
 
     TelegramDeliveryWorker(TelegramStore store, TelegramBotApi api, Clock clock, Supplier<VkChannel> vk) {
+        this(store, api, clock, vk, () -> false);
+    }
+
+    TelegramDeliveryWorker(TelegramStore store, TelegramBotApi api, Clock clock, Supplier<VkChannel> vk, BooleanSupplier paused) {
         this.vk = vk;
+        this.paused = paused;
         this.store = store;
         this.api = api;
         this.clock = clock;
@@ -35,9 +42,17 @@ final class TelegramDeliveryWorker {
     }
 
     int runOnce() throws SQLException, InterruptedException {
+        if (paused.getAsBoolean()) {
+            return 0;
+        }
         var vkChannel = vk.get();
         var submitted = store.pending(clock.instant(), vkChannel != null);
+        int processed = 0;
         for (var item : submitted) {
+            if (paused.getAsBoolean()) {
+                break;
+            }
+            processed++;
             if (!store.beginAttempt(item.key(), clock.instant())) {
                 continue;
             }
@@ -52,6 +67,6 @@ final class TelegramDeliveryWorker {
             }
             store.complete(item, sent, clock.instant());
         }
-        return submitted.size();
+        return processed;
     }
 }

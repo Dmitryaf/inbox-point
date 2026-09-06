@@ -10,7 +10,7 @@ export function renderDeliveryStatusCardPart2(
   $state: ReturnType<typeof createComponentModel>,
   $props: WithDefaults<ComponentProps, typeof componentDefaults>,
 ) {
-  const { formatCreatedAt, $emit } = $state;
+  const { $emit, formatCreatedAt } = $state;
 
   return (
     <>

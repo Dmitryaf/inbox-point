@@ -248,7 +248,7 @@ public final class TelegramRuntime {
                     || Duration.between(cycle, now).compareTo(Duration.ofMinutes(5)) > 0);
             var worker = new DeliveryProcess(cycle == null ? null : cycle.toString(), running,
                     stalled ? "stalled" : running ? "running" : "inactive");
-            var state = stalled ? "stalled" : age != null && age > 300 ? "backlog"
+            var state = serviceControl.deliveryPaused() ? "paused" : stalled ? "stalled" : age != null && age > 300 ? "backlog"
                     : summary.failed() > 0 ? "failed" : "healthy";
             return new DeliveryState(summary.pending(), summary.failed(), summary.uncertain(), oldest == null ? null : oldest.toString(),
                     age, state, worker, store.incidents());
@@ -276,7 +276,7 @@ public final class TelegramRuntime {
     private void deliver(String token) {
         try (var store = new TelegramStore(database); var transport = TelegramHttpTransport.open("", API_TIMEOUT)) {
             var api = new TelegramBotApi(transport, origin, token, API_TIMEOUT);
-            var worker = new TelegramDeliveryWorker(store, api, Clock.systemUTC(), vk::channel);
+            var worker = new TelegramDeliveryWorker(store, api, Clock.systemUTC(), vk::channel, serviceControl::deliveryPaused);
             while (!Thread.currentThread().isInterrupted()) {
                 lastDeliveryCycle = Instant.now();
                 var processed = worker.runOnce();

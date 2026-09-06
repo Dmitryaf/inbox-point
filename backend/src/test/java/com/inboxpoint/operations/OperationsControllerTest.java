@@ -60,6 +60,15 @@ class OperationsControllerTest {
             var retry = client.send(HttpRequest.newBuilder(retryUri).header("Cookie", cookie)
                     .POST(HttpRequest.BodyPublishers.noBody()).build(), HttpResponse.BodyHandlers.ofString());
             assertThat(retry.statusCode()).isEqualTo(409);
+            var pause = client.send(HttpRequest.newBuilder(URI.create(base + "/service-control/delivery/pause"))
+                    .header("Cookie", cookie).POST(HttpRequest.BodyPublishers.noBody()).build(),
+                    HttpResponse.BodyHandlers.ofString());
+            assertThat(pause.statusCode()).isEqualTo(200);
+            var paused = client.send(HttpRequest.newBuilder(URI.create(base + "/status")).header("Cookie", cookie)
+                    .GET().build(), HttpResponse.BodyHandlers.ofString());
+            var pausedStatus = JsonMapper.shared().readTree(paused.body());
+            assertThat(pausedStatus.at("/deliveries/state").asString()).isEqualTo("paused");
+            assertThat(pausedStatus.at("/outbound/mode").asString()).isEqualTo("paused");
             assertThat(status.at("/deliveries/worker/state").asString()).isEqualTo("inactive");
         }
     }

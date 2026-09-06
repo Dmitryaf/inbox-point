@@ -46,10 +46,18 @@ final class ServiceControlController {
             return error(403, "Запрос отклонён.");
         }
         try {
-            return ResponseEntity.ok(control.set(channel, "pause".equals(command), Instant.now()));
+            var paused = "pause".equals(command);
+            if ("delivery".equals(channel) && request.getRequestURI().startsWith("/api/ops/")) {
+                return ResponseEntity.ok(control.setDelivery(paused, Instant.now()));
+            }
+            return ResponseEntity.ok(control.set(channel, paused, Instant.now()));
         } catch (IllegalArgumentException unknown) {
             return error(404, "Канал не найден.");
         } catch (IOException failure) {
+            if ("delivery".equals(channel)) {
+                return error(500, "pause".equals(command) ? "Не удалось остановить исходящую доставку."
+                        : "Не удалось возобновить исходящую доставку.");
+            }
             return error(500, "Не удалось изменить приём новых обращений.");
         }
     }

@@ -70,7 +70,8 @@ export function createComponentProps<
         : options.default;
     return customRef(
       () => {
-        const value = (Reflect.get(props, name) ?? ownDefault) as Value;
+        const provided: unknown = Reflect.get(props, name);
+        const value = (provided === undefined ? ownDefault : provided) as Value;
         return value && typeof value === 'object' ? reactive(value) : value;
       },
       (value) => emit(`${name}Change`, value),
