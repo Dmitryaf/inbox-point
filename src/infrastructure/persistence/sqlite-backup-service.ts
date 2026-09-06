@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { chmod, mkdir, rename, rm } from 'node:fs/promises';
+import { rmSync } from 'node:fs';
+import { chmod, mkdir, readdir, rename, rm, stat } from 'node:fs/promises';
 import {
   basename,
   dirname,
@@ -10,12 +11,13 @@ import {
 } from 'node:path';
 import { backup, DatabaseSync } from 'node:sqlite';
 
-const requiredTables = [
-  'deliveries',
-  'message_links',
-  'processed_events',
-  'support_requests',
-] as const;
+import {
+  requiredSqliteTables,
+  sqliteSchemaVersion,
+} from '@/infrastructure/persistence/sqlite-schema.js';
+
+const millisecondsPerDay = 24 * 60 * 60 * 1_000;
+const backupFilePattern = /^messenger-handoff-.*\.sqlite$/;
 
 export interface SqliteBackup {
   createdAt: Date;
@@ -27,12 +29,14 @@ export interface SqliteBackupServiceOptions {
   backupDirectory?: string;
   clock?: () => Date;
   createId?: () => string;
+  retentionDays?: number;
 }
 
 export class SqliteBackupService {
   private readonly backupDirectory: string;
   private readonly clock: () => Date;
   private readonly createId: () => string;
+  private readonly retentionDays: number;
 
   public constructor(
     private readonly databasePath: string,
@@ -45,6 +49,10 @@ export class SqliteBackupService {
       options.backupDirectory ?? join(dirname(databasePath), 'backups');
     this.clock = options.clock ?? (() => new Date());
     this.createId = options.createId ?? randomUUID;
+    this.retentionDays = options.retentionDays ?? 7;
+    if (!Number.isInteger(this.retentionDays) || this.retentionDays < 1) {
+      throw new Error('Backup retention days must be a positive integer');
+    }
   }
 
   public async createBackup(): Promise<SqliteBackup> {
@@ -73,6 +81,7 @@ export class SqliteBackupService {
       verifySqliteBackup(temporaryPath);
       await rename(temporaryPath, finalPath);
       await chmod(finalPath, 0o600);
+      await this.deleteExpiredBackups(createdAt, finalPath);
     } catch (error: unknown) {
       await rm(temporaryPath, { force: true });
       throw error;
@@ -83,6 +92,28 @@ export class SqliteBackupService {
       fileName: basename(finalPath),
       path: finalPath,
     };
+  }
+
+  private async deleteExpiredBackups(
+    now: Date,
+    currentBackupPath: string,
+  ): Promise<void> {
+    const cutoff = now.getTime() - this.retentionDays * millisecondsPerDay;
+    const entries = await readdir(this.backupDirectory, {
+      withFileTypes: true,
+    });
+    for (const entry of entries) {
+      if (!entry.isFile() || !backupFilePattern.test(entry.name)) {
+        continue;
+      }
+      const path = join(this.backupDirectory, entry.name);
+      if (resolve(path) === resolve(currentBackupPath)) {
+        continue;
+      }
+      if ((await stat(path)).mtimeMs < cutoff) {
+        await rm(path);
+      }
+    }
   }
 }
 
@@ -113,11 +144,19 @@ export function verifySqliteBackup(path: string): void {
           .all() as { name: string }[]
       ).map((row) => row.name),
     );
-    if (requiredTables.some((table) => !tables.has(table))) {
+    if (requiredSqliteTables.some((table) => !tables.has(table))) {
       throw new Error('SQLite backup does not contain the required schema');
+    }
+    const version = database.prepare('PRAGMA user_version').get() as {
+      user_version: number;
+    };
+    if (version.user_version !== sqliteSchemaVersion) {
+      throw new Error('SQLite backup has an unsupported schema version');
     }
   } finally {
     database.close();
+    rmSync(path + '-shm', { force: true });
+    rmSync(path + '-wal', { force: true });
   }
 }
 

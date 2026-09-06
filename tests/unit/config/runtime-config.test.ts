@@ -5,12 +5,25 @@ import { loadRuntimeConfig } from '@/config/runtime-config.js';
 describe('loadRuntimeConfig', () => {
   it('returns safe defaults for an empty environment', () => {
     expect(loadRuntimeConfig({})).toEqual({
+      closedRequestRetentionDays: 7,
       databasePath: './data/messenger-handoff.sqlite',
       host: '127.0.0.1',
       logLevel: 'info',
       nodeEnv: 'development',
       port: 3000,
     });
+  });
+
+  it('configures a bounded closed-request retention period', () => {
+    expect(
+      loadRuntimeConfig({ CLOSED_REQUEST_RETENTION_DAYS: '14' }),
+    ).toMatchObject({ closedRequestRetentionDays: 14 });
+
+    expect(() =>
+      loadRuntimeConfig({ CLOSED_REQUEST_RETENTION_DAYS: '0' }),
+    ).toThrowError(
+      'Invalid runtime configuration: CLOSED_REQUEST_RETENTION_DAYS:',
+    );
   });
 
   it('rejects an invalid port without including unrelated environment data', () => {

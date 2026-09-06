@@ -12,6 +12,12 @@ const runtimeConfigSchema = z.object({
     .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
     .default('info'),
   DATABASE_PATH: z.string().min(1).default('./data/messenger-handoff.sqlite'),
+  CLOSED_REQUEST_RETENTION_DAYS: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(365)
+    .default(7),
   TELEGRAM_BOT_TOKEN: optionalEnvironmentValue(z.string().min(20)),
   TELEGRAM_ENABLED: z
     .enum(['true', 'false'])
@@ -50,6 +56,7 @@ export interface VkRuntimeConfig {
 export interface RuntimeConfig {
   contentAdminPassword?: string;
   databasePath: string;
+  closedRequestRetentionDays: number;
   host: string;
   logLevel: 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace' | 'silent';
   nodeEnv: 'development' | 'test' | 'production';
@@ -95,6 +102,7 @@ export function loadRuntimeConfig(
     ...(result.data.CONTENT_ADMIN_PASSWORD
       ? { contentAdminPassword: result.data.CONTENT_ADMIN_PASSWORD }
       : {}),
+    closedRequestRetentionDays: result.data.CLOSED_REQUEST_RETENTION_DAYS,
     databasePath: result.data.DATABASE_PATH,
     host: result.data.HOST,
     logLevel: result.data.LOG_LEVEL,

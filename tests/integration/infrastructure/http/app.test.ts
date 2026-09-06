@@ -7,6 +7,7 @@ import { OperationsMonitoringService } from '@/modules/operations-monitoring/app
 import { registerReadinessRoute } from '@/modules/operations-monitoring/presentation/http/readiness-route.js';
 
 const config: RuntimeConfig = {
+  closedRequestRetentionDays: 7,
   databasePath: './data/test.sqlite',
   host: '127.0.0.1',
   logLevel: 'silent',

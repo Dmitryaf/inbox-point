@@ -19,6 +19,8 @@
     "format:check": "prettier --check .",
     "lint": "eslint .",
     "prepare": "husky",
+    "snapshot:create": "node --env-file-if-exists=.env dist/create-service-snapshot.js",
+    "snapshot:restore": "node dist/restore-service-snapshot.js",
     "start": "node dist/main.js",
     "start:availability-monitor": "node --env-file-if-exists=.env.monitor dist/availability-monitor.js",
     "test": "vitest run",

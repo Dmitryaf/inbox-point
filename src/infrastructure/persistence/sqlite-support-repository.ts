@@ -5,6 +5,7 @@ import { DatabaseSync } from 'node:sqlite';
 import type {
   DeliverySummary,
   PendingInboundEvent,
+  RetentionCleanupResult,
   SupportRepository,
 } from '@/core/contracts/support-repository.js';
 import type {
@@ -19,6 +20,7 @@ import type {
 } from '@/core/model/support-request.js';
 import { webOperatorTopicPrefix } from '@/core/model/operator-topic.js';
 import type { ClientChannelKind } from '@/core/model/support-message.js';
+import { sqliteSchemaVersion } from '@/infrastructure/persistence/sqlite-schema.js';
 
 interface SupportRequestRow {
   channel: ClientChannelKind;
@@ -834,6 +836,81 @@ export class SqliteSupportRepository implements SupportRepository {
       );
   }
 
+  public purgeClosedConversationContent(
+    closedBefore: Date,
+  ): RetentionCleanupResult {
+    const cutoff = closedBefore.toISOString();
+    const eligibleWhere = `request.status = 'closed'
+      AND request.closed_at IS NOT NULL
+      AND request.closed_at <= ?
+      AND NOT EXISTS (
+        SELECT 1
+        FROM deliveries AS unfinished
+        WHERE unfinished.request_id = request.id
+          AND unfinished.status != 'sent'
+      )`;
+    const eligibleRequests = this.countRequests(eligibleWhere, cutoff);
+    const skippedRequests = this.countRequests(
+      `request.status = 'closed'
+       AND request.closed_at IS NOT NULL
+       AND request.closed_at <= ?
+       AND EXISTS (
+         SELECT 1
+         FROM deliveries AS unfinished
+         WHERE unfinished.request_id = request.id
+           AND unfinished.status != 'sent'
+       )`,
+      cutoff,
+    );
+
+    this.database.exec('BEGIN IMMEDIATE');
+    try {
+      const messagesDeleted = this.database
+        .prepare(
+          `DELETE FROM conversation_messages
+           WHERE request_id IN (
+             SELECT request.id
+             FROM support_requests AS request
+             WHERE ${eligibleWhere}
+           )`,
+        )
+        .run(cutoff);
+      const deliveriesRedacted = this.database
+        .prepare(
+          `UPDATE deliveries
+           SET text = ''
+           WHERE status = 'sent'
+             AND text != ''
+             AND request_id IN (
+               SELECT request.id
+               FROM support_requests AS request
+               WHERE ${eligibleWhere}
+             )`,
+        )
+        .run(cutoff);
+      const requestsAnonymized = this.database
+        .prepare(
+          `UPDATE support_requests AS request
+           SET client_display_name = NULL
+           WHERE client_display_name IS NOT NULL
+             AND ${eligibleWhere}`,
+        )
+        .run(cutoff);
+      this.database.exec('COMMIT');
+
+      return {
+        deliveriesRedacted: Number(deliveriesRedacted.changes),
+        eligibleRequests,
+        messagesDeleted: Number(messagesDeleted.changes),
+        requestsAnonymized: Number(requestsAnonymized.changes),
+        skippedRequests,
+      };
+    } catch (error: unknown) {
+      this.database.exec('ROLLBACK');
+      throw error;
+    }
+  }
+
   public retryFailedDelivery(deliveryId: string, retryAt: Date): boolean {
     const result = this.database
       .prepare(
@@ -1043,6 +1120,8 @@ export class SqliteSupportRepository implements SupportRepository {
         'ALTER TABLE processed_events ADD COLUMN completed_at TEXT',
       );
     }
+
+    this.database.exec(`PRAGMA user_version = ${sqliteSchemaVersion}`);
   }
 
   private releaseInterruptedEvents(): void {
@@ -1065,6 +1144,18 @@ export class SqliteSupportRepository implements SupportRepository {
          WHERE status = 'pending' AND attempt_started_at IS NOT NULL`,
       )
       .run();
+  }
+
+  private countRequests(whereClause: string, cutoff: string): number {
+    const row = this.database
+      .prepare(
+        `SELECT COUNT(*) AS count
+         FROM support_requests AS request
+         WHERE ${whereClause}`,
+      )
+      .get(cutoff) as { count: number };
+
+    return row.count;
   }
 }
 

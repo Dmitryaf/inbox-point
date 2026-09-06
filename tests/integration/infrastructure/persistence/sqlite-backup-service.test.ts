@@ -1,4 +1,10 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import {
+  existsSync,
+  mkdtempSync,
+  rmSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -63,6 +69,11 @@ describe('SqliteBackupService', () => {
       'messenger-handoff-2026-09-01T12-02-00.000Z-backup-1.sqlite',
     );
     expect(() => verifySqliteBackup(result.path)).not.toThrow();
+    const backupDatabase = new DatabaseSync(result.path, { readOnly: true });
+    expect(backupDatabase.prepare('PRAGMA user_version').get()).toEqual({
+      user_version: 1,
+    });
+    backupDatabase.close();
     const restored = new SqliteSupportRepository(result.path);
     expect(restored.findActiveRequest('telegram', '101')).toMatchObject({
       id: 'request-1',
@@ -83,6 +94,39 @@ describe('SqliteBackupService', () => {
     repository.close();
   });
 
+  it('deletes expired application backups but leaves unrelated files', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-backup-'));
+    temporaryDirectories.push(directory);
+    const databasePath = join(directory, 'handoff.sqlite');
+    const repository = new SqliteSupportRepository(databasePath);
+    const backupDirectory = join(directory, 'backups');
+    const firstService = new SqliteBackupService(databasePath, {
+      backupDirectory,
+      clock: () => new Date('2026-08-20T12:00:00.000Z'),
+      createId: () => 'old',
+      retentionDays: 7,
+    });
+    const oldBackup = await firstService.createBackup();
+    utimesSync(
+      oldBackup.path,
+      new Date('2026-08-20T12:00:00.000Z'),
+      new Date('2026-08-20T12:00:00.000Z'),
+    );
+    const unrelatedPath = join(backupDirectory, 'keep-me.txt');
+    writeFileSync(unrelatedPath, 'unrelated');
+
+    await new SqliteBackupService(databasePath, {
+      backupDirectory,
+      clock: () => new Date('2026-09-01T12:00:00.000Z'),
+      createId: () => 'current',
+      retentionDays: 7,
+    }).createBackup();
+
+    expect(existsSync(oldBackup.path)).toBe(false);
+    expect(existsSync(unrelatedPath)).toBe(true);
+    repository.close();
+  });
+
   it('rejects a valid SQLite file without the application schema', () => {
     const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-backup-'));
     temporaryDirectories.push(directory);
@@ -93,6 +137,21 @@ describe('SqliteBackupService', () => {
 
     expect(() => verifySqliteBackup(unrelatedPath)).toThrowError(
       'SQLite backup does not contain the required schema',
+    );
+  });
+
+  it('rejects an application database with an unsupported schema version', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-backup-'));
+    temporaryDirectories.push(directory);
+    const databasePath = join(directory, 'legacy.sqlite');
+    const repository = new SqliteSupportRepository(databasePath);
+    repository.close();
+    const database = new DatabaseSync(databasePath);
+    database.exec('PRAGMA user_version = 0');
+    database.close();
+
+    expect(() => verifySqliteBackup(databasePath)).toThrowError(
+      'SQLite backup has an unsupported schema version',
     );
   });
 });

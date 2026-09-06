@@ -10,6 +10,7 @@ import { registerOperationsRoutes } from '@/modules/operations-monitoring/presen
 import { OperationsAccess } from '@/modules/operations-monitoring/security/operations-access.js';
 
 const config: RuntimeConfig = {
+  closedRequestRetentionDays: 7,
   databasePath: './data/test.sqlite',
   host: '0.0.0.0',
   logLevel: 'silent',

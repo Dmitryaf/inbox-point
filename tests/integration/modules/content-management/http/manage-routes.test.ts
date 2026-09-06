@@ -12,6 +12,7 @@ import { registerManagementRoutes } from '@/modules/content-management/presentat
 import { ContentManagementAccess } from '@/modules/content-management/security/content-management-access.js';
 
 const config: RuntimeConfig = {
+  closedRequestRetentionDays: 7,
   databasePath: './data/test.sqlite',
   host: '0.0.0.0',
   logLevel: 'silent',
