@@ -3,30 +3,26 @@ import {
   ClientInformationCatalog,
   type ClientInformationResolver,
 } from '@/core/application/client-information.js';
-import { DeliveryWorker } from '@/core/application/delivery-worker.js';
-import { HandoffService } from '@/core/application/handoff-service.js';
 import {
   silentChannelActivityReporter,
   type ChannelActivityReporter,
 } from '@/core/contracts/channel-activity-reporter.js';
 import type { ClientChannel } from '@/core/contracts/client-channel.js';
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
-import type { DeliveryWorkerActivityReporter } from '@/core/contracts/delivery-worker-activity-reporter.js';
-import {
-  activeOutboundDeliveryPolicy,
-  type OutboundDeliveryPolicy,
-} from '@/core/contracts/outbound-delivery-policy.js';
 import {
   acceptingClientIntakePolicy,
   type ClientIntakePolicy,
 } from '@/core/contracts/client-intake-policy.js';
-import type { SupportMessage } from '@/core/model/support-message.js';
+import type { OperatorInbox } from '@/core/contracts/operator-inbox.js';
 import { TelegramApiClient } from '@/infrastructure/telegram/telegram-api-client.js';
 import { TelegramClientChannel } from '@/infrastructure/telegram/telegram-client-channel.js';
 import { TelegramClientMenu } from '@/infrastructure/telegram/telegram-client-menu.js';
 import { TelegramPoller } from '@/infrastructure/telegram/telegram-poller.js';
 import { TelegramTopicsInbox } from '@/infrastructure/telegram/telegram-topics-inbox.js';
-import { TelegramUpdateRouter } from '@/infrastructure/telegram/telegram-update-router.js';
+import {
+  type TelegramUpdateHandler,
+  TelegramUpdateRouter,
+} from '@/infrastructure/telegram/telegram-update-router.js';
 
 export interface TelegramRuntimeLogger {
   error(error: unknown, message: string): void;
@@ -38,22 +34,24 @@ export interface TelegramRuntimeControl {
   stop(): Promise<void>;
 }
 
+export interface TelegramHandoffHost extends TelegramUpdateHandler {
+  registerClientChannel(channel: ClientChannel): () => void;
+  registerOperatorInbox(inbox: OperatorInbox): () => void;
+}
+
 export class TelegramRuntime implements TelegramRuntimeControl {
-  private readonly clientChannels = new Map<string, ClientChannel>();
   private abortController: AbortController | undefined;
-  private deliveryPromise: Promise<void> | undefined;
-  private deliveryWorker: DeliveryWorker | undefined;
-  private handoffService: HandoffService | undefined;
   private pollerPromise: Promise<void> | undefined;
+  private unregisterClientChannel: (() => void) | undefined;
+  private unregisterOperatorInbox: (() => void) | undefined;
 
   public constructor(
+    private readonly handoffHost: TelegramHandoffHost,
     private readonly repository: SupportRepository,
     private readonly logger: TelegramRuntimeLogger,
     private readonly information: ClientInformationResolver = new ClientInformationCatalog(),
     private readonly activity: ChannelActivityReporter = silentChannelActivityReporter,
-    private readonly deliveryActivity?: DeliveryWorkerActivityReporter,
     private readonly intakePolicy: ClientIntakePolicy = acceptingClientIntakePolicy,
-    private readonly deliveryPolicy: OutboundDeliveryPolicy = activeOutboundDeliveryPolicy,
   ) {}
 
   public get running(): boolean {
@@ -68,27 +66,14 @@ export class TelegramRuntime implements TelegramRuntimeControl {
     const gateway = new TelegramApiClient(config.botToken);
     await gateway.verifySetup(config.operatorChatId);
     const clientChannel = new TelegramClientChannel(gateway);
-    const handoffService = new HandoffService({
-      operatorInbox: new TelegramTopicsInbox(gateway, config.operatorChatId),
-      repository: this.repository,
-    });
-    const deliveryWorker = new DeliveryWorker({
-      ...(this.deliveryActivity ? { activity: this.deliveryActivity } : {}),
-      channels: [clientChannel, ...this.clientChannels.values()],
-      onError: (error, context) =>
-        this.logger.error(
-          error,
-          context.final
-            ? `Telegram delivery ${context.deliveryId} failed permanently after ${context.attempt} attempts`
-            : `Telegram delivery ${context.deliveryId} failed on attempt ${context.attempt}; retrying`,
-        ),
-      policy: this.deliveryPolicy,
-      repository: this.repository,
-    });
+    const operatorInbox = new TelegramTopicsInbox(
+      gateway,
+      config.operatorChatId,
+    );
     const poller = new TelegramPoller(
       gateway,
       new TelegramUpdateRouter(
-        handoffService,
+        this.handoffHost,
         config.operatorChatId,
         new TelegramClientMenu(
           gateway,
@@ -111,21 +96,16 @@ export class TelegramRuntime implements TelegramRuntimeControl {
       },
     );
     const abortController = new AbortController();
+    const unregisterClientChannel =
+      this.handoffHost.registerClientChannel(clientChannel);
+    const unregisterOperatorInbox =
+      this.handoffHost.registerOperatorInbox(operatorInbox);
     this.abortController = abortController;
-    this.deliveryWorker = deliveryWorker;
-    this.handoffService = handoffService;
+    this.unregisterClientChannel = unregisterClientChannel;
+    this.unregisterOperatorInbox = unregisterOperatorInbox;
     this.activity.recordPollerStarted('telegram', new Date());
-    this.deliveryPromise = deliveryWorker.run(abortController.signal);
     this.pollerPromise = poller.run(abortController.signal).finally(() => {
       this.activity.recordPollerStopped('telegram', new Date());
-    });
-    void this.deliveryPromise.catch((error: unknown) => {
-      if (!abortController.signal.aborted) {
-        this.logger.error(
-          error,
-          'Telegram delivery worker stopped unexpectedly',
-        );
-      }
     });
     void this.pollerPromise.catch((error: unknown) => {
       if (!abortController.signal.aborted) {
@@ -135,48 +115,23 @@ export class TelegramRuntime implements TelegramRuntimeControl {
     });
   }
 
-  public async handleClientMessage(
-    externalEventId: string,
-    message: SupportMessage,
-  ): Promise<void> {
-    if (!this.handoffService) {
-      throw new Error('Telegram operator workspace is not connected');
-    }
-    await this.handoffService.handleClientMessage(externalEventId, message);
-  }
-
-  public registerClientChannel(channel: ClientChannel): void {
-    this.clientChannels.set(channel.kind, channel);
-    if (this.deliveryWorker) {
-      this.deliveryWorker.registerChannel(channel);
-    }
-  }
-
   public async stop(): Promise<void> {
     const abortController = this.abortController;
-    const deliveryPromise = this.deliveryPromise;
     const pollerPromise = this.pollerPromise;
+    const unregisterClientChannel = this.unregisterClientChannel;
+    const unregisterOperatorInbox = this.unregisterOperatorInbox;
     this.abortController = undefined;
-    this.deliveryPromise = undefined;
-    this.deliveryWorker = undefined;
-    this.handoffService = undefined;
     this.pollerPromise = undefined;
+    this.unregisterClientChannel = undefined;
+    this.unregisterOperatorInbox = undefined;
     abortController?.abort();
-    await Promise.all([
-      deliveryPromise?.catch((error: unknown) => {
-        if (!isAbortError(error)) {
-          this.logger.error(
-            error,
-            'Telegram delivery worker stopped during shutdown',
-          );
-        }
-      }),
-      pollerPromise?.catch((error: unknown) => {
-        if (!isAbortError(error)) {
-          this.logger.error(error, 'Telegram poller stopped during shutdown');
-        }
-      }),
-    ]);
+    unregisterOperatorInbox?.();
+    unregisterClientChannel?.();
+    await pollerPromise?.catch((error: unknown) => {
+      if (!isAbortError(error)) {
+        this.logger.error(error, 'Telegram poller stopped during shutdown');
+      }
+    });
   }
 }
 

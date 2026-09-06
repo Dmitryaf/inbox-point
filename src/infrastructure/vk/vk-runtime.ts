@@ -30,12 +30,13 @@ export interface VkHandoffHost {
     externalEventId: string,
     message: SupportMessage,
   ): Promise<void>;
-  registerClientChannel(channel: ClientChannel): void;
+  registerClientChannel(channel: ClientChannel): () => void;
 }
 
 export class VkRuntime {
   private abortController: AbortController | undefined;
   private pollerPromise: Promise<void> | undefined;
+  private unregisterClientChannel: (() => void) | undefined;
 
   public constructor(
     private readonly handoffHost: VkHandoffHost,
@@ -55,9 +56,7 @@ export class VkRuntime {
       throw new Error('VK is already connected');
     }
     const gateway = new VkApiClient(config.accessToken);
-    this.handoffHost.registerClientChannel(
-      new VkClientChannel(gateway, this.information),
-    );
+    const clientChannel = new VkClientChannel(gateway, this.information);
     const poller = new VkPoller(
       gateway,
       config.groupId,
@@ -84,7 +83,10 @@ export class VkRuntime {
       },
     );
     const abortController = new AbortController();
+    const unregisterClientChannel =
+      this.handoffHost.registerClientChannel(clientChannel);
     this.abortController = abortController;
+    this.unregisterClientChannel = unregisterClientChannel;
     this.activity.recordPollerStarted('vk', new Date());
     this.pollerPromise = poller.run(abortController.signal).finally(() => {
       this.activity.recordPollerStopped('vk', new Date());
@@ -101,9 +103,12 @@ export class VkRuntime {
   public async stop(): Promise<void> {
     const abortController = this.abortController;
     const pollerPromise = this.pollerPromise;
+    const unregisterClientChannel = this.unregisterClientChannel;
     this.abortController = undefined;
     this.pollerPromise = undefined;
+    this.unregisterClientChannel = undefined;
     abortController?.abort();
+    unregisterClientChannel?.();
     await pollerPromise?.catch((error: unknown) => {
       if (!isAbortError(error)) {
         this.logger.error(error, 'VK poller stopped during shutdown');
