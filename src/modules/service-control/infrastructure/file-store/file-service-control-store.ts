@@ -22,6 +22,7 @@ const storedStateSchema = z.object({
     telegram: channelStateSchema,
     vk: channelStateSchema,
   }),
+  delivery: channelStateSchema.optional(),
   version: z.literal(1),
 });
 
@@ -55,6 +56,9 @@ export class FileServiceControlStore implements ServiceControlStore {
         telegram: normalizeChannelState(channels.telegram),
         vk: normalizeChannelState(channels.vk),
       },
+      delivery: parsed.data.delivery
+        ? normalizeChannelState(parsed.data.delivery)
+        : { mode: 'active' },
     };
   }
 

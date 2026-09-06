@@ -35,6 +35,20 @@ export function resumeClientIntake(
   }).then(parseServiceControlState);
 }
 
+export function pauseOutboundDelivery(): Promise<ServiceControlState> {
+  return request<unknown>('/api/ops/service-control/delivery/pause', {
+    body: '{}',
+    method: 'POST',
+  }).then(parseServiceControlState);
+}
+
+export function resumeOutboundDelivery(): Promise<ServiceControlState> {
+  return request<unknown>('/api/ops/service-control/delivery/resume', {
+    body: '{}',
+    method: 'POST',
+  }).then(parseServiceControlState);
+}
+
 function serviceControlPath(scope: ServiceControlScope): string {
   return `/api/${scope}/service-control`;
 }

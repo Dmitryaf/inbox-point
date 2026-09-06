@@ -26,6 +26,7 @@ export function renderOperationsDashboardPagePart2(
   const session = $unref($state.session);
   const operations = $unref($state.operations);
   const deliveryRetry = $unref($state.deliveryRetry);
+  const deliveryControl = $unref($state.deliveryControl);
 
   return (
     <>
@@ -80,13 +81,19 @@ export function renderOperationsDashboardPagePart2(
           />
           <AsyncMessage kind="error" text={deliveryRetry.error.value} />
           <AsyncMessage kind="success" text={deliveryRetry.notice.value} />
+          <AsyncMessage kind="error" text={deliveryControl.error.value} />
+          <AsyncMessage kind="success" text={deliveryControl.notice.value} />
           {operations.status.value ? (
             <OperationsOverview
+              deliveryControlPending={deliveryControl.pendingMode.value}
               pendingDeliveryId={$or(
                 deliveryRetry.pendingDeliveryId.value,
                 () => undefined,
               )}
               status={operations.status.value}
+              onChangeDeliveryMode={$callback(
+                $required($unref($state.deliveryControl)).change,
+              )}
               onRetryDelivery={$callback(
                 $required($unref($state.deliveryRetry)).retry,
               )}

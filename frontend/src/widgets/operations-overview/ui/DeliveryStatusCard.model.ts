@@ -10,8 +10,11 @@ import type { OperationsStatus } from '@frontend/entities/operations/model/types
 
 export type ComponentProps = {
   deliveries: OperationsStatus['deliveries'];
+  deliveryControlPending: 'pause' | 'resume' | undefined;
+  outbound: OperationsStatus['outbound'];
   pendingDeliveryId: string | undefined;
 } & EventProps<{
+  changeDeliveryMode: [mode: 'pause' | 'resume'];
   retry: [deliveryId: string];
 }> &
   ComponentAttributes;
@@ -23,6 +26,9 @@ export function createComponentModel(
 ) {
   const props = $props;
   const state = computed(() => {
+    if (props.deliveries.state === 'paused') {
+      return { label: 'Доставка остановлена', tone: 'neutral' };
+    }
     if (props.deliveries.state === 'failed') {
       return { label: 'Есть ошибки', tone: 'attention' };
     }

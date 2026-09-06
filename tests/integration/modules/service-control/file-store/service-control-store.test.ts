@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -32,6 +32,7 @@ describe('FileServiceControlStore', () => {
         },
         vk: { mode: 'active' },
       },
+      delivery: { mode: 'active' },
     });
 
     await expect(store.load()).resolves.toEqual({
@@ -42,6 +43,29 @@ describe('FileServiceControlStore', () => {
         },
         vk: { mode: 'active' },
       },
+      delivery: { mode: 'active' },
+    });
+  });
+
+  it('keeps delivery active when loading a state saved before the control existed', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'messenger-handoff-'));
+    temporaryDirectories.push(directory);
+    const path = join(directory, 'service-control.json');
+    await writeFile(
+      path,
+      JSON.stringify({
+        channels: {
+          telegram: { mode: 'active' },
+          vk: { mode: 'paused' },
+        },
+        version: 1,
+      }),
+    );
+
+    const store = new FileServiceControlStore(path);
+
+    await expect(store.load()).resolves.toMatchObject({
+      delivery: { mode: 'active' },
     });
   });
 });

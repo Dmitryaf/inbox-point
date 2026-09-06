@@ -38,6 +38,33 @@ describe('ServiceControlService', () => {
     await expect(service.pause('telegram')).rejects.toThrow('disk unavailable');
     expect(service.isPaused('telegram')).toBe(false);
   });
+
+  it('controls outbound delivery independently from client intake', async () => {
+    const { save, store } = createStore();
+    const service = new ServiceControlService(
+      createDefaultServiceControlState(),
+      store,
+      () => new Date('2026-09-05T10:00:00.000Z'),
+    );
+
+    const paused = await service.pauseDelivery();
+
+    expect(paused).toMatchObject({
+      channels: {
+        telegram: { mode: 'active' },
+        vk: { mode: 'active' },
+      },
+      delivery: {
+        changedAt: '2026-09-05T10:00:00.000Z',
+        mode: 'paused',
+      },
+    });
+    expect(service.isDeliveryPaused()).toBe(true);
+    expect(save).toHaveBeenCalledOnce();
+
+    await service.resumeDelivery();
+    expect(service.isDeliveryPaused()).toBe(false);
+  });
 });
 
 function createStore() {

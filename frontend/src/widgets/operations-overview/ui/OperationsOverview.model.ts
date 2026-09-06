@@ -9,9 +9,11 @@ import { computed } from '@frontend/shared/lib/model-state';
 import type { OperationsStatus } from '@frontend/entities/operations/model/types';
 
 export type ComponentProps = {
+  deliveryControlPending: 'pause' | 'resume' | undefined;
   pendingDeliveryId: string | undefined;
   status: OperationsStatus;
 } & EventProps<{
+  changeDeliveryMode: [mode: 'pause' | 'resume'];
   retryDelivery: [deliveryId: string];
 }> &
   ComponentAttributes;
@@ -28,5 +30,16 @@ export function createComponentModel(
       timeStyle: 'medium',
     }).format(new Date(props.status.observedAt)),
   );
-  return { $emit, observedAt };
+  const overallLabel = computed(() => {
+    if (props.status.state === 'healthy') {
+      return 'Сервис работает';
+    }
+    if (props.status.state === 'attention') {
+      return 'Нужно проверить';
+    }
+    return props.status.outbound.mode === 'paused'
+      ? 'Доставка ответов остановлена'
+      : 'Приём обращений приостановлен';
+  });
+  return { $emit, observedAt, overallLabel };
 }

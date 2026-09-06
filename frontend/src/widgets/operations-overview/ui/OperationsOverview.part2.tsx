@@ -28,7 +28,12 @@ export function renderOperationsOverviewPart2(
         />
         <DeliveryStatusCard
           deliveries={$props.status.deliveries}
+          deliveryControlPending={$props.deliveryControlPending}
+          outbound={$props.status.outbound}
           pendingDeliveryId={$props.pendingDeliveryId}
+          onChangeDeliveryMode={($event) =>
+            void $emit('changeDeliveryMode', $event)
+          }
           onRetry={($event) => void $emit('retryDelivery', $event)}
         />
       </div>

@@ -102,6 +102,16 @@ describe('operations monitoring routes', () => {
       remoteAddress: '192.0.2.10',
       url: '/api/ops/service-control',
     });
+    const pauseDelivery = await app.inject({
+      headers: {
+        cookie,
+        host: 'example.test',
+        origin: 'https://example.test',
+      },
+      method: 'POST',
+      remoteAddress: '192.0.2.10',
+      url: '/api/ops/service-control/delivery/pause',
+    });
     const retry = await app.inject({
       headers: {
         cookie,
@@ -127,6 +137,14 @@ describe('operations monitoring routes', () => {
     );
     expect(status.statusCode).toBe(200);
     expect(serviceControl.statusCode).toBe(200);
+    expect(pauseDelivery.statusCode).toBe(200);
+    expect(pauseDelivery.json()).toMatchObject({
+      channels: {
+        telegram: { mode: 'active' },
+        vk: { mode: 'active' },
+      },
+      delivery: { mode: 'paused' },
+    });
     expect(retry.statusCode).toBe(200);
     expect(retriedDeliveries).toEqual(['delivery-1']);
     expect(serviceControl.json()).toMatchObject({

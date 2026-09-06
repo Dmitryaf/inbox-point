@@ -90,6 +90,26 @@ describe('DeliveryWorker', () => {
     expect(repository.getDeliverySummary()).toEqual({ failed: 0, pending: 0 });
   });
 
+  it('retains the queue while outbound delivery is paused', async () => {
+    enqueueDelivery(repository);
+    let paused = true;
+    const worker = new DeliveryWorker({
+      channels: [channel],
+      clock: () => now,
+      policy: { isDeliveryPaused: () => paused },
+      repository,
+    });
+
+    expect(await worker.processPending()).toBe(0);
+    expect(channel.sent).toHaveLength(0);
+    expect(repository.getDeliverySummary()).toMatchObject({ pending: 1 });
+
+    paused = false;
+    expect(await worker.processPending()).toBe(1);
+    expect(channel.sent).toHaveLength(1);
+    expect(repository.getDeliverySummary()).toEqual({ failed: 0, pending: 0 });
+  });
+
   it('stops retrying after the configured attempt limit', async () => {
     enqueueDelivery(repository);
     channel.failuresRemaining = 3;
