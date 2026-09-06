@@ -4,8 +4,6 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.time.Clock;
 import java.util.List;
-import java.util.Locale;
-import java.util.UUID;
 import java.util.function.Predicate;
 
 import com.inboxpoint.content.ClientInformation;
@@ -14,7 +12,6 @@ import tools.jackson.databind.JsonNode;
 final class TelegramTextHandoff {
     record OperatorChat(long id, boolean isForum, String title, String type) { }
 
-    private static final int MESSAGE_LIMIT = 4096;
     private static final List<String> UNSUPPORTED = List.of("animation", "audio", "contact", "dice", "document",
             "paid_media", "photo", "poll", "sticker", "story", "venue", "video", "video_note", "voice");
     static final String TEXT_ONLY = "Сейчас можно отправить только текст. Напишите вопрос отдельным текстовым сообщением.";
@@ -25,6 +22,7 @@ final class TelegramTextHandoff {
     private final Clock clock;
     private final TelegramClientMenu menu;
     private final ClientMessageQueue queue;
+    private final HandoffService handoff;
 
     TelegramTextHandoff(long operatorGroup, TelegramStore store, TelegramBotApi api, Clock clock, ClientInformation information) {
         this(operatorGroup, store, api, clock, information, new ClientMessageQueue(), channel -> false);
@@ -33,6 +31,7 @@ final class TelegramTextHandoff {
     TelegramTextHandoff(long operatorGroup, TelegramStore store, TelegramBotApi api, Clock clock,
             ClientInformation information, ClientMessageQueue queue, Predicate<String> paused) {
         this.queue = queue;
+        this.handoff = new HandoffService(store, new TelegramTopicsInbox(api, operatorGroup), clock, queue);
         this.operatorGroup = operatorGroup;
         this.store = store;
         this.api = api;
@@ -49,7 +48,7 @@ final class TelegramTextHandoff {
         boolean operator = chat == operatorGroup && topic > 0 && "supergroup".equals(type);
         var event = Long.toString(update.path("update_id").asLong());
         if (operator && (message.has("forum_topic_closed") || message.has("forum_topic_reopened"))) {
-            reconcileTopic(topic, event, message.has("forum_topic_reopened"));
+            handoff.reconcileTopic(topic, event, message.has("forum_topic_reopened"));
             return;
         }
         var sender = message.path("from");
@@ -105,9 +104,9 @@ final class TelegramTextHandoff {
         }
         try {
             if (operator) {
-                relayReply(topic, externalMessage, text, event);
+                handoff.relayReply(topic, externalMessage, text, event);
             } else {
-                relayQuestion("telegram", chat, Long.toString(externalMessage), text, displayName(sender));
+                handoff.relayQuestion("telegram", chat, Long.toString(externalMessage), text, displayName(sender));
             }
             store.completeEvent(source, event, clock.instant());
         } catch (TelegramBotApi.RequestFailed failure) {
@@ -122,25 +121,7 @@ final class TelegramTextHandoff {
 
     void processVk(String event, long peer, long message, String name, String text)
             throws SQLException, InterruptedException, IOException {
-        queue.run("vk", peer, () -> processVkSerially(event, peer, message, name, text));
-    }
-
-    private void processVkSerially(String event, long peer, long message, String name, String text)
-            throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
-        if (!store.claim("client:vk", event, clock.instant())) {
-            return;
-        }
-        try {
-            relayQuestion("vk", peer, peer + ":" + message, text, name);
-            store.completeEvent("client:vk", event, clock.instant());
-        } catch (TelegramBotApi.RequestFailed failure) {
-            if (!failure.outcomeUnknown()) {
-                store.release("client:vk", event);
-            } else {
-                store.completeEvent("client:vk", event, clock.instant());
-            }
-            throw failure;
-        }
+        handoff.processVk(event, peer, message, name, text);
     }
 
     private static String displayName(JsonNode sender) {
@@ -150,97 +131,4 @@ final class TelegramTextHandoff {
         return !name.isEmpty() ? name : username.isEmpty() ? "Customer" : "@" + username;
     }
 
-    private void relayQuestion(String channel, long chat, String message, String text, String name)
-            throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
-        var request = store.activeRequest(channel, chat);
-        if (request != null) {
-            try {
-                relayChunks(request, message, "Клиент:\n\n", text);
-                return;
-            } catch (TelegramBotApi.RequestFailed failure) {
-                if (failure.topicProblem() != TelegramBotApi.TopicProblem.MISSING
-                        && failure.topicProblem() != TelegramBotApi.TopicProblem.CLOSED) {
-                    throw failure;
-                }
-                store.changeStatus(request.id(), false, clock.instant());
-            }
-        }
-        var latest = store.latestRequest(channel, chat);
-        if (latest != null && (request == null || !latest.id().equals(request.id()))) {
-            try {
-                api.reopenTopic(operatorGroup, latest.topic());
-                relayChunks(latest, message, "Клиент:\n\n", text);
-                store.changeStatus(latest.id(), true, clock.instant());
-                return;
-            } catch (TelegramBotApi.RequestFailed failure) {
-                if (failure.topicProblem() != TelegramBotApi.TopicProblem.MISSING
-                        && failure.topicProblem() != TelegramBotApi.TopicProblem.CLOSED) {
-                    throw failure;
-                }
-            }
-        }
-        var platform = "telegram".equals(channel) ? "Telegram" : "VK";
-        var title = ("telegram".equals(channel) ? "TG" : "VK") + " - " + name;
-        title = title.substring(0, title.offsetByCodePoints(0, Math.min(128, title.codePointCount(0, title.length()))));
-        request = new TelegramStore.Request(UUID.randomUUID().toString(), chat,
-                api.createForumTopic(operatorGroup, title), true, channel);
-        store.open(request, clock.instant());
-        var prefix = "Новое обращение из " + platform + "\nКлиент: " + name
-                + "\n\nОтветьте сообщением в этой теме.\nЧтобы закрыть обращение, отправьте /close.\n\nВопрос:\n";
-        relayChunks(request, message, prefix, text);
-    }
-
-    private void relayChunks(TelegramStore.Request request, String message, String firstPrefix, String text)
-            throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
-        var prefix = firstPrefix;
-        for (int start = 0; start < text.length();) {
-            var capacity = MESSAGE_LIMIT - prefix.codePointCount(0, prefix.length());
-            var size = Math.min(text.codePointCount(start, text.length()), capacity);
-            var end = text.offsetByCodePoints(start, size);
-            var sent = api.sendMessage(operatorGroup, request.topic(), prefix + text.substring(start, end));
-            store.link(request.id(), "client_to_operator", message, Long.toString(sent), clock.instant());
-            start = end;
-            prefix = "Клиент (продолжение):\n\n";
-        }
-    }
-
-    private void reconcileTopic(long topic, String event, boolean active) throws SQLException {
-        if (!store.claim("operator:telegram", event, clock.instant())) {
-            return;
-        }
-        var request = store.byTopic(topic);
-        if (request != null && request.active() != active
-                && (!active || store.activeRequest(request.channel(), request.conversation()) == null)) {
-            store.changeStatus(request.id(), active, clock.instant());
-        }
-        store.completeEvent("operator:telegram", event, clock.instant());
-    }
-
-    private void relayReply(long topic, long message, String text, String event)
-            throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
-        var request = store.byTopic(topic);
-        if (request == null) {
-            return;
-        }
-        var command = text.strip().split("[\\s@]", 2)[0].toLowerCase(Locale.ROOT);
-        switch (command) {
-            case "/close" -> {
-                if (request.active()) {
-                    api.closeTopic(operatorGroup, topic);
-                    store.changeStatus(request.id(), false, clock.instant());
-                }
-            }
-            case "/reopen" -> {
-                if (!request.active() && store.activeRequest(request.channel(), request.conversation()) == null) {
-                    api.reopenTopic(operatorGroup, topic);
-                    store.changeStatus(request.id(), true, clock.instant());
-                }
-            }
-            default -> {
-                if (request.active()) {
-                    store.queue(request, event, message, text, clock.instant());
-                }
-            }
-        }
-    }
 }

@@ -10,12 +10,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import tools.jackson.databind.json.JsonMapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@DirtiesContext
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
         "INBOXPOINT_ENV=production", "OPS_ADMIN_PASSWORD=synthetic-ops-password", "TELEGRAM_ENABLED=false", "VK_ENABLED=false"
 })
@@ -69,7 +71,7 @@ class OperationsControllerTest {
             var pausedStatus = JsonMapper.shared().readTree(paused.body());
             assertThat(pausedStatus.at("/deliveries/state").asString()).isEqualTo("paused");
             assertThat(pausedStatus.at("/outbound/mode").asString()).isEqualTo("paused");
-            assertThat(status.at("/deliveries/worker/state").asString()).isEqualTo("inactive");
+            assertThat(status.at("/deliveries/worker/state").asString()).isEqualTo("running");
         }
     }
 }

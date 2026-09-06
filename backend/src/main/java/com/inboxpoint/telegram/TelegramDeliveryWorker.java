@@ -11,7 +11,7 @@ import com.inboxpoint.vk.VkChannel;
 
 final class TelegramDeliveryWorker {
     private final TelegramStore store;
-    private final TelegramBotApi api;
+    private final Supplier<TelegramBotApi> telegram;
     private final Clock clock;
     private final DeliveryFailurePolicy failures;
     private final Supplier<VkChannel> vk;
@@ -26,10 +26,15 @@ final class TelegramDeliveryWorker {
     }
 
     TelegramDeliveryWorker(TelegramStore store, TelegramBotApi api, Clock clock, Supplier<VkChannel> vk, BooleanSupplier paused) {
+        this(store, () -> api, clock, vk, paused);
+    }
+
+    TelegramDeliveryWorker(TelegramStore store, Supplier<TelegramBotApi> telegram, Clock clock,
+            Supplier<VkChannel> vk, BooleanSupplier paused) {
         this.vk = vk;
         this.paused = paused;
         this.store = store;
-        this.api = api;
+        this.telegram = telegram;
         this.clock = clock;
         failures = new DeliveryFailurePolicy(store, clock);
     }
@@ -46,7 +51,8 @@ final class TelegramDeliveryWorker {
             return 0;
         }
         var vkChannel = vk.get();
-        var submitted = store.pending(clock.instant(), vkChannel != null);
+        var api = telegram.get();
+        var submitted = store.pending(clock.instant(), api != null, vkChannel != null);
         int processed = 0;
         for (var item : submitted) {
             if (paused.getAsBoolean()) {

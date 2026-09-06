@@ -203,13 +203,17 @@ final class TelegramStore implements AutoCloseable {
     record Pending(String key, String request, String operatorMessage, long conversation, String text, int attempts, String channel) { }
 
     List<Pending> pending(Instant now, boolean vkAvailable) throws SQLException {
+        return pending(now, true, vkAvailable);
+    }
+
+    List<Pending> pending(Instant now, boolean telegramAvailable, boolean vkAvailable) throws SQLException {
         try (var statement = prepare("""
                 SELECT idempotency_key, request_id, COALESCE(operator_message_id, idempotency_key),
                     external_conversation_id, text, attempts, channel
                 FROM deliveries
-                WHERE status = 'pending' AND attempt_started_at IS NULL AND (channel = 'telegram' OR ?) AND julianday(COALESCE(next_attempt_at, created_at))
+                WHERE status = 'pending' AND attempt_started_at IS NULL AND ((channel = 'telegram' AND ?) OR (channel = 'vk' AND ?)) AND julianday(COALESCE(next_attempt_at, created_at))
                     <= julianday(?) ORDER BY julianday(created_at), id LIMIT 25
-                """, vkAvailable, now.toString()); var rows = statement.executeQuery()) {
+                """, telegramAvailable, vkAvailable, now.toString()); var rows = statement.executeQuery()) {
             var result = new ArrayList<Pending>();
             while (rows.next()) {
                 result.add(new Pending(rows.getString(1), rows.getString(2), rows.getString(3), rows.getLong(4),

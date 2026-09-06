@@ -41,11 +41,9 @@ public final class TelegramRuntime {
     private final Path settingsFile;
     private final URI origin;
     private Thread poller;
-    private Thread deliveries;
-    private volatile Instant lastDeliveryCycle;
+    private final HandoffRuntime handoff;
     private final VkSetup vk;
     private final ChannelActivity activity = new ChannelActivity();
-    private volatile Settings live;
     private String source = NONE;
 
     TelegramRuntime(Environment environment, ClientInformation information) {
@@ -56,6 +54,7 @@ public final class TelegramRuntime {
         settingsFile = database.toAbsolutePath().resolveSibling("telegram-settings.json");
         origin = URI.create(environment.getProperty("inboxpoint.telegram.api-origin", "https://api.telegram.org"));
         vk = new VkSetup(environment, database);
+        handoff = new HandoffRuntime(database, serviceControl::deliveryPaused, vk::channel);
     }
 
     @EventListener(ApplicationReadyEvent.class)
@@ -63,6 +62,7 @@ public final class TelegramRuntime {
         try (var store = new TelegramStore(database)) {
             store.recoverInterrupted();
         }
+        handoff.start();
         vk.restore(incomingVk());
         if (environment.getProperty("TELEGRAM_ENABLED", Boolean.class, false)) {
             source = ENVIRONMENT;
@@ -98,7 +98,8 @@ public final class TelegramRuntime {
 
             @Override
             public void drain() throws IOException, SQLException, InterruptedException {
-                if (live == null) {
+                var inbox = handoff.operatorInbox();
+                if (inbox == null) {
                     return;
                 }
                 try (var store = new TelegramStore(database)) {
@@ -115,7 +116,7 @@ public final class TelegramRuntime {
                                 }
                             }
                         } else {
-                            receiveVk(item.event(), item.peer(), item.message(), item.name(), item.text());
+                            receiveVk(inbox, store, item.event(), item.peer(), item.message(), item.name(), item.text());
                         }
                         store.deleteVk(item.event());
                     }
@@ -125,7 +126,7 @@ public final class TelegramRuntime {
     }
 
     public synchronized Status status() {
-        var running = poller != null && poller.isAlive() && deliveries.isAlive();
+        var running = poller != null && poller.isAlive();
         return new Status(running, running || ENVIRONMENT.equals(source), source);
     }
 
@@ -173,10 +174,8 @@ public final class TelegramRuntime {
                         .put("pollTimeoutSeconds", settings.timeout()));
             }
         }
-        live = settings;
         poller = Thread.ofVirtual().name("telegram-handoff")
                 .start(() -> poll(database, origin, settings.token(), settings.group(), settings.timeout()));
-        deliveries = Thread.ofVirtual().name("telegram-deliveries").start(() -> deliver(settings.token()));
     }
 
     public ChannelActivity.Snapshot vkPolling() {
@@ -202,16 +201,11 @@ public final class TelegramRuntime {
         vk.connect(token, community, incomingVk());
     }
 
-    private void receiveVk(String event, long peer, long message, String name, String text)
-            throws IOException, SQLException, InterruptedException {
-        var telegram = live;
-        try (var store = new TelegramStore(database); var transport = TelegramHttpTransport.open("", API_TIMEOUT)) {
-            var api = new TelegramBotApi(transport, origin, telegram.token(), API_TIMEOUT);
-            var menu = new VkClientMenu(information, vk.channel(), serviceControl::intakePaused);
-            if (!menu.handle(store, event, peer, text)) {
-                new TelegramTextHandoff(telegram.group(), store, api, Clock.systemUTC(), information, queue, serviceControl::intakePaused)
-                        .processVk(event, peer, message, name, text);
-            }
+    private void receiveVk(OperatorInbox inbox, TelegramStore store, String event, long peer, long message,
+            String name, String text) throws IOException, SQLException, InterruptedException {
+        var menu = new VkClientMenu(information, vk.channel(), serviceControl::intakePaused);
+        if (!menu.handle(store, event, peer, text)) {
+            new HandoffService(store, inbox, Clock.systemUTC(), queue).processVk(event, peer, message, name, text);
         }
     }
 
@@ -248,8 +242,8 @@ public final class TelegramRuntime {
             var summary = store.summary();
             var oldest = summary.oldestPending() == null ? null : Instant.parse(summary.oldestPending());
             var age = oldest == null ? null : Math.max(0, Duration.between(oldest, now).toSeconds());
-            var cycle = lastDeliveryCycle;
-            boolean running = deliveries != null && deliveries.isAlive();
+            var cycle = handoff.lastCycle();
+            boolean running = handoff.running();
             boolean stalled = summary.pending() > 0 && (!running || cycle == null
                     || Duration.between(cycle, now).compareTo(Duration.ofMinutes(5)) > 0);
             var worker = new DeliveryProcess(cycle == null ? null : cycle.toString(), running,
@@ -279,22 +273,6 @@ public final class TelegramRuntime {
         }
     }
 
-    private void deliver(String token) {
-        try (var store = new TelegramStore(database); var transport = TelegramHttpTransport.open("", API_TIMEOUT)) {
-            var api = new TelegramBotApi(transport, origin, token, API_TIMEOUT);
-            var worker = new TelegramDeliveryWorker(store, api, Clock.systemUTC(), vk::channel, serviceControl::deliveryPaused);
-            while (!Thread.currentThread().isInterrupted()) {
-                lastDeliveryCycle = Instant.now();
-                var processed = worker.runOnce();
-                Thread.sleep(Duration.ofMillis(processed > 0 ? 100 : 1000));
-            }
-        } catch (InterruptedException stopping) {
-            Thread.currentThread().interrupt();
-        } catch (IOException | SQLException failure) {
-            LoggerFactory.getLogger(TelegramRuntime.class).warn("Telegram delivery worker stopped");
-        }
-    }
-
     static void verifyConnection(URI origin, String token, long group) throws IOException, InterruptedException {
         try (var transport = TelegramHttpTransport.open("", API_TIMEOUT)) {
             new TelegramBotApi(transport, origin, token, API_TIMEOUT).verifySetup(group);
@@ -303,24 +281,26 @@ public final class TelegramRuntime {
 
     @PreDestroy
     synchronized void stop() throws InterruptedException {
+        handoff.stop();
         vk.stop();
-        if (deliveries != null) {
-            deliveries.interrupt();
-        }
         if (poller != null) {
             poller.interrupt();
             poller.join(Duration.ofSeconds(2));
-        }
-        if (deliveries != null) {
-            deliveries.join(Duration.ofSeconds(2));
         }
     }
 
     private void poll(Path database, URI origin, String token, long group, int timeout) {
         try (var store = new TelegramStore(database); var transport = TelegramHttpTransport.open("", API_TIMEOUT)) {
             var api = new TelegramBotApi(transport, origin, token, API_TIMEOUT);
-            var handoff = new TelegramTextHandoff(group, store, api, Clock.systemUTC(), information, queue, serviceControl::intakePaused);
-            new TelegramPoller(api, handoff, timeout, activity).run();
+            var unregisterClient = handoff.registerTelegram(api);
+            var unregisterInbox = handoff.registerOperatorInbox(new TelegramTopicsInbox(api, group));
+            try {
+                var handler = new TelegramTextHandoff(group, store, api, Clock.systemUTC(), information, queue, serviceControl::intakePaused);
+                new TelegramPoller(api, handler, timeout, activity).run();
+            } finally {
+                unregisterInbox.run();
+                unregisterClient.run();
+            }
         } catch (InterruptedException stopping) {
             Thread.currentThread().interrupt();
         } catch (IOException | SQLException failure) {
