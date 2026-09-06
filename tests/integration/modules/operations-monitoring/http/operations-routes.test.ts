@@ -10,6 +10,7 @@ import { ServiceControlService } from '@/modules/service-control/application/ser
 import { createDefaultServiceControlState } from '@/modules/service-control/model/service-control-state.js';
 
 const config: RuntimeConfig = {
+  closedRequestRetentionDays: 7,
   databasePath: './data/test.sqlite',
   host: '0.0.0.0',
   logLevel: 'silent',

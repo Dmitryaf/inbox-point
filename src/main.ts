@@ -2,6 +2,7 @@ import { dirname, resolve } from 'node:path';
 
 import { loadRuntimeConfig } from '@/config/runtime-config.js';
 import { ClientInformationCatalog } from '@/core/application/client-information.js';
+import { DataRetentionService } from '@/core/application/data-retention-service.js';
 import { HandoffRuntime } from '@/core/application/handoff-runtime.js';
 import { createApp, registerSetupRoutes } from '@/infrastructure/http/app.js';
 import { ContentManagementService } from '@/modules/content-management/application/content-management-service.js';
@@ -37,8 +38,19 @@ async function start(): Promise<void> {
   const serviceControlState =
     (await serviceControlStore.load()) ?? createDefaultServiceControlState();
   const repository = new SqliteSupportRepository(config.databasePath);
-  const backupService = new SqliteBackupService(config.databasePath);
   const app = createApp(config);
+  const retention = new DataRetentionService(
+    repository,
+    config.closedRequestRetentionDays,
+    {
+      error: (error, message) => app.log.error({ err: error }, message),
+      info: (details, message) => app.log.info(details, message),
+      warn: (details, message) => app.log.warn(details, message),
+    },
+  );
+  const backupService = new SqliteBackupService(config.databasePath, {
+    retentionDays: config.closedRequestRetentionDays,
+  });
   const contentSettingsStore = new FileContentSettingsStore(
     resolve(dirname(config.databasePath), 'content-settings.json'),
   );
@@ -95,6 +107,7 @@ async function start(): Promise<void> {
     await vkRuntime.stop();
     await telegramRuntime.stop();
     await handoffRuntime.stop();
+    retention.stop();
     repository.close();
   };
 
@@ -102,6 +115,7 @@ async function start(): Promise<void> {
   process.once('SIGTERM', () => void close('SIGTERM'));
 
   try {
+    retention.start();
     handoffRuntime.start();
     try {
       informationCatalog.replace((await contentSettingsStore.load()) ?? {});
@@ -224,6 +238,7 @@ async function start(): Promise<void> {
     await vkRuntime.stop();
     await telegramRuntime.stop();
     await handoffRuntime.stop();
+    retention.stop();
     repository.close();
     throw error;
   }

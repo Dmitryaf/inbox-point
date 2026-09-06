@@ -23,6 +23,14 @@ export interface PendingInboundEvent {
   source: string;
 }
 
+export interface RetentionCleanupResult {
+  deliveriesRedacted: number;
+  eligibleRequests: number;
+  messagesDeleted: number;
+  requestsAnonymized: number;
+  skippedRequests: number;
+}
+
 export interface InboundEventStore {
   completeInboundEvent(source: string, externalEventId: string): void;
   enqueueInboundEvents(events: readonly PendingInboundEvent[]): void;
@@ -95,6 +103,7 @@ export interface SupportRepository extends InboundEventStore {
     error: string,
     nextAttemptAt: Date,
   ): void;
+  purgeClosedConversationContent(closedBefore: Date): RetentionCleanupResult;
   releaseEvent(source: string, externalEventId: string): void;
   reopenRequest(requestId: string): void;
   recordConversationMessage(message: ConversationMessage): void;
