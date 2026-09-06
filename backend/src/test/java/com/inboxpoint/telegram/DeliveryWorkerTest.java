@@ -18,6 +18,28 @@ class DeliveryWorkerTest {
     Path directory;
 
     @Test
+    void quarantinesAnAttemptThatWasInFlightWhenTheProcessStopped() throws Exception {
+        var database = directory.resolve("interrupted.sqlite");
+        var time = Instant.parse("2026-09-01T08:00:00Z");
+        try (var store = new TelegramStore(database)) {
+            var request = new TelegramStore.Request("question", 123, 42, true, "telegram");
+            store.open(request, time);
+            store.queue(request, "reply", 704, "Answer", time);
+            var item = store.pending(time, false).getFirst();
+            assertThat(store.beginAttempt(item.key(), time)).isTrue();
+            assertThat(store.beginAttempt(item.key(), time)).isFalse();
+        }
+        try (var store = new TelegramStore(database)) {
+            store.recoverInterrupted();
+            assertThat(store.pending(time, false)).isEmpty();
+            assertThat(store.summary().uncertain()).isEqualTo(1);
+            var failure = store.failures().getFirst();
+            assertThat(failure.retryAllowed()).isFalse();
+            assertThat(store.retry(failure.id(), time)).isFalse();
+        }
+    }
+
+    @Test
     void doesNotRepeatAnUncertainTelegramSendAndRefusesManualRetry() throws Exception {
         var database = directory.resolve("uncertain.sqlite");
         var time = Instant.parse("2026-09-01T08:00:00Z");

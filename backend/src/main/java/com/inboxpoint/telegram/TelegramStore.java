@@ -44,6 +44,7 @@ final class TelegramStore implements AutoCloseable {
             ensureColumn("deliveries", "operator_message_id", "TEXT");
             ensureColumn("deliveries", "next_attempt_at", "TEXT");
             ensureColumn("deliveries", "outcome_unknown", "INTEGER NOT NULL DEFAULT 0");
+            ensureColumn("deliveries", "attempt_started_at", "TEXT");
             statement.execute("UPDATE deliveries SET outcome_unknown = 1 WHERE last_error = 'Uncertain Telegram result' "
                     + "AND status = 'failed' AND outcome_unknown = 0");
             ensureColumn("processed_events", "status", "TEXT NOT NULL DEFAULT 'completed'");
@@ -139,6 +140,11 @@ final class TelegramStore implements AutoCloseable {
 
     void recoverInterrupted() throws SQLException {
         update("DELETE FROM processed_events WHERE status = 'processing'");
+        update("""
+                UPDATE deliveries SET status = 'failed', attempts = attempts + 1,
+                    outcome_unknown = 1, attempt_started_at = NULL, last_error = ?
+                WHERE status = 'pending' AND attempt_started_at IS NOT NULL
+                """, "Delivery was interrupted after the attempt started");
     }
 
     void saveVkBatch(List<VkChannel.Message> batch, Instant now) throws SQLException {
@@ -198,7 +204,7 @@ final class TelegramStore implements AutoCloseable {
                 SELECT idempotency_key, request_id, COALESCE(operator_message_id, idempotency_key),
                     external_conversation_id, text, attempts, channel
                 FROM deliveries
-                WHERE status = 'pending' AND (channel = 'telegram' OR ?) AND julianday(COALESCE(next_attempt_at, created_at))
+                WHERE status = 'pending' AND attempt_started_at IS NULL AND (channel = 'telegram' OR ?) AND julianday(COALESCE(next_attempt_at, created_at))
                     <= julianday(?) ORDER BY julianday(created_at), id LIMIT 25
                 """, vkAvailable, now.toString()); var rows = statement.executeQuery()) {
             var result = new ArrayList<Pending>();
@@ -210,9 +216,16 @@ final class TelegramStore implements AutoCloseable {
         }
     }
 
+    boolean beginAttempt(String key, Instant started) throws SQLException {
+        return update("""
+                UPDATE deliveries SET attempt_started_at = ?
+                WHERE status = 'pending' AND idempotency_key = ? AND attempt_started_at IS NULL
+                """, started.toString(), key) == 1;
+    }
+
     void schedule(String key, Instant next) throws SQLException {
         update("""
-                UPDATE deliveries SET attempts = attempts + 1, next_attempt_at = ?, last_error = ?
+                UPDATE deliveries SET attempts = attempts + 1, next_attempt_at = ?, last_error = ?, attempt_started_at = NULL
                 WHERE idempotency_key = ? AND status = 'pending'
                 """, next.toString(), "Telegram delivery rejected", key);
     }
@@ -248,13 +261,13 @@ final class TelegramStore implements AutoCloseable {
     void deliver(String key, long message, Instant now) throws SQLException {
         update("""
                 UPDATE deliveries SET status = 'sent', attempts = attempts + 1, last_error = NULL,
-                    external_message_id = ?, sent_at = ? WHERE idempotency_key = ?
+                    external_message_id = ?, sent_at = ?, attempt_started_at = NULL WHERE idempotency_key = ?
                 """, Long.toString(message), now.toString(), key);
     }
 
     void failed(String key, boolean uncertain, String reason) throws SQLException {
         update("""
-                UPDATE deliveries SET status = 'failed', attempts = attempts + 1, last_error = ?, outcome_unknown = ?
+                UPDATE deliveries SET status = 'failed', attempts = attempts + 1, last_error = ?, outcome_unknown = ?, attempt_started_at = NULL
                 WHERE idempotency_key = ?
                 """, reason, uncertain ? 1 : 0, key);
     }
@@ -283,7 +296,7 @@ final class TelegramStore implements AutoCloseable {
 
     boolean retry(String id, Instant now) throws SQLException {
         return update("""
-                UPDATE deliveries SET status = 'pending', attempts = 0, next_attempt_at = ?, last_error = NULL
+                UPDATE deliveries SET status = 'pending', attempts = 0, next_attempt_at = ?, last_error = NULL, attempt_started_at = NULL
                 WHERE id = ? AND status = 'failed' AND outcome_unknown = 0
                 """, now.toString(), id) == 1;
     }

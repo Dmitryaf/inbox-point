@@ -38,6 +38,9 @@ final class TelegramDeliveryWorker {
         var vkChannel = vk.get();
         var submitted = store.pending(clock.instant(), vkChannel != null);
         for (var item : submitted) {
+            if (!store.beginAttempt(item.key(), clock.instant())) {
+                continue;
+            }
             long sent;
             try {
                 sent = "vk".equals(item.channel())
