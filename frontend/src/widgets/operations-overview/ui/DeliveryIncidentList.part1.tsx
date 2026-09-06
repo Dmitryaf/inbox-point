@@ -1,27 +1,34 @@
-import { renderList as $renderList } from '@frontend/shared/lib/component-view';
+import {
+  classNames as $class,
+  renderList as $renderList,
+} from '@frontend/shared/lib/component-view';
+
+import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
 import type { WithDefaults } from '@frontend/shared/lib/component-model';
 import type {
   createComponentModel,
   ComponentProps,
   componentDefaults,
-} from './DeliveryStatusCard.model';
-export function renderDeliveryStatusCardPart2(
+} from './DeliveryIncidentList.model';
+export function renderDeliveryIncidentListPart1(
   $state: ReturnType<typeof createComponentModel>,
   $props: WithDefaults<ComponentProps, typeof componentDefaults>,
 ) {
-  const { $emit, formatCreatedAt } = $state;
+  const { formatCreatedAt, $emit } = $state;
+  const $attributes = inheritedAttributes($props);
 
   return (
     <>
-      {$props.deliveries.incidents.length > 0 ? (
+      {$props.incidents.length > 0 ? (
         <section
+          {...$attributes}
           aria-labelledby="delivery-incidents-title"
-          className="delivery-incidents"
+          className={$class('delivery-incidents', $attributes.className)}
         >
           <h4 id="delivery-incidents-title">{'Недоставленные ответы'}</h4>
           <ol>
-            {$renderList($props.deliveries.incidents, (incident) => (
+            {$renderList($props.incidents, (incident) => (
               <li key={incident.id}>
                 <div className="delivery-incident-heading">
                   <strong>{incident.channel}</strong>
@@ -58,11 +65,32 @@ export function renderDeliveryStatusCardPart2(
                       : 'Повторить доставку'}
                   </button>
                 ) : (
-                  <p className="delivery-incident-note">
-                    {
-                      ' Уточните получение через тему обращения. Повтор без проверки может отправить клиенту дубликат. '
-                    }
-                  </p>
+                  <div className="delivery-resolution-actions">
+                    <p>{'Сначала уточните у клиента, был ли получен ответ.'}</p>
+                    <button
+                      type="button"
+                      disabled={Boolean($props.pendingDeliveryId)}
+                      onClick={() =>
+                        void $emit('resolve', incident.id, 'received')
+                      }
+                      className="secondary-button"
+                    >
+                      {$props.pendingDeliveryId === incident.id
+                        ? 'Сохраняем…'
+                        : 'Клиент получил'}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={Boolean($props.pendingDeliveryId)}
+                      onClick={() =>
+                        void $emit('resolve', incident.id, 'not_received')
+                      }
+                    >
+                      {$props.pendingDeliveryId === incident.id
+                        ? 'Сохраняем…'
+                        : 'Клиент не получил — повторить'}
+                    </button>
+                  </div>
                 )}
               </li>
             ))}

@@ -33,6 +33,7 @@ describe('operations monitoring routes', () => {
   it('returns status only through the separate owner session', async () => {
     const app = createApp(config);
     const retriedDeliveries: string[] = [];
+    const resolvedDeliveries: string[] = [];
     apps.add(app);
     registerOperationsRoutes(
       app,
@@ -47,6 +48,14 @@ describe('operations monitoring routes', () => {
       },
       createServiceControl(),
       {
+        confirmUnknownDeliveryNotReceived: (deliveryId) => {
+          resolvedDeliveries.push(`not_received:${deliveryId}`);
+          return true;
+        },
+        confirmUnknownDeliveryReceived: (deliveryId) => {
+          resolvedDeliveries.push(`received:${deliveryId}`);
+          return true;
+        },
         retryFailedDelivery: (deliveryId) => {
           retriedDeliveries.push(deliveryId);
           return true;
@@ -122,6 +131,17 @@ describe('operations monitoring routes', () => {
       remoteAddress: '192.0.2.10',
       url: '/api/ops/deliveries/delivery-1/retry',
     });
+    const resolveDelivery = await app.inject({
+      headers: {
+        cookie,
+        host: 'example.test',
+        origin: 'https://example.test',
+      },
+      method: 'POST',
+      payload: { resolution: 'received' },
+      remoteAddress: '192.0.2.10',
+      url: '/api/ops/deliveries/delivery-unknown/resolve',
+    });
 
     expect(unauthorized.statusCode).toBe(401);
     expect(page.statusCode).toBe(200);
@@ -147,6 +167,8 @@ describe('operations monitoring routes', () => {
     });
     expect(retry.statusCode).toBe(200);
     expect(retriedDeliveries).toEqual(['delivery-1']);
+    expect(resolveDelivery.statusCode).toBe(200);
+    expect(resolvedDeliveries).toEqual(['received:delivery-unknown']);
     expect(serviceControl.json()).toMatchObject({
       channels: {
         telegram: { mode: 'active' },

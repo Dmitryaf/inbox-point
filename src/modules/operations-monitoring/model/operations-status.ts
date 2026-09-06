@@ -64,6 +64,7 @@ export interface DeliveryIncident {
   id: string;
   operatorMessageId?: string;
   operatorTopicId: string;
+  outcomeUnknown: boolean;
   reason: string;
   requestId: string;
   retryAllowed: boolean;

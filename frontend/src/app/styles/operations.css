@@ -223,8 +223,7 @@
   justify-content: space-between;
 }
 
-.delivery-incident-heading time,
-.delivery-incident-note {
+.delivery-incident-heading time {
   color: var(--color-text-muted);
   font-size: 0.82rem;
 }
@@ -243,6 +242,17 @@
 
 .delivery-incidents button {
   justify-self: start;
+}
+
+.delivery-resolution-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.delivery-resolution-actions p {
+  flex-basis: 100%;
 }
 
 @media (min-width: 700px) {

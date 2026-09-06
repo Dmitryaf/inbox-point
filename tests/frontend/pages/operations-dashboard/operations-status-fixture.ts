@@ -28,6 +28,7 @@ export function attentionOperationsStatus(): OperationsStatus {
           id: 'delivery-1',
           operatorMessageId: 'operator-message-17',
           operatorTopicId: 'topic-42',
+          outcomeUnknown: false,
           reason: 'Telegram не доставил ответ.',
           requestId: 'request-9',
           retryAllowed: true,

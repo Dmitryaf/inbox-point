@@ -94,6 +94,9 @@ export function renderOperationsDashboardPagePart2(
               onChangeDeliveryMode={$callback(
                 $required($unref($state.deliveryControl)).change,
               )}
+              onResolveDelivery={$callback(
+                $required($unref($state.deliveryRetry)).resolve,
+              )}
               onRetryDelivery={$callback(
                 $required($unref($state.deliveryRetry)).retry,
               )}
