@@ -193,6 +193,61 @@ describe('Telegram handoff integration', () => {
     });
   });
 
+  it('posts a privacy-safe delivery failure notice in the affected topic', async () => {
+    const inbox = new TelegramTopicsInbox(gateway, -1_001);
+
+    await inbox.notifyDeliveryFailure({
+      attempts: 5,
+      channel: 'vk',
+      createdAt: new Date('2026-09-06T12:00:00.000Z'),
+      id: 'delivery-private-id',
+      lastError: 'Private client answer was rejected',
+      operatorMessageId: '502',
+      operatorTopicId: '900',
+      outcomeUnknown: false,
+      requestId: 'request-private-id',
+    });
+
+    expect(gateway.sent).toHaveLength(1);
+    expect(gateway.sent[0]).toMatchObject({
+      chatId: -1_001,
+      messageThreadId: 900,
+    });
+    expect(gateway.sent[0]?.text).toContain('Ответ клиенту не доставлен');
+    expect(gateway.sent[0]?.text).toContain('Сообщение преподавателя: 502');
+    expect(gateway.sent[0]?.text).toContain('/ops');
+    expect(gateway.sent[0]?.text).not.toContain('Private client answer');
+    expect(gateway.sent[0]?.text).not.toContain('request-private-id');
+    expect(gateway.sent[0]?.text).not.toContain('delivery-private-id');
+  });
+
+  it('warns against blind retries when delivery outcome is unknown', async () => {
+    const inbox = new TelegramTopicsInbox(gateway, -1_001);
+
+    await inbox.notifyDeliveryFailure({
+      attempts: 1,
+      channel: 'telegram',
+      createdAt: new Date('2026-09-06T12:00:00.000Z'),
+      id: 'delivery-1',
+      lastError: 'Response confirmation was lost',
+      operatorMessageId: '502',
+      operatorTopicId: '900',
+      outcomeUnknown: true,
+      requestId: 'request-1',
+    });
+
+    expect(gateway.sent[0]).toMatchObject({
+      chatId: -1_001,
+      messageThreadId: 900,
+    });
+    expect(gateway.sent[0]?.text).toContain(
+      'Не отправляйте ответ повторно вслепую',
+    );
+    expect(gateway.sent[0]?.text).toContain(
+      'Не удалось подтвердить доставку ответа клиенту',
+    );
+  });
+
   it('splits a maximum-length customer message without creating extra topics', async () => {
     const update = createPrivateUpdate(1, 501, 'Я'.repeat(4_096));
 

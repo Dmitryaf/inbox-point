@@ -59,6 +59,10 @@ export interface SupportRepository extends InboundEventStore {
     conversationId: string,
   ): SupportRequest | undefined;
   findFailedDeliveries(limit: number): readonly FailedDelivery[];
+  findUnnotifiedFailedDeliveries(
+    availableBefore: Date,
+    limit: number,
+  ): readonly FailedDelivery[];
   findLatestRequest(
     channel: ClientChannelKind,
     conversationId: string,
@@ -70,6 +74,11 @@ export interface SupportRepository extends InboundEventStore {
   ): readonly QueuedDelivery[];
   getDeliverySummary(): DeliverySummary;
   markDeliveryFailed(deliveryId: string, error: string): void;
+  markDeliveryFailureNotificationRetry(
+    deliveryId: string,
+    nextAttemptAt: Date,
+  ): void;
+  markDeliveryFailureNotified(deliveryId: string, notifiedAt: Date): void;
   markDeliveryOutcomeUnknown(deliveryId: string, error: string): void;
   markDeliveryRetry(
     deliveryId: string,

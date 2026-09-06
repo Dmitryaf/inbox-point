@@ -4,6 +4,8 @@ import type {
   RelayCustomerMessageOptions,
 } from '@/core/contracts/operator-inbox.js';
 import { OperatorConversationUnavailableError } from '@/core/contracts/operator-inbox.js';
+import type { DeliveryIncidentNotifier } from '@/core/contracts/delivery-incident-notifier.js';
+import type { FailedDelivery } from '@/core/model/support-request.js';
 import type { SupportMessage } from '@/core/model/support-message.js';
 
 import {
@@ -11,7 +13,9 @@ import {
   type TelegramGateway,
 } from './telegram-api-client.js';
 
-export class TelegramTopicsInbox implements OperatorInbox {
+export class TelegramTopicsInbox
+  implements OperatorInbox, DeliveryIncidentNotifier
+{
   public constructor(
     private readonly gateway: TelegramGateway,
     private readonly operatorChatId: number,
@@ -32,6 +36,14 @@ export class TelegramTopicsInbox implements OperatorInbox {
       request.title,
     );
     return { topicId: String(topic.topicId) };
+  }
+
+  public async notifyDeliveryFailure(delivery: FailedDelivery): Promise<void> {
+    await this.gateway.sendMessage({
+      chatId: this.operatorChatId,
+      messageThreadId: Number(delivery.operatorTopicId),
+      text: formatDeliveryFailureNotification(delivery),
+    });
   }
 
   public async relayCustomerMessage(
@@ -74,6 +86,31 @@ export class TelegramTopicsInbox implements OperatorInbox {
 }
 
 const telegramTextLimit = 4_096;
+
+function formatDeliveryFailureNotification(delivery: FailedDelivery): string {
+  const channelName = delivery.channel === 'telegram' ? 'Telegram' : 'VK';
+  const messageReference = delivery.operatorMessageId
+    ? `\nСообщение преподавателя: ${delivery.operatorMessageId}`
+    : '';
+
+  if (delivery.outcomeUnknown) {
+    return [
+      '⚠️ Не удалось подтвердить доставку ответа клиенту.',
+      '',
+      `Канал: ${channelName}${messageReference}`,
+      '',
+      'Не отправляйте ответ повторно вслепую. Владелец должен уточнить получение и разрешить инцидент в /ops.',
+    ].join('\n');
+  }
+
+  return [
+    '⚠️ Ответ клиенту не доставлен.',
+    '',
+    `Канал: ${channelName}${messageReference}`,
+    '',
+    'Владелец может повторить доставку в /ops.',
+  ].join('\n');
+}
 
 function formatCustomerMessages(
   message: SupportMessage,

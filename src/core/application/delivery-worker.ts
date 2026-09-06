@@ -4,6 +4,7 @@ import {
   DeliveryOutcomeUnknownError,
   type ClientChannel,
 } from '@/core/contracts/client-channel.js';
+import type { DeliveryIncidentNotifier } from '@/core/contracts/delivery-incident-notifier.js';
 import {
   silentDeliveryWorkerActivityReporter,
   type DeliveryWorkerActivityReporter,
@@ -25,6 +26,9 @@ export interface DeliveryWorkerDependencies {
   clock?: () => Date;
   createId?: () => string;
   maxAttempts?: number;
+  incidentNotifier?: DeliveryIncidentNotifier;
+  notificationRetryDelayMs?: number;
+  onNotificationError?: (error: unknown, deliveryId: string) => void;
   onError?: (error: unknown, context: DeliveryFailureContext) => void;
   policy?: OutboundDeliveryPolicy;
   repository: SupportRepository;
@@ -37,6 +41,12 @@ export class DeliveryWorker {
   private readonly clock: () => Date;
   private readonly createId: () => string;
   private readonly failurePolicy: DeliveryFailurePolicy;
+  private readonly incidentNotifier: DeliveryIncidentNotifier | undefined;
+  private readonly notificationRetryDelayMs: number;
+  private readonly onNotificationError: (
+    error: unknown,
+    deliveryId: string,
+  ) => void;
   private readonly policy: OutboundDeliveryPolicy;
   private readonly repository: SupportRepository;
 
@@ -48,6 +58,11 @@ export class DeliveryWorker {
     );
     this.clock = dependencies.clock ?? (() => new Date());
     this.createId = dependencies.createId ?? randomUUID;
+    this.incidentNotifier = dependencies.incidentNotifier;
+    this.notificationRetryDelayMs =
+      dependencies.notificationRetryDelayMs ?? 30_000;
+    this.onNotificationError =
+      dependencies.onNotificationError ?? (() => undefined);
     this.repository = dependencies.repository;
     this.policy = dependencies.policy ?? activeOutboundDeliveryPolicy;
     this.failurePolicy = new DeliveryFailurePolicy({
@@ -71,6 +86,7 @@ export class DeliveryWorker {
 
   public async processPending(): Promise<number> {
     if (this.policy.isDeliveryPaused()) {
+      await this.notifyFailedDeliveries();
       return 0;
     }
     const deliveries = this.repository.findPendingDeliveries(this.clock(), 25);
@@ -131,7 +147,30 @@ export class DeliveryWorker {
         }
       }
     }
+    await this.notifyFailedDeliveries();
     return processed;
+  }
+
+  private async notifyFailedDeliveries(): Promise<void> {
+    if (!this.incidentNotifier) {
+      return;
+    }
+    const failures = this.repository.findUnnotifiedFailedDeliveries(
+      this.clock(),
+      10,
+    );
+    for (const failure of failures) {
+      try {
+        await this.incidentNotifier.notifyDeliveryFailure(failure);
+        this.repository.markDeliveryFailureNotified(failure.id, this.clock());
+      } catch (error: unknown) {
+        this.repository.markDeliveryFailureNotificationRetry(
+          failure.id,
+          new Date(this.clock().getTime() + this.notificationRetryDelayMs),
+        );
+        this.onNotificationError(error, failure.id);
+      }
+    }
   }
 
   public async run(signal: AbortSignal): Promise<void> {

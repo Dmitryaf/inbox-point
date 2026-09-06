@@ -22,6 +22,10 @@ class FakeOperatorInbox implements OperatorInbox {
     return Promise.resolve({ topicId: 'topic-1' });
   }
 
+  public notifyDeliveryFailure(): Promise<void> {
+    return Promise.resolve();
+  }
+
   public relayCustomerMessage(): Promise<{
     operatorMessageIds: readonly string[];
   }> {

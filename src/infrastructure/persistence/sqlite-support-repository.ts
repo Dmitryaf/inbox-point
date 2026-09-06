@@ -157,7 +157,9 @@ export class SqliteSupportRepository implements SupportRepository {
              attempt_started_at = NULL,
              sent_at = NULL,
              manual_resolution = 'confirmed_not_received',
-             resolved_at = ?
+             resolved_at = ?,
+             operator_notified_at = NULL,
+             notification_next_attempt_at = NULL
          WHERE id = ? AND status = 'failed' AND outcome_unknown = 1`,
       )
       .run(retryAt.toISOString(), retryAt.toISOString(), deliveryId);
@@ -373,6 +375,36 @@ export class SqliteSupportRepository implements SupportRepository {
   }
 
   public findFailedDeliveries(limit: number): readonly FailedDelivery[] {
+    return this.findFailureRows(
+      `WHERE delivery.status = 'failed'
+       ORDER BY delivery.created_at DESC, delivery.id DESC
+       LIMIT ?`,
+      limit,
+    );
+  }
+
+  public findUnnotifiedFailedDeliveries(
+    availableBefore: Date,
+    limit: number,
+  ): readonly FailedDelivery[] {
+    return this.findFailureRows(
+      `WHERE delivery.status = 'failed'
+         AND delivery.operator_notified_at IS NULL
+         AND COALESCE(
+           delivery.notification_next_attempt_at,
+           delivery.created_at
+         ) <= ?
+       ORDER BY delivery.created_at, delivery.id
+       LIMIT ?`,
+      availableBefore.toISOString(),
+      limit,
+    );
+  }
+
+  private findFailureRows(
+    whereClause: string,
+    ...parameters: readonly (number | string)[]
+  ): readonly FailedDelivery[] {
     const rows = this.database
       .prepare(
         `SELECT
@@ -387,11 +419,9 @@ export class SqliteSupportRepository implements SupportRepository {
            request.operator_topic_id
          FROM deliveries AS delivery
          JOIN support_requests AS request ON request.id = delivery.request_id
-         WHERE delivery.status = 'failed'
-         ORDER BY delivery.created_at DESC, delivery.id DESC
-         LIMIT ?`,
+         ${whereClause}`,
       )
-      .all(limit) as unknown as FailedDeliveryRow[];
+      .all(...parameters) as unknown as FailedDeliveryRow[];
 
     return rows.map((row) => ({
       attempts: row.attempts,
@@ -564,10 +594,38 @@ export class SqliteSupportRepository implements SupportRepository {
          SET status = 'failed',
              attempts = attempts + 1,
              last_error = ?,
+             operator_notified_at = NULL,
+             notification_next_attempt_at = NULL,
              attempt_started_at = NULL
          WHERE id = ? AND status = 'pending'`,
       )
       .run(error, deliveryId);
+  }
+
+  public markDeliveryFailureNotificationRetry(
+    deliveryId: string,
+    nextAttemptAt: Date,
+  ): void {
+    this.database
+      .prepare(
+        `UPDATE deliveries
+         SET notification_next_attempt_at = ?
+         WHERE id = ? AND status = 'failed' AND operator_notified_at IS NULL`,
+      )
+      .run(nextAttemptAt.toISOString(), deliveryId);
+  }
+
+  public markDeliveryFailureNotified(
+    deliveryId: string,
+    notifiedAt: Date,
+  ): void {
+    this.database
+      .prepare(
+        `UPDATE deliveries
+         SET operator_notified_at = ?, notification_next_attempt_at = NULL
+         WHERE id = ? AND status = 'failed' AND operator_notified_at IS NULL`,
+      )
+      .run(notifiedAt.toISOString(), deliveryId);
   }
 
   public markDeliveryOutcomeUnknown(deliveryId: string, error: string): void {
@@ -578,6 +636,8 @@ export class SqliteSupportRepository implements SupportRepository {
              attempts = attempts + 1,
              last_error = ?,
              outcome_unknown = 1,
+             operator_notified_at = NULL,
+             notification_next_attempt_at = NULL,
              attempt_started_at = NULL
          WHERE id = ? AND status = 'pending'`,
       )
@@ -632,7 +692,9 @@ export class SqliteSupportRepository implements SupportRepository {
              last_error = NULL,
              next_attempt_at = ?,
              attempt_started_at = NULL,
-             sent_at = NULL
+             sent_at = NULL,
+             operator_notified_at = NULL,
+             notification_next_attempt_at = NULL
          WHERE id = ? AND status = 'failed' AND outcome_unknown = 0`,
       )
       .run(retryAt.toISOString(), deliveryId);
@@ -710,6 +772,8 @@ export class SqliteSupportRepository implements SupportRepository {
           manual_resolution IN ('confirmed_received', 'confirmed_not_received')
         ),
         resolved_at TEXT,
+        operator_notified_at TEXT,
+        notification_next_attempt_at TEXT,
         sent_at TEXT
       ) STRICT;
     `);
@@ -733,6 +797,22 @@ export class SqliteSupportRepository implements SupportRepository {
     }
     if (!deliveryColumns.some((column) => column.name === 'resolved_at')) {
       this.database.exec('ALTER TABLE deliveries ADD COLUMN resolved_at TEXT');
+    }
+    if (
+      !deliveryColumns.some((column) => column.name === 'operator_notified_at')
+    ) {
+      this.database.exec(
+        'ALTER TABLE deliveries ADD COLUMN operator_notified_at TEXT',
+      );
+    }
+    if (
+      !deliveryColumns.some(
+        (column) => column.name === 'notification_next_attempt_at',
+      )
+    ) {
+      this.database.exec(
+        'ALTER TABLE deliveries ADD COLUMN notification_next_attempt_at TEXT',
+      );
     }
     if (!deliveryColumns.some((column) => column.name === 'next_attempt_at')) {
       this.database.exec(
