@@ -8,8 +8,11 @@ import {
   newQuestionButton,
   teacherButton,
 } from '@/core/application/client-information.js';
+import {
+  pausedClientIntakeMessage,
+  type ClientIntakePolicy,
+} from '@/core/contracts/client-intake-policy.js';
 import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-support-repository.js';
-import type { ClientIntakePolicy } from '@/core/contracts/client-intake-policy.js';
 
 import type {
   GetUpdatesOptions,
@@ -352,7 +355,34 @@ describe('Telegram handoff integration', () => {
     expect(repository.findActiveRequest('telegram', '101')).toBeUndefined();
     expect(gateway.sent).toHaveLength(1);
     expect(gateway.sent[0]?.chatId).toBe(101);
-    expect(gateway.sent[0]?.text).toContain('в описании бота');
+    expect(gateway.sent[0]?.text).toBe(pausedClientIntakeMessage);
+    expect(gateway.sent[0]?.replyMarkup).toEqual({ remove_keyboard: true });
+  });
+
+  it('keeps configured Telegram information available while intake is paused', async () => {
+    information.replace({
+      customSections: [{ label: 'Как добраться', text: 'Вход со двора.' }],
+      schedule: 'Понедельник 19:00',
+    });
+    telegramPaused = true;
+
+    await router.route(createPrivateUpdate(1, 501, 'Расписание'));
+    await router.route(createPrivateUpdate(2, 502, 'Как добраться'));
+
+    expect(repository.findActiveRequest('telegram', '101')).toBeUndefined();
+    expect(gateway.sent.map((message) => message.text)).toEqual([
+      'Расписание\n\n• Понедельник 19:00',
+      'Вход со двора.',
+    ]);
+    const replyMarkup = gateway.sent[0]?.replyMarkup;
+    if (!replyMarkup || !('keyboard' in replyMarkup)) {
+      throw new Error('Expected a reply keyboard');
+    }
+    const labels = replyMarkup.keyboard.flat().map((button) => button.text);
+    expect(labels).toEqual(
+      expect.arrayContaining(['Расписание', 'Как добраться']),
+    );
+    expect(labels).not.toContain(teacherButton);
   });
 
   it('continues an open Telegram conversation after intake is paused', async () => {
@@ -360,12 +390,17 @@ describe('Telegram handoff integration', () => {
     telegramPaused = true;
 
     await router.route(createPrivateUpdate(2, 502, 'Уточнение'));
+    await router.route(createPrivateUpdate(3, 503, 'Расписание'));
 
     expect(repository.findActiveRequest('telegram', '101')).toBeDefined();
-    expect(gateway.sent).toHaveLength(2);
+    expect(gateway.sent).toHaveLength(3);
     expect(gateway.sent[1]?.chatId).toBe(-1_001);
     expect(gateway.sent[1]?.messageThreadId).toBe(900);
     expect(gateway.sent[1]?.text).toContain('Уточнение');
+    expect(gateway.sent[2]).toMatchObject({
+      chatId: 101,
+      text: 'Расписание пока не добавлено. Вы можете задать вопрос преподавателю.',
+    });
   });
 
   it('reports an active request instead of forwarding /start to operators', async () => {

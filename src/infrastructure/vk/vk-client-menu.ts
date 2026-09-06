@@ -1,11 +1,13 @@
 import {
   ClientInformationCatalog,
   type ClientInformationResolver,
+  isAvailableInformationRequest,
   teacherButton,
 } from '@/core/application/client-information.js';
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
 import {
   acceptingClientIntakePolicy,
+  pausedClientIntakeMessage,
   type ClientIntakePolicy,
 } from '@/core/contracts/client-intake-policy.js';
 
@@ -39,14 +41,15 @@ export class VkClientMenu implements VkClientMenuHandler {
       'vk',
       String(message.peerId),
     );
-    if (this.intakePolicy.isPaused('vk') && !activeRequest) {
-      return this.completeWithoutResponse(message);
-    }
-    const response = resolveMenuResponse(
-      message.text,
-      Boolean(activeRequest),
-      this.information,
-    );
+    const paused = this.intakePolicy.isPaused('vk') && !activeRequest;
+    const response =
+      paused && !isAvailableInformationRequest(this.information, message.text)
+        ? pausedClientIntakeMessage
+        : resolveMenuResponse(
+            message.text,
+            Boolean(activeRequest),
+            this.information,
+          );
     if (!response) {
       return false;
     }
@@ -61,7 +64,7 @@ export class VkClientMenu implements VkClientMenuHandler {
     }
 
     try {
-      const keyboard = createVkMainKeyboard(this.information);
+      const keyboard = createVkMainKeyboard(this.information, paused);
       await this.gateway.sendMessage(
         message.peerId,
         response,
@@ -79,26 +82,11 @@ export class VkClientMenu implements VkClientMenuHandler {
       throw error;
     }
   }
-
-  private completeWithoutResponse(message: VkMenuMessage): boolean {
-    const claimed = this.repository.claimEvent(
-      'vk:menu',
-      message.externalEventId,
-      new Date(),
-    );
-    if (claimed) {
-      this.repository.completeEvent(
-        'vk:menu',
-        message.externalEventId,
-        new Date(),
-      );
-    }
-    return true;
-  }
 }
 
 export function createVkMainKeyboard(
   information: ClientInformationResolver = new ClientInformationCatalog(),
+  paused = false,
 ): VkKeyboard {
   const informationButtons = information
     .getInformationButtons()
@@ -111,7 +99,7 @@ export function createVkMainKeyboard(
     buttons: [
       ...informationRows,
       ...customRows,
-      [createButton(teacherButton, 'teacher', 'primary')],
+      ...(paused ? [] : [[createButton(teacherButton, 'teacher', 'primary')]]),
     ],
     inline: false,
     one_time: false,
