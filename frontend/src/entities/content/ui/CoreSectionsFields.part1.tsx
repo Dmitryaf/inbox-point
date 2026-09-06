@@ -11,6 +11,7 @@ export function renderCoreSectionsFieldsPart1(
 ) {
   const draft = $state.draft.value;
   const scheduleLength = $state.scheduleLength.value;
+
   return (
     <>
       <details open className="field-group">

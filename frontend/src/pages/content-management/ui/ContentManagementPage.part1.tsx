@@ -16,6 +16,7 @@ export function renderContentManagementPagePart1(
 ) {
   const session = $unref($state.session);
   const workspaceActivated = $state.workspaceActivated.value;
+
   return (
     <>
       {session.booting.value ? (

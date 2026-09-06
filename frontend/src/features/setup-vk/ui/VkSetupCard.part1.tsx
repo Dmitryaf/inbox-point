@@ -20,6 +20,7 @@ export function renderVkSetupCardPart1(
   const accessToken = $state.accessToken.value;
   const pending = $state.pending.value;
   const message = $state.message.value;
+
   return (
     <>
       {$props.status.connected ? (

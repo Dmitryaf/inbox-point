@@ -10,6 +10,7 @@ export function renderClientIntakeControlPart2(
   $state: ReturnType<typeof createComponentModel>,
 ) {
   const control = $unref($state.control);
+
   return (
     <>
       <div className="intake-control-body" data-r-77f00789="">

@@ -17,6 +17,7 @@ export function renderOperationsDashboardPagePart1(
   const { authenticate } = $state;
   const session = $unref($state.session);
   const operations = $unref($state.operations);
+
   return (
     <>
       {session.booting.value ? (

@@ -18,6 +18,7 @@ export function renderWorkspaceNavigationPart1(
   $props: WithDefaults<ComponentProps, typeof componentDefaults>,
 ) {
   const { changeView, changeSection } = $state;
+
   return (
     <>
       <div className="mobile-workspace-navigation">

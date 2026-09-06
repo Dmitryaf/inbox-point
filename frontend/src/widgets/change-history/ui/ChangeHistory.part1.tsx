@@ -19,6 +19,7 @@ export function renderChangeHistoryPart1(
   $props: WithDefaults<ComponentProps, typeof componentDefaults>,
 ) {
   const { $emit } = $state;
+
   return (
     <>
       {$props.loading ? (

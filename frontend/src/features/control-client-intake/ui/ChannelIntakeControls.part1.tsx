@@ -14,6 +14,7 @@ export function renderChannelIntakeControlsPart1(
   $props: WithDefaults<ComponentProps, typeof componentDefaults>,
 ) {
   const { channelName, pauseExplanation, $emit } = $state;
+
   return (
     <>
       {$renderList(['telegram', 'vk'] as const, (channel) => (

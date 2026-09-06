@@ -8,6 +8,7 @@ export function renderCustomSectionsEditorPart1(
   $state: ReturnType<typeof createComponentModel>,
 ) {
   const sections = $state.sections.value;
+
   return (
     <>
       {$renderList(sections, (section, index) => (
