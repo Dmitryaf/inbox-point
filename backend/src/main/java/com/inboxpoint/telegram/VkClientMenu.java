@@ -42,7 +42,7 @@ final class VkClientMenu {
         try {
             api.send(peer, answer, "vk-menu:" + event, keyboard(blocked));
             if (information.isPublishedInformation(label)) {
-                store.pilotEvent("information:vk:" + event, "information_section", "vk", null, Instant.now());
+                store.usageEvent("information:vk:" + event, "information_section", "vk", null, Instant.now());
             }
             store.completeEvent("vk:menu", event, Instant.now());
             return true;

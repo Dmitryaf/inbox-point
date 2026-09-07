@@ -41,7 +41,7 @@ final class VkSetup {
         }
         try {
             var saved = JsonMapper.shared().readTree(Files.readString(path));
-            if (saved.path("version").asInt(0) != 1) {
+            if (!saved.isObject() || saved.size() != 3 || !saved.has("accessToken") || !saved.has("groupId") || !saved.has("pollTimeoutSeconds")) {
                 throw new IOException("Invalid VK settings version");
             }
             start(saved.path("accessToken").asString(""), saved.path("groupId").asLong(0),
@@ -79,7 +79,7 @@ final class VkSetup {
         try {
             if (save) {
                 client.check(group);
-                LocalJsonFile.write(path, JsonMapper.shared().createObjectNode().put("version", 1)
+                LocalJsonFile.write(path, JsonMapper.shared().createObjectNode()
                         .put("accessToken", token).put("groupId", group).put("pollTimeoutSeconds", timeout));
             }
         } catch (IOException | InterruptedException | RuntimeException failure) {

@@ -55,7 +55,7 @@ class HandoffRuntimeTest {
                 assertThat(message.deliveryStatus()).isEqualTo("pending");
             });
             assertThat(store.pending(now, false, true)).hasSize(2);
-            assertThat(store.pilotCounts(now)).containsEntry("new_request", 1L).containsEntry("web_takeover", 1L)
+            assertThat(store.usageCounts(now)).containsEntry("new_request", 1L).containsEntry("web_takeover", 1L)
                     .containsEntry("first_reply", 1L);
             service.relayReply(request, "web:close", "/close", "web:close");
             assertThat(store.activeOperatorRequests()).isEmpty();

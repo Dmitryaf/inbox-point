@@ -84,7 +84,7 @@ public final class TelegramRuntime {
         }
         try {
             var stored = JsonMapper.shared().readTree(Files.readString(settingsFile));
-            if (stored.path("version").asInt(0) != 1) {
+            if (!stored.isObject() || stored.size() != 3 || !stored.has("botToken") || !stored.has("operatorChatId") || !stored.has("pollTimeoutSeconds")) {
                 throw new IllegalArgumentException("Unsupported settings version");
             }
             source = LOCAL;
@@ -199,7 +199,7 @@ public final class TelegramRuntime {
         verifyConnection(origin, settings.token(), settings.group());
         try (var store = new TelegramStore(database)) {
             if (save) {
-                LocalJsonFile.write(settingsFile, JsonMapper.shared().createObjectNode().put("version", 1)
+                LocalJsonFile.write(settingsFile, JsonMapper.shared().createObjectNode()
                         .put("botToken", settings.token()).put("operatorChatId", settings.group())
                         .put("pollTimeoutSeconds", settings.timeout()));
             }
@@ -267,9 +267,9 @@ public final class TelegramRuntime {
         }
     }
 
-    public Map<String, Long> pilotCounts(Instant since) throws IOException, SQLException {
+    public Map<String, Long> usageCounts(Instant since) throws IOException, SQLException {
         try (var store = new TelegramStore(database)) {
-            return store.pilotCounts(since);
+            return store.usageCounts(since);
         }
     }
 

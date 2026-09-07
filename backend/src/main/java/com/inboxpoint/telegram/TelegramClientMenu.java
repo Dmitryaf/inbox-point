@@ -53,7 +53,7 @@ final class TelegramClientMenu {
             }
             api.sendMessage(chat, null, response, keyboard(blocked));
             if (information.isPublishedInformation(trimmed)) {
-                store.pilotEvent("information:telegram:" + event, "information_section", "telegram", null, Instant.now());
+                store.usageEvent("information:telegram:" + event, "information_section", "telegram", null, Instant.now());
             }
             store.completeEvent(SOURCE, event, now);
         } catch (TelegramBotApi.RequestFailed failure) {

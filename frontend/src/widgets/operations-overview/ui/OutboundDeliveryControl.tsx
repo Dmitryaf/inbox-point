@@ -37,7 +37,7 @@ export default function OutboundDeliveryControl(
           {$props.outbound.mode === 'paused' ? (
             <p>
               {
-                ' Отправка клиентам остановлена. Новые ответы сохраняются в очереди. '
+                ' Доставка ответов остановлена. Новые ответы сохраняются в очереди. '
               }
             </p>
           ) : (

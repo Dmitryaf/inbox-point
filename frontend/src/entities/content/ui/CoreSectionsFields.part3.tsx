@@ -37,7 +37,7 @@ export function renderCoreSectionsFieldsPart3(
             <span aria-hidden="true" className="disclosure-chevron" />
           </span>
         </summary>
-        <label htmlFor="address">{'Текст для клиента'}</label>
+        <label htmlFor="address">{'Текст ответа'}</label>
         <textarea
           id="address"
           aria-describedby={$props.errors.address ? 'address-error' : undefined}

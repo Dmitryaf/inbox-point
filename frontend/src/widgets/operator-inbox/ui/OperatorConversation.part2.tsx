@@ -32,7 +32,7 @@ export function renderOperatorConversationPart2(
               <div className="operator-message-meta">
                 <strong>
                   {message.direction === 'client_to_operator'
-                    ? $or(message.senderName, () => 'Клиент')
+                    ? $or(message.senderName, () => 'Отправитель')
                     : 'Оператор'}
                 </strong>
                 <time dateTime={message.createdAt}>

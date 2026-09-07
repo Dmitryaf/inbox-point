@@ -31,16 +31,13 @@ public final class ClientInformation {
     public static final String SCHEDULE = "Расписание";
     public static final String PRICES = "Цены";
     public static final String ADDRESS = "Адрес";
-    public static final String ASK = "Написать оператору";
-    private static final String FORMER_ASK = "Задать вопрос преподавателю";
-    private static final String LEGACY_ASK = "Передать сообщение человеку";
+    public static final String ASK = "Задать вопрос";
     public static final String FAQ = "Частые вопросы";
     public static final String RESET = "Начать новый вопрос";
     private static final List<String> FIELDS = List.of("schedule", "prices", "address");
     private static final Set<String> RESERVED = Set.of(
             SCHEDULE.toLowerCase(Locale.ROOT), PRICES.toLowerCase(Locale.ROOT), ADDRESS.toLowerCase(Locale.ROOT),
-            ASK.toLowerCase(Locale.ROOT), FORMER_ASK.toLowerCase(Locale.ROOT), LEGACY_ASK.toLowerCase(Locale.ROOT),
-            RESET.toLowerCase(Locale.ROOT), FAQ.toLowerCase(Locale.ROOT), "/start", "/menu", "начать", "faq");
+            ASK.toLowerCase(Locale.ROOT), RESET.toLowerCase(Locale.ROOT), FAQ.toLowerCase(Locale.ROOT), "/start", "/menu", "начать");
     private final Path file;
     private volatile State state;
 
@@ -48,12 +45,10 @@ public final class ClientInformation {
         file = Path.of(database).toAbsolutePath().resolveSibling("content-settings.json");
         try {
             var json = JsonMapper.shared().readTree(Files.readString(file));
-            state = switch (json.path("version").asInt()) {
-                case 1 -> new State(migrate(json), List.of());
-                case 2 -> new State(migrate(json.path("content")), history(json.path("history")));
-                case 3, 4 -> new State(normalize(json.path("content")), history(json.path("history")));
-                default -> throw new IllegalArgumentException("Unsupported content settings version");
-            };
+            if (!json.isObject() || json.size() != 2 || !json.path("content").isObject() || !json.path("history").isArray()) {
+                throw new IllegalArgumentException("Invalid stored content document");
+            }
+            state = new State(normalize(json.path("content")), history(json.path("history")));
         } catch (NoSuchFileException missing) {
             state = new State(new Snapshot(Map.of(), List.of(), List.of(), null), List.of());
         } catch (IOException | RuntimeException invalid) {
@@ -139,7 +134,7 @@ public final class ClientInformation {
                 .mapToInt(change -> change.revision() == null ? 0 : change.revision()).max().orElse(0);
         revisions.add(new Change(Instant.now().toString(), changed, newest + 1, next.jsonFields()));
         revisions.addAll(previous.history().stream().limit(19).toList());
-        var output = JsonMapper.shared().createObjectNode().put("version", 4);
+        var output = JsonMapper.shared().createObjectNode();
         var payload = output.putObject("content");
         serialize(payload, next);
         var entries = output.putArray("history");
@@ -179,7 +174,7 @@ public final class ClientInformation {
     }
 
     public static boolean isHandoffRequest(String label) {
-        return ASK.equals(label) || FORMER_ASK.equals(label) || LEGACY_ASK.equals(label);
+        return ASK.equals(label.strip());
     }
 
     public boolean isPublishedInformation(String label) {
@@ -209,14 +204,14 @@ public final class ClientInformation {
     }
 
     private static String resolve(String label, Snapshot snapshot) {
-        if (FAQ.equals(label) || "faq".equalsIgnoreCase(label)) {
-            return snapshot.faq().isEmpty() ? "Частые вопросы пока не добавлены. Напишите оператору, если нужна помощь." : formatFaq(snapshot.faq());
+        if (FAQ.equals(label)) {
+            return snapshot.faq().isEmpty() ? "Частые вопросы пока не добавлены. Задайте вопрос, если нужна помощь." : formatFaq(snapshot.faq());
         }
         return switch (label) {
-            case SCHEDULE -> formatList(SCHEDULE, snapshot.standard().get("schedule"), "Расписание пока не добавлено. Напишите оператору, чтобы уточнить время.");
-            case PRICES -> formatList(PRICES, snapshot.standard().get("prices"), "Информация о ценах пока не добавлена. Напишите оператору, чтобы уточнить стоимость.");
+            case SCHEDULE -> formatList(SCHEDULE, snapshot.standard().get("schedule"), "Расписание пока не добавлено. Задайте вопрос, чтобы уточнить время.");
+            case PRICES -> formatList(PRICES, snapshot.standard().get("prices"), "Информация о ценах пока не добавлена. Задайте вопрос, чтобы уточнить стоимость.");
             case ADDRESS -> snapshot.standard().containsKey("address")
-                    ? "Адрес\n\n" + snapshot.standard().get("address") : "Адрес пока не добавлен. Напишите оператору, чтобы узнать, как нас найти.";
+                    ? "Адрес\n\n" + snapshot.standard().get("address") : "Адрес пока не добавлен. Задайте вопрос, чтобы уточнить детали.";
             default -> snapshot.custom().stream()
                     .filter(section -> section.label().equals(label)).map(Section::text).findFirst().orElse(null);
         };
@@ -322,25 +317,6 @@ public final class ClientInformation {
         return List.copyOf(items);
     }
 
-    private static Snapshot migrate(JsonNode previous) {
-        var cleaned = JsonMapper.shared().createObjectNode();
-        var sections = cleaned.putArray("customSections");
-        var questions = cleaned.putArray("faq");
-        for (var row : previous.path("customSections")) {
-            if (!"faq".equals(row.path("format").asString(""))) {
-                sections.add(row);
-                continue;
-            }
-            for (var block : row.path("text").asString("").strip().split("\\R\\s*\\R")) {
-                var lines = block.lines().map(String::strip).filter(line -> !line.isEmpty()).toList();
-                if (lines.size() >= 2) {
-                    questions.addObject().put("question", lines.getFirst())
-                            .put("answer", String.join("\n", lines.subList(1, lines.size())));
-                }
-            }
-        }
-        return new Snapshot(fields(previous), custom(sections), faq(questions), null);
-    }
 
     private record Snapshot(Map<String, String> standard, List<Section> custom, List<Faq> faq,
             List<String> visible) {

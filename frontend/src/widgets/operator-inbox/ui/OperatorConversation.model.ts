@@ -29,7 +29,7 @@ export function createComponentModel($props: ResolvedProps) {
   async function closeRequest(): Promise<void> {
     if (
       window.confirm(
-        'Закрыть обращение? Новое сообщение клиента снова откроет его.',
+        'Закрыть обращение? Следующее новое сообщение создаст новое обращение.',
       )
     ) {
       await props.onClose();

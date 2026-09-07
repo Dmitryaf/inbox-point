@@ -7,7 +7,7 @@ import java.util.Locale;
 import java.util.UUID;
 
 final class HandoffService {
-    static final String ACKNOWLEDGEMENT = "Сообщение отправлено оператору. Ответ появится в этом чате.";
+    static final String ACKNOWLEDGEMENT = "Вопрос отправлен. Ответ появится здесь.";
     private static final int MESSAGE_LIMIT = 4096;
     private final TelegramStore store;
     private final OperatorInbox inbox;
@@ -49,7 +49,7 @@ final class HandoffService {
         var request = store.activeRequest(channel, chat);
         if (request != null) {
             try {
-                relayChunks(request, message, name, "Клиент:\n\n", text);
+                relayChunks(request, message, name, "Сообщение:\n\n", text);
                 return;
             } catch (TelegramBotApi.RequestFailed failure) {
                 if (failure.topicProblem() != TelegramBotApi.TopicProblem.MISSING
@@ -59,31 +59,17 @@ final class HandoffService {
                 store.changeStatus(request.id(), false, clock.instant());
             }
         }
-        var latest = store.latestRequest(channel, chat);
-        if (latest != null && !EmergencyOperatorInbox.isWebTopic(latest.topic()) && (request == null || !latest.id().equals(request.id()))) {
-            try {
-                inbox.reopen(latest.topic());
-                relayChunks(latest, message, name, "Клиент:\n\n", text);
-                store.changeStatus(latest.id(), true, clock.instant());
-                return;
-            } catch (TelegramBotApi.RequestFailed failure) {
-                if (failure.topicProblem() != TelegramBotApi.TopicProblem.MISSING
-                        && failure.topicProblem() != TelegramBotApi.TopicProblem.CLOSED) {
-                    throw failure;
-                }
-            }
-        }
         var platform = "telegram".equals(channel) ? "Telegram" : "VK";
         var title = ("telegram".equals(channel) ? "TG" : "VK") + " - " + name;
         title = title.substring(0, title.offsetByCodePoints(0, Math.min(128, title.codePointCount(0, title.length()))));
         var requestId = UUID.randomUUID().toString();
         request = new TelegramStore.Request(requestId, chat, inbox.open(requestId, title), true, channel);
         store.open(request, name, clock.instant());
-        store.pilotEvent("new-request:" + requestId, "new_request", channel, requestId, clock.instant());
+        store.usageEvent("new-request:" + requestId, "new_request", channel, requestId, clock.instant());
         if (EmergencyOperatorInbox.isWebTopic(request.topic())) {
             recordWebTakeover(request);
         }
-        var prefix = "Новое обращение из " + platform + "\nКлиент: " + name
+        var prefix = "Новое обращение из " + platform + "\nОтправитель: " + name
                 + "\n\nОтветьте сообщением в этой теме.\nЧтобы закрыть обращение, отправьте /close.\n\nВопрос:\n";
         relayChunks(request, message, name, prefix, text);
     }
@@ -113,13 +99,13 @@ final class HandoffService {
             }
             store.link(request.id(), "client_to_operator", message, sent.messageId(), clock.instant());
             start = end;
-            prefix = "Клиент (продолжение):\n\n";
+            prefix = "Новое сообщение:\n\n";
         }
         store.acknowledge(request, ACKNOWLEDGEMENT, clock.instant());
     }
 
     private void recordWebTakeover(TelegramStore.Request request) throws SQLException {
-        store.pilotEvent("web-takeover:" + request.id(), "web_takeover", request.channel(), request.id(), clock.instant());
+        store.usageEvent("web-takeover:" + request.id(), "web_takeover", request.channel(), request.id(), clock.instant());
     }
 
     void reconcileTopic(long topic, String event, boolean active) throws SQLException {
@@ -163,7 +149,7 @@ final class HandoffService {
             }
             default -> {
                 if (request.active()) {
-                    store.pilotEvent("first-reply:" + request.id(), "first_reply", request.channel(), request.id(), clock.instant());
+                    store.usageEvent("first-reply:" + request.id(), "first_reply", request.channel(), request.id(), clock.instant());
                     store.queue(request, event, message, text, clock.instant());
                 }
             }

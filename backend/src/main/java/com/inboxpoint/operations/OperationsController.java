@@ -104,8 +104,8 @@ final class OperationsController {
         }
     }
 
-    @GetMapping("/pilot-metrics")
-    ResponseEntity<?> pilotMetrics(HttpServletRequest request, HttpServletResponse response) {
+    @GetMapping("/usage-metrics")
+    ResponseEntity<?> usageMetrics(HttpServletRequest request, HttpServletResponse response) {
         if (!admin.available(request, response)) {
             return message(404, "Not found");
         }
@@ -115,10 +115,10 @@ final class OperationsController {
         try {
             var now = Instant.now();
             var since = now.minus(Duration.ofDays(30));
-            return ResponseEntity.ok(Map.of("events", runtime.pilotCounts(since), "observedAt", now.toString(),
+            return ResponseEntity.ok(Map.of("events", runtime.usageCounts(since), "observedAt", now.toString(),
                     "recordedSince", since.toString(), "periodDays", 30));
         } catch (IOException | SQLException unavailable) {
-            return message(503, "Метрики пилота пока недоступны.");
+            return message(503, "Метрики пока недоступны.");
         }
     }
 

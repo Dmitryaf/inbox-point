@@ -39,7 +39,7 @@ export default function ContentSummary($incomingProps: ComponentProps) {
             <AppIcon name="channel" />
           </span>
           <div>
-            <p>{'Меню клиентов'}</p>
+            <p>{'Меню в каналах'}</p>
             <h3 id="content-summary-title">
               {totalCount ? 'Готово к показу' : 'Пока не заполнено'}
             </h3>
@@ -48,7 +48,7 @@ export default function ContentSummary($incomingProps: ComponentProps) {
         {renderContentSummaryPart1($state, $props)}
         <p className="channel-note">
           <AppIcon name="check" />
-          {' После сохранения изменения увидят клиенты Telegram и VK. '}
+          {' После сохранения изменения появятся в Telegram и VK. '}
         </p>
       </section>
     </ModelScopeProvider>

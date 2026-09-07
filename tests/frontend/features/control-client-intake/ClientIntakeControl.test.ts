@@ -37,17 +37,15 @@ describe('ClientIntakeControl', () => {
       .filter((button) => button.text() === 'Приостановить');
 
     expect(pauseButtons).toHaveLength(2);
+    expect(wrapper.text()).toContain('Новый вопрос можно задать через бота.');
     expect(wrapper.text()).toContain(
-      'Клиенты могут написать оператору через бота.',
-    );
-    expect(wrapper.text()).toContain(
-      'Клиенты могут написать оператору через сообщество.',
+      'Новый вопрос можно задать через сообщество.',
     );
     await pauseButtons[0]?.trigger('click');
     await flushPromises();
 
     expect(confirmMock).toHaveBeenCalledWith(
-      'Приостановить новые обращения в Telegram? Клиенты увидят, что сейчас написать оператору нельзя.',
+      'Приостановить новые обращения в Telegram? В боте появится сообщение о временной паузе.',
     );
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/ops/service-control/telegram/pause',
@@ -58,7 +56,7 @@ describe('ClientIntakeControl', () => {
       'Новые обращения из Telegram приостановлены',
     );
     expect(wrapper.text()).toContain(
-      'Клиенты увидят, что новые обращения временно не принимаются.',
+      'В канале появится сообщение, что новые обращения временно не принимаются.',
     );
     expect(wrapper.findAll('input')).toHaveLength(0);
   });

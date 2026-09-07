@@ -22,12 +22,12 @@ public final class LocalServiceControl {
         file = database.toAbsolutePath().resolveSibling("service-control.json");
         try {
             var json = JsonMapper.shared().readTree(Files.readString(file));
-            if (json.path("version").asInt() != 1) {
+            if (!json.isObject() || json.size() != 2 || !json.has("channels") || !json.has("delivery")) {
                 throw new IllegalArgumentException("Unsupported service control version");
             }
             state = new State(Map.of("telegram", mode(json.at("/channels/telegram")),
                     "vk", mode(json.at("/channels/vk"))),
-                    json.path("delivery").isMissingNode() ? new Mode("active", null) : mode(json.path("delivery")));
+                    mode(json.path("delivery")));
         } catch (NoSuchFileException absent) {
             state = new State(Map.of("telegram", new Mode("active", null), "vk", new Mode("active", null)), new Mode("active", null));
         } catch (IOException | RuntimeException failure) {
@@ -65,7 +65,7 @@ public final class LocalServiceControl {
     }
 
     private State save(State next) throws IOException {
-        var json = JsonMapper.shared().createObjectNode().put("version", 1);
+        var json = JsonMapper.shared().createObjectNode();
         json.set("channels", JsonMapper.shared().valueToTree(next.channels()));
         json.set("delivery", JsonMapper.shared().valueToTree(next.delivery()));
         LocalJsonFile.write(file, json);

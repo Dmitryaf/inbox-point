@@ -29,10 +29,11 @@ class ClientInformationTest {
     }
 
     @Test
-    void upgradesVersionOneAndRecordsOnlyChangedSections() throws Exception {
+    void recordsOnlyChangedSectionsInTheCurrentDocument() throws Exception {
         var database = directory.resolve("history.sqlite").toString();
         java.nio.file.Files.writeString(directory.resolve("content-settings.json"),
-                "{\"version\":1,\"prices\":\"150\"}");
+                JsonMapper.shared().createObjectNode().set("content", JsonMapper.shared().createObjectNode().put("prices", "150"))
+                        .set("history", JsonMapper.shared().createArrayNode()).toString());
         var info = new ClientInformation(database);
         assertThat(info.resolve("Цены")).contains("• 150");
         var changes = JsonMapper.shared().createObjectNode().put("prices", "150");

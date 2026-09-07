@@ -39,7 +39,7 @@ export function renderCoreSectionsFieldsPart1(
             <span aria-hidden="true" className="disclosure-chevron" />
           </span>
         </summary>
-        <label htmlFor="schedule">{'Текст для клиента'}</label>
+        <label htmlFor="schedule">{'Текст ответа'}</label>
         <textarea
           id="schedule"
           aria-describedby={

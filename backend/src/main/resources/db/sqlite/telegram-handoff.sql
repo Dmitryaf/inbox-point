@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS conversation_messages (
 CREATE INDEX IF NOT EXISTS conversation_messages_by_request
   ON conversation_messages(request_id, created_at);
 
-CREATE TABLE IF NOT EXISTS pilot_events (
+CREATE TABLE IF NOT EXISTS usage_events (
   id TEXT PRIMARY KEY,
   event_type TEXT NOT NULL CHECK (event_type IN (
     'new_request', 'information_section', 'first_reply', 'delivery_failure', 'web_takeover'
@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS pilot_events (
   occurred_at TEXT NOT NULL
 ) STRICT;
 
-CREATE INDEX IF NOT EXISTS pilot_events_by_time ON pilot_events(occurred_at, event_type);
+CREATE INDEX IF NOT EXISTS usage_events_by_time ON usage_events(occurred_at, event_type);
 
 CREATE TABLE IF NOT EXISTS processed_events (
   source TEXT NOT NULL,

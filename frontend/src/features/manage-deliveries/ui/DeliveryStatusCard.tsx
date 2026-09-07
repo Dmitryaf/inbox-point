@@ -52,7 +52,7 @@ export default function DeliveryStatusCard($incomingProps: ComponentProps) {
           {loading ? 'Обновляем…' : 'Обновить'}
         </button>
         <p className="setup-note">
-          {' Тексты сообщений и данные клиентов здесь не отображаются. '}
+          {' Тексты сообщений и имена отправителей здесь не отображаются. '}
         </p>
       </section>
     </ModelScopeProvider>

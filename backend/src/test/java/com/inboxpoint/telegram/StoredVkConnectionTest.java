@@ -52,7 +52,7 @@ class StoredVkConnectionTest {
         var properties = new MockEnvironment().withProperty("DATABASE_PATH", database)
                 .withProperty("inboxpoint.vk.api-origin", origin);
         Files.writeString(directory.resolve("vk-settings.json"),
-                "{\"version\":1,\"accessToken\":\"synthetic-saved-token\",\"groupId\":123,\"pollTimeoutSeconds\":2}");
+                "{\"accessToken\":\"synthetic-saved-token\",\"groupId\":123,\"pollTimeoutSeconds\":2}");
         var runtime = new TelegramRuntime(properties, new ClientInformation(database));
         try {
             runtime.start();

@@ -53,7 +53,7 @@ final class TelegramStore implements AutoCloseable {
             statement.execute("UPDATE deliveries SET outcome_unknown = 1 WHERE last_error = 'Uncertain Telegram result' "
                     + "AND status = 'failed' AND outcome_unknown = 0");
             try (var version = statement.executeQuery("PRAGMA user_version")) {
-                if (version.next() && version.getInt(1) > 2) {
+                if (version.next() && version.getInt(1) > 3) {
                     throw new SQLException("Unsupported SQLite schema version");
                 }
             }
@@ -66,7 +66,7 @@ final class TelegramStore implements AutoCloseable {
                         received_at TEXT NOT NULL, PRIMARY KEY (source, external_event_id)
                     ) STRICT
                     """);
-            statement.execute("PRAGMA user_version = 2");
+            statement.execute("PRAGMA user_version = 3");
         } catch (IOException | SQLException failure) {
             try {
                 connection.close();
@@ -260,18 +260,18 @@ final class TelegramStore implements AutoCloseable {
                 Long.toString(request.conversation()), text, now.toString(), now.toString());
     }
 
-    void pilotEvent(String id, String type, String channel, String request, Instant now) throws SQLException {
-        update("INSERT OR IGNORE INTO pilot_events (id, event_type, channel, request_id, occurred_at) VALUES (?, ?, ?, ?, ?)",
+    void usageEvent(String id, String type, String channel, String request, Instant now) throws SQLException {
+        update("INSERT OR IGNORE INTO usage_events (id, event_type, channel, request_id, occurred_at) VALUES (?, ?, ?, ?, ?)",
                 id, type, channel, request, now.toString());
     }
 
-    java.util.Map<String, Long> pilotCounts(Instant since) throws SQLException {
+    java.util.Map<String, Long> usageCounts(Instant since) throws SQLException {
         var result = new java.util.LinkedHashMap<String, Long>();
         for (var type : List.of("new_request", "information_section", "first_reply", "delivery_failure", "web_takeover")) {
             result.put(type, 0L);
         }
         try (var statement = prepare("""
-                SELECT event_type, COUNT(*) FROM pilot_events WHERE julianday(occurred_at) >= julianday(?)
+                SELECT event_type, COUNT(*) FROM usage_events WHERE julianday(occurred_at) >= julianday(?)
                 GROUP BY event_type
                 """, since.toString()); var rows = statement.executeQuery()) {
             while (rows.next()) {

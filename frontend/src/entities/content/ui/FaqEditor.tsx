@@ -48,7 +48,7 @@ export default function FaqEditor($incomingProps: ComponentProps) {
             {' / 20'}
           </span>
         </div>
-        <p>{'Вопросы показываются клиенту в этом порядке.'}</p>
+        <p>{'Вопросы показываются в этом порядке.'}</p>
         <p
           aria-live="polite"
           className={$class('counter', {
@@ -71,7 +71,7 @@ export default function FaqEditor($incomingProps: ComponentProps) {
         {draft.faq.length === 0 ? (
           <p className="empty">
             {
-              ' Добавьте хотя бы один вопрос и ответ, чтобы показать этот раздел клиентам. '
+              ' Добавьте хотя бы один вопрос и ответ, чтобы показать этот раздел. '
             }
           </p>
         ) : null}

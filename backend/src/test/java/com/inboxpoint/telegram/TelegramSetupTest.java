@@ -46,7 +46,7 @@ class TelegramSetupTest {
                         .hasMessageContaining("already connected");
                 var settings = JsonMapper.shared().readTree(Files.readString(directory.resolve("telegram-settings.json")));
                 assertThat(settings.path("operatorChatId").asLong()).isEqualTo(-100123);
-                assertThat(settings.path("version").asInt()).isEqualTo(1);
+                assertThat(settings.has("version")).isFalse();
             } finally {
                 runtime.stop();
             }

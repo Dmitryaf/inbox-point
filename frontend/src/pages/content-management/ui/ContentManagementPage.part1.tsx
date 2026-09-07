@@ -13,8 +13,8 @@ export function renderContentManagementPagePart1(
       <header className="hero">
         <div>
           <p className="eyebrow">{'Messenger Handoff'}</p>
-          <h1>{'Информация для клиентов'}</h1>
-          <p>{'Обновите ответы, которые клиенты видят в Telegram и VK.'}</p>
+          <h1>{'Информация в каналах'}</h1>
+          <p>{'Настройте ответы, доступные в Telegram и VK.'}</p>
         </div>
         {session.authenticated.value ? (
           <button
