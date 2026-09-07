@@ -51,7 +51,7 @@ function add(): void {
         :text="errors[`section-label-${index}`]"
       />
       <p class="counter">{{ section.label.length }} / 40</p>
-      <label :for="`section-text-${index}`">Текст для клиента</label>
+      <label :for="`section-text-${index}`">Текст ответа</label>
       <textarea
         :id="`section-text-${index}`"
         v-model="section.text"

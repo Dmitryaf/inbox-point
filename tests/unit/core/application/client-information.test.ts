@@ -4,6 +4,8 @@ import {
   addressButton,
   ClientInformationCatalog,
   faqButton,
+  handoffButton,
+  isHandoffRequest,
   pricesButton,
   scheduleButton,
 } from '@/core/application/client-information.js';
@@ -101,13 +103,21 @@ describe('client information', () => {
     );
   });
 
-  it('keeps the legacy FAQ label as a hidden compatibility alias', () => {
+  it('accepts only the current FAQ label', () => {
     const catalog = new ClientInformationCatalog({
       faq: [{ answer: 'Напишите преподавателю.', question: 'Как записаться?' }],
     });
 
-    expect(catalog.resolve('FAQ')).toBe(catalog.resolve(faqButton));
+    expect(catalog.resolve('FAQ')).toBeUndefined();
   });
+
+  it('accepts only the current handoff label', () => {
+    expect(isHandoffRequest(handoffButton)).toBe(true);
+    expect(isHandoffRequest('Написать оператору')).toBe(false);
+    expect(isHandoffRequest('Передать сообщение человеку')).toBe(false);
+    expect(isHandoffRequest('Задать вопрос преподавателю')).toBe(false);
+  });
+
   it('rejects an FAQ question without an answer', () => {
     expect(
       () =>

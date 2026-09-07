@@ -94,7 +94,7 @@ async function retry(deliveryId: string): Promise<void> {
       {{ loading ? 'Обновляем…' : 'Обновить' }}
     </button>
     <p class="setup-note">
-      Тексты сообщений и данные клиентов здесь не отображаются.
+      Тексты сообщений и имена отправителей здесь не отображаются.
     </p>
   </section>
 </template>

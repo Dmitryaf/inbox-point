@@ -28,7 +28,7 @@ const totalCount = computed(
     <div class="summary-heading">
       <span class="summary-icon"><AppIcon name="channel" /></span>
       <div>
-        <p>Меню клиентов</p>
+        <p>Меню в каналах</p>
         <h3 id="content-summary-title">
           {{ totalCount ? 'Готово к показу' : 'Пока не заполнено' }}
         </h3>
@@ -52,7 +52,7 @@ const totalCount = computed(
 
     <p class="channel-note">
       <AppIcon name="check" />
-      После сохранения изменения увидят клиенты Telegram и VK.
+      После сохранения изменения появятся в Telegram и VK.
     </p>
   </section>
 </template>

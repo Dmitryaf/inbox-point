@@ -33,7 +33,7 @@ function explainDeliveryFailure(
     normalized.includes('user is deactivated') ||
     normalized.includes('forbidden')
   ) {
-    return 'Бот не может написать клиенту. Возможно, клиент заблокировал бота.';
+    return 'Бот не может отправить ответ. Возможно, пользователь заблокировал бота.';
   }
   if (
     normalized.includes('unauthorized') ||

@@ -16,7 +16,7 @@ afterEach(() => {
 });
 
 describe('SqliteSupportRepository', () => {
-  it('stores idempotent pilot counters without message text', () => {
+  it('stores idempotent usage counters without message text', () => {
     const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-test-'));
     temporaryDirectories.push(directory);
     const databasePath = join(directory, 'handoff.sqlite');
@@ -28,16 +28,16 @@ describe('SqliteSupportRepository', () => {
       type: 'information_section' as const,
     };
 
-    repository.recordPilotEvent(event);
-    repository.recordPilotEvent(event);
+    repository.recordUsageEvent(event);
+    repository.recordUsageEvent(event);
     expect(
-      repository.getPilotEventCounts(new Date('2026-09-06T00:00:00.000Z')),
+      repository.getUsageEventCounts(new Date('2026-09-06T00:00:00.000Z')),
     ).toMatchObject({ information_section: 1 });
     repository.close();
 
     const database = new DatabaseSync(databasePath, { readOnly: true });
     const columns = database
-      .prepare('PRAGMA table_info(pilot_events)')
+      .prepare('PRAGMA table_info(usage_events)')
       .all() as unknown as { name: string }[];
     expect(columns.map((column) => column.name)).not.toContain('text');
     database.close();
@@ -321,49 +321,20 @@ describe('SqliteSupportRepository', () => {
     restored.close();
   });
 
-  it('adds inbox and notification storage to an existing database', () => {
+  it('rejects a database with an outdated schema', () => {
     const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-test-'));
     temporaryDirectories.push(directory);
     const databasePath = join(directory, 'handoff.sqlite');
     const current = new SqliteSupportRepository(databasePath);
     current.close();
 
-    const legacyDatabase = new DatabaseSync(databasePath);
-    legacyDatabase.exec(`
-      DROP TABLE conversation_messages;
-      ALTER TABLE support_requests DROP COLUMN client_display_name;
-      ALTER TABLE deliveries DROP COLUMN operator_notified_at;
-      ALTER TABLE deliveries DROP COLUMN notification_next_attempt_at;
-    `);
-    legacyDatabase.close();
-
-    const migrated = new SqliteSupportRepository(databasePath);
-    migrated.close();
     const database = new DatabaseSync(databasePath);
-    const columns = database.prepare('PRAGMA table_info(deliveries)').all() as {
-      name: string;
-    }[];
-
-    expect(columns.map((column) => column.name)).toEqual(
-      expect.arrayContaining([
-        'operator_notified_at',
-        'notification_next_attempt_at',
-      ]),
-    );
-    const requestColumns = database
-      .prepare('PRAGMA table_info(support_requests)')
-      .all() as { name: string }[];
-    expect(requestColumns.map((column) => column.name)).toContain(
-      'client_display_name',
-    );
-    expect(
-      database
-        .prepare(
-          "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'conversation_messages'",
-        )
-        .get(),
-    ).toEqual({ name: 'conversation_messages' });
+    database.exec('PRAGMA user_version = 2');
     database.close();
+
+    expect(() => new SqliteSupportRepository(databasePath)).toThrow(
+      'Unsupported SQLite schema version 2; expected 3',
+    );
   });
 
   it('returns the durable operator conversation with delivery state', () => {
@@ -482,54 +453,6 @@ describe('SqliteSupportRepository', () => {
       ),
     ).toBe(false);
     second.close();
-  });
-
-  it('migrates existing processed events as completed', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-test-'));
-    temporaryDirectories.push(directory);
-    const databasePath = join(directory, 'handoff.sqlite');
-    const legacyDatabase = new DatabaseSync(databasePath);
-    legacyDatabase.exec(`
-      CREATE TABLE processed_events (
-        source TEXT NOT NULL,
-        external_event_id TEXT NOT NULL,
-        claimed_at TEXT NOT NULL,
-        PRIMARY KEY (source, external_event_id)
-      ) STRICT;
-      INSERT INTO processed_events (
-        source,
-        external_event_id,
-        claimed_at
-      ) VALUES (
-        'client:telegram',
-        'completed-update',
-        '2026-08-31T12:00:00.000Z'
-      );
-    `);
-    legacyDatabase.close();
-
-    const repository = new SqliteSupportRepository(databasePath);
-
-    expect(
-      repository.claimEvent(
-        'client:telegram',
-        'completed-update',
-        new Date('2026-08-31T12:01:00.000Z'),
-      ),
-    ).toBe(false);
-    expect(
-      repository.claimEvent(
-        'client:telegram',
-        'new-update',
-        new Date('2026-08-31T12:02:00.000Z'),
-      ),
-    ).toBe(true);
-    repository.completeEvent(
-      'client:telegram',
-      'new-update',
-      new Date('2026-08-31T12:02:01.000Z'),
-    );
-    repository.close();
   });
 
   it('restores queued inbound events after restart', () => {

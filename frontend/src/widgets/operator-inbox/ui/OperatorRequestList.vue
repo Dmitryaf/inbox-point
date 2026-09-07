@@ -32,7 +32,7 @@ function channelName(channel: 'telegram' | 'vk'): string {
       :aria-pressed="request.id === selectedRequestId"
       @click="$emit('select', request.id)"
     >
-      <strong>{{ request.displayName || 'Клиент' }}</strong>
+      <strong>{{ request.displayName || 'Без имени' }}</strong>
       <span>{{ channelName(request.channel) }}</span>
       <time :datetime="request.latestMessageAt || request.createdAt">
         {{ formatDate(request.latestMessageAt || request.createdAt) }}

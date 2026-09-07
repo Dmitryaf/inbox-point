@@ -31,7 +31,7 @@ describe('ContentManagementPage states', () => {
 
     await wrapper.get('#editor-section').setValue('faq');
     expect(wrapper.text()).toContain(
-      'Добавьте хотя бы один вопрос и ответ, чтобы показать этот раздел клиентам.',
+      'Добавьте хотя бы один вопрос и ответ, чтобы показать этот раздел.',
     );
     await wrapper.get('#workspace-view').setValue('preview');
     expect(wrapper.text()).toContain('здесь появится будущий ответ');

@@ -1,6 +1,6 @@
 import type { ClientChannelKind } from './support-message.js';
 
-export const pilotEventTypes = [
+export const usageEventTypes = [
   'new_request',
   'information_section',
   'first_reply',
@@ -8,14 +8,14 @@ export const pilotEventTypes = [
   'web_takeover',
 ] as const;
 
-export type PilotEventType = (typeof pilotEventTypes)[number];
+export type UsageEventType = (typeof usageEventTypes)[number];
 
-export interface PilotEvent {
+export interface UsageEvent {
   channel: ClientChannelKind;
   id: string;
   occurredAt: Date;
   requestId?: string;
-  type: PilotEventType;
+  type: UsageEventType;
 }
 
-export type PilotEventCounts = Record<PilotEventType, number>;
+export type UsageEventCounts = Record<UsageEventType, number>;

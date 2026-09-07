@@ -1,15 +1,9 @@
-import type { ClientInformationContent } from '@/core/application/client-information.js';
-import { informationSectionIds } from '@/core/application/client-information.js';
 import {
-  copyContent,
-  migrateLegacyContent,
-  validateContent,
-} from './content-mapper.js';
-import {
-  contentPayloadSchema,
-  storedContentSchema,
-  storedContentV4Schema,
-} from './schema.js';
+  informationSectionIds,
+  type ClientInformationContent,
+} from '@/core/application/client-information.js';
+import { copyContent, validateContent } from './content-mapper.js';
+import { contentPayloadSchema, storedContentSchema } from './schema.js';
 import type {
   ContentSectionKey,
   ContentSettingsDocument,
@@ -29,39 +23,23 @@ export function parseContentDocument(
     throw new Error('The local content settings are invalid');
   }
 
-  let content: ClientInformationContent;
-  if (result.data.version === 1) {
-    content = migrateLegacyContent(result.data);
-  } else if (result.data.version === 2) {
-    content = migrateLegacyContent(result.data.content);
-  } else {
-    content = validateContent(result.data.content);
-  }
   return {
-    content: copyContent(content),
-    history:
-      result.data.version === 1
-        ? []
-        : result.data.history.map((entry) => ({
-            changedAt: entry.changedAt,
-            ...('revision' in entry
-              ? {
-                  content: validateContent(entry.content),
-                  revision: entry.revision,
-                }
-              : {}),
-            sections: [...entry.sections],
-          })),
+    content: copyContent(validateContent(result.data.content)),
+    history: result.data.history.map((entry) => ({
+      changedAt: entry.changedAt,
+      content: validateContent(entry.content),
+      revision: entry.revision,
+      sections: [...entry.sections],
+    })),
   };
 }
 
 export function serializeContentDocument(
   document: ContentSettingsDocument,
 ): string {
-  const validated = storedContentV4Schema.parse({
+  const validated = storedContentSchema.parse({
     content: document.content,
     history: document.history,
-    version: 4,
   });
   return JSON.stringify(validated, undefined, 2) + '\n';
 }

@@ -77,7 +77,7 @@ export class VkClientMenu implements VkClientMenuHandler {
         keyboard.buttons.length > 0 ? keyboard : undefined,
       );
       if (informationRequested) {
-        this.repository.recordPilotEvent({
+        this.repository.recordUsageEvent({
           channel: 'vk',
           id: `information:vk:${message.externalEventId}`,
           occurredAt: new Date(),
@@ -142,18 +142,18 @@ function resolveMenuResponse(
 
   if (isHandoffRequest(normalized)) {
     return hasActiveRequest
-      ? 'Напишите сообщение, и оператор получит его в текущем разговоре.'
-      : 'Напишите свой вопрос одним сообщением. Оператор ответит вам здесь.';
+      ? 'Просто напишите сообщение, чтобы продолжить разговор.'
+      : 'Напишите свой вопрос. Мы ответим здесь.';
   }
   const command = normalized.toLowerCase();
   if (command === '/start' || command === '/menu' || command === 'начать') {
     return hasActiveRequest
-      ? 'У вас уже есть открытый вопрос. Напишите сообщение или выберите нужный раздел.'
-      : 'Здравствуйте! Выберите нужный раздел или напишите оператору.';
+      ? 'Разговор уже начат. Напишите сообщение, чтобы продолжить, или выберите нужный раздел.'
+      : 'Здравствуйте! Здесь можно посмотреть основную информацию или задать вопрос.';
   }
   if (command.startsWith('/')) {
     return hasActiveRequest
-      ? 'Просто напишите сообщение оператору или выберите нужный раздел.'
+      ? 'Просто напишите сообщение или выберите нужный раздел.'
       : 'Выберите нужный раздел.';
   }
   return undefined;

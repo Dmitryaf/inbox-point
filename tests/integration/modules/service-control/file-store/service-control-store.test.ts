@@ -47,7 +47,7 @@ describe('FileServiceControlStore', () => {
     });
   });
 
-  it('keeps delivery active when loading a state saved before the control existed', async () => {
+  it('rejects an incomplete local state', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'messenger-handoff-'));
     temporaryDirectories.push(directory);
     const path = join(directory, 'service-control.json');
@@ -58,14 +58,13 @@ describe('FileServiceControlStore', () => {
           telegram: { mode: 'active' },
           vk: { mode: 'paused' },
         },
-        version: 1,
       }),
     );
 
     const store = new FileServiceControlStore(path);
 
-    await expect(store.load()).resolves.toMatchObject({
-      delivery: { mode: 'active' },
-    });
+    await expect(store.load()).rejects.toThrow(
+      'The local service control settings are invalid',
+    );
   });
 });

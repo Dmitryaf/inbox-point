@@ -30,7 +30,7 @@ function updateVisibility(event: Event): void {
       @change="updateVisibility"
     />
     <span>
-      Показывать кнопку клиентам
+      Показывать кнопку в каналах
       <small v-if="!contentPresent">
         Пустой раздел всё равно не появится в меню.
       </small>

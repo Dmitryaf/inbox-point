@@ -64,7 +64,7 @@ describe('operations monitoring routes', () => {
       },
       undefined,
       {
-        getPilotEventCounts: () => ({
+        getUsageEventCounts: () => ({
           delivery_failure: 2,
           first_reply: 7,
           information_section: 11,
@@ -116,11 +116,11 @@ describe('operations monitoring routes', () => {
       remoteAddress: '192.0.2.10',
       url: '/api/ops/status',
     });
-    const pilotMetrics = await app.inject({
+    const usageMetrics = await app.inject({
       headers: { cookie },
       method: 'GET',
       remoteAddress: '192.0.2.10',
-      url: '/api/ops/pilot-metrics',
+      url: '/api/ops/usage-metrics',
     });
     const serviceControl = await app.inject({
       headers: { cookie },
@@ -173,8 +173,8 @@ describe('operations monitoring routes', () => {
       '__Host-mh-ops-session=synthetic-operations-session',
     );
     expect(status.statusCode).toBe(200);
-    expect(pilotMetrics.statusCode).toBe(200);
-    expect(pilotMetrics.json()).toMatchObject({
+    expect(usageMetrics.statusCode).toBe(200);
+    expect(usageMetrics.json()).toMatchObject({
       events: {
         delivery_failure: 2,
         first_reply: 7,

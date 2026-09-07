@@ -98,7 +98,7 @@ function formatDeliveryFailureNotification(delivery: FailedDelivery): string {
 
   if (delivery.outcomeUnknown) {
     return [
-      '⚠️ Не удалось подтвердить доставку ответа клиенту.',
+      '⚠️ Не удалось подтвердить доставку ответа.',
       '',
       `Канал: ${channelName}${messageReference}`,
       '',
@@ -107,7 +107,7 @@ function formatDeliveryFailureNotification(delivery: FailedDelivery): string {
   }
 
   return [
-    '⚠️ Ответ клиенту не доставлен.',
+    '⚠️ Ответ не доставлен.',
     '',
     `Канал: ${channelName}${messageReference}`,
     '',
@@ -123,7 +123,7 @@ function formatCustomerMessages(
   const firstPrefix = options.initial
     ? [
         `Новое обращение из ${channelName}`,
-        `Клиент: ${message.displayName}`,
+        `Отправитель: ${message.displayName}`,
         '',
         'Ответьте сообщением в этой теме.',
         'Чтобы закрыть обращение, отправьте /close.',
@@ -131,8 +131,8 @@ function formatCustomerMessages(
         'Вопрос:',
         '',
       ].join('\n')
-    : 'Клиент:\n\n';
-  const continuationPrefix = 'Клиент (продолжение):\n\n';
+    : 'Сообщение:\n\n';
+  const continuationPrefix = 'Новое сообщение:\n\n';
   const characters = Array.from(message.text);
   const messages: string[] = [];
   let offset = 0;

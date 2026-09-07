@@ -36,7 +36,7 @@ function add(): void {
       </div>
       <span>{{ draft.faq.length }} / 20</span>
     </div>
-    <p>Вопросы показываются клиенту в этом порядке.</p>
+    <p>Вопросы показываются в этом порядке.</p>
     <p
       class="counter"
       :class="{ 'counter--error': responseLength > 4000 }"
@@ -50,7 +50,7 @@ function add(): void {
       section="faq"
     />
     <p v-if="draft.faq.length === 0" class="empty">
-      Добавьте хотя бы один вопрос и ответ, чтобы показать этот раздел клиентам.
+      Добавьте хотя бы один вопрос и ответ, чтобы показать этот раздел.
     </p>
     <fieldset v-for="(item, index) in draft.faq" :key="index" class="item-card">
       <legend>Вопрос {{ index + 1 }}</legend>

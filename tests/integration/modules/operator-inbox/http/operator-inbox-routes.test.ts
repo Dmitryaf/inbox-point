@@ -191,7 +191,7 @@ describe('operator inbox routes', () => {
     expect(reply.json()).toEqual({ queued: true });
     expect(duplicateReply.json()).toEqual({ queued: true });
     expect(
-      repository.getPilotEventCounts(new Date('2026-01-01')).web_takeover,
+      repository.getUsageEventCounts(new Date('2026-01-01')).web_takeover,
     ).toBe(1);
     expect(
       repository.findPendingDeliveries(new Date('2026-09-08'), 10),

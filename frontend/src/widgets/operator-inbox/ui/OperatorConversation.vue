@@ -24,7 +24,7 @@ async function submitReply(): Promise<void> {
 async function closeRequest(): Promise<void> {
   if (
     window.confirm(
-      'Закрыть обращение? Новое сообщение клиента снова откроет его.',
+      'Закрыть обращение? Следующее новое сообщение создаст новое обращение.',
     )
   ) {
     await props.onClose();
@@ -58,7 +58,7 @@ function deliveryLabel(message: OperatorInboxMessage): string | undefined {
   <article class="operator-conversation">
     <header class="operator-conversation-heading">
       <div>
-        <h3>{{ request.displayName || 'Клиент' }}</h3>
+        <h3>{{ request.displayName || 'Без имени' }}</h3>
         <p>{{ request.channel === 'telegram' ? 'Telegram' : 'VK' }}</p>
       </div>
       <button
@@ -86,7 +86,7 @@ function deliveryLabel(message: OperatorInboxMessage): string | undefined {
           <strong>
             {{
               message.direction === 'client_to_operator'
-                ? message.senderName || 'Клиент'
+                ? message.senderName || 'Отправитель'
                 : 'Оператор'
             }}
           </strong>
@@ -110,7 +110,7 @@ function deliveryLabel(message: OperatorInboxMessage): string | undefined {
     <p v-else class="operator-inbox-empty">Сообщений пока нет.</p>
 
     <form class="operator-reply-form" @submit.prevent="submitReply">
-      <label for="operator-reply">Ответ клиенту</label>
+      <label for="operator-reply">Ответ</label>
       <textarea
         id="operator-reply"
         v-model="replyText"
@@ -122,7 +122,7 @@ function deliveryLabel(message: OperatorInboxMessage): string | undefined {
       <div class="operator-reply-actions">
         <span>{{ replyText.length }} / 4000</span>
         <button type="submit" :disabled="actionPending || !replyText.trim()">
-          {{ actionPending ? 'Добавляем в очередь…' : 'Отправить клиенту' }}
+          {{ actionPending ? 'Добавляем в очередь…' : 'Отправить' }}
         </button>
       </div>
     </form>

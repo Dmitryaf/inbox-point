@@ -61,7 +61,7 @@ describe('client response preview', () => {
     expect(validateContentDraft(content).valid).toBe(false);
 
     content.schedule = '';
-    content.customSections = [{ label: ' FAQ ', text: 'Ответ' }];
+    content.customSections = [{ label: ' Задать вопрос ', text: 'Ответ' }];
     expect(validateContentDraft(content)).toEqual({
       issues: [
         {

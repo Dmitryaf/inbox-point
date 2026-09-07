@@ -106,11 +106,11 @@ export function useClientIntakeControl(options: ClientIntakeControlOptions) {
 function confirmPause(channel: ClientChannel): boolean {
   if (channel === 'telegram') {
     return window.confirm(
-      'Приостановить новые обращения в Telegram? Клиенты увидят, что сейчас написать оператору нельзя.',
+      'Приостановить новые обращения в Telegram? В боте появится сообщение о временной паузе.',
     );
   }
   return window.confirm(
-    'Приостановить новые обращения из VK? Клиенты увидят, что сейчас написать оператору нельзя.',
+    'Приостановить новые обращения из VK? В сообществе появится сообщение о временной паузе.',
   );
 }
 

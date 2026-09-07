@@ -30,7 +30,7 @@ export class FileContentSettingsStore implements ContentSettingsStore {
     return (
       document?.history.map((entry) => ({
         changedAt: entry.changedAt,
-        ...(entry.revision ? { revision: entry.revision } : {}),
+        revision: entry.revision,
         sections: [...entry.sections],
       })) ?? []
     );
@@ -62,9 +62,9 @@ export class FileContentSettingsStore implements ContentSettingsStore {
   public async restore(revision: number): Promise<ClientInformationContent> {
     const current = await this.readDocument();
     const target = current?.history.find(
-      (entry) => entry.revision === revision && entry.content,
+      (entry) => entry.revision === revision,
     );
-    if (!target?.content) {
+    if (!target) {
       throw new Error('The requested content revision is unavailable');
     }
     await this.save(target.content);
@@ -107,10 +107,7 @@ export class FileContentSettingsStore implements ContentSettingsStore {
 
 function nextRevision(document: ContentSettingsDocument | undefined): number {
   return (
-    Math.max(
-      0,
-      ...(document?.history.map((entry) => entry.revision ?? 0) ?? []),
-    ) + 1
+    Math.max(0, ...(document?.history.map((entry) => entry.revision) ?? [])) + 1
   );
 }
 

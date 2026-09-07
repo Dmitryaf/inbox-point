@@ -16,7 +16,7 @@ import {
 } from './route-access.js';
 import { registerOperationsSessionRoutes } from './session-routes.js';
 import { registerOperationsStatusRoutes } from './status-routes.js';
-import { registerPilotMetricsRoute } from './pilot-metrics-route.js';
+import { registerUsageMetricsRoute } from './usage-metrics-route.js';
 
 export function registerOperationsRoutes(
   app: FastifyInstance,
@@ -31,7 +31,7 @@ export function registerOperationsRoutes(
     | 'retryFailedDelivery'
   >,
   operatorInbox?: OperatorInboxService,
-  pilotMetrics?: Pick<SupportRepository, 'getPilotEventCounts'>,
+  usageMetrics?: Pick<SupportRepository, 'getUsageEventCounts'>,
 ): void {
   const routeAccess = createOperationsRouteAccess(app, access, options);
   const assets = options.assets ?? loadFrontendAssets('/ops');
@@ -46,7 +46,7 @@ export function registerOperationsRoutes(
   registerOperationsStatusRoutes(app, monitoring, routeAccess);
   registerOperationsDeliveryRoutes(app, deliveries, routeAccess);
   registerOperatorInboxRoutes(app, operatorInbox, routeAccess);
-  registerPilotMetricsRoute(app, pilotMetrics, routeAccess);
+  registerUsageMetricsRoute(app, usageMetrics, routeAccess);
   if (serviceControl) {
     registerServiceControlRoutes(
       app,

@@ -98,7 +98,7 @@ describe('HandoffService', () => {
       status: 'active',
     });
     expect(
-      repository.getPilotEventCounts(new Date('2026-08-31T00:00:00.000Z'))
+      repository.getUsageEventCounts(new Date('2026-08-31T00:00:00.000Z'))
         .new_request,
     ).toBe(1);
   });
@@ -166,11 +166,18 @@ describe('HandoffService', () => {
     ]);
   });
 
-  it('reopens the previous topic instead of creating a duplicate', async () => {
+  it('creates a new request after the previous request is closed', async () => {
     await service.handleClientMessage(
       'update-1',
       createClientMessage('message-1', 'First'),
     );
+    const firstRequest = repository.findActiveRequest('telegram', '101');
+    await service.handleOperatorMessage('update-first-reply', {
+      externalMessageId: 'operator-first',
+      operatorTopicId: 'topic-1',
+      receivedAt: new Date('2026-08-31T12:00:30.000Z'),
+      text: 'First answer',
+    });
     await service.handleOperatorMessage('update-2', {
       externalMessageId: 'operator-1',
       operatorTopicId: 'topic-1',
@@ -182,9 +189,16 @@ describe('HandoffService', () => {
       'update-3',
       createClientMessage('message-2', 'New question'),
     );
+    await service.handleOperatorMessage('update-second-reply', {
+      externalMessageId: 'operator-second',
+      operatorTopicId: 'topic-2',
+      receivedAt: new Date('2026-08-31T12:02:00.000Z'),
+      text: 'Second answer',
+    });
 
-    expect(inbox.opened).toHaveLength(1);
-    expect(inbox.reopened).toEqual(['topic-1']);
+    const secondRequest = repository.findActiveRequest('telegram', '101');
+    expect(inbox.opened).toHaveLength(2);
+    expect(inbox.reopened).toEqual([]);
     expect(inbox.relayed).toEqual([
       {
         initial: true,
@@ -192,15 +206,20 @@ describe('HandoffService', () => {
         operatorTopicId: 'topic-1',
       },
       {
-        initial: false,
+        initial: true,
         message: createClientMessage('message-2', 'New question'),
-        operatorTopicId: 'topic-1',
+        operatorTopicId: 'topic-2',
       },
     ]);
-    expect(repository.findActiveRequest('telegram', '101')).toMatchObject({
-      id: 'id-1',
-      operatorTopicId: 'topic-1',
+    expect(firstRequest?.id).toBeDefined();
+    expect(secondRequest).toMatchObject({
+      operatorTopicId: 'topic-2',
     });
+    expect(secondRequest?.id).not.toBe(firstRequest?.id);
+    expect(
+      repository.getUsageEventCounts(new Date('2026-08-31T00:00:00.000Z')),
+    ).toMatchObject({ first_reply: 2, new_request: 2 });
+    expect(repository.getDeliverySummary().pending).toBe(4);
   });
 
   it('keeps an older duplicate topic closed', async () => {
@@ -249,7 +268,7 @@ describe('HandoffService', () => {
     await service.handleOperatorMessage('update-2', operatorMessage);
     await service.handleOperatorMessage('update-2', operatorMessage);
     expect(
-      repository.getPilotEventCounts(new Date('2026-08-31T00:00:00.000Z'))
+      repository.getUsageEventCounts(new Date('2026-08-31T00:00:00.000Z'))
         .first_reply,
     ).toBe(1);
     repository.completeDelivery(

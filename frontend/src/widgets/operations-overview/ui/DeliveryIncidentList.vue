@@ -65,7 +65,7 @@ function formatCreatedAt(value: string): string {
           }}
         </button>
         <div v-else class="delivery-resolution-actions">
-          <p>Сначала уточните у клиента, был ли получен ответ.</p>
+          <p>Сначала проверьте, было ли получено сообщение.</p>
           <button
             class="secondary-button"
             type="button"
@@ -75,7 +75,7 @@ function formatCreatedAt(value: string): string {
             {{
               pendingDeliveryId === incident.id
                 ? 'Сохраняем…'
-                : 'Клиент получил'
+                : 'Сообщение получено'
             }}
           </button>
           <button
@@ -86,7 +86,7 @@ function formatCreatedAt(value: string): string {
             {{
               pendingDeliveryId === incident.id
                 ? 'Сохраняем…'
-                : 'Клиент не получил — повторить'
+                : 'Не получено — повторить'
             }}
           </button>
         </div>

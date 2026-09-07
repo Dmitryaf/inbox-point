@@ -26,6 +26,7 @@ import type { TelegramUpdate } from '@/infrastructure/telegram/telegram-types.js
 import { TelegramUpdateRouter } from '@/infrastructure/telegram/telegram-update-router.js';
 
 class FakeTelegramGateway implements TelegramGateway {
+  public readonly closedTopics: number[] = [];
   public readonly createdTopics: number[] = [];
   public failNextSend = false;
   public readonly reopened: number[] = [];
@@ -45,6 +46,7 @@ class FakeTelegramGateway implements TelegramGateway {
         ),
       );
     }
+    this.closedTopics.push(messageThreadId);
     return Promise.resolve();
   }
 
@@ -193,17 +195,17 @@ describe('Telegram handoff integration', () => {
     expect(gateway.sent[0]?.text).toContain('Question');
     expect(gateway.sent[1]).toEqual({
       chatId: 101,
-      text: 'Сообщение отправлено оператору. Ответ появится в этом чате.',
+      text: 'Вопрос отправлен. Ответ появится здесь.',
     });
     expect(gateway.sent[2]).toEqual({
       chatId: 101,
       text: 'Answer',
     });
     expect(
-      repository.getPilotEventCounts(new Date('2026-01-01')).new_request,
+      repository.getUsageEventCounts(new Date('2026-01-01')).new_request,
     ).toBe(1);
     expect(
-      repository.getPilotEventCounts(new Date('2026-01-01')).first_reply,
+      repository.getUsageEventCounts(new Date('2026-01-01')).first_reply,
     ).toBe(1);
   });
 
@@ -227,7 +229,7 @@ describe('Telegram handoff integration', () => {
       chatId: -1_001,
       messageThreadId: 900,
     });
-    expect(gateway.sent[0]?.text).toContain('Ответ клиенту не доставлен');
+    expect(gateway.sent[0]?.text).toContain('Ответ не доставлен');
     expect(gateway.sent[0]?.text).toContain('Сообщение оператора: 502');
     expect(gateway.sent[0]?.text).toContain('/ops');
     expect(gateway.sent[0]?.text).not.toContain('Private client answer');
@@ -258,7 +260,7 @@ describe('Telegram handoff integration', () => {
       'Не отправляйте ответ повторно вслепую',
     );
     expect(gateway.sent[0]?.text).toContain(
-      'Не удалось подтвердить доставку ответа клиенту',
+      'Не удалось подтвердить доставку ответа',
     );
   });
 
@@ -304,9 +306,7 @@ describe('Telegram handoff integration', () => {
 
     await router.route(startUpdate);
     await router.route(startUpdate);
-    await router.route(
-      createPrivateUpdate(2, 502, 'Задать вопрос преподавателю'),
-    );
+    await router.route(createPrivateUpdate(2, 502, handoffButton));
 
     expect(repository.findActiveRequest('telegram', '101')).toBeUndefined();
     expect(gateway.sent).toHaveLength(2);
@@ -324,7 +324,6 @@ describe('Telegram handoff integration', () => {
     }
     expect(initialMenu.keyboard.flat().map((button) => button.text)).toEqual([
       handoffButton,
-      newQuestionButton,
     ]);
     expect(gateway.sent[1]?.text).toContain('Напишите свой вопрос');
     expect(gateway.sent[1]?.replyMarkup).toMatchObject({
@@ -395,7 +394,7 @@ describe('Telegram handoff integration', () => {
     );
     expect(labels).not.toContain(handoffButton);
     expect(
-      repository.getPilotEventCounts(new Date('2026-01-01'))
+      repository.getUsageEventCounts(new Date('2026-01-01'))
         .information_section,
     ).toBe(2);
   });
@@ -414,7 +413,7 @@ describe('Telegram handoff integration', () => {
     expect(gateway.sent[1]?.text).toContain('Уточнение');
     expect(gateway.sent[2]).toMatchObject({
       chatId: 101,
-      text: 'Расписание пока не добавлено. Напишите оператору, чтобы уточнить время.',
+      text: 'Расписание пока не добавлено. Задайте вопрос, чтобы уточнить время.',
     });
   });
 
@@ -426,8 +425,15 @@ describe('Telegram handoff integration', () => {
     expect(gateway.sent[1]).toMatchObject({
       chatId: 101,
       replyMarkup: { is_persistent: true },
-      text: 'У вас уже есть открытый вопрос. Напишите сообщение, чтобы продолжить разговор, или выберите нужный раздел.',
+      text: 'Разговор уже начат. Напишите сообщение, чтобы продолжить, или выберите нужный раздел.',
     });
+    const activeMenu = gateway.sent[1]?.replyMarkup;
+    if (!activeMenu || !('keyboard' in activeMenu)) {
+      throw new Error('Expected an active-request keyboard');
+    }
+    expect(activeMenu.keyboard.flat().map((button) => button.text)).toEqual([
+      newQuestionButton,
+    ]);
   });
 
   it('keeps reference buttons available during an active request', async () => {
@@ -438,7 +444,7 @@ describe('Telegram handoff integration', () => {
     expect(gateway.sent[1]).toMatchObject({
       chatId: 101,
       replyMarkup: { is_persistent: true },
-      text: 'Расписание пока не добавлено. Напишите оператору, чтобы уточнить время.',
+      text: 'Расписание пока не добавлено. Задайте вопрос, чтобы уточнить время.',
     });
   });
 
@@ -520,6 +526,34 @@ describe('Telegram handoff integration', () => {
     });
   });
 
+  it('closes a web-owned request without calling the Telegram topic API', async () => {
+    await router.route(createPrivateUpdate(1, 501, 'Первый вопрос'));
+    const firstRequest = repository.findActiveRequest('telegram', '101');
+    if (!firstRequest) {
+      throw new Error('Expected an active request');
+    }
+    expect(
+      repository.switchOperatorTopic(
+        firstRequest.id,
+        firstRequest.operatorTopicId,
+        `web:${firstRequest.id}`,
+      ),
+    ).toBe(true);
+
+    await router.route(createPrivateUpdate(2, 502, '/start'));
+    await router.route(createPrivateUpdate(3, 503, newQuestionButton));
+
+    expect(gateway.closedTopics).toEqual([]);
+    expect(repository.findRequestById(firstRequest.id)?.status).toBe('closed');
+
+    await router.route(createPrivateUpdate(4, 504, 'Следующий вопрос'));
+
+    const nextRequest = repository.findActiveRequest('telegram', '101');
+    expect(nextRequest).toMatchObject({ operatorTopicId: '901' });
+    expect(nextRequest?.id).not.toBe(firstRequest.id);
+    expect(gateway.createdTopics).toEqual([900, 901]);
+  });
+
   it('synchronizes manual topic closing and reopening', async () => {
     await router.route(createPrivateUpdate(1, 501, 'Первый вопрос'));
 
@@ -530,41 +564,26 @@ describe('Telegram handoff integration', () => {
     expect(repository.findActiveRequest('telegram', '101')).toBeDefined();
   });
 
-  it('reopens a closed topic for a returning customer', async () => {
+  it('creates a new request for a returning customer after close', async () => {
     await router.route(createPrivateUpdate(1, 501, 'First question'));
+    const firstRequest = repository.findActiveRequest('telegram', '101');
     await router.route(createTopicServiceUpdate(2, 'closed'));
 
     await router.route(createPrivateUpdate(3, 502, 'New question'));
 
-    expect(gateway.reopened).toEqual([900]);
-    expect(
-      repository.findActiveRequest('telegram', '101')?.operatorTopicId,
-    ).toBe('900');
-    expect(gateway.sent).toHaveLength(2);
-    expect(gateway.sent[1]).toMatchObject({
-      chatId: -1_001,
-      messageThreadId: 900,
-    });
-    expect(gateway.sent[1]?.text).toContain('New question');
-  });
-
-  it('creates a replacement only when the closed topic was deleted', async () => {
-    await router.route(createPrivateUpdate(1, 501, 'First question'));
-    await router.route(createTopicServiceUpdate(2, 'closed'));
-    gateway.unavailableTopics.add(900);
-
-    await router.route(createPrivateUpdate(3, 502, 'New question'));
-
-    expect(gateway.reopened).toHaveLength(0);
-    expect(
-      repository.findActiveRequest('telegram', '101')?.operatorTopicId,
-    ).toBe('901');
+    const nextRequest = repository.findActiveRequest('telegram', '101');
+    expect(gateway.reopened).toEqual([]);
+    expect(nextRequest?.operatorTopicId).toBe('901');
+    expect(nextRequest?.id).not.toBe(firstRequest?.id);
     expect(gateway.sent).toHaveLength(2);
     expect(gateway.sent[1]).toMatchObject({
       chatId: -1_001,
       messageThreadId: 901,
     });
     expect(gateway.sent[1]?.text).toContain('New question');
+    expect(
+      repository.getUsageEventCounts(new Date('2026-01-01')).new_request,
+    ).toBe(2);
   });
 });
 

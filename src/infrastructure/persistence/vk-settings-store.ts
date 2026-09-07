@@ -5,12 +5,13 @@ import { z } from 'zod';
 
 import type { VkRuntimeConfig } from '@/config/runtime-config.js';
 
-const storedVkSettingsSchema = z.object({
-  accessToken: z.string().min(20),
-  groupId: z.number().int().positive(),
-  pollTimeoutSeconds: z.number().int().min(1).max(50),
-  version: z.literal(1),
-});
+const storedVkSettingsSchema = z
+  .object({
+    accessToken: z.string().min(20),
+    groupId: z.number().int().positive(),
+    pollTimeoutSeconds: z.number().int().min(1).max(50),
+  })
+  .strict();
 
 export interface VkSettingsStore {
   load(): Promise<VkRuntimeConfig | undefined>;
@@ -53,7 +54,7 @@ export class FileVkSettingsStore implements VkSettingsStore {
     await mkdir(directory, { recursive: true });
     await writeFile(
       temporaryPath,
-      JSON.stringify({ version: 1, ...settings }, undefined, 2) + '\n',
+      JSON.stringify(settings, undefined, 2) + '\n',
       { encoding: 'utf8', mode: 0o600 },
     );
     await rename(temporaryPath, this.path);

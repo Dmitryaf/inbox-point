@@ -17,8 +17,7 @@ export interface HandoffServiceDependencies {
   repository: SupportRepository;
 }
 
-export const handoffAcknowledgement =
-  'Сообщение отправлено оператору. Ответ появится в этом чате.';
+export const handoffAcknowledgement = 'Вопрос отправлен. Ответ появится здесь.';
 
 export class HandoffService {
   private readonly clientMessageQueue = new KeyedTaskQueue();
@@ -66,27 +65,6 @@ export class HandoffService {
           throw error;
         }
         this.repository.closeRequest(existingRequest.id, this.clock());
-      }
-    }
-
-    const previousRequest = this.repository.findLatestRequest(
-      message.channel,
-      message.conversationId,
-    );
-    if (
-      previousRequest?.status === 'closed' &&
-      !isWebOperatorTopic(previousRequest.operatorTopicId)
-    ) {
-      try {
-        await this.operatorInbox.reopenRequest(previousRequest.operatorTopicId);
-        this.repository.reopenRequest(previousRequest.id);
-        await this.relayClientMessage(previousRequest, message);
-        return;
-      } catch (error: unknown) {
-        if (!(error instanceof OperatorConversationUnavailableError)) {
-          throw error;
-        }
-        this.repository.closeRequest(previousRequest.id, this.clock());
       }
     }
 
@@ -182,7 +160,7 @@ export class HandoffService {
       operatorTopicId: opened.topicId,
       status: 'active',
     });
-    this.repository.recordPilotEvent({
+    this.repository.recordUsageEvent({
       channel: message.channel,
       id: `new-request:${requestId}`,
       occurredAt: createdAt,
@@ -236,7 +214,7 @@ export class HandoffService {
 
       const idempotencyKey = `operator:${externalEventId}`;
       const occurredAt = this.clock();
-      this.repository.recordPilotEvent({
+      this.repository.recordUsageEvent({
         channel: request.channel,
         id: `first-reply:${request.id}`,
         occurredAt,
@@ -268,7 +246,7 @@ export class HandoffService {
     requestId: string,
     channel: SupportMessage['channel'],
   ): void {
-    this.repository.recordPilotEvent({
+    this.repository.recordUsageEvent({
       channel,
       id: `web-takeover:${requestId}`,
       occurredAt: this.clock(),

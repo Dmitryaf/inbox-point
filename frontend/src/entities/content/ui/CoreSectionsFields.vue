@@ -37,7 +37,7 @@ const responseLengths = computed(() => getCoreResponseLengths(draft.value));
           <span class="disclosure-chevron" aria-hidden="true" />
         </span>
       </summary>
-      <label for="schedule">Текст для клиента</label>
+      <label for="schedule">Текст ответа</label>
       <textarea
         id="schedule"
         v-model="draft.schedule"
@@ -78,7 +78,7 @@ const responseLengths = computed(() => getCoreResponseLengths(draft.value));
           <span class="disclosure-chevron" aria-hidden="true" />
         </span>
       </summary>
-      <label for="prices">Текст для клиента</label>
+      <label for="prices">Текст ответа</label>
       <textarea
         id="prices"
         v-model="draft.prices"
@@ -119,7 +119,7 @@ const responseLengths = computed(() => getCoreResponseLengths(draft.value));
           <span class="disclosure-chevron" aria-hidden="true" />
         </span>
       </summary>
-      <label for="address">Текст для клиента</label>
+      <label for="address">Текст ответа</label>
       <textarea
         id="address"
         v-model="draft.address"
