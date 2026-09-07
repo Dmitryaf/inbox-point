@@ -20,6 +20,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 COPY --from=build /app/dist ./dist
+RUN install -d -o node -g node /app/data
 
 USER node
 EXPOSE 3000

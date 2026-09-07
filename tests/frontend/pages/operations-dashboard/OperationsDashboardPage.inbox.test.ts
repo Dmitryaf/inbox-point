@@ -84,7 +84,7 @@ describe('OperationsDashboardPage operator inbox', () => {
     await flushPromises();
 
     expect(confirmMock).toHaveBeenCalled();
-    expect(wrapper.text()).toContain('Активных обращений нет');
+    expect(wrapper.text()).not.toContain('Входящие обращения');
     wrapper.unmount();
   });
 });

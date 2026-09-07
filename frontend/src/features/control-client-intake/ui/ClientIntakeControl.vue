@@ -1,17 +1,12 @@
 <script setup lang="ts">
-import type { ServiceControlScope } from '@frontend/entities/service-control/api/service-control-api';
 import { useClientIntakeControl } from '@frontend/features/control-client-intake/model/use-client-intake-control';
 import AsyncMessage from '@frontend/shared/ui/AsyncMessage.vue';
 import ChannelIntakeControls from './ChannelIntakeControls.vue';
 
-const props = withDefaults(defineProps<{ scope?: ServiceControlScope }>(), {
-  scope: 'manage',
-});
 const emit = defineEmits<{ changed: []; unauthorized: [] }>();
 const control = useClientIntakeControl({
   onChanged: () => emit('changed'),
   onUnauthorized: () => emit('unauthorized'),
-  scope: props.scope,
 });
 defineExpose({ refresh: control.load });
 </script>

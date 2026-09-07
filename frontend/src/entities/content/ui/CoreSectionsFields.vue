@@ -1,29 +1,17 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import {
-  formatAddressResponse,
-  formatListResponse,
-} from '@frontend/entities/content/lib/client-response-preview';
+import { getCoreResponseLengths } from '@frontend/entities/content/lib/content-response-limit';
 import type { ContentDraft } from '@frontend/entities/content/model/types';
+import FieldError from '@frontend/shared/ui/FieldError.vue';
 import SectionVisibilityControl from '@frontend/entities/content/ui/SectionVisibilityControl.vue';
 
 const draft = defineModel<ContentDraft>({ required: true });
-const scheduleLength = computed(() =>
-  draft.value.schedule.trim()
-    ? formatListResponse('Расписание', draft.value.schedule).length
-    : 0,
+withDefaults(
+  defineProps<{ errors?: Readonly<Record<string, string | undefined>> }>(),
+  { errors: () => ({}) },
 );
-const pricesLength = computed(() =>
-  draft.value.prices.trim()
-    ? formatListResponse('Цены', draft.value.prices).length
-    : 0,
-);
-const addressLength = computed(() =>
-  draft.value.address.trim()
-    ? formatAddressResponse(draft.value.address).length
-    : 0,
-);
+const responseLengths = computed(() => getCoreResponseLengths(draft.value));
 </script>
 
 <template>
@@ -53,11 +41,17 @@ const addressLength = computed(() =>
       <textarea
         id="schedule"
         v-model="draft.schedule"
+        :aria-describedby="errors.schedule ? 'schedule-error' : undefined"
+        :aria-invalid="Boolean(errors.schedule)"
         maxlength="4000"
         rows="5"
       />
-      <p class="counter" :class="{ 'counter--error': scheduleLength > 4000 }">
-        Итоговый ответ: {{ scheduleLength }} / 4000
+      <FieldError id="schedule-error" :text="errors.schedule" />
+      <p
+        class="counter"
+        :class="{ 'counter--error': responseLengths.schedule > 4000 }"
+      >
+        Итоговый ответ: {{ responseLengths.schedule }} / 4000
       </p>
       <SectionVisibilityControl
         v-model="draft.visibleSections"
@@ -85,9 +79,20 @@ const addressLength = computed(() =>
         </span>
       </summary>
       <label for="prices">Текст для клиента</label>
-      <textarea id="prices" v-model="draft.prices" maxlength="4000" rows="5" />
-      <p class="counter" :class="{ 'counter--error': pricesLength > 4000 }">
-        Итоговый ответ: {{ pricesLength }} / 4000
+      <textarea
+        id="prices"
+        v-model="draft.prices"
+        :aria-describedby="errors.prices ? 'prices-error' : undefined"
+        :aria-invalid="Boolean(errors.prices)"
+        maxlength="4000"
+        rows="5"
+      />
+      <FieldError id="prices-error" :text="errors.prices" />
+      <p
+        class="counter"
+        :class="{ 'counter--error': responseLengths.prices > 4000 }"
+      >
+        Итоговый ответ: {{ responseLengths.prices }} / 4000
       </p>
       <SectionVisibilityControl
         v-model="draft.visibleSections"
@@ -118,11 +123,17 @@ const addressLength = computed(() =>
       <textarea
         id="address"
         v-model="draft.address"
+        :aria-describedby="errors.address ? 'address-error' : undefined"
+        :aria-invalid="Boolean(errors.address)"
         maxlength="4000"
         rows="4"
       />
-      <p class="counter" :class="{ 'counter--error': addressLength > 4000 }">
-        Итоговый ответ: {{ addressLength }} / 4000
+      <FieldError id="address-error" :text="errors.address" />
+      <p
+        class="counter"
+        :class="{ 'counter--error': responseLengths.address > 4000 }"
+      >
+        Итоговый ответ: {{ responseLengths.address }} / 4000
       </p>
       <SectionVisibilityControl
         v-model="draft.visibleSections"

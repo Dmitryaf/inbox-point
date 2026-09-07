@@ -34,20 +34,23 @@ function formatCreatedAt(value: string): string {
           </time>
         </div>
         <p>{{ incident.reason }}</p>
-        <dl class="delivery-incident-context">
-          <div>
-            <dt>Обращение</dt>
-            <dd>{{ incident.requestId }}</dd>
-          </div>
-          <div>
-            <dt>Тема преподавателя</dt>
-            <dd>{{ incident.operatorTopicId }}</dd>
-          </div>
-          <div v-if="incident.operatorMessageId">
-            <dt>Сообщение преподавателя</dt>
-            <dd>{{ incident.operatorMessageId }}</dd>
-          </div>
-        </dl>
+        <details class="technical-details">
+          <summary>Технические данные</summary>
+          <dl class="delivery-incident-context">
+            <div>
+              <dt>ID обращения</dt>
+              <dd>{{ incident.requestId }}</dd>
+            </div>
+            <div>
+              <dt>ID темы в Telegram</dt>
+              <dd>{{ incident.operatorTopicId }}</dd>
+            </div>
+            <div v-if="incident.operatorMessageId">
+              <dt>ID сообщения</dt>
+              <dd>{{ incident.operatorMessageId }}</dd>
+            </div>
+          </dl>
+        </details>
         <button
           v-if="incident.retryAllowed"
           class="secondary-button"

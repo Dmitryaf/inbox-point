@@ -3,7 +3,6 @@ import { ref, watch } from 'vue';
 
 import { useManagementSession } from '@frontend/features/management-auth/model/use-management-session';
 import LoginForm from '@frontend/features/management-auth/ui/LoginForm.vue';
-import ClientIntakeControl from '@frontend/features/control-client-intake/ui/ClientIntakeControl.vue';
 import AsyncMessage from '@frontend/shared/ui/AsyncMessage.vue';
 import ContentWorkspace from '@frontend/widgets/content-workspace/ui/ContentWorkspace.vue';
 
@@ -69,7 +68,6 @@ async function logOut(): Promise<void> {
       </section>
       <template v-if="session.authenticated.value">
         <AsyncMessage kind="error" :text="session.error.value" />
-        <ClientIntakeControl @unauthorized="session.expireSession" />
       </template>
       <div v-if="workspaceActivated" v-show="session.authenticated.value">
         <ContentWorkspace

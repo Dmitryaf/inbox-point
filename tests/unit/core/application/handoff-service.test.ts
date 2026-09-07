@@ -97,6 +97,10 @@ describe('HandoffService', () => {
       operatorTopicId: 'topic-1',
       status: 'active',
     });
+    expect(
+      repository.getPilotEventCounts(new Date('2026-08-31T00:00:00.000Z'))
+        .new_request,
+    ).toBe(1);
   });
 
   it('reuses the active topic for subsequent client messages', async () => {
@@ -122,6 +126,7 @@ describe('HandoffService', () => {
         operatorTopicId: 'topic-1',
       },
     ]);
+    expect(repository.getDeliverySummary().pending).toBe(1);
   });
 
   it('serializes simultaneous messages from the same client', async () => {
@@ -243,6 +248,23 @@ describe('HandoffService', () => {
 
     await service.handleOperatorMessage('update-2', operatorMessage);
     await service.handleOperatorMessage('update-2', operatorMessage);
+    expect(
+      repository.getPilotEventCounts(new Date('2026-08-31T00:00:00.000Z'))
+        .first_reply,
+    ).toBe(1);
+    repository.completeDelivery(
+      'system:handoff-ack:id-1',
+      'client-ack-1',
+      new Date('2026-08-31T12:00:01.000Z'),
+      {
+        clientMessageId: 'client-ack-1',
+        createdAt: new Date('2026-08-31T12:00:01.000Z'),
+        direction: 'operator_to_client',
+        id: 'ack-link-1',
+        operatorMessageId: 'system:handoff-ack:id-1',
+        requestId: 'id-1',
+      },
+    );
 
     expect(
       repository.findPendingDeliveries(
@@ -264,6 +286,19 @@ describe('HandoffService', () => {
     await service.handleClientMessage(
       'update-1',
       createClientMessage('message-1', 'Question'),
+    );
+    repository.completeDelivery(
+      'system:handoff-ack:id-1',
+      'client-ack-1',
+      new Date('2026-08-31T12:00:01.000Z'),
+      {
+        clientMessageId: 'client-ack-1',
+        createdAt: new Date('2026-08-31T12:00:01.000Z'),
+        direction: 'operator_to_client',
+        id: 'ack-link-1',
+        operatorMessageId: 'system:handoff-ack:id-1',
+        requestId: 'id-1',
+      },
     );
 
     await service.handleOperatorMessage('update-2', {

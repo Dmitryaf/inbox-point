@@ -2,7 +2,9 @@ export const scheduleButton = 'Расписание';
 export const pricesButton = 'Цены';
 export const addressButton = 'Адрес';
 export const faqButton = 'Частые вопросы';
-export const teacherButton = 'Задать вопрос преподавателю';
+export const handoffButton = 'Написать оператору';
+export const legacyHumanButton = 'Передать сообщение человеку';
+export const legacyTeacherButton = 'Задать вопрос преподавателю';
 export const newQuestionButton = 'Начать новый вопрос';
 export const clientMessageLengthLimit = 4_000;
 
@@ -24,16 +26,15 @@ export type InformationSectionId = (typeof informationSectionIds)[number];
 
 export const reservedClientLabels = [
   ...informationButtons,
-  teacherButton,
+  handoffButton,
+  legacyHumanButton,
+  legacyTeacherButton,
   newQuestionButton,
   '/start',
   '/menu',
   'Начать',
   'FAQ',
 ] as const;
-
-const unavailableSuffix =
-  'пока не добавлено. Вы можете задать вопрос преподавателю.';
 
 export interface ClientInformationContent {
   address?: string;
@@ -115,22 +116,22 @@ export class ClientInformationCatalog implements ClientInformationResolver {
     if (normalized === scheduleButton) {
       return this.content.schedule
         ? formatListResponse('Расписание', this.content.schedule)
-        : 'Расписание ' + unavailableSuffix;
+        : 'Расписание пока не добавлено. Напишите оператору, чтобы уточнить время.';
     }
     if (normalized === pricesButton) {
       return this.content.prices
         ? formatListResponse('Цены', this.content.prices)
-        : 'Информация о ценах ' + unavailableSuffix;
+        : 'Информация о ценах пока не добавлена. Напишите оператору, чтобы уточнить стоимость.';
     }
     if (normalized === addressButton) {
       return this.content.address
         ? `Адрес\n\n${this.content.address}`
-        : 'Информация об адресе ' + unavailableSuffix;
+        : 'Адрес пока не добавлен. Напишите оператору, чтобы узнать, как нас найти.';
     }
     if (normalized === faqButton || normalized.toLowerCase() === 'faq') {
       return this.content.faq?.length
         ? formatFaqResponse(this.content.faq)
-        : 'Частые вопросы пока не добавлены. Вы можете задать вопрос преподавателю.';
+        : 'Частые вопросы пока не добавлены. Напишите оператору, если нужна помощь.';
     }
     const section = this.content.customSections?.find(
       (section) => section.label === normalized,
@@ -140,6 +141,15 @@ export class ClientInformationCatalog implements ClientInformationResolver {
     }
     return section.text;
   }
+}
+
+export function isHandoffRequest(text: string): boolean {
+  const normalized = text.trim();
+  return (
+    normalized === handoffButton ||
+    normalized === legacyHumanButton ||
+    normalized === legacyTeacherButton
+  );
 }
 
 export function isAvailableInformationRequest(

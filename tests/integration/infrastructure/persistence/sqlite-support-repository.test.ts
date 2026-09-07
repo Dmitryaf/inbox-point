@@ -16,6 +16,33 @@ afterEach(() => {
 });
 
 describe('SqliteSupportRepository', () => {
+  it('stores idempotent pilot counters without message text', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-test-'));
+    temporaryDirectories.push(directory);
+    const databasePath = join(directory, 'handoff.sqlite');
+    const repository = new SqliteSupportRepository(databasePath);
+    const event = {
+      channel: 'vk' as const,
+      id: 'information:vk:event-1',
+      occurredAt: new Date('2026-09-06T12:00:00.000Z'),
+      type: 'information_section' as const,
+    };
+
+    repository.recordPilotEvent(event);
+    repository.recordPilotEvent(event);
+    expect(
+      repository.getPilotEventCounts(new Date('2026-09-06T00:00:00.000Z')),
+    ).toMatchObject({ information_section: 1 });
+    repository.close();
+
+    const database = new DatabaseSync(databasePath, { readOnly: true });
+    const columns = database
+      .prepare('PRAGMA table_info(pilot_events)')
+      .all() as unknown as { name: string }[];
+    expect(columns.map((column) => column.name)).not.toContain('text');
+    database.close();
+  });
+
   it('marks an interrupted delivery attempt as unknown after restart', () => {
     const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-test-'));
     temporaryDirectories.push(directory);

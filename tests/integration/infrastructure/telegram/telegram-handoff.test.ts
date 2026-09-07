@@ -5,8 +5,8 @@ import { HandoffService } from '@/core/application/handoff-service.js';
 import {
   ClientInformationCatalog,
   faqButton,
+  handoffButton,
   newQuestionButton,
-  teacherButton,
 } from '@/core/application/client-information.js';
 import {
   pausedClientIntakeMessage,
@@ -183,8 +183,9 @@ describe('Telegram handoff integration', () => {
       update_id: 2,
     });
     await deliveryWorker.processPending();
+    await deliveryWorker.processPending();
 
-    expect(gateway.sent).toHaveLength(2);
+    expect(gateway.sent).toHaveLength(3);
     expect(gateway.sent[0]).toMatchObject({
       chatId: -1_001,
       messageThreadId: 900,
@@ -192,8 +193,18 @@ describe('Telegram handoff integration', () => {
     expect(gateway.sent[0]?.text).toContain('Question');
     expect(gateway.sent[1]).toEqual({
       chatId: 101,
+      text: 'Сообщение отправлено оператору. Ответ появится в этом чате.',
+    });
+    expect(gateway.sent[2]).toEqual({
+      chatId: 101,
       text: 'Answer',
     });
+    expect(
+      repository.getPilotEventCounts(new Date('2026-01-01')).new_request,
+    ).toBe(1);
+    expect(
+      repository.getPilotEventCounts(new Date('2026-01-01')).first_reply,
+    ).toBe(1);
   });
 
   it('posts a privacy-safe delivery failure notice in the affected topic', async () => {
@@ -217,7 +228,7 @@ describe('Telegram handoff integration', () => {
       messageThreadId: 900,
     });
     expect(gateway.sent[0]?.text).toContain('Ответ клиенту не доставлен');
-    expect(gateway.sent[0]?.text).toContain('Сообщение преподавателя: 502');
+    expect(gateway.sent[0]?.text).toContain('Сообщение оператора: 502');
     expect(gateway.sent[0]?.text).toContain('/ops');
     expect(gateway.sent[0]?.text).not.toContain('Private client answer');
     expect(gateway.sent[0]?.text).not.toContain('request-private-id');
@@ -312,7 +323,7 @@ describe('Telegram handoff integration', () => {
       throw new Error('Expected a reply keyboard');
     }
     expect(initialMenu.keyboard.flat().map((button) => button.text)).toEqual([
-      teacherButton,
+      handoffButton,
       newQuestionButton,
     ]);
     expect(gateway.sent[1]?.text).toContain('Напишите свой вопрос');
@@ -382,7 +393,11 @@ describe('Telegram handoff integration', () => {
     expect(labels).toEqual(
       expect.arrayContaining(['Расписание', 'Как добраться']),
     );
-    expect(labels).not.toContain(teacherButton);
+    expect(labels).not.toContain(handoffButton);
+    expect(
+      repository.getPilotEventCounts(new Date('2026-01-01'))
+        .information_section,
+    ).toBe(2);
   });
 
   it('continues an open Telegram conversation after intake is paused', async () => {
@@ -399,7 +414,7 @@ describe('Telegram handoff integration', () => {
     expect(gateway.sent[1]?.text).toContain('Уточнение');
     expect(gateway.sent[2]).toMatchObject({
       chatId: 101,
-      text: 'Расписание пока не добавлено. Вы можете задать вопрос преподавателю.',
+      text: 'Расписание пока не добавлено. Напишите оператору, чтобы уточнить время.',
     });
   });
 
@@ -423,7 +438,7 @@ describe('Telegram handoff integration', () => {
     expect(gateway.sent[1]).toMatchObject({
       chatId: 101,
       replyMarkup: { is_persistent: true },
-      text: 'Расписание пока не добавлено. Вы можете задать вопрос преподавателю.',
+      text: 'Расписание пока не добавлено. Напишите оператору, чтобы уточнить время.',
     });
   });
 

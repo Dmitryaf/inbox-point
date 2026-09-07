@@ -30,6 +30,7 @@ export class DeliveryFailurePolicy {
         delivery.id,
         message,
       );
+      this.recordPilotFailure(delivery);
       this.report(error, delivery, attempt, true);
       return;
     }
@@ -37,6 +38,7 @@ export class DeliveryFailurePolicy {
     const final = attempt >= this.dependencies.maxAttempts;
     if (final) {
       this.dependencies.repository.markDeliveryFailed(delivery.id, message);
+      this.recordPilotFailure(delivery);
     } else {
       const retryDelay = Math.min(
         this.dependencies.retryBaseDelayMs * 2 ** delivery.attempts,
@@ -52,6 +54,16 @@ export class DeliveryFailurePolicy {
       );
     }
     this.report(error, delivery, attempt, final);
+  }
+
+  private recordPilotFailure(delivery: QueuedDelivery): void {
+    this.dependencies.repository.recordPilotEvent({
+      channel: delivery.channel,
+      id: `delivery-failure:${delivery.id}`,
+      occurredAt: this.dependencies.clock(),
+      requestId: delivery.requestId,
+      type: 'delivery_failure',
+    });
   }
 
   private report(

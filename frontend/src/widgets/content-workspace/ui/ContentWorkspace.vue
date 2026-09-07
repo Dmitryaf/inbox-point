@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
 import { validateContentDraft } from '@frontend/entities/content/lib/content-validation';
 import SaveBar from '@frontend/features/save-content/ui/SaveBar.vue';
 import ContentSummary from '@frontend/entities/content/ui/ContentSummary.vue';
 import AsyncMessage from '@frontend/shared/ui/AsyncMessage.vue';
-import AppIcon from '@frontend/shared/ui/AppIcon.vue';
 import ChangeHistory from '@frontend/widgets/change-history/ui/ChangeHistory.vue';
 import ContentEditor from '@frontend/widgets/content-editor/ui/ContentEditor.vue';
 import ContentPreview from '@frontend/widgets/content-preview/ui/ContentPreview.vue';
@@ -24,6 +23,11 @@ const workspace = useContentWorkspace({
 const activeView = ref<WorkspaceView>('edit');
 const activeSection = ref<EditorSection>('core');
 const validation = computed(() => validateContentDraft(workspace.draft));
+const fieldErrors = computed<Record<string, string | undefined>>(() =>
+  Object.fromEntries(
+    validation.value.issues.map((issue) => [issue.fieldId, issue.message]),
+  ),
+);
 
 onMounted(() => void workspace.load());
 watch(
@@ -37,6 +41,24 @@ watch(
 watch(workspace.dirty, (dirty) => emit('dirtyChange', dirty), {
   immediate: true,
 });
+
+async function save(): Promise<void> {
+  const issue = validation.value.issues[0];
+  if (!issue) {
+    await workspace.save();
+    return;
+  }
+
+  activeView.value = 'edit';
+  activeSection.value = issue.section;
+  await nextTick();
+  const field = document.getElementById(issue.fieldId);
+  const details = field?.closest('details');
+  if (details) {
+    details.open = true;
+  }
+  field?.focus();
+}
 </script>
 
 <template>
@@ -56,20 +78,6 @@ watch(workspace.dirty, (dirty) => emit('dirtyChange', dirty), {
     class="workspace"
     :class="{ 'workspace--editing': activeView === 'edit' }"
   >
-    <header class="workspace-topbar">
-      <div class="workspace-identity">
-        <span class="workspace-mark"><AppIcon name="channel" /></span>
-        <div>
-          <strong>Messenger Handoff</strong>
-          <small>Информация для клиентов</small>
-        </div>
-      </div>
-      <span class="channel-badge">
-        <span aria-hidden="true" />
-        Telegram и VK
-      </span>
-    </header>
-
     <WorkspaceNavigation
       :active-section="activeSection"
       :active-view="activeView"
@@ -77,11 +85,12 @@ watch(workspace.dirty, (dirty) => emit('dirtyChange', dirty), {
       @view-change="activeView = $event"
     />
 
-    <main class="workspace-panel">
+    <section class="workspace-panel" aria-label="Рабочая область">
       <ContentEditor
         v-if="activeView === 'edit'"
         v-model="workspace.draft"
         :active-section="activeSection"
+        :errors="fieldErrors"
       />
       <ContentPreview
         v-else-if="activeView === 'preview'"
@@ -95,7 +104,7 @@ watch(workspace.dirty, (dirty) => emit('dirtyChange', dirty), {
         :restoring="workspace.restoring.value"
         @restore="workspace.restore"
       />
-    </main>
+    </section>
 
     <aside class="workspace-rail">
       <SaveBar
@@ -103,7 +112,7 @@ watch(workspace.dirty, (dirty) => emit('dirtyChange', dirty), {
         :saving="workspace.saving.value"
         :valid="validation.valid"
         :validation-message="validation.message"
-        @save="workspace.save"
+        @save="save"
       />
       <ContentSummary :content="workspace.draft" />
     </aside>

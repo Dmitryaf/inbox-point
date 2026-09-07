@@ -5,7 +5,6 @@ import { describe, expect, it, vi } from 'vitest';
 
 import ContentManagementPage from '@frontend/pages/content-management/ui/ContentManagementPage.vue';
 import { requestUrl, response } from '@test/frontend/support/fake-response';
-import { serviceControlResponse } from './content-management-test-helpers';
 
 const initialVersion = 'a'.repeat(64);
 
@@ -21,9 +20,6 @@ describe('ContentManagementPage states', () => {
         if (url.endsWith('/history')) {
           return Promise.resolve(response({ history: [] }));
         }
-        if (url.endsWith('/service-control')) {
-          return Promise.resolve(serviceControlResponse());
-        }
         return Promise.resolve(
           response({ content: {}, version: initialVersion }),
         );
@@ -34,11 +30,56 @@ describe('ContentManagementPage states', () => {
     await flushPromises();
 
     await wrapper.get('#editor-section').setValue('faq');
-    expect(wrapper.text()).toContain('Вопросов пока нет');
+    expect(wrapper.text()).toContain(
+      'Добавьте хотя бы один вопрос и ответ, чтобы показать этот раздел клиентам.',
+    );
     await wrapper.get('#workspace-view').setValue('preview');
     expect(wrapper.text()).toContain('здесь появится будущий ответ');
     await wrapper.get('#workspace-view').setValue('history');
     expect(wrapper.text()).toContain('Изменений пока нет');
+  });
+
+  it('shows the validation error next to the field and focuses it', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = requestUrl(input);
+        if (url.endsWith('/session')) {
+          return Promise.resolve(response({ authenticated: true }));
+        }
+        if (url.endsWith('/history')) {
+          return Promise.resolve(response({ history: [] }));
+        }
+        return Promise.resolve(
+          response({ content: {}, version: initialVersion }),
+        );
+      }),
+    );
+
+    const wrapper = mount(ContentManagementPage, { attachTo: document.body });
+    await flushPromises();
+    await wrapper.get('#editor-section').setValue('faq');
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Добавить вопрос')
+      ?.trigger('click');
+    await wrapper.get('#editor-section').setValue('core');
+
+    const correctionButton = wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Исправить поля');
+    expect(correctionButton).toBeDefined();
+    await correctionButton?.trigger('click');
+
+    expect(wrapper.get('#editor-section').element).toHaveProperty(
+      'value',
+      'faq',
+    );
+    expect(wrapper.get('#faq-question-0-error').text()).toBe(
+      'Заполните вопрос и ответ в этой карточке.',
+    );
+    expect(document.activeElement).toBe(wrapper.get('#faq-question-0').element);
+    wrapper.unmount();
   });
 
   it('keeps an unsaved draft visible after a failed save', async () => {
@@ -51,9 +92,6 @@ describe('ContentManagementPage states', () => {
         }
         if (url.endsWith('/history')) {
           return Promise.resolve(response({ history: [] }));
-        }
-        if (url.endsWith('/service-control')) {
-          return Promise.resolve(serviceControlResponse());
         }
         if (options?.method === 'POST') {
           return Promise.resolve(
@@ -96,9 +134,6 @@ describe('ContentManagementPage states', () => {
         const url = requestUrl(input);
         if (url.endsWith('/session')) {
           return Promise.resolve(response({ authenticated: true }));
-        }
-        if (url.endsWith('/service-control')) {
-          return Promise.resolve(serviceControlResponse());
         }
         return Promise.resolve(
           response({ message: 'Войдите, чтобы изменить информацию.' }, 401),

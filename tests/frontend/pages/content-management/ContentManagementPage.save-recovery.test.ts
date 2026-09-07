@@ -5,7 +5,6 @@ import { describe, expect, it, vi } from 'vitest';
 
 import ContentManagementPage from '@frontend/pages/content-management/ui/ContentManagementPage.vue';
 import { requestUrl, response } from '@test/frontend/support/fake-response';
-import { serviceControlResponse } from './content-management-test-helpers';
 import { contentResponse, findButton } from './content-management-test-helpers';
 
 describe('ContentManagementPage save recovery', () => {
@@ -21,9 +20,6 @@ describe('ContentManagementPage save recovery', () => {
         }
         if (url.endsWith('/history')) {
           return Promise.resolve(response({ history: [] }));
-        }
-        if (url.endsWith('/service-control')) {
-          return Promise.resolve(serviceControlResponse());
         }
         if (options?.method === 'POST') {
           if (typeof options.body !== 'string') {
@@ -73,9 +69,6 @@ describe('ContentManagementPage save recovery', () => {
         }
         if (url.endsWith('/history')) {
           return Promise.resolve(response({ history: [] }));
-        }
-        if (url.endsWith('/service-control')) {
-          return Promise.resolve(serviceControlResponse());
         }
         if (options?.method === 'POST') {
           return Promise.resolve(

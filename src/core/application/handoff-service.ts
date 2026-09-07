@@ -17,6 +17,9 @@ export interface HandoffServiceDependencies {
   repository: SupportRepository;
 }
 
+export const handoffAcknowledgement =
+  'Сообщение отправлено оператору. Ответ появится в этом чате.';
+
 export class HandoffService {
   private readonly clientMessageQueue = new KeyedTaskQueue();
   private readonly clock: () => Date;
@@ -124,6 +127,12 @@ export class HandoffService {
           throw new Error('The operator surface changed concurrently');
         }
       }
+      if (
+        isWebOperatorTopic(relayed.operatorTopicId) &&
+        !isWebOperatorTopic(request.operatorTopicId)
+      ) {
+        this.recordWebTakeover(request.id, message.channel);
+      }
     }
     for (const operatorMessageId of relayed.operatorMessageIds) {
       this.repository.addMessageLink({
@@ -135,6 +144,24 @@ export class HandoffService {
         requestId: request.id,
       });
     }
+    this.enqueueHandoffAcknowledgement(request.id, message);
+  }
+
+  private enqueueHandoffAcknowledgement(
+    requestId: string,
+    message: SupportMessage,
+  ): void {
+    const deliveryId = `system:handoff-ack:${requestId}`;
+    this.repository.enqueueDelivery({
+      channel: message.channel,
+      conversationId: message.conversationId,
+      createdAt: this.clock(),
+      id: deliveryId,
+      idempotencyKey: deliveryId,
+      operatorMessageId: deliveryId,
+      requestId,
+      text: handoffAcknowledgement,
+    });
   }
 
   private async openClientRequest(message: SupportMessage): Promise<void> {
@@ -155,6 +182,16 @@ export class HandoffService {
       operatorTopicId: opened.topicId,
       status: 'active',
     });
+    this.repository.recordPilotEvent({
+      channel: message.channel,
+      id: `new-request:${requestId}`,
+      occurredAt: createdAt,
+      requestId,
+      type: 'new_request',
+    });
+    if (isWebOperatorTopic(opened.topicId)) {
+      this.recordWebTakeover(requestId, message.channel);
+    }
     await this.relayClientMessage(
       { id: requestId, operatorTopicId: opened.topicId },
       message,
@@ -198,6 +235,14 @@ export class HandoffService {
       }
 
       const idempotencyKey = `operator:${externalEventId}`;
+      const occurredAt = this.clock();
+      this.repository.recordPilotEvent({
+        channel: request.channel,
+        id: `first-reply:${request.id}`,
+        occurredAt,
+        requestId: request.id,
+        type: 'first_reply',
+      });
       this.repository.recordConversationMessage({
         createdAt: message.receivedAt,
         direction: 'operator_to_client',
@@ -209,13 +254,26 @@ export class HandoffService {
       this.repository.enqueueDelivery({
         channel: request.channel,
         conversationId: request.conversationId,
-        createdAt: this.clock(),
+        createdAt: occurredAt,
         id: this.createId(),
         idempotencyKey,
         operatorMessageId: message.externalMessageId,
         requestId: request.id,
         text: message.text,
       });
+    });
+  }
+
+  private recordWebTakeover(
+    requestId: string,
+    channel: SupportMessage['channel'],
+  ): void {
+    this.repository.recordPilotEvent({
+      channel,
+      id: `web-takeover:${requestId}`,
+      occurredAt: this.clock(),
+      requestId,
+      type: 'web_takeover',
     });
   }
 

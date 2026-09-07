@@ -6,9 +6,14 @@ import {
   normalizeFaqItems,
 } from '@frontend/entities/content/lib/client-response-preview';
 import type { ContentDraft } from '@frontend/entities/content/model/types';
+import FieldError from '@frontend/shared/ui/FieldError.vue';
 import SectionVisibilityControl from './SectionVisibilityControl.vue';
 
 const draft = defineModel<ContentDraft>({ required: true });
+withDefaults(
+  defineProps<{ errors?: Readonly<Record<string, string | undefined>> }>(),
+  { errors: () => ({}) },
+);
 const responseLength = computed(() =>
   draft.value.faq.length > 0
     ? formatFaqResponse(normalizeFaqItems(draft.value.faq)).length
@@ -45,7 +50,7 @@ function add(): void {
       section="faq"
     />
     <p v-if="draft.faq.length === 0" class="empty">
-      Вопросов пока нет. Клиенту предложат написать преподавателю.
+      Добавьте хотя бы один вопрос и ответ, чтобы показать этот раздел клиентам.
     </p>
     <fieldset v-for="(item, index) in draft.faq" :key="index" class="item-card">
       <legend>Вопрос {{ index + 1 }}</legend>
@@ -53,17 +58,37 @@ function add(): void {
       <input
         :id="`faq-question-${index}`"
         v-model="item.question"
+        :aria-describedby="
+          errors[`faq-question-${index}`]
+            ? `faq-question-${index}-error`
+            : undefined
+        "
+        :aria-invalid="Boolean(errors[`faq-question-${index}`])"
         maxlength="300"
         required
+      />
+      <FieldError
+        :id="`faq-question-${index}-error`"
+        :text="errors[`faq-question-${index}`]"
       />
       <p class="counter">{{ item.question.length }} / 300</p>
       <label :for="`faq-answer-${index}`">Ответ</label>
       <textarea
         :id="`faq-answer-${index}`"
         v-model="item.answer"
+        :aria-describedby="
+          errors[`faq-answer-${index}`]
+            ? `faq-answer-${index}-error`
+            : undefined
+        "
+        :aria-invalid="Boolean(errors[`faq-answer-${index}`])"
         maxlength="3000"
         required
         rows="4"
+      />
+      <FieldError
+        :id="`faq-answer-${index}-error`"
+        :text="errors[`faq-answer-${index}`]"
       />
       <p class="counter">{{ item.answer.length }} / 3000</p>
       <div class="item-actions">

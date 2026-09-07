@@ -14,13 +14,19 @@ onMounted(() => void inbox.refresh());
 </script>
 
 <template>
-  <section class="card operator-inbox" aria-labelledby="operator-inbox-title">
+  <AsyncMessage kind="error" :text="inbox.error.value" />
+
+  <section
+    v-if="inbox.requests.value.length > 0"
+    class="card operator-inbox"
+    aria-labelledby="operator-inbox-title"
+  >
     <header class="operator-inbox-heading">
       <div>
         <p class="eyebrow">РЕЗЕРВНЫЙ КАНАЛ</p>
         <h2 id="operator-inbox-title">Входящие обращения</h2>
         <p>
-          Здесь можно ответить клиенту, даже если Telegram для преподавателей
+          Здесь можно ответить клиенту, даже если Telegram для операторов
           недоступен.
         </p>
       </div>
@@ -29,23 +35,9 @@ onMounted(() => void inbox.refresh());
       </span>
     </header>
 
-    <AsyncMessage kind="error" :text="inbox.error.value" />
     <AsyncMessage kind="success" :text="inbox.notice.value" />
 
-    <p
-      v-if="inbox.loading.value && inbox.requests.value.length === 0"
-      class="operator-inbox-empty"
-    >
-      Получаем обращения…
-    </p>
-    <p
-      v-else-if="inbox.requests.value.length === 0"
-      class="operator-inbox-empty"
-    >
-      Активных обращений нет.
-    </p>
-
-    <div v-else class="operator-inbox-layout">
+    <div class="operator-inbox-layout">
       <OperatorRequestList
         :requests="inbox.requests.value"
         :selected-request-id="inbox.selectedRequestId.value"

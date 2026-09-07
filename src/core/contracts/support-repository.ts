@@ -8,6 +8,7 @@ import type {
   SupportRequest,
 } from '@/core/model/support-request.js';
 import type { ClientChannelKind } from '@/core/model/support-message.js';
+import type { PilotEvent, PilotEventCounts } from '@/core/model/pilot-event.js';
 
 export interface DeliverySummary {
   failed: number;
@@ -90,6 +91,7 @@ export interface SupportRepository extends InboundEventStore {
     availableBefore: Date,
     limit: number,
   ): readonly QueuedDelivery[];
+  getPilotEventCounts(since: Date): PilotEventCounts;
   getDeliverySummary(): DeliverySummary;
   markDeliveryFailed(deliveryId: string, error: string): void;
   markDeliveryFailureNotificationRetry(
@@ -106,6 +108,7 @@ export interface SupportRepository extends InboundEventStore {
   purgeClosedConversationContent(closedBefore: Date): RetentionCleanupResult;
   releaseEvent(source: string, externalEventId: string): void;
   reopenRequest(requestId: string): void;
+  recordPilotEvent(event: PilotEvent): void;
   recordConversationMessage(message: ConversationMessage): void;
   retryFailedDelivery(deliveryId: string, retryAt: Date): boolean;
   switchOperatorTopic(

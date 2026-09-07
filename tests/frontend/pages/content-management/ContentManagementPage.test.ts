@@ -5,11 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import ContentManagementPage from '@frontend/pages/content-management/ui/ContentManagementPage.vue';
 import { requestUrl, response } from '@test/frontend/support/fake-response';
-import {
-  findButton,
-  initialVersion,
-  serviceControlResponse,
-} from './content-management-test-helpers';
+import { findButton, initialVersion } from './content-management-test-helpers';
 
 describe('ContentManagementPage', () => {
   it('loads structured content and exposes an unsaved-change state', async () => {
@@ -22,9 +18,6 @@ describe('ContentManagementPage', () => {
         }
         if (url.endsWith('/history')) {
           return Promise.resolve(response({ history: [] }));
-        }
-        if (url.endsWith('/service-control')) {
-          return Promise.resolve(serviceControlResponse());
         }
         return Promise.resolve(
           response({

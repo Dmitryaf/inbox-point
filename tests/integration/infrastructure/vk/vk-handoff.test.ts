@@ -5,7 +5,7 @@ import { HandoffService } from '@/core/application/handoff-service.js';
 import {
   ClientInformationCatalog,
   faqButton,
-  teacherButton,
+  handoffButton,
 } from '@/core/application/client-information.js';
 import {
   pausedClientIntakeMessage,
@@ -168,15 +168,22 @@ describe('VK handoff integration', () => {
       repository,
     });
     await worker.processPending();
+    await worker.processPending();
 
-    expect(gateway.sent).toHaveLength(1);
+    expect(gateway.sent).toHaveLength(2);
     expect(gateway.sent[0]?.peerId).toBe(101);
-    expect(gateway.sent[0]?.text).toBe('Answer to VK');
+    expect(gateway.sent[0]?.text).toBe(
+      'Сообщение отправлено оператору. Ответ появится в этом чате.',
+    );
     expect(gateway.sent[0]?.randomId).toBeGreaterThan(0);
     expect(gateway.sent[0]?.keyboard).toMatchObject({
       inline: false,
       one_time: false,
     });
+    expect(gateway.sent[1]?.text).toBe('Answer to VK');
+    expect(
+      repository.getPilotEventCounts(new Date('2026-01-01')).new_request,
+    ).toBe(1);
   });
 
   it('hides empty information buttons without blocking typed labels', async () => {
@@ -246,7 +253,11 @@ describe('VK handoff integration', () => {
     expect(labels).toEqual(
       expect.arrayContaining(['Расписание', 'Как добраться']),
     );
-    expect(labels).not.toContain(teacherButton);
+    expect(labels).not.toContain(handoffButton);
+    expect(
+      repository.getPilotEventCounts(new Date('2026-01-01'))
+        .information_section,
+    ).toBe(2);
   });
 
   it('continues an open VK conversation after intake is paused', async () => {
@@ -272,7 +283,7 @@ describe('VK handoff integration', () => {
     expect(inbox.relayed).toHaveLength(2);
     expect(inbox.relayed[1]?.text).toBe('Уточнение');
     expect(gateway.sent.at(-1)?.text).toBe(
-      'Расписание пока не добавлено. Вы можете задать вопрос преподавателю.',
+      'Расписание пока не добавлено. Напишите оператору, чтобы уточнить время.',
     );
   });
 

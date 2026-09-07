@@ -64,7 +64,7 @@ function stopAutomaticRefresh(): void {
         <p class="brand">MESSENGER HANDOFF</p>
         <h1>Состояние сервиса</h1>
         <p class="page-intro">
-          Проверяйте подключения и доставку ответов школы.
+          Проверяйте подключения, обращения и доставку ответов.
         </p>
       </div>
       <button
@@ -121,23 +121,6 @@ function stopAutomaticRefresh(): void {
         {{ operations.error.value }}
       </p>
 
-      <ClientIntakeControl
-        ref="intakeControl"
-        scope="ops"
-        @changed="refreshAll"
-        @unauthorized="session.expireSession"
-      />
-
-      <AsyncMessage kind="error" :text="deliveryRetry.error.value" />
-      <AsyncMessage kind="success" :text="deliveryRetry.notice.value" />
-      <AsyncMessage kind="error" :text="deliveryControl.error.value" />
-      <AsyncMessage kind="success" :text="deliveryControl.notice.value" />
-
-      <OperatorInbox
-        ref="operatorInbox"
-        :on-unauthorized="session.expireSession"
-      />
-
       <OperationsOverview
         v-if="operations.status.value"
         :delivery-control-pending="deliveryControl.pendingMode.value"
@@ -152,6 +135,22 @@ function stopAutomaticRefresh(): void {
       <section v-else class="card loading-card">
         <p>Получаем состояние сервиса…</p>
       </section>
+
+      <ClientIntakeControl
+        ref="intakeControl"
+        @changed="refreshAll"
+        @unauthorized="session.expireSession"
+      />
+
+      <AsyncMessage kind="error" :text="deliveryRetry.error.value" />
+      <AsyncMessage kind="success" :text="deliveryRetry.notice.value" />
+      <AsyncMessage kind="error" :text="deliveryControl.error.value" />
+      <AsyncMessage kind="success" :text="deliveryControl.notice.value" />
+
+      <OperatorInbox
+        ref="operatorInbox"
+        :on-unauthorized="session.expireSession"
+      />
     </section>
   </main>
 </template>

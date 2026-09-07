@@ -231,7 +231,14 @@
 .delivery-incident-context {
   display: grid;
   gap: 0.5rem;
-  margin: 0;
+  margin: 0.7rem 0 0;
+}
+
+.technical-details summary {
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 700;
 }
 
 .delivery-incident-context dd {

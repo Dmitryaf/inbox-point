@@ -14,6 +14,7 @@ export function createApp(config: RuntimeConfig): FastifyInstance {
     logger: {
       level: config.logLevel,
     },
+    trustProxy: (address, hop) => hop === 0 && isLoopback(address),
   });
 
   app.get('/health', () => ({ status: 'ok' }));
@@ -228,7 +229,7 @@ function setupErrorMessage(error: unknown): string {
 function vkSetupErrorMessage(error: unknown): string {
   const message = error instanceof Error ? error.message : '';
   if (message.includes('workspace is not connected')) {
-    return 'Сначала подключите Telegram для преподавателей.';
+    return 'Сначала подключите Telegram для операторов.';
   }
   if (message.includes('does not point to a community')) {
     return 'Укажите ссылку именно на сообщество VK.';

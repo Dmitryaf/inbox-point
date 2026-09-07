@@ -28,12 +28,10 @@ const statusMessage = computed(() => {
         {{ statusMessage }}
       </p>
     </div>
-    <button
-      :disabled="saving || !dirty || !valid"
-      type="button"
-      @click="$emit('save')"
-    >
-      {{ saving ? 'Сохраняем…' : 'Сохранить' }}
+    <button :disabled="saving || !dirty" type="button" @click="$emit('save')">
+      {{
+        saving ? 'Сохраняем…' : !valid && dirty ? 'Исправить поля' : 'Сохранить'
+      }}
     </button>
   </div>
 </template>

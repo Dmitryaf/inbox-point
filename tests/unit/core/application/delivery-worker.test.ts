@@ -197,6 +197,10 @@ describe('DeliveryWorker', () => {
         lastError: 'Temporary channel failure',
       }),
     ]);
+    expect(
+      repository.getPilotEventCounts(new Date('2026-08-31T00:00:00.000Z'))
+        .delivery_failure,
+    ).toBe(1);
 
     channel.failuresRemaining = 0;
     expect(repository.retryFailedDelivery('delivery-1', now)).toBe(true);

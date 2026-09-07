@@ -93,7 +93,7 @@ const telegramTextLimit = 4_096;
 function formatDeliveryFailureNotification(delivery: FailedDelivery): string {
   const channelName = delivery.channel === 'telegram' ? 'Telegram' : 'VK';
   const messageReference = delivery.operatorMessageId
-    ? `\nСообщение преподавателя: ${delivery.operatorMessageId}`
+    ? `\nСообщение оператора: ${delivery.operatorMessageId}`
     : '';
 
   if (delivery.outcomeUnknown) {

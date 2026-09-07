@@ -5,7 +5,6 @@ import { describe, expect, it, vi } from 'vitest';
 
 import ContentManagementPage from '@frontend/pages/content-management/ui/ContentManagementPage.vue';
 import { requestUrl, response } from '@test/frontend/support/fake-response';
-import { serviceControlResponse } from './content-management-test-helpers';
 
 const initialVersion = 'a'.repeat(64);
 
@@ -20,9 +19,6 @@ describe('content visibility', () => {
         }
         if (url.endsWith('/history')) {
           return Promise.resolve(response({ history: [] }));
-        }
-        if (url.endsWith('/service-control')) {
-          return Promise.resolve(serviceControlResponse());
         }
         return Promise.resolve(
           response({

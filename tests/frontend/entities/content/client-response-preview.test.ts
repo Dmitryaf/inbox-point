@@ -39,6 +39,14 @@ describe('client response preview', () => {
 
     expect(formatFaqResponse(content.faq).length).toBeGreaterThan(4_000);
     expect(validateContentDraft(content)).toEqual({
+      issues: [
+        {
+          fieldId: 'faq-answer-0',
+          message:
+            'Сократите раздел «Частые вопросы»: ответ длиннее 4000 символов.',
+          section: 'faq',
+        },
+      ],
       message:
         'Сократите раздел «Частые вопросы»: ответ длиннее 4000 символов.',
       valid: false,
@@ -55,7 +63,14 @@ describe('client response preview', () => {
     content.schedule = '';
     content.customSections = [{ label: ' FAQ ', text: 'Ответ' }];
     expect(validateContentDraft(content)).toEqual({
-      message: 'Название своего раздела совпадает со служебной кнопкой.',
+      issues: [
+        {
+          fieldId: 'section-label-0',
+          message: 'Это название используется служебной кнопкой.',
+          section: 'custom',
+        },
+      ],
+      message: 'Это название используется служебной кнопкой.',
       valid: false,
     });
   });

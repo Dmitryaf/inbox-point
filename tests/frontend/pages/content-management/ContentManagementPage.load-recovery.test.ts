@@ -5,7 +5,6 @@ import { describe, expect, it, vi } from 'vitest';
 
 import ContentManagementPage from '@frontend/pages/content-management/ui/ContentManagementPage.vue';
 import { requestUrl, response } from '@test/frontend/support/fake-response';
-import { serviceControlResponse } from './content-management-test-helpers';
 import { contentResponse, findButton } from './content-management-test-helpers';
 
 describe('ContentManagementPage load recovery', () => {
@@ -20,9 +19,6 @@ describe('ContentManagementPage load recovery', () => {
         }
         if (url.endsWith('/history')) {
           return Promise.resolve(response({ history: [] }));
-        }
-        if (url.endsWith('/service-control')) {
-          return Promise.resolve(serviceControlResponse());
         }
         if (contentUnavailable) {
           return Promise.resolve(

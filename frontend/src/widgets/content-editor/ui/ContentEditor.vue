@@ -6,13 +6,28 @@ import FaqEditor from '@frontend/entities/content/ui/FaqEditor.vue';
 import type { EditorSection } from '@frontend/widgets/content-workspace/model/navigation';
 
 const draft = defineModel<ContentDraft>({ required: true });
-defineProps<{ activeSection: EditorSection }>();
+defineProps<{
+  activeSection: EditorSection;
+  errors: Readonly<Record<string, string | undefined>>;
+}>();
 </script>
 
 <template>
   <div class="editor">
-    <CoreSectionsFields v-if="activeSection === 'core'" v-model="draft" />
-    <FaqEditor v-else-if="activeSection === 'faq'" v-model="draft" />
-    <CustomSectionsEditor v-else v-model="draft.customSections" />
+    <CoreSectionsFields
+      v-if="activeSection === 'core'"
+      v-model="draft"
+      :errors="errors"
+    />
+    <FaqEditor
+      v-else-if="activeSection === 'faq'"
+      v-model="draft"
+      :errors="errors"
+    />
+    <CustomSectionsEditor
+      v-else
+      v-model="draft.customSections"
+      :errors="errors"
+    />
   </div>
 </template>

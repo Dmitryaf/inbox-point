@@ -213,7 +213,11 @@ describe('HandoffRuntime', () => {
         new Date('2100-01-01T00:00:00.000Z'),
         10,
       ),
-    ).toHaveLength(0);
+    ).toEqual([
+      expect.objectContaining({
+        text: 'Сообщение отправлено оператору. Ответ появится в этом чате.',
+      }),
+    ]);
 
     const webTopicId = request?.operatorTopicId;
     if (!request || !webTopicId) {
@@ -227,12 +231,13 @@ describe('HandoffRuntime', () => {
     };
     await runtime.handleWebOperatorMessage('web-reply-event-1', webReply);
     await runtime.handleWebOperatorMessage('web-reply-event-1', webReply);
-    expect(
-      repository.findPendingDeliveries(
-        new Date('2100-01-01T00:00:00.000Z'),
-        10,
-      ),
-    ).toEqual([expect.objectContaining({ text: 'Web answer' })]);
+    expect(repository.getDeliverySummary().pending).toBe(2);
+    expect(repository.findConversationMessages(request.id, 20)).toContainEqual(
+      expect.objectContaining({
+        direction: 'operator_to_client',
+        text: 'Web answer',
+      }),
+    );
 
     await runtime.handleWebOperatorMessage('web-close-event-1', {
       externalMessageId: 'web:close-1',

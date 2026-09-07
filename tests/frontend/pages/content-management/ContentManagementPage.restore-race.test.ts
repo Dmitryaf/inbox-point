@@ -5,11 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import ContentManagementPage from '@frontend/pages/content-management/ui/ContentManagementPage.vue';
 import { requestUrl, response } from '@test/frontend/support/fake-response';
-import {
-  findButton,
-  initialVersion,
-  serviceControlResponse,
-} from './content-management-test-helpers';
+import { findButton, initialVersion } from './content-management-test-helpers';
 
 describe('ContentManagementPage restore concurrency', () => {
   it('keeps edits made while a revision is being restored', async () => {
@@ -42,9 +38,6 @@ describe('ContentManagementPage restore concurrency', () => {
               ],
             }),
           );
-        }
-        if (url.endsWith('/service-control')) {
-          return Promise.resolve(serviceControlResponse());
         }
         return Promise.resolve(
           response({
