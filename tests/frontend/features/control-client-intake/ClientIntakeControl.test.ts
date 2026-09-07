@@ -38,19 +38,19 @@ describe('ClientIntakeControl', () => {
 
     expect(pauseButtons).toHaveLength(2);
     expect(wrapper.text()).toContain(
-      'Клиенты могут начать новый разговор через бота.',
+      'Клиенты могут написать оператору через бота.',
     );
     expect(wrapper.text()).toContain(
-      'Новые сообщения передаются преподавателю.',
+      'Клиенты могут написать оператору через сообщество.',
     );
     await pauseButtons[0]?.trigger('click');
     await flushPromises();
 
     expect(confirmMock).toHaveBeenCalledWith(
-      'Приостановить новые обращения в Telegram? Бот предложит клиентам использовать контакт из описания.',
+      'Приостановить новые обращения в Telegram? Клиенты увидят, что сейчас написать оператору нельзя.',
     );
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/manage/service-control/telegram/pause',
+      '/api/ops/service-control/telegram/pause',
       expect.objectContaining({ method: 'POST' }),
     );
     expect(wrapper.text()).toContain('На паузе');
@@ -58,7 +58,7 @@ describe('ClientIntakeControl', () => {
       'Новые обращения из Telegram приостановлены',
     );
     expect(wrapper.text()).toContain(
-      'Бот не принимает новые обращения и предлагает посмотреть контакт в описании.',
+      'Клиенты увидят, что новые обращения временно не принимаются.',
     );
     expect(wrapper.findAll('input')).toHaveLength(0);
   });
@@ -67,7 +67,7 @@ describe('ClientIntakeControl', () => {
     const fetchMock = vi.fn(() => Promise.resolve(response(activeState())));
     vi.stubGlobal('fetch', fetchMock);
 
-    mount(ClientIntakeControl, { props: { scope: 'ops' } });
+    mount(ClientIntakeControl);
     await flushPromises();
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -85,7 +85,7 @@ describe('ClientIntakeControl', () => {
       .mockResolvedValueOnce(response(activeState()));
     vi.stubGlobal('fetch', fetchMock);
 
-    const wrapper = mount(ClientIntakeControl, { props: { scope: 'ops' } });
+    const wrapper = mount(ClientIntakeControl);
     await flushPromises();
 
     expect(wrapper.text()).toContain('Не удалось проверить');

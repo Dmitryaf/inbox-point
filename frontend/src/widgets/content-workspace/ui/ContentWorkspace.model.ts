@@ -6,6 +6,7 @@ import {
 
 import {
   computed,
+  nextTick,
   onMounted,
   ref,
   watch,
@@ -36,6 +37,11 @@ export function createComponentModel(
   const activeView = ref<WorkspaceView>('edit');
   const activeSection = ref<EditorSection>('core');
   const validation = computed(() => validateContentDraft(workspace.draft));
+  const fieldErrors = computed<Record<string, string | undefined>>(() =>
+    Object.fromEntries(
+      validation.value.issues.map((issue) => [issue.fieldId, issue.message]),
+    ),
+  );
   onMounted(() => void workspace.load());
   watch(
     () => props.authenticated,
@@ -48,5 +54,28 @@ export function createComponentModel(
   watch(workspace.dirty, (dirty) => emit('dirtyChange', dirty), {
     immediate: true,
   });
-  return { workspace, activeView, activeSection, validation };
+  async function save(): Promise<void> {
+    const issue = validation.value.issues[0];
+    if (!issue) {
+      await workspace.save();
+      return;
+    }
+    activeView.value = 'edit';
+    activeSection.value = issue.section;
+    await nextTick();
+    const field = document.getElementById(issue.fieldId);
+    const details = field?.closest('details');
+    if (details) {
+      details.open = true;
+    }
+    field?.focus();
+  }
+  return {
+    workspace,
+    activeView,
+    activeSection,
+    validation,
+    fieldErrors,
+    save,
+  };
 }

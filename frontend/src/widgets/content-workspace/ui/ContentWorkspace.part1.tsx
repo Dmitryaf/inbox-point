@@ -12,8 +12,6 @@ import {
 import SaveBar from '@frontend/features/save-content/ui/SaveBar';
 import ContentSummary from '@frontend/entities/content/ui/ContentSummary';
 
-import AppIcon from '@frontend/shared/ui/AppIcon';
-
 import WorkspaceNavigation from './WorkspaceNavigation';
 
 import { renderContentWorkspacePart2 } from './ContentWorkspace.part2';
@@ -22,6 +20,7 @@ import type { createComponentModel } from './ContentWorkspace.model';
 export function renderContentWorkspacePart1(
   $state: ReturnType<typeof createComponentModel>,
 ) {
+  const { save } = $state;
   const workspace = $unref($state.workspace);
   const activeView = $state.activeView.value;
   const activeSection = $state.activeSection.value;
@@ -50,37 +49,22 @@ export function renderContentWorkspacePart1(
             'workspace--editing': activeView === 'edit',
           })}
         >
-          <header className="workspace-topbar">
-            <div className="workspace-identity">
-              <span className="workspace-mark">
-                <AppIcon name="channel" />
-              </span>
-              <div>
-                <strong>{'Messenger Handoff'}</strong>
-                <small>{'Информация для клиентов'}</small>
-              </div>
-            </div>
-            <span className="channel-badge">
-              <span aria-hidden="true" />
-              {' Telegram и VK '}
-            </span>
-          </header>
           <WorkspaceNavigation
             activeSection={activeSection}
             activeView={activeView}
             onSectionChange={$setter($state, 'activeSection')}
             onViewChange={$setter($state, 'activeView')}
           />
-          <main className="workspace-panel">
+          <section aria-label="Рабочая область" className="workspace-panel">
             {renderContentWorkspacePart2($state)}
-          </main>
+          </section>
           <aside className="workspace-rail">
             <SaveBar
               dirty={workspace.dirty.value}
               saving={workspace.saving.value}
               valid={validation.valid}
               validationMessage={validation.message}
-              onSave={$callback($required($unref($state.workspace)).save)}
+              onSave={$callback(save)}
             />
             <ContentSummary content={workspace.draft} />
           </aside>

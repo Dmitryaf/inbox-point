@@ -3,9 +3,17 @@ import { renderList as $renderList } from '@frontend/shared/lib/component-view';
 import { requiredValue as $required } from '@frontend/shared/lib/component-bindings';
 import { textProperty as $textProperty } from '@frontend/shared/lib/component-inputs';
 
-import type { createComponentModel } from './FaqEditor.model';
+import FieldError from '@frontend/shared/ui/FieldError';
+
+import type { WithDefaults } from '@frontend/shared/lib/component-model';
+import type {
+  createComponentModel,
+  ComponentProps,
+  componentDefaults,
+} from './FaqEditor.model';
 export function renderFaqEditorPart1(
   $state: ReturnType<typeof createComponentModel>,
+  $props: WithDefaults<ComponentProps, typeof componentDefaults>,
 ) {
   const draft = $state.draft.value;
 
@@ -20,10 +28,20 @@ export function renderFaqEditorPart1(
           <label htmlFor={`faq-question-${index}`}>{'Вопрос'}</label>
           <input
             id={`faq-question-${index}`}
+            aria-describedby={
+              $props.errors[`faq-question-${index}`]
+                ? `faq-question-${index}-error`
+                : undefined
+            }
+            aria-invalid={Boolean($props.errors[`faq-question-${index}`])}
             maxLength={300}
             required
             value={item.question ?? ''}
             onChange={$textProperty(() => item, 'question')}
+          />
+          <FieldError
+            id={`faq-question-${index}-error`}
+            text={$props.errors[`faq-question-${index}`]}
           />
           <p className="counter">
             {item.question.length}
@@ -32,11 +50,21 @@ export function renderFaqEditorPart1(
           <label htmlFor={`faq-answer-${index}`}>{'Ответ'}</label>
           <textarea
             id={`faq-answer-${index}`}
+            aria-describedby={
+              $props.errors[`faq-answer-${index}`]
+                ? `faq-answer-${index}-error`
+                : undefined
+            }
+            aria-invalid={Boolean($props.errors[`faq-answer-${index}`])}
             maxLength={3000}
             required
             rows={4}
             value={item.answer ?? ''}
             onChange={$textProperty(() => item, 'answer')}
+          />
+          <FieldError
+            id={`faq-answer-${index}-error`}
+            text={$props.errors[`faq-answer-${index}`]}
           />
           <p className="counter">
             {item.answer.length}

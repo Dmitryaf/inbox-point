@@ -34,9 +34,9 @@ export default function CoreSectionsFields($incomingProps: ComponentProps) {
       >
         <p className="step">{'Основные разделы'}</p>
         <h2>{'Расписание, цены и адрес'}</h2>
-        {renderCoreSectionsFieldsPart1($state)}
-        {renderCoreSectionsFieldsPart2($state)}
-        {renderCoreSectionsFieldsPart3($state)}
+        {renderCoreSectionsFieldsPart1($state, $props)}
+        {renderCoreSectionsFieldsPart2($state, $props)}
+        {renderCoreSectionsFieldsPart3($state, $props)}
       </section>
     </ModelScopeProvider>
   );

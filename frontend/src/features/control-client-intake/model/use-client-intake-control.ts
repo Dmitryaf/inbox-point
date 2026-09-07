@@ -4,7 +4,6 @@ import {
   loadServiceControl,
   pauseClientIntake,
   resumeClientIntake,
-  type ServiceControlScope,
 } from '@frontend/entities/service-control/api/service-control-api';
 import type {
   ClientChannel,
@@ -16,7 +15,6 @@ import { errorMessage } from '@frontend/shared/lib/error-message';
 interface ClientIntakeControlOptions {
   onChanged: () => void;
   onUnauthorized: () => void;
-  scope: ServiceControlScope;
 }
 
 export function useClientIntakeControl(options: ClientIntakeControlOptions) {
@@ -52,7 +50,7 @@ export function useClientIntakeControl(options: ClientIntakeControlOptions) {
     loading.value = true;
     error.value = '';
     try {
-      state.value = await loadServiceControl(options.scope);
+      state.value = await loadServiceControl();
     } catch (cause: unknown) {
       reportFailure(cause);
     } finally {
@@ -72,9 +70,9 @@ export function useClientIntakeControl(options: ClientIntakeControlOptions) {
     notice.value = '';
     try {
       if (mode === 'paused') {
-        state.value = await pauseClientIntake(channel, options.scope);
+        state.value = await pauseClientIntake(channel);
       } else {
-        state.value = await resumeClientIntake(channel, options.scope);
+        state.value = await resumeClientIntake(channel);
       }
       notice.value = modeNotice(channel, mode);
       options.onChanged();
@@ -108,11 +106,11 @@ export function useClientIntakeControl(options: ClientIntakeControlOptions) {
 function confirmPause(channel: ClientChannel): boolean {
   if (channel === 'telegram') {
     return window.confirm(
-      'Приостановить новые обращения в Telegram? Бот предложит клиентам использовать контакт из описания.',
+      'Приостановить новые обращения в Telegram? Клиенты увидят, что сейчас написать оператору нельзя.',
     );
   }
   return window.confirm(
-    'Приостановить новые обращения из VK? Сообщения останутся в сообществе.',
+    'Приостановить новые обращения из VK? Клиенты увидят, что сейчас написать оператору нельзя.',
   );
 }
 

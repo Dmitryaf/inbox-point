@@ -23,8 +23,8 @@ export function renderOperationsDashboardPagePart2(
   const { refreshAll } = $state;
   const session = $unref($state.session);
   const operations = $unref($state.operations);
-  const deliveryRetry = $unref($state.deliveryRetry);
   const deliveryControl = $unref($state.deliveryControl);
+  const deliveryRetry = $unref($state.deliveryRetry);
 
   return (
     <>
@@ -69,8 +69,8 @@ export function renderOperationsDashboardPagePart2(
               {operations.error.value}
             </p>
           ) : null}
+          {renderOperationsDashboardPagePart3($state)}
           <ClientIntakeControl
-            scope="ops"
             onChanged={$callback(refreshAll)}
             onUnauthorized={$callback(
               $required($unref($state.session)).expireSession,
@@ -85,7 +85,6 @@ export function renderOperationsDashboardPagePart2(
             onUnauthorized={session.expireSession}
             ref={$templateRef($state, 'operatorInbox', $scope)}
           />
-          {renderOperationsDashboardPagePart3($state)}
         </section>
       )}
     </>

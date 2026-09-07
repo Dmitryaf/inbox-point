@@ -1,9 +1,12 @@
+name: messenger-handoff
+
 services:
   app:
     build:
       context: .
     environment:
       CONTENT_ADMIN_PASSWORD: '${CONTENT_ADMIN_PASSWORD:-}'
+      CLOSED_REQUEST_RETENTION_DAYS: '${CLOSED_REQUEST_RETENTION_DAYS:-7}'
       DATABASE_PATH: /app/data/messenger-handoff.sqlite
       HOST: 0.0.0.0
       LOG_LEVEL: info
@@ -11,7 +14,15 @@ services:
       OPS_ADMIN_PASSWORD: '${OPS_ADMIN_PASSWORD:-}'
       PORT: 3000
     ports:
-      - '${PORT:-3000}:3000'
+      - '127.0.0.1:${HOST_PORT:-3101}:3000'
+    logging:
+      driver: json-file
+      options:
+        max-file: '3'
+        max-size: 10m
     restart: unless-stopped
     volumes:
-      - ./data:/app/data
+      - messenger-handoff-data:/app/data
+
+volumes:
+  messenger-handoff-data:

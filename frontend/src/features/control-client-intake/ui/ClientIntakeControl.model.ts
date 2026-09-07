@@ -7,22 +7,17 @@ import {
   type ModelOptions,
   type ModelRef,
 } from '@frontend/shared/lib/component-props';
-import type { ServiceControlScope } from '@frontend/entities/service-control/api/service-control-api';
 import { useClientIntakeControl } from '@frontend/features/control-client-intake/model/use-client-intake-control';
 
-export type ComponentProps = {
-  scope?: ServiceControlScope;
-} & EventProps<{
+export type ComponentProps = EventProps<{
   changed: [];
   unauthorized: [];
 }> &
   ComponentAttributes;
-export const componentDefaults = {
-  scope: 'manage',
-};
+export const componentDefaults = {};
 type ResolvedProps = WithDefaults<ComponentProps, typeof componentDefaults>;
 export function createComponentModel(
-  $props: ResolvedProps,
+  _props: ResolvedProps,
   $emit: (event: string, ...args: unknown[]) => void,
   _model: <Value>(
     name: string,
@@ -30,12 +25,10 @@ export function createComponentModel(
   ) => ModelRef<Value>,
   $expose: (value: Record<string, unknown>) => void,
 ) {
-  const props = $props;
   const emit = $emit;
   const control = useClientIntakeControl({
     onChanged: () => emit('changed'),
     onUnauthorized: () => emit('unauthorized'),
-    scope: props.scope,
   });
   $expose({ refresh: control.load });
   return { control };

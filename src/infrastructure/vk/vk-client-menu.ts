@@ -1,8 +1,9 @@
 import {
   ClientInformationCatalog,
+  handoffButton,
   type ClientInformationResolver,
   isAvailableInformationRequest,
-  teacherButton,
+  isHandoffRequest,
 } from '@/core/application/client-information.js';
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
 import {
@@ -50,6 +51,10 @@ export class VkClientMenu implements VkClientMenuHandler {
             Boolean(activeRequest),
             this.information,
           );
+    const informationRequested = isAvailableInformationRequest(
+      this.information,
+      message.text,
+    );
     if (!response) {
       return false;
     }
@@ -71,6 +76,14 @@ export class VkClientMenu implements VkClientMenuHandler {
         createVkRandomId('vk-menu:' + message.externalEventId),
         keyboard.buttons.length > 0 ? keyboard : undefined,
       );
+      if (informationRequested) {
+        this.repository.recordPilotEvent({
+          channel: 'vk',
+          id: `information:vk:${message.externalEventId}`,
+          occurredAt: new Date(),
+          type: 'information_section',
+        });
+      }
       this.repository.completeEvent(
         'vk:menu',
         message.externalEventId,
@@ -99,7 +112,7 @@ export function createVkMainKeyboard(
     buttons: [
       ...informationRows,
       ...customRows,
-      ...(paused ? [] : [[createButton(teacherButton, 'teacher', 'primary')]]),
+      ...(paused ? [] : [[createButton(handoffButton, 'handoff', 'primary')]]),
     ],
     inline: false,
     one_time: false,
@@ -127,20 +140,20 @@ function resolveMenuResponse(
     return information;
   }
 
-  if (normalized === teacherButton) {
+  if (isHandoffRequest(normalized)) {
     return hasActiveRequest
-      ? 'Напишите сообщение, и преподаватель получит его в текущем разговоре.'
-      : 'Напишите свой вопрос одним сообщением. Преподаватель ответит вам здесь.';
+      ? 'Напишите сообщение, и оператор получит его в текущем разговоре.'
+      : 'Напишите свой вопрос одним сообщением. Оператор ответит вам здесь.';
   }
   const command = normalized.toLowerCase();
   if (command === '/start' || command === '/menu' || command === 'начать') {
     return hasActiveRequest
       ? 'У вас уже есть открытый вопрос. Напишите сообщение или выберите нужный раздел.'
-      : 'Здравствуйте! Выберите нужный раздел или задайте вопрос преподавателю.';
+      : 'Здравствуйте! Выберите нужный раздел или напишите оператору.';
   }
   if (command.startsWith('/')) {
     return hasActiveRequest
-      ? 'Просто напишите сообщение преподавателю или выберите нужный раздел.'
+      ? 'Просто напишите сообщение оператору или выберите нужный раздел.'
       : 'Выберите нужный раздел.';
   }
   return undefined;

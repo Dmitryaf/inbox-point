@@ -20,6 +20,12 @@ import type {
 } from '@/core/model/support-request.js';
 import { webOperatorTopicPrefix } from '@/core/model/operator-topic.js';
 import type { ClientChannelKind } from '@/core/model/support-message.js';
+import {
+  pilotEventTypes,
+  type PilotEvent,
+  type PilotEventCounts,
+  type PilotEventType,
+} from '@/core/model/pilot-event.js';
 import { sqliteSchemaVersion } from '@/infrastructure/persistence/sqlite-schema.js';
 
 interface SupportRequestRow {
@@ -112,6 +118,47 @@ export class SqliteSupportRepository implements SupportRepository {
         link.clientMessageId,
         link.operatorMessageId,
         link.createdAt.toISOString(),
+      );
+  }
+
+  public getPilotEventCounts(since: Date): PilotEventCounts {
+    const counts = Object.fromEntries(
+      pilotEventTypes.map((type) => [type, 0]),
+    ) as PilotEventCounts;
+    const rows = this.database
+      .prepare(
+        `SELECT event_type, COUNT(*) AS event_count
+         FROM pilot_events
+         WHERE occurred_at >= ?
+         GROUP BY event_type`,
+      )
+      .all(since.toISOString()) as unknown as {
+      event_count: number;
+      event_type: PilotEventType;
+    }[];
+    for (const row of rows) {
+      counts[row.event_type] = row.event_count;
+    }
+    return counts;
+  }
+
+  public recordPilotEvent(event: PilotEvent): void {
+    this.database
+      .prepare(
+        `INSERT OR IGNORE INTO pilot_events (
+          id,
+          event_type,
+          channel,
+          request_id,
+          occurred_at
+        ) VALUES (?, ?, ?, ?, ?)`,
+      )
+      .run(
+        event.id,
+        event.type,
+        event.channel,
+        event.requestId ?? null,
+        event.occurredAt.toISOString(),
       );
   }
 
@@ -1011,6 +1058,23 @@ export class SqliteSupportRepository implements SupportRepository {
         received_at TEXT NOT NULL,
         PRIMARY KEY (source, external_event_id)
       ) STRICT;
+
+      CREATE TABLE IF NOT EXISTS pilot_events (
+        id TEXT PRIMARY KEY,
+        event_type TEXT NOT NULL CHECK (event_type IN (
+          'new_request',
+          'information_section',
+          'first_reply',
+          'delivery_failure',
+          'web_takeover'
+        )),
+        channel TEXT NOT NULL CHECK (channel IN ('telegram', 'vk')),
+        request_id TEXT,
+        occurred_at TEXT NOT NULL
+      ) STRICT;
+
+      CREATE INDEX IF NOT EXISTS pilot_events_by_time
+        ON pilot_events(occurred_at, event_type);
 
       CREATE TABLE IF NOT EXISTS deliveries (
         id TEXT PRIMARY KEY,

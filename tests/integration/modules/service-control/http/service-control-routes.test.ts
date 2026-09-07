@@ -1,15 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { RuntimeConfig } from '@/config/runtime-config.js';
-import { ClientInformationCatalog } from '@/core/application/client-information.js';
 import { createApp } from '@/infrastructure/http/app.js';
-import { ContentManagementService } from '@/modules/content-management/application/content-management-service.js';
-import type { ContentSettingsStore } from '@/modules/content-management/application/ports/content-settings-store.js';
-import { registerManagementRoutes } from '@/modules/content-management/presentation/http/routes.js';
-import { ContentManagementAccess } from '@/modules/content-management/security/content-management-access.js';
 import type { ServiceControlStore } from '@/modules/service-control/application/ports/service-control-store.js';
 import { ServiceControlService } from '@/modules/service-control/application/service-control-service.js';
 import { createDefaultServiceControlState } from '@/modules/service-control/model/service-control-state.js';
+import { registerServiceControlRoutes } from '@/modules/service-control/presentation/http/service-control-routes.js';
 
 const config: RuntimeConfig = {
   closedRequestRetentionDays: 7,
@@ -40,39 +36,35 @@ describe('service control routes', () => {
       serviceControlStore,
       () => new Date('2026-09-05T10:00:00.000Z'),
     );
-    registerManagementRoutes(
+    registerServiceControlRoutes(
       app,
-      new ContentManagementService(
-        new ClientInformationCatalog(),
-        createContentStore(),
-      ),
-      new ContentManagementAccess(undefined),
-      {
-        allowLocalBypass: true,
-        assets: {
-          html: '<!doctype html>',
-          script: '',
-          styles: '',
-        },
-        secureCookies: false,
-      },
       serviceControl,
+      {
+        requireAuthorization: () => Promise.resolve(),
+        requireSameOrigin: () => Promise.resolve(),
+      },
+      '/api/ops/service-control',
+      true,
     );
 
     const paused = await app.inject({
       method: 'POST',
       payload: {},
-      url: '/api/manage/service-control/telegram/pause',
+      url: '/api/ops/service-control/telegram/pause',
     });
     const resumed = await app.inject({
       method: 'POST',
       payload: {},
-      url: '/api/manage/service-control/telegram/resume',
+      url: '/api/ops/service-control/telegram/resume',
     });
     const deliveryControl = await app.inject({
       method: 'POST',
       payload: {},
-      url: '/api/manage/service-control/delivery/pause',
+      url: '/api/ops/service-control/delivery/pause',
+    });
+    const managementControl = await app.inject({
+      method: 'GET',
+      url: '/api/manage/service-control',
     });
 
     expect(paused.statusCode).toBe(200);
@@ -87,15 +79,7 @@ describe('service control routes', () => {
     expect(resumed.json()).toMatchObject({
       channels: { telegram: { mode: 'active' } },
     });
-    expect(deliveryControl.statusCode).toBe(404);
+    expect(deliveryControl.statusCode).toBe(200);
+    expect(managementControl.statusCode).toBe(404);
   });
 });
-
-function createContentStore(): ContentSettingsStore {
-  return {
-    load: () => Promise.resolve(undefined),
-    loadHistory: () => Promise.resolve([]),
-    restore: () => Promise.reject(new Error('not available')),
-    save: () => Promise.resolve(),
-  };
-}

@@ -6,10 +6,11 @@ import {
 } from '@/core/contracts/client-intake-policy.js';
 import {
   ClientInformationCatalog,
+  handoffButton,
   type ClientInformationResolver,
   isAvailableInformationRequest,
+  isHandoffRequest,
   newQuestionButton,
-  teacherButton,
 } from '@/core/application/client-information.js';
 
 import type {
@@ -49,6 +50,10 @@ export class TelegramClientMenu implements TelegramClientMenuHandler {
       this.information,
       this.intakePolicy,
     );
+    const informationRequested = isAvailableInformationRequest(
+      this.information,
+      message.text,
+    );
     if (!response) {
       return false;
     }
@@ -81,6 +86,14 @@ export class TelegramClientMenu implements TelegramClientMenuHandler {
         replyMarkup: response.replyMarkup,
         text: response.text,
       });
+      if (informationRequested) {
+        this.repository.recordPilotEvent({
+          channel: 'telegram',
+          id: `information:telegram:${message.externalEventId}`,
+          occurredAt: new Date(),
+          type: 'information_section',
+        });
+      }
       this.repository.completeEvent(
         'telegram:menu',
         message.externalEventId,
@@ -137,10 +150,10 @@ function resolveMenuResponse(
         text: 'У вас уже есть открытый вопрос. Напишите сообщение, чтобы продолжить разговор, или выберите нужный раздел.',
       };
     }
-    if (normalized === teacherButton) {
+    if (isHandoffRequest(normalized)) {
       return {
         replyMarkup: mainMenu,
-        text: 'Напишите сообщение, и преподаватель получит его в текущем разговоре.',
+        text: 'Напишите сообщение, и оператор получит его в текущем разговоре.',
       };
     }
     if (normalized === newQuestionButton) {
@@ -153,7 +166,7 @@ function resolveMenuResponse(
     if (command?.startsWith('/')) {
       return {
         replyMarkup: mainMenu,
-        text: 'Эта команда недоступна во время разговора. Просто напишите сообщение преподавателю.',
+        text: 'Эта команда недоступна во время разговора. Просто напишите сообщение оператору.',
       };
     }
     return undefined;
@@ -171,7 +184,7 @@ function resolveMenuResponse(
       text: [
         'Здравствуйте! Я помогу быстро найти основную информацию.',
         '',
-        'Выберите нужный раздел или задайте вопрос преподавателю.',
+        'Выберите нужный раздел или напишите оператору.',
       ].join('\n'),
     };
   }
@@ -181,10 +194,10 @@ function resolveMenuResponse(
       text: 'Открытого обращения нет. Выберите нужный раздел в меню.',
     };
   }
-  if (normalized === teacherButton) {
+  if (isHandoffRequest(normalized)) {
     return {
       replyMarkup: mainMenu,
-      text: 'Напишите свой вопрос одним сообщением. Преподаватель ответит вам в этом чате.',
+      text: 'Напишите свой вопрос одним сообщением. Оператор ответит вам в этом чате.',
     };
   }
   return undefined;
@@ -203,7 +216,7 @@ function createMainMenu(
   const customRows = createButtonRows(customButtons);
   const actionRows = paused
     ? []
-    : [[{ text: teacherButton }], [{ text: newQuestionButton }]];
+    : [[{ text: handoffButton }], [{ text: newQuestionButton }]];
   const keyboard = [...informationRows, ...customRows, ...actionRows];
   if (keyboard.length === 0) {
     return { remove_keyboard: true };

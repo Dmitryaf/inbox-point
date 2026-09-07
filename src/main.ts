@@ -168,7 +168,6 @@ async function start(): Promise<void> {
         allowLocalBypass: config.nodeEnv !== 'production',
         secureCookies: config.nodeEnv === 'production',
       },
-      serviceControl,
     );
     const operationsMonitoring = new OperationsMonitoringService({
       channelActivity: (channel) => channelActivity.snapshot(channel),
@@ -194,6 +193,7 @@ async function start(): Promise<void> {
       serviceControl,
       repository,
       operatorInbox,
+      repository,
     );
     await app.listen({ host: config.host, port: config.port });
     const runtimeLogger = {

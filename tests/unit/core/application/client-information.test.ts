@@ -42,7 +42,7 @@ describe('client information', () => {
   it.each([
     [scheduleButton, 'Расписание'],
     [pricesButton, 'ценах'],
-    [addressButton, 'адресе'],
+    [addressButton, 'Адрес пока не добавлен'],
     [faqButton, 'пока не добавлены'],
   ])('resolves %s from the canonical catalog', (button, expected) => {
     const catalog = new ClientInformationCatalog();

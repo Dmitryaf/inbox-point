@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { ContentManagementAccess } from '@/modules/content-management/security/content-management-access.js';
+import { OperationsAccess } from '@/modules/operations-monitoring/security/operations-access.js';
 
 describe('ContentManagementAccess', () => {
   it('creates an expiring session for the configured password', () => {
@@ -51,5 +52,28 @@ describe('ContentManagementAccess', () => {
     access.logout('session-token');
 
     expect(access.authenticate('session-token')).toBe(false);
+  });
+
+  it('keeps management and operations login limits independent', () => {
+    const management = new ContentManagementAccess('management-password', {
+      now: () => 1_000,
+    });
+    const operations = new OperationsAccess('operations-password', {
+      createToken: () => 'operations-session',
+      now: () => 1_000,
+    });
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      management.login('wrong-password', '198.51.100.24');
+    }
+
+    expect(management.login('management-password', '198.51.100.24')).toEqual({
+      kind: 'blocked',
+      retryAfterSeconds: 900,
+    });
+    expect(operations.login('operations-password', '198.51.100.24')).toEqual({
+      kind: 'authenticated',
+      token: 'operations-session',
+    });
   });
 });

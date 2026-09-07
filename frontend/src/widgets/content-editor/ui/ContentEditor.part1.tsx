@@ -23,16 +23,19 @@ export function renderContentEditorPart1(
     <>
       {$props.activeSection === 'core' ? (
         <CoreSectionsFields
+          errors={$props.errors}
           modelValue={draft}
           onModelValueChange={$setter($state, 'draft')}
         />
       ) : $props.activeSection === 'faq' ? (
         <FaqEditor
+          errors={$props.errors}
           modelValue={draft}
           onModelValueChange={$setter($state, 'draft')}
         />
       ) : (
         <CustomSectionsEditor
+          errors={$props.errors}
           modelValue={draft.customSections}
           onModelValueChange={$propertySetter(
             () => $state.draft.value,

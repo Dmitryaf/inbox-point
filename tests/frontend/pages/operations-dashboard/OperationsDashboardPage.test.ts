@@ -59,11 +59,10 @@ describe('OperationsDashboardPage', () => {
     expect(statusCards[2]?.text()).toContain('Ожидают отправки3');
     expect(statusCards[2]?.text()).toContain('Не доставлены2');
     expect(statusCards[2]?.text()).toContain('Обработчик очередиЗапущен');
-    expect(statusCards[2]?.text()).toContain('Обращениеrequest-9');
-    expect(statusCards[2]?.text()).toContain('Тема преподавателяtopic-42');
-    expect(statusCards[2]?.text()).toContain(
-      'Сообщение преподавателяoperator-message-17',
-    );
+    expect(statusCards[2]?.text()).toContain('Технические данные');
+    expect(statusCards[2]?.text()).toContain('ID обращенияrequest-9');
+    expect(statusCards[2]?.text()).toContain('ID темы в Telegramtopic-42');
+    expect(statusCards[2]?.text()).toContain('ID сообщенияoperator-message-17');
 
     await wrapper
       .findAll('button')

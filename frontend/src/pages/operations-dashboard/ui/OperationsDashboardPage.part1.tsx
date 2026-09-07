@@ -14,7 +14,7 @@ export function renderOperationsDashboardPagePart1(
           <p className="brand">{'MESSENGER HANDOFF'}</p>
           <h1>{'Состояние сервиса'}</h1>
           <p className="page-intro">
-            {' Проверяйте подключения и доставку ответов школы. '}
+            {' Проверяйте подключения, обращения и доставку ответов. '}
           </p>
         </div>
         {session.authenticated.value ? (

@@ -46,7 +46,7 @@ export default function CustomSectionsEditor($incomingProps: ComponentProps) {
         {sections.length === 0 ? (
           <p className="empty">{' Дополнительных разделов пока нет. '}</p>
         ) : null}
-        {renderCustomSectionsEditorPart1($state)}
+        {renderCustomSectionsEditorPart1($state, $props)}
         <button
           disabled={sections.length >= 6}
           type="button"

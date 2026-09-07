@@ -40,14 +40,15 @@ export default function SaveBar($incomingProps: ComponentProps) {
           </p>
         </div>
         <button
-          disabled={$or(
-            $or($props.saving, () => !$props.dirty),
-            () => !$props.valid,
-          )}
+          disabled={$or($props.saving, () => !$props.dirty)}
           type="button"
           onClick={() => void $emit('save')}
         >
-          {$props.saving ? 'Сохраняем…' : 'Сохранить'}
+          {$props.saving
+            ? 'Сохраняем…'
+            : !$props.valid && $props.dirty
+              ? 'Исправить поля'
+              : 'Сохранить'}
         </button>
       </div>
     </ModelScopeProvider>

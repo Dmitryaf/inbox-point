@@ -38,6 +38,28 @@ describe('HTTP service status', () => {
     expect(response.json()).toEqual({ status: 'ok' });
   });
 
+  it('trusts forwarded client IP only from an immediate loopback proxy', async () => {
+    const app = createApp(config);
+    apps.add(app);
+    app.get('/test/client-ip', (request) => ({ ip: request.ip }));
+
+    const throughLocalProxy = await app.inject({
+      headers: { 'x-forwarded-for': '198.51.100.24' },
+      method: 'GET',
+      remoteAddress: '127.0.0.1',
+      url: '/test/client-ip',
+    });
+    const directRemote = await app.inject({
+      headers: { 'x-forwarded-for': '198.51.100.99' },
+      method: 'GET',
+      remoteAddress: '192.0.2.10',
+      url: '/test/client-ip',
+    });
+
+    expect(throughLocalProxy.json()).toEqual({ ip: '198.51.100.24' });
+    expect(directRemote.json()).toEqual({ ip: '192.0.2.10' });
+  });
+
   it('reports readiness without exposing delivery state', async () => {
     const app = createApp(config);
     apps.add(app);
