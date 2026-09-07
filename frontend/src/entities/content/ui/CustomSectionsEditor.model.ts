@@ -9,10 +9,12 @@ import {
 import type { CustomSection } from '@frontend/entities/content/model/types';
 
 export type ComponentProps = {
+  errors?: Readonly<Record<string, string | undefined>>;
+} & {
   modelValue: CustomSection[];
   onModelValueChange?: (value: CustomSection[]) => void;
 } & ComponentAttributes;
-export const componentDefaults = {};
+export const componentDefaults = { errors: () => ({}) };
 type ResolvedProps = WithDefaults<ComponentProps, typeof componentDefaults>;
 export function createComponentModel(
   _props: ResolvedProps,

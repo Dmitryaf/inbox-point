@@ -37,6 +37,18 @@ CREATE TABLE IF NOT EXISTS conversation_messages (
 CREATE INDEX IF NOT EXISTS conversation_messages_by_request
   ON conversation_messages(request_id, created_at);
 
+CREATE TABLE IF NOT EXISTS pilot_events (
+  id TEXT PRIMARY KEY,
+  event_type TEXT NOT NULL CHECK (event_type IN (
+    'new_request', 'information_section', 'first_reply', 'delivery_failure', 'web_takeover'
+  )),
+  channel TEXT NOT NULL CHECK (channel IN ('telegram', 'vk')),
+  request_id TEXT,
+  occurred_at TEXT NOT NULL
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS pilot_events_by_time ON pilot_events(occurred_at, event_type);
+
 CREATE TABLE IF NOT EXISTS processed_events (
   source TEXT NOT NULL,
   external_event_id TEXT NOT NULL,

@@ -5,7 +5,6 @@ import java.time.Instant;
 import java.util.Map;
 
 import com.inboxpoint.admin.PasswordSessions;
-import com.inboxpoint.content.ContentAdmin;
 import com.inboxpoint.telegram.TelegramRuntime;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -17,14 +16,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping({"/api/manage/service-control", "/api/ops/service-control"})
+@RequestMapping("/api/ops/service-control")
 final class ServiceControlController {
-    private final ContentAdmin content;
     private final OperationsAdmin operations;
     private final LocalServiceControl control;
 
-    ServiceControlController(ContentAdmin content, OperationsAdmin operations, TelegramRuntime runtime) {
-        this.content = content;
+    ServiceControlController(OperationsAdmin operations, TelegramRuntime runtime) {
         this.operations = operations;
         control = runtime.serviceControl();
     }
@@ -63,7 +60,7 @@ final class ServiceControlController {
     }
 
     private ResponseEntity<?> access(HttpServletRequest request, HttpServletResponse response) {
-        var admin = request.getRequestURI().startsWith("/api/ops/") ? operations : content;
+        var admin = operations;
         if (!admin.available(request, response)) {
             return error(404, "Not found");
         }

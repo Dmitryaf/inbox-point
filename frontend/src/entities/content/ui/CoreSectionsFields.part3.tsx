@@ -3,14 +3,21 @@ import { classNames as $class } from '@frontend/shared/lib/component-view';
 import { propertySetter as $propertySetter } from '@frontend/shared/lib/component-bindings';
 import { textProperty as $textProperty } from '@frontend/shared/lib/component-inputs';
 
+import FieldError from '@frontend/shared/ui/FieldError';
 import SectionVisibilityControl from '@frontend/entities/content/ui/SectionVisibilityControl';
 
-import type { createComponentModel } from './CoreSectionsFields.model';
+import type { WithDefaults } from '@frontend/shared/lib/component-model';
+import type {
+  createComponentModel,
+  ComponentProps,
+  componentDefaults,
+} from './CoreSectionsFields.model';
 export function renderCoreSectionsFieldsPart3(
   $state: ReturnType<typeof createComponentModel>,
+  $props: WithDefaults<ComponentProps, typeof componentDefaults>,
 ) {
   const draft = $state.draft.value;
-  const addressLength = $state.addressLength.value;
+  const responseLengths = $state.responseLengths.value;
 
   return (
     <>
@@ -33,18 +40,21 @@ export function renderCoreSectionsFieldsPart3(
         <label htmlFor="address">{'Текст для клиента'}</label>
         <textarea
           id="address"
+          aria-describedby={$props.errors.address ? 'address-error' : undefined}
+          aria-invalid={Boolean($props.errors.address)}
           maxLength={4000}
           rows={4}
           value={draft.address ?? ''}
           onChange={$textProperty(() => $state.draft.value, 'address')}
         />
+        <FieldError id="address-error" text={$props.errors.address} />
         <p
           className={$class('counter', {
-            'counter--error': addressLength > 4000,
+            'counter--error': responseLengths.address > 4000,
           })}
         >
           {' Итоговый ответ: '}
-          {addressLength}
+          {responseLengths.address}
           {' / 4000 '}
         </p>
         <SectionVisibilityControl

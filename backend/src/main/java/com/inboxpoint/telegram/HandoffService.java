@@ -7,6 +7,7 @@ import java.util.Locale;
 import java.util.UUID;
 
 final class HandoffService {
+    static final String ACKNOWLEDGEMENT = "Сообщение отправлено оператору. Ответ появится в этом чате.";
     private static final int MESSAGE_LIMIT = 4096;
     private final TelegramStore store;
     private final OperatorInbox inbox;
@@ -78,6 +79,10 @@ final class HandoffService {
         var requestId = UUID.randomUUID().toString();
         request = new TelegramStore.Request(requestId, chat, inbox.open(requestId, title), true, channel);
         store.open(request, name, clock.instant());
+        store.pilotEvent("new-request:" + requestId, "new_request", channel, requestId, clock.instant());
+        if (EmergencyOperatorInbox.isWebTopic(request.topic())) {
+            recordWebTakeover(request);
+        }
         var prefix = "Новое обращение из " + platform + "\nКлиент: " + name
                 + "\n\nОтветьте сообщением в этой теме.\nЧтобы закрыть обращение, отправьте /close.\n\nВопрос:\n";
         relayChunks(request, message, name, prefix, text);
@@ -102,11 +107,19 @@ final class HandoffService {
                     }
                 }
                 topic = sent.topic();
+                if (EmergencyOperatorInbox.isWebTopic(topic)) {
+                    recordWebTakeover(request);
+                }
             }
             store.link(request.id(), "client_to_operator", message, sent.messageId(), clock.instant());
             start = end;
             prefix = "Клиент (продолжение):\n\n";
         }
+        store.acknowledge(request, ACKNOWLEDGEMENT, clock.instant());
+    }
+
+    private void recordWebTakeover(TelegramStore.Request request) throws SQLException {
+        store.pilotEvent("web-takeover:" + request.id(), "web_takeover", request.channel(), request.id(), clock.instant());
     }
 
     void reconcileTopic(long topic, String event, boolean active) throws SQLException {
@@ -150,6 +163,7 @@ final class HandoffService {
             }
             default -> {
                 if (request.active()) {
+                    store.pilotEvent("first-reply:" + request.id(), "first_reply", request.channel(), request.id(), clock.instant());
                     store.queue(request, event, message, text, clock.instant());
                 }
             }

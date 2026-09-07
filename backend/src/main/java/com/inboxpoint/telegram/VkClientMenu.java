@@ -41,6 +41,9 @@ final class VkClientMenu {
         }
         try {
             api.send(peer, answer, "vk-menu:" + event, keyboard(blocked));
+            if (information.isPublishedInformation(label)) {
+                store.pilotEvent("information:vk:" + event, "information_section", "vk", null, Instant.now());
+            }
             store.completeEvent("vk:menu", event, Instant.now());
             return true;
         } catch (IOException failure) {
@@ -54,17 +57,17 @@ final class VkClientMenu {
         if (informationAnswer != null) {
             return informationAnswer;
         }
-        if (ASK.equals(label)) {
-            return active ? "Напишите сообщение, и преподаватель получит его в текущем разговоре."
-                    : "Напишите свой вопрос одним сообщением. Преподаватель ответит вам здесь.";
+        if (ClientInformation.isHandoffRequest(label)) {
+            return active ? "Напишите сообщение, и оператор получит его в текущем разговоре."
+                    : "Напишите свой вопрос одним сообщением. Оператор ответит вам здесь.";
         }
         var command = label.toLowerCase(Locale.ROOT);
         if (List.of("/start", "/menu", "начать").contains(command)) {
             return active ? "У вас уже есть открытый вопрос. Напишите сообщение или выберите нужный раздел."
-                    : "Здравствуйте! Выберите нужный раздел или задайте вопрос преподавателю.";
+                    : "Здравствуйте! Выберите нужный раздел или напишите оператору.";
         }
         if (command.startsWith("/")) {
-            return active ? "Просто напишите сообщение преподавателю или выберите нужный раздел."
+            return active ? "Просто напишите сообщение оператору или выберите нужный раздел."
                     : "Выберите нужный раздел.";
         }
         return null;

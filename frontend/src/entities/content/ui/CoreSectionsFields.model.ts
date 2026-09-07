@@ -7,17 +7,16 @@ import {
   type ModelRef,
 } from '@frontend/shared/lib/component-props';
 import { computed } from '@frontend/shared/lib/model-state';
-import {
-  formatAddressResponse,
-  formatListResponse,
-} from '@frontend/entities/content/lib/client-response-preview';
+import { getCoreResponseLengths } from '@frontend/entities/content/lib/content-response-limit';
 import type { ContentDraft } from '@frontend/entities/content/model/types';
 
 export type ComponentProps = {
+  errors?: Readonly<Record<string, string | undefined>>;
+} & {
   modelValue: ContentDraft;
   onModelValueChange?: (value: ContentDraft) => void;
 } & ComponentAttributes;
-export const componentDefaults = {};
+export const componentDefaults = { errors: () => ({}) };
 type ResolvedProps = WithDefaults<ComponentProps, typeof componentDefaults>;
 export function createComponentModel(
   _props: ResolvedProps,
@@ -28,20 +27,6 @@ export function createComponentModel(
   ) => ModelRef<Value>,
 ) {
   const draft = $model<ContentDraft>('modelValue', { required: true });
-  const scheduleLength = computed(() =>
-    draft.value.schedule.trim()
-      ? formatListResponse('Расписание', draft.value.schedule).length
-      : 0,
-  );
-  const pricesLength = computed(() =>
-    draft.value.prices.trim()
-      ? formatListResponse('Цены', draft.value.prices).length
-      : 0,
-  );
-  const addressLength = computed(() =>
-    draft.value.address.trim()
-      ? formatAddressResponse(draft.value.address).length
-      : 0,
-  );
-  return { draft, scheduleLength, pricesLength, addressLength };
+  const responseLengths = computed(() => getCoreResponseLengths(draft.value));
+  return { draft, responseLengths };
 }

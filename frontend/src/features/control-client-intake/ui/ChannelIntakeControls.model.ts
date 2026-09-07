@@ -28,16 +28,13 @@ export function createComponentModel(
   }
   function pauseExplanation(channel: ClientChannel): string {
     const channelIsPaused = props.state.channels[channel].mode === 'paused';
-    if (channel === 'telegram') {
-      if (channelIsPaused) {
-        return 'Бот не принимает новые обращения и предлагает посмотреть контакт в описании.';
-      }
-      return 'Клиенты могут начать новый разговор через бота.';
-    }
     if (channelIsPaused) {
-      return 'Сообщения остаются в сообществе и не передаются в Telegram.';
+      return 'Клиенты увидят, что новые обращения временно не принимаются.';
     }
-    return 'Новые сообщения передаются преподавателю.';
+    if (channel === 'telegram') {
+      return 'Клиенты могут написать оператору через бота.';
+    }
+    return 'Клиенты могут написать оператору через сообщество.';
   }
   return { $emit, channelName, pauseExplanation };
 }

@@ -26,7 +26,8 @@ class HandoffRuntimeTest {
             assertThat(store.byId("first").topic()).isEqualTo("web:first");
             assertThat(store.activeOperatorRequests()).extracting(TelegramRuntime.InboxRequest::id).containsExactly("first");
             service.relayReply(42, 89, "Late Telegram reply", "telegram:late");
-            assertThat(store.pending(now, false, true)).isEmpty();
+            assertThat(store.pending(now, false, true)).singleElement()
+                    .satisfies(item -> assertThat(item.text()).isEqualTo(HandoffService.ACKNOWLEDGEMENT));
             service.relayReply(store.byId("first"), "web:close", "/close", "web:close");
             service.processVk("after-close", 123, 58, "Customer", "New question");
             assertThat(store.activeRequest("vk", 123).id()).isNotEqualTo("first");
@@ -53,7 +54,9 @@ class HandoffRuntimeTest {
                 assertThat(message.direction()).isEqualTo("operator_to_client");
                 assertThat(message.deliveryStatus()).isEqualTo("pending");
             });
-            assertThat(store.pending(now, false, true)).hasSize(1);
+            assertThat(store.pending(now, false, true)).hasSize(2);
+            assertThat(store.pilotCounts(now)).containsEntry("new_request", 1L).containsEntry("web_takeover", 1L)
+                    .containsEntry("first_reply", 1L);
             service.relayReply(request, "web:close", "/close", "web:close");
             assertThat(store.activeOperatorRequests()).isEmpty();
         }

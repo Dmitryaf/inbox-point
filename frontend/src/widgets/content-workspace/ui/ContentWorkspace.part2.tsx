@@ -16,6 +16,7 @@ export function renderContentWorkspacePart2(
   const workspace = $unref($state.workspace);
   const activeView = $state.activeView.value;
   const activeSection = $state.activeSection.value;
+  const fieldErrors = $state.fieldErrors.value;
   if (!!workspace.loading.value) {
     return null;
   }
@@ -27,6 +28,7 @@ export function renderContentWorkspacePart2(
       {activeView === 'edit' ? (
         <ContentEditor
           activeSection={activeSection}
+          errors={fieldErrors}
           modelValue={workspace.draft}
           onModelValueChange={$propertySetter(
             () => $unref($state.workspace),

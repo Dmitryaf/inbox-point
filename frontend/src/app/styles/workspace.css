@@ -11,41 +11,6 @@
   padding: 1rem;
 }
 
-.workspace-topbar {
-  align-items: center;
-  background: rgba(255, 255, 255, 0.82);
-  border: 1px solid var(--color-border);
-  border-radius: 0.95rem;
-  display: flex;
-  gap: 1rem;
-  justify-content: space-between;
-  min-width: 0;
-  padding: 0.8rem 0.9rem;
-}
-
-.workspace-identity {
-  align-items: center;
-  display: flex;
-  gap: 0.7rem;
-  min-width: 0;
-}
-
-.workspace-identity div {
-  display: grid;
-  min-width: 0;
-}
-
-.workspace-identity strong,
-.workspace-identity small {
-  overflow-wrap: anywhere;
-}
-
-.workspace-identity small {
-  color: var(--color-text-muted);
-  margin-top: 0.12rem;
-}
-
-.workspace-mark,
 .summary-icon {
   align-items: center;
   background: var(--color-primary);
@@ -57,28 +22,6 @@
   height: 2.3rem;
   justify-content: center;
   width: 2.3rem;
-}
-
-.channel-badge {
-  align-items: center;
-  background: rgba(255, 255, 255, 0.68);
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  color: var(--color-text-muted);
-  display: flex;
-  flex: 0 0 auto;
-  font-size: 0.78rem;
-  font-weight: 700;
-  gap: 0.45rem;
-  padding: 0.5rem 0.7rem;
-}
-
-.channel-badge > span {
-  background: #42b883;
-  border-radius: 999px;
-  box-shadow: 0 0 0 3px rgba(66, 184, 131, 0.14);
-  height: 0.45rem;
-  width: 0.45rem;
 }
 
 .mobile-workspace-navigation,
@@ -159,7 +102,7 @@
   display: grid;
   gap: 0.75rem;
   grid-template-columns: minmax(0, 1fr) auto;
-  position: static;
+  position: sticky;
   z-index: 2;
   backdrop-filter: blur(14px);
   background: rgba(255, 255, 255, 0.9);
@@ -219,10 +162,6 @@
     padding: 1rem;
   }
 
-  .workspace-topbar {
-    grid-column: 1 / -1;
-  }
-
   .mobile-workspace-navigation {
     display: none;
   }
@@ -262,6 +201,7 @@
 
   .save-bar {
     grid-template-columns: 1fr;
+    position: static;
   }
 
   .save-bar button {
@@ -276,20 +216,7 @@
     padding: 0.6rem;
   }
 
-  .workspace-topbar,
   .mobile-workspace-navigation {
     padding: 0.75rem;
-  }
-
-  .channel-badge {
-    display: none;
-  }
-
-  .save-bar {
-    grid-template-columns: 1fr;
-  }
-
-  .save-bar button {
-    width: 100%;
   }
 }

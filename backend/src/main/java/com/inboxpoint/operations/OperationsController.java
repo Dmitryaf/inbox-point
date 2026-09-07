@@ -104,6 +104,24 @@ final class OperationsController {
         }
     }
 
+    @GetMapping("/pilot-metrics")
+    ResponseEntity<?> pilotMetrics(HttpServletRequest request, HttpServletResponse response) {
+        if (!admin.available(request, response)) {
+            return message(404, "Not found");
+        }
+        if (!admin.authorized(request, response)) {
+            return message(401, "Введите пароль мониторинга.");
+        }
+        try {
+            var now = Instant.now();
+            var since = now.minus(Duration.ofDays(30));
+            return ResponseEntity.ok(Map.of("events", runtime.pilotCounts(since), "observedAt", now.toString(),
+                    "recordedSince", since.toString(), "periodDays", 30));
+        } catch (IOException | SQLException unavailable) {
+            return message(503, "Метрики пилота пока недоступны.");
+        }
+    }
+
     @PostMapping("/deliveries/{id}/retry")
     ResponseEntity<?> retryDelivery(@PathVariable String id, HttpServletRequest request, HttpServletResponse response) {
         var denied = deliveryAccess(request, response);

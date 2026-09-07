@@ -267,6 +267,12 @@ public final class TelegramRuntime {
         }
     }
 
+    public Map<String, Long> pilotCounts(Instant since) throws IOException, SQLException {
+        try (var store = new TelegramStore(database)) {
+            return store.pilotCounts(since);
+        }
+    }
+
     public List<InboxRequest> inboxRequests() throws IOException, SQLException {
         try (var store = new TelegramStore(database)) {
             return store.activeOperatorRequests();

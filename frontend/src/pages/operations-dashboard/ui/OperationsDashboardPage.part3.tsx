@@ -13,8 +13,8 @@ export function renderOperationsDashboardPagePart3(
 ) {
   const session = $unref($state.session);
   const operations = $unref($state.operations);
-  const deliveryRetry = $unref($state.deliveryRetry);
   const deliveryControl = $unref($state.deliveryControl);
+  const deliveryRetry = $unref($state.deliveryRetry);
   if (!!session.booting.value) {
     return null;
   }

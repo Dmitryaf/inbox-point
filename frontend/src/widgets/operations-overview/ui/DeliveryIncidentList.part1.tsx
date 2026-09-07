@@ -37,22 +37,25 @@ export function renderDeliveryIncidentListPart1(
                   </time>
                 </div>
                 <p>{incident.reason}</p>
-                <dl className="delivery-incident-context">
-                  <div>
-                    <dt>{'Обращение'}</dt>
-                    <dd>{incident.requestId}</dd>
-                  </div>
-                  <div>
-                    <dt>{'Тема преподавателя'}</dt>
-                    <dd>{incident.operatorTopicId}</dd>
-                  </div>
-                  {incident.operatorMessageId ? (
+                <details className="technical-details">
+                  <summary>{'Технические данные'}</summary>
+                  <dl className="delivery-incident-context">
                     <div>
-                      <dt>{'Сообщение преподавателя'}</dt>
-                      <dd>{incident.operatorMessageId}</dd>
+                      <dt>{'ID обращения'}</dt>
+                      <dd>{incident.requestId}</dd>
                     </div>
-                  ) : null}
-                </dl>
+                    <div>
+                      <dt>{'ID темы в Telegram'}</dt>
+                      <dd>{incident.operatorTopicId}</dd>
+                    </div>
+                    {incident.operatorMessageId ? (
+                      <div>
+                        <dt>{'ID сообщения'}</dt>
+                        <dd>{incident.operatorMessageId}</dd>
+                      </div>
+                    ) : null}
+                  </dl>
+                </details>
                 {incident.retryAllowed ? (
                   <button
                     type="button"

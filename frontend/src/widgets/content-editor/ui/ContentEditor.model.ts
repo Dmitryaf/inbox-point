@@ -12,6 +12,7 @@ import type { EditorSection } from '@frontend/widgets/content-workspace/model/na
 
 export type ComponentProps = {
   activeSection: EditorSection;
+  errors: Readonly<Record<string, string | undefined>>;
 } & {
   modelValue: ContentDraft;
   onModelValueChange?: (value: ContentDraft) => void;

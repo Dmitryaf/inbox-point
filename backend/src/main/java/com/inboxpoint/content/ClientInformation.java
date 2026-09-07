@@ -31,14 +31,16 @@ public final class ClientInformation {
     public static final String SCHEDULE = "Расписание";
     public static final String PRICES = "Цены";
     public static final String ADDRESS = "Адрес";
-    public static final String ASK = "Задать вопрос преподавателю";
+    public static final String ASK = "Написать оператору";
+    private static final String FORMER_ASK = "Задать вопрос преподавателю";
+    private static final String LEGACY_ASK = "Передать сообщение человеку";
     public static final String FAQ = "Частые вопросы";
     public static final String RESET = "Начать новый вопрос";
-    private static final String UNAVAILABLE = " пока не добавлено. Вы можете задать вопрос преподавателю.";
     private static final List<String> FIELDS = List.of("schedule", "prices", "address");
     private static final Set<String> RESERVED = Set.of(
             SCHEDULE.toLowerCase(Locale.ROOT), PRICES.toLowerCase(Locale.ROOT), ADDRESS.toLowerCase(Locale.ROOT),
-            ASK.toLowerCase(Locale.ROOT), RESET.toLowerCase(Locale.ROOT), FAQ.toLowerCase(Locale.ROOT), "/start", "/menu", "начать", "faq");
+            ASK.toLowerCase(Locale.ROOT), FORMER_ASK.toLowerCase(Locale.ROOT), LEGACY_ASK.toLowerCase(Locale.ROOT),
+            RESET.toLowerCase(Locale.ROOT), FAQ.toLowerCase(Locale.ROOT), "/start", "/menu", "начать", "faq");
     private final Path file;
     private volatile State state;
 
@@ -176,6 +178,10 @@ public final class ClientInformation {
 
     }
 
+    public static boolean isHandoffRequest(String label) {
+        return ASK.equals(label) || FORMER_ASK.equals(label) || LEGACY_ASK.equals(label);
+    }
+
     public boolean isPublishedInformation(String label) {
         return informationButtons().contains(label) || sections().stream().anyMatch(section -> section.label().equals(label));
     }
@@ -204,13 +210,13 @@ public final class ClientInformation {
 
     private static String resolve(String label, Snapshot snapshot) {
         if (FAQ.equals(label) || "faq".equalsIgnoreCase(label)) {
-            return snapshot.faq().isEmpty() ? FAQ + UNAVAILABLE : formatFaq(snapshot.faq());
+            return snapshot.faq().isEmpty() ? "Частые вопросы пока не добавлены. Напишите оператору, если нужна помощь." : formatFaq(snapshot.faq());
         }
         return switch (label) {
-            case SCHEDULE -> formatList(SCHEDULE, snapshot.standard().get("schedule"), "Расписание" + UNAVAILABLE);
-            case PRICES -> formatList(PRICES, snapshot.standard().get("prices"), "Информация о ценах" + UNAVAILABLE);
+            case SCHEDULE -> formatList(SCHEDULE, snapshot.standard().get("schedule"), "Расписание пока не добавлено. Напишите оператору, чтобы уточнить время.");
+            case PRICES -> formatList(PRICES, snapshot.standard().get("prices"), "Информация о ценах пока не добавлена. Напишите оператору, чтобы уточнить стоимость.");
             case ADDRESS -> snapshot.standard().containsKey("address")
-                    ? "Адрес\n\n" + snapshot.standard().get("address") : "Информация об адресе" + UNAVAILABLE;
+                    ? "Адрес\n\n" + snapshot.standard().get("address") : "Адрес пока не добавлен. Напишите оператору, чтобы узнать, как нас найти.";
             default -> snapshot.custom().stream()
                     .filter(section -> section.label().equals(label)).map(Section::text).findFirst().orElse(null);
         };

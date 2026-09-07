@@ -3,14 +3,21 @@ import { classNames as $class } from '@frontend/shared/lib/component-view';
 import { propertySetter as $propertySetter } from '@frontend/shared/lib/component-bindings';
 import { textProperty as $textProperty } from '@frontend/shared/lib/component-inputs';
 
+import FieldError from '@frontend/shared/ui/FieldError';
 import SectionVisibilityControl from '@frontend/entities/content/ui/SectionVisibilityControl';
 
-import type { createComponentModel } from './CoreSectionsFields.model';
+import type { WithDefaults } from '@frontend/shared/lib/component-model';
+import type {
+  createComponentModel,
+  ComponentProps,
+  componentDefaults,
+} from './CoreSectionsFields.model';
 export function renderCoreSectionsFieldsPart1(
   $state: ReturnType<typeof createComponentModel>,
+  $props: WithDefaults<ComponentProps, typeof componentDefaults>,
 ) {
   const draft = $state.draft.value;
-  const scheduleLength = $state.scheduleLength.value;
+  const responseLengths = $state.responseLengths.value;
 
   return (
     <>
@@ -35,18 +42,23 @@ export function renderCoreSectionsFieldsPart1(
         <label htmlFor="schedule">{'Текст для клиента'}</label>
         <textarea
           id="schedule"
+          aria-describedby={
+            $props.errors.schedule ? 'schedule-error' : undefined
+          }
+          aria-invalid={Boolean($props.errors.schedule)}
           maxLength={4000}
           rows={5}
           value={draft.schedule ?? ''}
           onChange={$textProperty(() => $state.draft.value, 'schedule')}
         />
+        <FieldError id="schedule-error" text={$props.errors.schedule} />
         <p
           className={$class('counter', {
-            'counter--error': scheduleLength > 4000,
+            'counter--error': responseLengths.schedule > 4000,
           })}
         >
           {' Итоговый ответ: '}
-          {scheduleLength}
+          {responseLengths.schedule}
           {' / 4000 '}
         </p>
         <SectionVisibilityControl

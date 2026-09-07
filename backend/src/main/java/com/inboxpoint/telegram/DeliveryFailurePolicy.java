@@ -21,6 +21,7 @@ final class DeliveryFailurePolicy {
         var reason = diagnostic != null && diagnostic.apiCode() != null ? "API " + diagnostic.apiCode() : "Transport";
         if (uncertain || item.attempts() + 1 >= ATTEMPT_LIMIT) {
             store.failed(item.key(), uncertain, reason);
+            store.pilotEvent("delivery-failure:" + item.key(), "delivery_failure", item.channel(), item.request(), clock.instant());
         } else {
             long delay = Math.min(5L << item.attempts(), 300);
             store.schedule(item.key(), clock.instant().plusSeconds(delay));

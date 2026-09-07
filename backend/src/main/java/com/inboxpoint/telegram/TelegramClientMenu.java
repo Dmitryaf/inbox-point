@@ -52,6 +52,9 @@ final class TelegramClientMenu {
                 store.changeStatus(active.id(), false, now);
             }
             api.sendMessage(chat, null, response, keyboard(blocked));
+            if (information.isPublishedInformation(trimmed)) {
+                store.pilotEvent("information:telegram:" + event, "information_section", "telegram", null, Instant.now());
+            }
             store.completeEvent(SOURCE, event, now);
         } catch (TelegramBotApi.RequestFailed failure) {
             if (!failure.outcomeUnknown()) {
@@ -72,19 +75,19 @@ final class TelegramClientMenu {
         if (RESET.equals(text)) {
             return active ? "Предыдущий разговор завершён. Выберите нужный раздел." : "Выберите нужный раздел.";
         }
-        if (ASK.equals(text)) {
-            return active ? "Напишите сообщение, и преподаватель получит его в текущем разговоре."
-                    : "Напишите свой вопрос одним сообщением. Преподаватель ответит вам в этом чате.";
+        if (ClientInformation.isHandoffRequest(text)) {
+            return active ? "Напишите сообщение, и оператор получит его в текущем разговоре."
+                    : "Напишите свой вопрос одним сообщением. Оператор ответит вам в этом чате.";
         }
         var command = text.split("[\\s@]", 2)[0].toLowerCase(Locale.ROOT);
         if ("/start".equals(command) || "/menu".equals(command)) {
             return active
                     ? "У вас уже есть открытый вопрос. Напишите сообщение, чтобы продолжить разговор, или выберите нужный раздел."
                     : "Здравствуйте! Я помогу быстро найти основную информацию.\n\n"
-                            + "Выберите нужный раздел или задайте вопрос преподавателю.";
+                            + "Выберите нужный раздел или напишите оператору.";
         }
         if (command.startsWith("/")) {
-            return active ? "Эта команда недоступна во время разговора. Просто напишите сообщение преподавателю."
+            return active ? "Эта команда недоступна во время разговора. Просто напишите сообщение оператору."
                     : "Открытого обращения нет. Выберите нужный раздел в меню.";
         }
         return null;

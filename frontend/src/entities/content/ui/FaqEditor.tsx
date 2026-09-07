@@ -70,10 +70,12 @@ export default function FaqEditor($incomingProps: ComponentProps) {
         />
         {draft.faq.length === 0 ? (
           <p className="empty">
-            {' Вопросов пока нет. Клиенту предложат написать преподавателю. '}
+            {
+              ' Добавьте хотя бы один вопрос и ответ, чтобы показать этот раздел клиентам. '
+            }
           </p>
         ) : null}
-        {renderFaqEditorPart1($state)}
+        {renderFaqEditorPart1($state, $props)}
         <button
           disabled={draft.faq.length >= 20}
           type="button"

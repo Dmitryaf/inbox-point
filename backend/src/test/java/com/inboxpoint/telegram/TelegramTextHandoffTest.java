@@ -45,13 +45,15 @@ class TelegramTextHandoffTest {
 
             var calls = server.requests();
             assertThat(calls).extracting(TelegramTestServer.Request::method)
-                    .containsExactly("createForumTopic", "sendMessage", "sendMessage", "closeForumTopic",
+                    .containsExactly("createForumTopic", "sendMessage", "sendMessage", "sendMessage", "closeForumTopic",
                             "reopenForumTopic");
             assertThat(calls.get(1).body().path("chat_id").asLong()).isEqualTo(-100123);
             assertThat(calls.get(1).body().path("message_thread_id").asLong()).isEqualTo(42);
             assertThat(calls.get(1).body().path("text").asString()).contains("Question");
             assertThat(calls.get(2).body().path("chat_id").asLong()).isEqualTo(123);
-            assertThat(calls.get(2).body().path("text").asString()).isEqualTo("Answer");
+            assertThat(calls.subList(2, 4)).extracting(call -> call.body().path("text").asString())
+                    .containsExactlyInAnyOrder(HandoffService.ACKNOWLEDGEMENT, "Answer");
+            assertThat(store.pilotCounts(java.time.Instant.EPOCH)).containsEntry("new_request", 1L).containsEntry("first_reply", 1L);
         }
     }
 

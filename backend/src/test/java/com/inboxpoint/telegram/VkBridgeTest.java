@@ -93,19 +93,18 @@ class VkBridgeTest {
             handoff.process(update(2, -100123, 41, "Answer to VK"));
             handoff.process(update(3, -100123, 42, "Answer to Telegram"));
             var worker = new TelegramDeliveryWorker(store, api, Clock.systemUTC(), () -> community);
-            assertThat(worker.runOnce()).isEqualTo(2);
+            assertThat(worker.runOnce()).isEqualTo(4);
             assertThat(worker.runOnce()).isZero();
-            assertThat(calls).hasSize(1);
-            assertThat(calls.getFirst()).contains("peer_id=123", "message=Answer+to+VK", "random_id=");
+            assertThat(calls).hasSize(2).anySatisfy(call -> assertThat(call).contains("peer_id=123", "message=Answer+to+VK", "random_id="));
             assertThat(bot.requests().stream().filter(call -> call.method().equals("sendMessage")
                     && call.body().path("chat_id").asLong() == 123).toList())
-                    .singleElement().satisfies(call -> assertThat(call.body().path("text").asString())
-                            .isEqualTo("Answer to Telegram"));
+                    .extracting(call -> call.body().path("text").asString())
+                    .containsExactlyInAnyOrder("Answer to Telegram", HandoffService.ACKNOWLEDGEMENT);
             var backup = directory.resolve("backups/inbox.sqlite");
             store.backup(backup);
             assertThat(Files.exists(backup)).isTrue();
             try (var saved = new TelegramStore(backup)) {
-                assertThat(saved.summary().sent()).isEqualTo(2);
+                assertThat(saved.summary().sent()).isEqualTo(4);
             }
         } finally {
             vk.stop(0);
