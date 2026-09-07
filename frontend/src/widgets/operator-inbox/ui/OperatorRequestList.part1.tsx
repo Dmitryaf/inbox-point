@@ -30,7 +30,7 @@ export function renderOperatorRequestListPart1(
               request.id === $props.selectedRequestId,
           })}
         >
-          <strong>{$or(request.displayName, () => 'Клиент')}</strong>
+          <strong>{$or(request.displayName, () => 'Без имени')}</strong>
           <span>{channelName(request.channel)}</span>
           <time
             dateTime={$or(request.latestMessageAt, () => request.createdAt)}

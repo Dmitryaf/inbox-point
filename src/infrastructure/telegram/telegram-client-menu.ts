@@ -12,6 +12,7 @@ import {
   isHandoffRequest,
   newQuestionButton,
 } from '@/core/application/client-information.js';
+import { isWebOperatorTopic } from '@/core/model/operator-topic.js';
 
 import type {
   TelegramGateway,
@@ -69,14 +70,16 @@ export class TelegramClientMenu implements TelegramClientMenuHandler {
 
     try {
       if (response.resetActiveRequest && activeRequest) {
-        try {
-          await this.gateway.closeForumTopic(
-            this.operatorChatId,
-            Number(activeRequest.operatorTopicId),
-          );
-        } catch (error: unknown) {
-          if (!isUnavailableForumTopicError(error)) {
-            throw error;
+        if (!isWebOperatorTopic(activeRequest.operatorTopicId)) {
+          try {
+            await this.gateway.closeForumTopic(
+              this.operatorChatId,
+              Number(activeRequest.operatorTopicId),
+            );
+          } catch (error: unknown) {
+            if (!isUnavailableForumTopicError(error)) {
+              throw error;
+            }
           }
         }
         this.repository.closeRequest(activeRequest.id, new Date());
@@ -87,7 +90,7 @@ export class TelegramClientMenu implements TelegramClientMenuHandler {
         text: response.text,
       });
       if (informationRequested) {
-        this.repository.recordPilotEvent({
+        this.repository.recordUsageEvent({
           channel: 'telegram',
           id: `information:telegram:${message.externalEventId}`,
           occurredAt: new Date(),
@@ -122,7 +125,7 @@ function resolveMenuResponse(
   const normalized = text.trim();
   const command = parseCommand(normalized);
   const paused = intakePolicy.isPaused('telegram');
-  const mainMenu = createMainMenu(information, paused && !hasActiveRequest);
+  const mainMenu = createMainMenu(information, hasActiveRequest, paused);
   const informationResponse = information.resolve(normalized);
   if (
     informationResponse &&
@@ -147,13 +150,13 @@ function resolveMenuResponse(
     if (command === '/start' || command === '/menu') {
       return {
         replyMarkup: mainMenu,
-        text: 'У вас уже есть открытый вопрос. Напишите сообщение, чтобы продолжить разговор, или выберите нужный раздел.',
+        text: 'Разговор уже начат. Напишите сообщение, чтобы продолжить, или выберите нужный раздел.',
       };
     }
     if (isHandoffRequest(normalized)) {
       return {
         replyMarkup: mainMenu,
-        text: 'Напишите сообщение, и оператор получит его в текущем разговоре.',
+        text: 'Просто напишите сообщение, чтобы продолжить разговор.',
       };
     }
     if (normalized === newQuestionButton) {
@@ -166,7 +169,7 @@ function resolveMenuResponse(
     if (command?.startsWith('/')) {
       return {
         replyMarkup: mainMenu,
-        text: 'Эта команда недоступна во время разговора. Просто напишите сообщение оператору.',
+        text: 'Эта команда недоступна во время разговора. Просто напишите сообщение.',
       };
     }
     return undefined;
@@ -181,11 +184,7 @@ function resolveMenuResponse(
   if (command === '/start' || command === '/menu') {
     return {
       replyMarkup: mainMenu,
-      text: [
-        'Здравствуйте! Я помогу быстро найти основную информацию.',
-        '',
-        'Выберите нужный раздел или напишите оператору.',
-      ].join('\n'),
+      text: 'Здравствуйте! Здесь можно посмотреть основную информацию или задать вопрос.',
     };
   }
   if (command?.startsWith('/')) {
@@ -197,7 +196,7 @@ function resolveMenuResponse(
   if (isHandoffRequest(normalized)) {
     return {
       replyMarkup: mainMenu,
-      text: 'Напишите свой вопрос одним сообщением. Оператор ответит вам в этом чате.',
+      text: 'Напишите свой вопрос. Мы ответим здесь.',
     };
   }
   return undefined;
@@ -205,6 +204,7 @@ function resolveMenuResponse(
 
 function createMainMenu(
   information: ClientInformationResolver,
+  hasActiveRequest: boolean,
   paused = false,
 ): TelegramReplyMarkup {
   const informationRows = createButtonRows(
@@ -214,9 +214,12 @@ function createMainMenu(
     .getCustomSections()
     .map((section) => ({ text: section.label }));
   const customRows = createButtonRows(customButtons);
-  const actionRows = paused
-    ? []
-    : [[{ text: handoffButton }], [{ text: newQuestionButton }]];
+  let actionRows: { text: string }[][] = [];
+  if (hasActiveRequest) {
+    actionRows = [[{ text: newQuestionButton }]];
+  } else if (!paused) {
+    actionRows = [[{ text: handoffButton }]];
+  }
   const keyboard = [...informationRows, ...customRows, ...actionRows];
   if (keyboard.length === 0) {
     return { remove_keyboard: true };

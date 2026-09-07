@@ -128,7 +128,7 @@ export class TelegramUpdateRouter {
 const clientUnsupportedMessage =
   'Сейчас можно отправить только текст. Напишите вопрос отдельным текстовым сообщением.';
 const operatorUnsupportedMessage =
-  'Это сообщение не отправлено клиенту: сейчас поддерживаются только текстовые ответы.';
+  'Это сообщение не отправлено: сейчас поддерживаются только текстовые ответы.';
 
 const unsupportedContentFields = [
   'animation',
@@ -164,5 +164,7 @@ function createDisplayName(user: TelegramDisplayUser): string {
     .filter((part): part is string => Boolean(part))
     .join(' ')
     .trim();
-  return name || (user.username ? `@${user.username}` : 'Telegram customer');
+  return (
+    name || (user.username ? `@${user.username}` : 'Пользователь Telegram')
+  );
 }

@@ -30,6 +30,6 @@ describe('FileVkSettingsStore', () => {
     await store.save(settings);
 
     await expect(store.load()).resolves.toEqual(settings);
-    expect(await readFile(path, 'utf8')).toContain('version');
+    expect(JSON.parse(await readFile(path, 'utf8'))).toEqual(settings);
   });
 });

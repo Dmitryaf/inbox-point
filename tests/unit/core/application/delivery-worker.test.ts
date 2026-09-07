@@ -198,7 +198,7 @@ describe('DeliveryWorker', () => {
       }),
     ]);
     expect(
-      repository.getPilotEventCounts(new Date('2026-08-31T00:00:00.000Z'))
+      repository.getUsageEventCounts(new Date('2026-08-31T00:00:00.000Z'))
         .delivery_failure,
     ).toBe(1);
 

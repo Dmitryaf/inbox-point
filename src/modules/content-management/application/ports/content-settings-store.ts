@@ -5,12 +5,12 @@ export type ContentSectionKey =
 
 export interface ContentChange {
   changedAt: string;
-  revision?: number;
+  revision: number;
   sections: readonly ContentSectionKey[];
 }
 
 export interface StoredContentChange extends ContentChange {
-  content?: ClientInformationContent;
+  content: ClientInformationContent;
 }
 
 export interface ContentSettingsDocument {

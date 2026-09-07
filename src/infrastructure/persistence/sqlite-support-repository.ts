@@ -21,11 +21,11 @@ import type {
 import { webOperatorTopicPrefix } from '@/core/model/operator-topic.js';
 import type { ClientChannelKind } from '@/core/model/support-message.js';
 import {
-  pilotEventTypes,
-  type PilotEvent,
-  type PilotEventCounts,
-  type PilotEventType,
-} from '@/core/model/pilot-event.js';
+  usageEventTypes,
+  type UsageEvent,
+  type UsageEventCounts,
+  type UsageEventType,
+} from '@/core/model/usage-event.js';
 import { sqliteSchemaVersion } from '@/infrastructure/persistence/sqlite-schema.js';
 
 interface SupportRequestRow {
@@ -94,7 +94,12 @@ export class SqliteSupportRepository implements SupportRepository {
     });
     this.database.exec('PRAGMA journal_mode = WAL');
     this.database.exec('PRAGMA synchronous = FULL');
-    this.migrate();
+    try {
+      this.initializeSchema();
+    } catch (error: unknown) {
+      this.database.close();
+      throw error;
+    }
     this.releaseInterruptedEvents();
     this.markInterruptedDeliveriesUnknown();
   }
@@ -121,20 +126,20 @@ export class SqliteSupportRepository implements SupportRepository {
       );
   }
 
-  public getPilotEventCounts(since: Date): PilotEventCounts {
+  public getUsageEventCounts(since: Date): UsageEventCounts {
     const counts = Object.fromEntries(
-      pilotEventTypes.map((type) => [type, 0]),
-    ) as PilotEventCounts;
+      usageEventTypes.map((type) => [type, 0]),
+    ) as UsageEventCounts;
     const rows = this.database
       .prepare(
         `SELECT event_type, COUNT(*) AS event_count
-         FROM pilot_events
+         FROM usage_events
          WHERE occurred_at >= ?
          GROUP BY event_type`,
       )
       .all(since.toISOString()) as unknown as {
       event_count: number;
-      event_type: PilotEventType;
+      event_type: UsageEventType;
     }[];
     for (const row of rows) {
       counts[row.event_type] = row.event_count;
@@ -142,10 +147,10 @@ export class SqliteSupportRepository implements SupportRepository {
     return counts;
   }
 
-  public recordPilotEvent(event: PilotEvent): void {
+  public recordUsageEvent(event: UsageEvent): void {
     this.database
       .prepare(
-        `INSERT OR IGNORE INTO pilot_events (
+        `INSERT OR IGNORE INTO usage_events (
           id,
           event_type,
           channel,
@@ -996,7 +1001,24 @@ export class SqliteSupportRepository implements SupportRepository {
     return Number(result.changes) === 1;
   }
 
-  private migrate(): void {
+  private initializeSchema(): void {
+    const version = this.database.prepare('PRAGMA user_version').get() as {
+      user_version: number;
+    };
+    const existingTable = this.database
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' LIMIT 1",
+      )
+      .get();
+    if (
+      existingTable !== undefined &&
+      version.user_version !== sqliteSchemaVersion
+    ) {
+      throw new Error(
+        `Unsupported SQLite schema version ${version.user_version}; expected ${sqliteSchemaVersion}`,
+      );
+    }
+
     this.database.exec(`
       CREATE TABLE IF NOT EXISTS support_requests (
         id TEXT PRIMARY KEY,
@@ -1059,7 +1081,7 @@ export class SqliteSupportRepository implements SupportRepository {
         PRIMARY KEY (source, external_event_id)
       ) STRICT;
 
-      CREATE TABLE IF NOT EXISTS pilot_events (
+      CREATE TABLE IF NOT EXISTS usage_events (
         id TEXT PRIMARY KEY,
         event_type TEXT NOT NULL CHECK (event_type IN (
           'new_request',
@@ -1073,8 +1095,8 @@ export class SqliteSupportRepository implements SupportRepository {
         occurred_at TEXT NOT NULL
       ) STRICT;
 
-      CREATE INDEX IF NOT EXISTS pilot_events_by_time
-        ON pilot_events(occurred_at, event_type);
+      CREATE INDEX IF NOT EXISTS usage_events_by_time
+        ON usage_events(occurred_at, event_type);
 
       CREATE TABLE IF NOT EXISTS deliveries (
         id TEXT PRIMARY KEY,
@@ -1102,88 +1124,10 @@ export class SqliteSupportRepository implements SupportRepository {
         resolved_at TEXT,
         operator_notified_at TEXT,
         notification_next_attempt_at TEXT,
+        attempt_started_at TEXT,
         sent_at TEXT
       ) STRICT;
     `);
-
-    const requestColumns = this.database
-      .prepare('PRAGMA table_info(support_requests)')
-      .all() as unknown as { name: string }[];
-    if (
-      !requestColumns.some((column) => column.name === 'client_display_name')
-    ) {
-      this.database.exec(
-        'ALTER TABLE support_requests ADD COLUMN client_display_name TEXT',
-      );
-    }
-
-    const deliveryColumns = this.database
-      .prepare('PRAGMA table_info(deliveries)')
-      .all() as unknown as { name: string }[];
-    if (
-      !deliveryColumns.some((column) => column.name === 'operator_message_id')
-    ) {
-      this.database.exec(
-        'ALTER TABLE deliveries ADD COLUMN operator_message_id TEXT',
-      );
-    }
-    if (
-      !deliveryColumns.some((column) => column.name === 'manual_resolution')
-    ) {
-      this.database.exec(
-        "ALTER TABLE deliveries ADD COLUMN manual_resolution TEXT CHECK (manual_resolution IN ('confirmed_received', 'confirmed_not_received'))",
-      );
-    }
-    if (!deliveryColumns.some((column) => column.name === 'resolved_at')) {
-      this.database.exec('ALTER TABLE deliveries ADD COLUMN resolved_at TEXT');
-    }
-    if (
-      !deliveryColumns.some((column) => column.name === 'operator_notified_at')
-    ) {
-      this.database.exec(
-        'ALTER TABLE deliveries ADD COLUMN operator_notified_at TEXT',
-      );
-    }
-    if (
-      !deliveryColumns.some(
-        (column) => column.name === 'notification_next_attempt_at',
-      )
-    ) {
-      this.database.exec(
-        'ALTER TABLE deliveries ADD COLUMN notification_next_attempt_at TEXT',
-      );
-    }
-    if (!deliveryColumns.some((column) => column.name === 'next_attempt_at')) {
-      this.database.exec(
-        'ALTER TABLE deliveries ADD COLUMN next_attempt_at TEXT',
-      );
-    }
-    if (!deliveryColumns.some((column) => column.name === 'outcome_unknown')) {
-      this.database.exec(
-        'ALTER TABLE deliveries ADD COLUMN outcome_unknown INTEGER NOT NULL DEFAULT 0 CHECK (outcome_unknown IN (0, 1))',
-      );
-    }
-    if (
-      !deliveryColumns.some((column) => column.name === 'attempt_started_at')
-    ) {
-      this.database.exec(
-        'ALTER TABLE deliveries ADD COLUMN attempt_started_at TEXT',
-      );
-    }
-
-    const eventColumns = this.database
-      .prepare('PRAGMA table_info(processed_events)')
-      .all() as unknown as { name: string }[];
-    if (!eventColumns.some((column) => column.name === 'status')) {
-      this.database.exec(
-        "ALTER TABLE processed_events ADD COLUMN status TEXT NOT NULL DEFAULT 'completed' CHECK (status IN ('processing', 'completed'))",
-      );
-    }
-    if (!eventColumns.some((column) => column.name === 'completed_at')) {
-      this.database.exec(
-        'ALTER TABLE processed_events ADD COLUMN completed_at TEXT',
-      );
-    }
 
     this.database.exec(`PRAGMA user_version = ${sqliteSchemaVersion}`);
   }

@@ -40,7 +40,7 @@ export default function SectionVisibilityControl(
           onChange={$nativeHandler(updateVisibility)}
         />
         <span>
-          {' Показывать кнопку клиентам '}
+          {' Показывать кнопку в каналах '}
           {!$props.contentPresent ? (
             <small>{' Пустой раздел всё равно не появится в меню. '}</small>
           ) : null}

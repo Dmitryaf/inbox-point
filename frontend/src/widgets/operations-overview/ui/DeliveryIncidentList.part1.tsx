@@ -69,7 +69,7 @@ export function renderDeliveryIncidentListPart1(
                   </button>
                 ) : (
                   <div className="delivery-resolution-actions">
-                    <p>{'Сначала уточните у клиента, был ли получен ответ.'}</p>
+                    <p>{'Сначала проверьте, было ли получено сообщение.'}</p>
                     <button
                       type="button"
                       disabled={Boolean($props.pendingDeliveryId)}
@@ -80,7 +80,7 @@ export function renderDeliveryIncidentListPart1(
                     >
                       {$props.pendingDeliveryId === incident.id
                         ? 'Сохраняем…'
-                        : 'Клиент получил'}
+                        : 'Сообщение получено'}
                     </button>
                     <button
                       type="button"
@@ -91,7 +91,7 @@ export function renderDeliveryIncidentListPart1(
                     >
                       {$props.pendingDeliveryId === incident.id
                         ? 'Сохраняем…'
-                        : 'Клиент не получил — повторить'}
+                        : 'Не получено — повторить'}
                     </button>
                   </div>
                 )}

@@ -32,7 +32,7 @@ export default function ContentPreview($incomingProps: ComponentProps) {
         className={$class('card preview', $attributes.className)}
       >
         <p className="step">{'Предпросмотр'}</p>
-        <h2 id="preview-title">{'Что увидит клиент'}</h2>
+        <h2 id="preview-title">{'Что появится в каналах'}</h2>
         {renderContentPreviewPart1($state)}
       </section>
     </ModelScopeProvider>

@@ -8,7 +8,7 @@ if (window.location.pathname.startsWith('/ops')) {
 } else if (window.location.pathname.startsWith('/setup')) {
   document.title = 'Настройка сервиса';
 } else {
-  document.title = 'Информация для клиентов';
+  document.title = 'Информация в каналах';
 }
 
 const root = document.getElementById('app');

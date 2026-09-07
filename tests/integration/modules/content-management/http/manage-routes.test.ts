@@ -22,7 +22,7 @@ const config: RuntimeConfig = {
 
 const apps = new Set<ReturnType<typeof createApp>>();
 const managementAssets = {
-  html: '<!doctype html><title>Информация для клиентов</title>',
+  html: '<!doctype html><title>Информация в каналах</title>',
   script: 'globalThis.managementApp = true;',
   styles: ':root { color: black; }',
 };
@@ -59,6 +59,7 @@ describe('managed content routes', () => {
         saved.push(content);
         history.unshift({
           changedAt: '2026-09-01T12:00:00.000Z',
+          revision: 1,
           sections: ['faq'],
         });
         return Promise.resolve();
@@ -205,7 +206,7 @@ describe('managed content routes', () => {
     });
 
     expect(page.statusCode).toBe(200);
-    expect(page.body).toContain('Информация для клиентов');
+    expect(page.body).toContain('Информация в каналах');
     expect(page.body).not.toContain('Токен');
     expect(page.headers['content-security-policy']).toContain(
       "default-src 'none'",

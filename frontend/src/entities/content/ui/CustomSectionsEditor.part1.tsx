@@ -47,7 +47,7 @@ export function renderCustomSectionsEditorPart1(
             {section.label.length}
             {' / 40'}
           </p>
-          <label htmlFor={`section-text-${index}`}>{'Текст для клиента'}</label>
+          <label htmlFor={`section-text-${index}`}>{'Текст ответа'}</label>
           <textarea
             id={`section-text-${index}`}
             aria-describedby={

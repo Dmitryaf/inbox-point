@@ -18,7 +18,7 @@ export function useDeliveryRetry(
   async function retry(deliveryId: string): Promise<void> {
     if (
       !window.confirm(
-        'Повторно отправить этот ответ клиенту? Действие поставит сообщение в очередь доставки.',
+        'Повторно отправить этот ответ? Действие поставит сообщение в очередь доставки.',
       )
     ) {
       return;
@@ -41,7 +41,7 @@ export function useDeliveryRetry(
       deliveryId,
       () => resolveOperationsDelivery(deliveryId, resolution),
       resolution === 'received'
-        ? 'Доставка отмечена как подтверждённая клиентом.'
+        ? 'Получение сообщения подтверждено.'
         : 'Неполученный ответ поставлен в очередь повторной доставки.',
     );
   }
@@ -75,9 +75,9 @@ export function useDeliveryRetry(
 function confirmResolution(resolution: 'not_received' | 'received'): boolean {
   return resolution === 'received'
     ? window.confirm(
-        'Подтвердить, что клиент получил ответ? Инцидент будет закрыт без повторной отправки.',
+        'Подтвердить, что сообщение получено? Инцидент будет закрыт без повторной отправки.',
       )
     : window.confirm(
-        'Подтвердить, что клиент не получил ответ, и отправить его повторно?',
+        'Подтвердить, что сообщение не получено, и отправить его повторно?',
       );
 }

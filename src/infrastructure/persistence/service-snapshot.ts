@@ -353,7 +353,7 @@ async function snapshotExpiration(
       }
     }
   } catch {
-    // Fall back to directory age for an incomplete legacy snapshot.
+    // Fall back to directory age when a snapshot directory is incomplete.
   }
   return new Date(
     (await stat(snapshotPath)).mtimeMs + retentionDays * millisecondsPerDay,

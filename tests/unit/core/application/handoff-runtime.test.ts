@@ -11,7 +11,9 @@ import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-sup
 
 class FakeOperatorInbox implements OperatorInbox {
   public failNextRelay = false;
+  public onRelay: (() => void) | undefined;
   public readonly opened: OpenOperatorRequest[] = [];
+  public relayGate: Promise<void> | undefined;
   public relayCount = 0;
 
   public closeRequest(): Promise<void> {
@@ -29,7 +31,7 @@ class FakeOperatorInbox implements OperatorInbox {
     return Promise.resolve();
   }
 
-  public relayCustomerMessage(
+  public async relayCustomerMessage(
     operatorTopicId: string,
     _message: SupportMessage,
     _options: RelayCustomerMessageOptions,
@@ -40,14 +42,16 @@ class FakeOperatorInbox implements OperatorInbox {
     void _message;
     void _options;
     this.relayCount += 1;
+    this.onRelay?.();
+    await this.relayGate;
     if (this.failNextRelay) {
       this.failNextRelay = false;
-      return Promise.reject(new Error('Telegram unavailable'));
+      throw new Error('Telegram unavailable');
     }
-    return Promise.resolve({
+    return {
       operatorMessageIds: ['operator-message-1'],
       operatorTopicId,
-    });
+    };
   }
 
   public reopenRequest(): Promise<void> {
@@ -215,7 +219,7 @@ describe('HandoffRuntime', () => {
       ),
     ).toEqual([
       expect.objectContaining({
-        text: 'Сообщение отправлено оператору. Ответ появится в этом чате.',
+        text: 'Вопрос отправлен. Ответ появится здесь.',
       }),
     ]);
 
@@ -259,5 +263,64 @@ describe('HandoffRuntime', () => {
     expect(nextRequest?.id).not.toBe(request.id);
     expect(inbox.opened).toHaveLength(2);
     expect(inbox.relayCount).toBe(2);
+  });
+
+  it('orders a Telegram reply before a concurrent web takeover without duplication', async () => {
+    const repository = new SqliteSupportRepository(':memory:');
+    repositories.push(repository);
+    const runtime = new HandoffRuntime({
+      logger: { error: () => undefined },
+      repository,
+    });
+    const inbox = new FakeOperatorInbox();
+    runtime.registerOperatorInbox(inbox);
+    const message = {
+      channel: 'telegram' as const,
+      conversationId: '101',
+      displayName: 'Telegram user',
+      externalMessageId: 'telegram-message-1',
+      receivedAt: new Date('2026-09-07T10:00:00.000Z'),
+      text: 'Initial question',
+    };
+    await runtime.handleClientMessage('telegram-event-1', message);
+
+    const relayStarted = Promise.withResolvers<void>();
+    const allowRelayFailure = Promise.withResolvers<void>();
+    inbox.failNextRelay = true;
+    inbox.onRelay = relayStarted.resolve;
+    inbox.relayGate = allowRelayFailure.promise;
+    const takeover = runtime.handleClientMessage('telegram-event-2', {
+      ...message,
+      externalMessageId: 'telegram-message-2',
+      text: 'Follow-up during outage',
+    });
+    await relayStarted.promise;
+    expect(repository.findRequestByTopicId('topic-1')).toMatchObject({
+      status: 'active',
+    });
+
+    await runtime.handleOperatorMessage('telegram-reply-before-takeover', {
+      externalMessageId: 'telegram-operator-message-1',
+      operatorTopicId: 'topic-1',
+      receivedAt: new Date('2026-09-07T10:01:00.000Z'),
+      text: 'Answer accepted before takeover',
+    });
+    expect(repository.getDeliverySummary().pending).toBe(2);
+    allowRelayFailure.resolve();
+    await takeover;
+
+    const request = repository.findActiveRequest('telegram', '101');
+    expect(request?.operatorTopicId).toBe(`web:${request?.id}`);
+    expect(repository.getDeliverySummary().pending).toBe(2);
+    expect(
+      repository
+        .findPendingDeliveries(new Date('2100-01-01T00:00:00.000Z'), 10)
+        .map((delivery) => delivery.text),
+    ).toEqual(['Вопрос отправлен. Ответ появится здесь.']);
+    expect(
+      repository.findConversationMessages(request?.id ?? '', 10),
+    ).toContainEqual(
+      expect.objectContaining({ text: 'Answer accepted before takeover' }),
+    );
   });
 });

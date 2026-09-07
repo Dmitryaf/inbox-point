@@ -21,11 +21,11 @@ export function renderOperatorInboxPart1(
         >
           <header className="operator-inbox-heading">
             <div>
-              <p className="eyebrow">{'РЕЗЕРВНЫЙ КАНАЛ'}</p>
+              <p className="eyebrow">{'РЕЗЕРВНЫЙ РЕЖИМ'}</p>
               <h2 id="operator-inbox-title">{'Входящие обращения'}</h2>
               <p>
                 {
-                  ' Здесь можно ответить клиенту, даже если Telegram для операторов недоступен. '
+                  ' Здесь можно продолжить обращения, если основной Telegram-интерфейс недоступен. '
                 }
               </p>
             </div>

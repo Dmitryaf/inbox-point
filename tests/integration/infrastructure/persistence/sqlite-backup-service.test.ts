@@ -71,7 +71,7 @@ describe('SqliteBackupService', () => {
     expect(() => verifySqliteBackup(result.path)).not.toThrow();
     const backupDatabase = new DatabaseSync(result.path, { readOnly: true });
     expect(backupDatabase.prepare('PRAGMA user_version').get()).toEqual({
-      user_version: 2,
+      user_version: 3,
     });
     backupDatabase.close();
     const restored = new SqliteSupportRepository(result.path);
@@ -143,7 +143,7 @@ describe('SqliteBackupService', () => {
   it('rejects an application database with an unsupported schema version', () => {
     const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-backup-'));
     temporaryDirectories.push(directory);
-    const databasePath = join(directory, 'legacy.sqlite');
+    const databasePath = join(directory, 'unsupported.sqlite');
     const repository = new SqliteSupportRepository(databasePath);
     repository.close();
     const database = new DatabaseSync(databasePath);

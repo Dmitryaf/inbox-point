@@ -18,7 +18,7 @@ export function renderOperatorConversationPart1(
     <>
       <header className="operator-conversation-heading">
         <div>
-          <h3>{$or($props.request.displayName, () => 'Клиент')}</h3>
+          <h3>{$or($props.request.displayName, () => 'Без имени')}</h3>
           <p>{$props.request.channel === 'telegram' ? 'Telegram' : 'VK'}</p>
         </div>
         <button

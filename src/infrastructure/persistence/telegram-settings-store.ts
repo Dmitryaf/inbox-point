@@ -5,12 +5,13 @@ import { z } from 'zod';
 
 import type { TelegramRuntimeConfig } from '@/config/runtime-config.js';
 
-const storedTelegramSettingsSchema = z.object({
-  botToken: z.string().min(20),
-  operatorChatId: z.number().int().safe().negative(),
-  pollTimeoutSeconds: z.number().int().min(1).max(50),
-  version: z.literal(1),
-});
+const storedTelegramSettingsSchema = z
+  .object({
+    botToken: z.string().min(20),
+    operatorChatId: z.number().int().safe().negative(),
+    pollTimeoutSeconds: z.number().int().min(1).max(50),
+  })
+  .strict();
 
 export interface TelegramSettingsStore {
   load(): Promise<TelegramRuntimeConfig | undefined>;
@@ -56,7 +57,7 @@ export class FileTelegramSettingsStore implements TelegramSettingsStore {
     await mkdir(directory, { recursive: true });
     await writeFile(
       temporaryPath,
-      JSON.stringify({ version: 1, ...settings }, undefined, 2) + '\n',
+      JSON.stringify(settings, undefined, 2) + '\n',
       { encoding: 'utf8', mode: 0o600 },
     );
     await rename(temporaryPath, this.path);

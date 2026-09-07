@@ -54,7 +54,7 @@ describe('OperationsDashboardPage delivery resolution', () => {
 
     await wrapper
       .findAll('button')
-      .find((button) => button.text() === 'Клиент получил')
+      .find((button) => button.text() === 'Сообщение получено')
       ?.trigger('click');
     await flushPromises();
 
@@ -65,9 +65,7 @@ describe('OperationsDashboardPage delivery resolution', () => {
         method: 'POST',
       }),
     );
-    expect(wrapper.text()).toContain(
-      'Доставка отмечена как подтверждённая клиентом.',
-    );
+    expect(wrapper.text()).toContain('Получение сообщения подтверждено.');
     wrapper.unmount();
   });
 });

@@ -17,14 +17,15 @@ const channelStateSchema = z.object({
   mode: z.enum(['active', 'paused']),
 });
 
-const storedStateSchema = z.object({
-  channels: z.object({
-    telegram: channelStateSchema,
-    vk: channelStateSchema,
-  }),
-  delivery: channelStateSchema.optional(),
-  version: z.literal(1),
-});
+const storedStateSchema = z
+  .object({
+    channels: z.object({
+      telegram: channelStateSchema,
+      vk: channelStateSchema,
+    }),
+    delivery: channelStateSchema,
+  })
+  .strict();
 
 export class FileServiceControlStore implements ServiceControlStore {
   public constructor(private readonly path: string) {}
@@ -56,9 +57,7 @@ export class FileServiceControlStore implements ServiceControlStore {
         telegram: normalizeChannelState(channels.telegram),
         vk: normalizeChannelState(channels.vk),
       },
-      delivery: parsed.data.delivery
-        ? normalizeChannelState(parsed.data.delivery)
-        : { mode: 'active' },
+      delivery: normalizeChannelState(parsed.data.delivery),
     };
   }
 
@@ -66,11 +65,10 @@ export class FileServiceControlStore implements ServiceControlStore {
     const directory = dirname(this.path);
     const temporaryPath = this.path + '.' + process.pid + '.tmp';
     await mkdir(directory, { recursive: true });
-    await writeFile(
-      temporaryPath,
-      JSON.stringify({ ...state, version: 1 }, undefined, 2) + '\n',
-      { encoding: 'utf8', mode: 0o600 },
-    );
+    await writeFile(temporaryPath, JSON.stringify(state, undefined, 2) + '\n', {
+      encoding: 'utf8',
+      mode: 0o600,
+    });
     await rename(temporaryPath, this.path);
     await chmod(this.path, 0o600);
   }

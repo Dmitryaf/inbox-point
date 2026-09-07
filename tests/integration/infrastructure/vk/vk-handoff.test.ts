@@ -173,7 +173,7 @@ describe('VK handoff integration', () => {
     expect(gateway.sent).toHaveLength(2);
     expect(gateway.sent[0]?.peerId).toBe(101);
     expect(gateway.sent[0]?.text).toBe(
-      'Сообщение отправлено оператору. Ответ появится в этом чате.',
+      'Вопрос отправлен. Ответ появится здесь.',
     );
     expect(gateway.sent[0]?.randomId).toBeGreaterThan(0);
     expect(gateway.sent[0]?.keyboard).toMatchObject({
@@ -182,7 +182,7 @@ describe('VK handoff integration', () => {
     });
     expect(gateway.sent[1]?.text).toBe('Answer to VK');
     expect(
-      repository.getPilotEventCounts(new Date('2026-01-01')).new_request,
+      repository.getUsageEventCounts(new Date('2026-01-01')).new_request,
     ).toBe(1);
   });
 
@@ -255,7 +255,7 @@ describe('VK handoff integration', () => {
     );
     expect(labels).not.toContain(handoffButton);
     expect(
-      repository.getPilotEventCounts(new Date('2026-01-01'))
+      repository.getUsageEventCounts(new Date('2026-01-01'))
         .information_section,
     ).toBe(2);
   });
@@ -283,7 +283,7 @@ describe('VK handoff integration', () => {
     expect(inbox.relayed).toHaveLength(2);
     expect(inbox.relayed[1]?.text).toBe('Уточнение');
     expect(gateway.sent.at(-1)?.text).toBe(
-      'Расписание пока не добавлено. Напишите оператору, чтобы уточнить время.',
+      'Расписание пока не добавлено. Задайте вопрос, чтобы уточнить время.',
     );
   });
 
