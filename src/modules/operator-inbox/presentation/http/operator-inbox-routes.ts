@@ -1,12 +1,12 @@
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 
+import type { AdminRouteAccess } from '@/infrastructure/http/admin-route-access.js';
 import {
   OperatorRequestClosedError,
   OperatorRequestNotFoundError,
 } from '@/modules/operator-inbox/application/operator-inbox-service.js';
 import type { OperatorInboxService } from '@/modules/operator-inbox/application/operator-inbox-service.js';
-import type { OperationsRouteAccess } from '@/modules/operations-monitoring/presentation/http/route-access.js';
 
 const requestParamsSchema = z.object({
   requestId: z.string().min(1).max(100),
@@ -21,7 +21,7 @@ const replySchema = actionSchema.extend({
 export function registerOperatorInboxRoutes(
   app: FastifyInstance,
   inbox: OperatorInboxService | undefined,
-  routeAccess: OperationsRouteAccess,
+  routeAccess: AdminRouteAccess,
 ): void {
   app.get(
     '/api/ops/inbox/requests',

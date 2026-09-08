@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, ref, watch } from 'vue';
 
-import { useOperationsSession } from '@frontend/features/operations-auth/model/use-operations-session';
+import { useAdminSession } from '@frontend/features/admin-auth/model/use-admin-session';
 import OperationsLoginForm from '@frontend/features/operations-auth/ui/OperationsLoginForm.vue';
 import ClientIntakeControl from '@frontend/features/control-client-intake/ui/ClientIntakeControl.vue';
 import { useOutboundDeliveryControl } from '@frontend/features/control-outbound-delivery/model/use-outbound-delivery-control';
@@ -12,7 +12,7 @@ import OperatorInbox from '@frontend/widgets/operator-inbox/ui/OperatorInbox.vue
 import AsyncMessage from '@frontend/shared/ui/AsyncMessage.vue';
 
 const refreshIntervalMs = 30_000;
-const session = useOperationsSession();
+const session = useAdminSession();
 const operations = useOperationsStatus(session.expireSession);
 const intakeControl = ref<{ refresh: () => Promise<void> }>();
 const operatorInbox = ref<{ refresh: () => Promise<void> }>();

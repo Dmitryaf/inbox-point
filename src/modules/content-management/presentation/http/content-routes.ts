@@ -1,12 +1,12 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
+import type { AdminRouteAccess } from '@/infrastructure/http/admin-route-access.js';
 import { contentInputSchema, normalizeContentInput } from './content-input.js';
 import {
   ContentVersionConflictError,
   type ContentManagementService,
 } from '@/modules/content-management/application/content-management-service.js';
-import type { ManagementRouteAccess } from './route-access.js';
 
 const restoreSchema = z
   .object({
@@ -25,7 +25,7 @@ const saveSchema = z
 export function registerManagementContentRoutes(
   app: FastifyInstance,
   content: ContentManagementService,
-  access: ManagementRouteAccess,
+  access: AdminRouteAccess,
 ): void {
   app.get(
     '/api/manage/content',

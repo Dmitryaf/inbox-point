@@ -3,7 +3,7 @@ import { onMounted, ref } from 'vue';
 import { errorMessage } from '@frontend/shared/lib/error-message';
 import { login, logout, readSession } from '../api/session-api';
 
-export function useOperationsSession() {
+export function useAdminSession() {
   const authenticated = ref(false);
   const booting = ref(true);
   const pending = ref(false);

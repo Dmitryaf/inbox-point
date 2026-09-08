@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 
-import { useManagementSession } from '@frontend/features/management-auth/model/use-management-session';
+import { useAdminSession } from '@frontend/features/admin-auth/model/use-admin-session';
 import LoginForm from '@frontend/features/management-auth/ui/LoginForm.vue';
 import AsyncMessage from '@frontend/shared/ui/AsyncMessage.vue';
 import ContentWorkspace from '@frontend/widgets/content-workspace/ui/ContentWorkspace.vue';
 
-const session = useManagementSession();
+const session = useAdminSession();
 const hasUnsavedChanges = ref(false);
 const workspaceActivated = ref(false);
 
