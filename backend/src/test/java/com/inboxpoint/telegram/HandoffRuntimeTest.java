@@ -37,7 +37,7 @@ class HandoffRuntimeTest {
     @Test
     void keepsTheConversationAndQueuesWebRepliesWithoutTelegram() throws Exception {
         var runtime = new HandoffRuntime(directory.resolve("unused.sqlite"), () -> false, () -> null);
-        var now = java.time.Instant.parse("2026-10-01T10:00:00Z");
+        var now = java.time.Instant.now();
         var clock = java.time.Clock.fixed(now, java.time.ZoneOffset.UTC);
         try (var store = new TelegramStore(directory.resolve("web.sqlite"))) {
             var service = new HandoffService(store, runtime.routingInbox(), clock, new ClientMessageQueue());
