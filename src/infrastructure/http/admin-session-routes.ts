@@ -1,31 +1,31 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
+import type { AdminRouteAccess } from '@/infrastructure/http/admin-route-access.js';
 import {
   createSessionCookie,
   readCookie,
 } from '@/infrastructure/http/session-cookie.js';
-import type { OperationsAccess } from '@/modules/operations-monitoring/security/operations-access.js';
-import type { OperationsRouteAccess } from './route-access.js';
+import type { PasswordSessionAccess } from '@/infrastructure/security/password-session-access.js';
 
 const passwordSchema = z.object({
   password: z.string().min(1).max(200),
 });
 const sessionMaxAgeSeconds = 12 * 60 * 60;
 
-export function registerOperationsSessionRoutes(
+export function registerAdminSessionRoutes(
   app: FastifyInstance,
-  access: OperationsAccess,
-  routeAccess: OperationsRouteAccess,
+  access: PasswordSessionAccess,
+  routeAccess: AdminRouteAccess,
   secureCookies: boolean,
 ): void {
   app.get(
-    '/api/ops/session',
+    '/api/admin/session',
     { preHandler: routeAccess.requireAvailable },
     (request) => ({ authenticated: routeAccess.isAuthorized(request) }),
   );
   app.post(
-    '/api/ops/login',
+    '/api/admin/login',
     {
       preHandler: [routeAccess.requireAvailable, routeAccess.requireSameOrigin],
     },
@@ -60,7 +60,7 @@ export function registerOperationsSessionRoutes(
     },
   );
   app.post(
-    '/api/ops/logout',
+    '/api/admin/logout',
     {
       preHandler: [routeAccess.requireAvailable, routeAccess.requireSameOrigin],
     },

@@ -1,12 +1,12 @@
 import type { FastifyInstance } from 'fastify';
 
+import type { AdminRouteAccess } from '@/infrastructure/http/admin-route-access.js';
 import type { OperationsMonitoringService } from '@/modules/operations-monitoring/application/operations-monitoring-service.js';
-import type { OperationsRouteAccess } from './route-access.js';
 
 export function registerOperationsStatusRoutes(
   app: FastifyInstance,
   monitoring: OperationsMonitoringService,
-  routeAccess: OperationsRouteAccess,
+  routeAccess: AdminRouteAccess,
 ): void {
   app.get(
     '/api/ops/status',

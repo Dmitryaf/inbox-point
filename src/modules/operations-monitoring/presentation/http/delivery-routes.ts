@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
-import type { OperationsRouteAccess } from './route-access.js';
+import type { AdminRouteAccess } from '@/infrastructure/http/admin-route-access.js';
 
 const deliveryParamsSchema = z.object({
   deliveryId: z.string().min(1).max(100),
@@ -21,7 +21,7 @@ type DeliveryOperationsRepository = Pick<
 export function registerOperationsDeliveryRoutes(
   app: FastifyInstance,
   deliveries: DeliveryOperationsRepository | undefined,
-  routeAccess: OperationsRouteAccess,
+  routeAccess: AdminRouteAccess,
 ): void {
   app.post(
     '/api/ops/deliveries/:deliveryId/retry',

@@ -2,12 +2,14 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import type { RuntimeConfig } from '@/config/runtime-config.js';
 import { HandoffRuntime } from '@/core/application/handoff-runtime.js';
+import { createAdminRouteAccess } from '@/infrastructure/http/admin-route-access.js';
+import { registerAdminSessionRoutes } from '@/infrastructure/http/admin-session-routes.js';
 import { createApp } from '@/infrastructure/http/app.js';
 import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-support-repository.js';
+import { PasswordSessionAccess } from '@/infrastructure/security/password-session-access.js';
 import { OperatorInboxService } from '@/modules/operator-inbox/application/operator-inbox-service.js';
 import { OperationsMonitoringService } from '@/modules/operations-monitoring/application/operations-monitoring-service.js';
 import { registerOperationsRoutes } from '@/modules/operations-monitoring/presentation/http/routes.js';
-import { OperationsAccess } from '@/modules/operations-monitoring/security/operations-access.js';
 
 const config: RuntimeConfig = {
   closedRequestRetentionDays: 7,
@@ -60,17 +62,19 @@ describe('operator inbox routes', () => {
       operatorTopicId: 'topic-1',
       status: 'active',
     });
+    const access = new PasswordSessionAccess('correct-admin-password', {
+      createToken: () => 'synthetic-admin-session',
+    });
+    const routeAccess = createAdminRouteAccess(app, access, {
+      allowLocalBypass: false,
+      secureCookies: true,
+    });
+    registerAdminSessionRoutes(app, access, routeAccess, true);
     registerOperationsRoutes(
       app,
       createMonitoringService(),
-      new OperationsAccess('correct-operations-password', {
-        createToken: () => 'synthetic-operations-session',
-      }),
-      {
-        allowLocalBypass: false,
-        assets: { html: '', script: '', styles: '' },
-        secureCookies: true,
-      },
+      routeAccess,
+      { assets: { html: '', script: '', styles: '' } },
       undefined,
       undefined,
       new OperatorInboxService(repository, handoff),
@@ -82,11 +86,11 @@ describe('operator inbox routes', () => {
       url: '/api/ops/inbox/requests',
     });
     const login = await app.inject({
-      headers: { host: 'example.test', origin: 'https://example.test' },
+      headers: { host: 'example.test', origin: 'http://example.test' },
       method: 'POST',
-      payload: { password: 'correct-operations-password' },
+      payload: { password: 'correct-admin-password' },
       remoteAddress: '192.0.2.10',
-      url: '/api/ops/login',
+      url: '/api/admin/login',
     });
     const cookie = readSessionCookie(login.headers['set-cookie']);
     const requests = await app.inject({
@@ -122,7 +126,7 @@ describe('operator inbox routes', () => {
       headers: {
         cookie,
         host: 'example.test',
-        origin: 'https://example.test',
+        origin: 'http://example.test',
       },
       method: 'POST',
       payload: { idempotencyKey: 'reply-1', text: 'Answer' },
@@ -133,7 +137,7 @@ describe('operator inbox routes', () => {
       headers: {
         cookie,
         host: 'example.test',
-        origin: 'https://example.test',
+        origin: 'http://example.test',
       },
       method: 'POST',
       payload: { idempotencyKey: 'reply-1', text: 'Answer' },
@@ -150,7 +154,7 @@ describe('operator inbox routes', () => {
       headers: {
         cookie,
         host: 'example.test',
-        origin: 'https://example.test',
+        origin: 'http://example.test',
       },
       method: 'POST',
       payload: { idempotencyKey: 'close-1' },

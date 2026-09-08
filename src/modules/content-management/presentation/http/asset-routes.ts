@@ -1,11 +1,11 @@
 import type { FastifyInstance } from 'fastify';
 
+import type { AdminRouteAccess } from '@/infrastructure/http/admin-route-access.js';
 import type { FrontendAssets } from '@/infrastructure/http/frontend-assets.js';
-import type { ManagementRouteAccess } from './route-access.js';
 
 export function registerManagementAssetRoutes(
   app: FastifyInstance,
-  access: ManagementRouteAccess,
+  access: AdminRouteAccess,
   assets: FrontendAssets,
 ): void {
   app.get(

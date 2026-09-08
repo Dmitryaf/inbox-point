@@ -6,8 +6,7 @@ const runtimeConfigSchema = z.object({
     .default('development'),
   HOST: z.string().min(1).default('127.0.0.1'),
   PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
-  CONTENT_ADMIN_PASSWORD: optionalEnvironmentValue(z.string().min(12).max(200)),
-  OPS_ADMIN_PASSWORD: optionalEnvironmentValue(z.string().min(12).max(200)),
+  ADMIN_PASSWORD: optionalEnvironmentValue(z.string().min(12).max(200)),
   LOG_LEVEL: z
     .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
     .default('info'),
@@ -54,13 +53,12 @@ export interface VkRuntimeConfig {
 }
 
 export interface RuntimeConfig {
-  contentAdminPassword?: string;
+  adminPassword?: string;
   databasePath: string;
   closedRequestRetentionDays: number;
   host: string;
   logLevel: 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace' | 'silent';
   nodeEnv: 'development' | 'test' | 'production';
-  operationsAdminPassword?: string;
   port: number;
   telegram?: TelegramRuntimeConfig;
   vk?: VkRuntimeConfig;
@@ -99,17 +97,14 @@ export function loadRuntimeConfig(
   }
 
   return {
-    ...(result.data.CONTENT_ADMIN_PASSWORD
-      ? { contentAdminPassword: result.data.CONTENT_ADMIN_PASSWORD }
+    ...(result.data.ADMIN_PASSWORD
+      ? { adminPassword: result.data.ADMIN_PASSWORD }
       : {}),
     closedRequestRetentionDays: result.data.CLOSED_REQUEST_RETENTION_DAYS,
     databasePath: result.data.DATABASE_PATH,
     host: result.data.HOST,
     logLevel: result.data.LOG_LEVEL,
     nodeEnv: result.data.NODE_ENV,
-    ...(result.data.OPS_ADMIN_PASSWORD
-      ? { operationsAdminPassword: result.data.OPS_ADMIN_PASSWORD }
-      : {}),
     port: result.data.PORT,
     ...(result.data.TELEGRAM_ENABLED
       ? {

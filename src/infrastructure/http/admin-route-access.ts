@@ -1,16 +1,14 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
-import type { FrontendAssets } from '@/infrastructure/http/frontend-assets.js';
 import { readCookie } from '@/infrastructure/http/session-cookie.js';
-import type { ContentManagementAccess } from '@/modules/content-management/security/content-management-access.js';
+import type { PasswordSessionAccess } from '@/infrastructure/security/password-session-access.js';
 
-export interface ManagementRouteOptions {
+export interface AdminRouteAccessOptions {
   allowLocalBypass: boolean;
-  assets?: FrontendAssets;
   secureCookies: boolean;
 }
 
-export interface ManagementRouteAccess {
+export interface AdminRouteAccess {
   cookieName: string;
   isAuthorized: (request: FastifyRequest) => boolean;
   requireAuthorization: (
@@ -27,14 +25,14 @@ export interface ManagementRouteAccess {
   ) => Promise<unknown>;
 }
 
-export function createManagementRouteAccess(
+export function createAdminRouteAccess(
   app: FastifyInstance,
-  access: ContentManagementAccess,
-  options: ManagementRouteOptions,
-): ManagementRouteAccess {
+  access: PasswordSessionAccess,
+  options: AdminRouteAccessOptions,
+): AdminRouteAccess {
   const cookieName = options.secureCookies
-    ? '__Host-mh-content-session'
-    : 'mh-content-session';
+    ? '__Host-mh-admin-session'
+    : 'mh-admin-session';
   const isAvailable = (request: FastifyRequest): boolean =>
     access.isConfigured() ||
     (options.allowLocalBypass && isLoopback(request.ip));
@@ -43,7 +41,7 @@ export function createManagementRouteAccess(
     access.authenticate(readCookie(request.headers.cookie, cookieName));
 
   app.addHook('onSend', async (request, reply, payload) => {
-    if (isManagementUrl(request.url)) {
+    if (isAdminUrl(request.url)) {
       void reply.header('cache-control', 'no-store');
       void reply.header('referrer-policy', 'no-referrer');
       void reply.header('x-content-type-options', 'nosniff');
@@ -60,9 +58,7 @@ export function createManagementRouteAccess(
         return reply.code(404).send({ message: 'Not found' });
       }
       if (!isAuthorized(request)) {
-        return reply
-          .code(401)
-          .send({ message: 'Войдите, чтобы изменить информацию.' });
+        return reply.code(401).send({ message: 'Войдите, чтобы продолжить.' });
       }
     },
     requireAvailable: async (request, reply) => {
@@ -76,7 +72,11 @@ export function createManagementRouteAccess(
         return;
       }
       try {
-        if (new URL(origin).host !== request.headers.host) {
+        const parsedOrigin = new URL(origin);
+        if (
+          parsedOrigin.protocol !== `${request.protocol}:` ||
+          parsedOrigin.host !== request.headers.host
+        ) {
           return reply.code(403).send({ message: 'Запрос отклонён.' });
         }
       } catch {
@@ -86,12 +86,16 @@ export function createManagementRouteAccess(
   };
 }
 
-function isManagementUrl(url: string): boolean {
+function isAdminUrl(url: string): boolean {
   const path = url.split('?', 1)[0] ?? url;
   return (
     path === '/manage' ||
     path.startsWith('/manage/') ||
-    path.startsWith('/api/manage/')
+    path === '/ops' ||
+    path.startsWith('/ops/') ||
+    path.startsWith('/api/admin/') ||
+    path.startsWith('/api/manage/') ||
+    path.startsWith('/api/ops/')
   );
 }
 

@@ -2,14 +2,16 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import type { RuntimeConfig } from '@/config/runtime-config.js';
 import { ClientInformationCatalog } from '@/core/application/client-information.js';
+import { createAdminRouteAccess } from '@/infrastructure/http/admin-route-access.js';
+import { registerAdminSessionRoutes } from '@/infrastructure/http/admin-session-routes.js';
 import { createApp } from '@/infrastructure/http/app.js';
+import { PasswordSessionAccess } from '@/infrastructure/security/password-session-access.js';
 import { ContentManagementService } from '@/modules/content-management/application/content-management-service.js';
 import type {
   ContentChange,
   ContentSettingsStore,
 } from '@/modules/content-management/application/ports/content-settings-store.js';
 import { registerManagementRoutes } from '@/modules/content-management/presentation/http/routes.js';
-import { ContentManagementAccess } from '@/modules/content-management/security/content-management-access.js';
 
 const config: RuntimeConfig = {
   closedRequestRetentionDays: 7,
@@ -65,17 +67,19 @@ describe('managed content routes', () => {
         return Promise.resolve();
       },
     };
+    const access = new PasswordSessionAccess('correct-password', {
+      createToken: () => 'synthetic-session-token',
+    });
+    const routeAccess = createAdminRouteAccess(app, access, {
+      allowLocalBypass: false,
+      secureCookies: true,
+    });
+    registerAdminSessionRoutes(app, access, routeAccess, true);
     registerManagementRoutes(
       app,
       new ContentManagementService(catalog, store),
-      new ContentManagementAccess('correct-password', {
-        createToken: () => 'synthetic-session-token',
-      }),
-      {
-        allowLocalBypass: false,
-        assets: managementAssets,
-        secureCookies: true,
-      },
+      routeAccess,
+      { assets: managementAssets },
     );
 
     const page = await app.inject({
@@ -101,27 +105,27 @@ describe('managed content routes', () => {
       method: 'POST',
       payload: { password: 'correct-password' },
       remoteAddress: '192.0.2.10',
-      url: '/api/manage/login',
+      url: '/api/admin/login',
     });
     const wrong = await app.inject({
       headers: {
         host: 'example.test',
-        origin: 'https://example.test',
+        origin: 'http://example.test',
       },
       method: 'POST',
       payload: { password: 'wrong-password' },
       remoteAddress: '192.0.2.10',
-      url: '/api/manage/login',
+      url: '/api/admin/login',
     });
     const login = await app.inject({
       headers: {
         host: 'example.test',
-        origin: 'https://example.test',
+        origin: 'http://example.test',
       },
       method: 'POST',
       payload: { password: 'correct-password' },
       remoteAddress: '192.0.2.10',
-      url: '/api/manage/login',
+      url: '/api/admin/login',
     });
     const setCookie = login.headers['set-cookie'];
     const sessionHeader = Array.isArray(setCookie) ? setCookie[0] : setCookie;
@@ -143,7 +147,7 @@ describe('managed content routes', () => {
       headers: {
         cookie,
         host: 'example.test',
-        origin: 'https://example.test',
+        origin: 'http://example.test',
       },
       method: 'POST',
       payload: {
@@ -168,7 +172,7 @@ describe('managed content routes', () => {
       headers: {
         cookie,
         host: 'example.test',
-        origin: 'https://example.test',
+        origin: 'http://example.test',
       },
       method: 'POST',
       payload: {
@@ -194,7 +198,7 @@ describe('managed content routes', () => {
       headers: {
         cookie,
         host: 'example.test',
-        origin: 'https://example.test',
+        origin: 'http://example.test',
       },
       method: 'POST',
       payload: {
@@ -255,15 +259,17 @@ describe('managed content routes', () => {
       restore: () => Promise.reject(new Error('not available')),
       save: () => Promise.resolve(),
     };
+    const access = new PasswordSessionAccess(undefined);
+    const routeAccess = createAdminRouteAccess(app, access, {
+      allowLocalBypass: false,
+      secureCookies: true,
+    });
+    registerAdminSessionRoutes(app, access, routeAccess, true);
     registerManagementRoutes(
       app,
       new ContentManagementService(new ClientInformationCatalog(), store),
-      new ContentManagementAccess(undefined),
-      {
-        allowLocalBypass: false,
-        assets: managementAssets,
-        secureCookies: true,
-      },
+      routeAccess,
+      { assets: managementAssets },
     );
 
     const page = await app.inject({
@@ -274,7 +280,7 @@ describe('managed content routes', () => {
     const session = await app.inject({
       method: 'GET',
       remoteAddress: '192.0.2.10',
-      url: '/api/manage/session',
+      url: '/api/admin/session',
     });
 
     expect(page.statusCode).toBe(404);
@@ -290,15 +296,17 @@ describe('managed content routes', () => {
       restore: () => Promise.reject(new Error('not available')),
       save: () => Promise.resolve(),
     };
+    const access = new PasswordSessionAccess(undefined);
+    const routeAccess = createAdminRouteAccess(app, access, {
+      allowLocalBypass: true,
+      secureCookies: false,
+    });
+    registerAdminSessionRoutes(app, access, routeAccess, false);
     registerManagementRoutes(
       app,
       new ContentManagementService(new ClientInformationCatalog(), store),
-      new ContentManagementAccess(undefined),
-      {
-        allowLocalBypass: true,
-        assets: managementAssets,
-        secureCookies: false,
-      },
+      routeAccess,
+      { assets: managementAssets },
     );
 
     const content = await app.inject({

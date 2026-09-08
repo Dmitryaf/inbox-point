@@ -39,40 +39,29 @@ describe('loadRuntimeConfig', () => {
     expect(load).not.toThrowError(/must-not-appear/);
   });
 
-  it('enables remote content management only with a sufficiently long password', () => {
+  it('enables remote administration only with a sufficiently long password', () => {
     expect(
       loadRuntimeConfig({
-        CONTENT_ADMIN_PASSWORD: 'synthetic-admin-password',
+        ADMIN_PASSWORD: 'synthetic-admin-password',
       }),
     ).toMatchObject({
-      contentAdminPassword: 'synthetic-admin-password',
+      adminPassword: 'synthetic-admin-password',
     });
 
     const load = (): void => {
-      loadRuntimeConfig({ CONTENT_ADMIN_PASSWORD: 'short' });
+      loadRuntimeConfig({ ADMIN_PASSWORD: 'short' });
     };
-    expect(load).toThrowError(
-      'Invalid runtime configuration: CONTENT_ADMIN_PASSWORD:',
-    );
+    expect(load).toThrowError('Invalid runtime configuration: ADMIN_PASSWORD:');
     expect(load).not.toThrowError(/synthetic-admin-password/);
   });
 
-  it('enables remote operational monitoring with a separate password', () => {
+  it('does not accept the pre-production admin password variables as aliases', () => {
     expect(
       loadRuntimeConfig({
-        OPS_ADMIN_PASSWORD: 'synthetic-operations-password',
+        CONTENT_ADMIN_PASSWORD: 'old-content-password',
+        OPS_ADMIN_PASSWORD: 'old-operations-password',
       }),
-    ).toMatchObject({
-      operationsAdminPassword: 'synthetic-operations-password',
-    });
-
-    const load = (): void => {
-      loadRuntimeConfig({ OPS_ADMIN_PASSWORD: 'short' });
-    };
-    expect(load).toThrowError(
-      'Invalid runtime configuration: OPS_ADMIN_PASSWORD:',
-    );
-    expect(load).not.toThrowError(/synthetic-operations-password/);
+    ).not.toHaveProperty('adminPassword');
   });
 
   it('enables Telegram only with the required credentials', () => {

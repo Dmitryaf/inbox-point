@@ -1,10 +1,12 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { RuntimeConfig } from '@/config/runtime-config.js';
+import { createAdminRouteAccess } from '@/infrastructure/http/admin-route-access.js';
+import { registerAdminSessionRoutes } from '@/infrastructure/http/admin-session-routes.js';
 import { createApp } from '@/infrastructure/http/app.js';
+import { PasswordSessionAccess } from '@/infrastructure/security/password-session-access.js';
 import { OperationsMonitoringService } from '@/modules/operations-monitoring/application/operations-monitoring-service.js';
 import { registerOperationsRoutes } from '@/modules/operations-monitoring/presentation/http/routes.js';
-import { OperationsAccess } from '@/modules/operations-monitoring/security/operations-access.js';
 import type { ServiceControlStore } from '@/modules/service-control/application/ports/service-control-store.js';
 import { ServiceControlService } from '@/modules/service-control/application/service-control-service.js';
 import { createDefaultServiceControlState } from '@/modules/service-control/model/service-control-state.js';
@@ -31,22 +33,24 @@ afterEach(async () => {
 });
 
 describe('operations monitoring routes', () => {
-  it('returns status only through the separate owner session', async () => {
+  it('returns status only through the admin session', async () => {
     const app = createApp(config);
     const retriedDeliveries: string[] = [];
     const resolvedDeliveries: string[] = [];
     apps.add(app);
+    const access = new PasswordSessionAccess('correct-admin-password', {
+      createToken: () => 'synthetic-admin-session',
+    });
+    const routeAccess = createAdminRouteAccess(app, access, {
+      allowLocalBypass: false,
+      secureCookies: true,
+    });
+    registerAdminSessionRoutes(app, access, routeAccess, true);
     registerOperationsRoutes(
       app,
       createMonitoringService(),
-      new OperationsAccess('correct-operations-password', {
-        createToken: () => 'synthetic-operations-session',
-      }),
-      {
-        allowLocalBypass: false,
-        assets: operationsAssets,
-        secureCookies: true,
-      },
+      routeAccess,
+      { assets: operationsAssets },
       createServiceControl(),
       {
         confirmUnknownDeliveryNotReceived: (deliveryId) => {
@@ -95,19 +99,19 @@ describe('operations monitoring routes', () => {
         origin: 'https://attacker.test',
       },
       method: 'POST',
-      payload: { password: 'correct-operations-password' },
+      payload: { password: 'correct-admin-password' },
       remoteAddress: '192.0.2.10',
-      url: '/api/ops/login',
+      url: '/api/admin/login',
     });
     const login = await app.inject({
       headers: {
         host: 'example.test',
-        origin: 'https://example.test',
+        origin: 'http://example.test',
       },
       method: 'POST',
-      payload: { password: 'correct-operations-password' },
+      payload: { password: 'correct-admin-password' },
       remoteAddress: '192.0.2.10',
-      url: '/api/ops/login',
+      url: '/api/admin/login',
     });
     const cookie = readSessionCookie(login.headers['set-cookie']);
     const status = await app.inject({
@@ -132,7 +136,7 @@ describe('operations monitoring routes', () => {
       headers: {
         cookie,
         host: 'example.test',
-        origin: 'https://example.test',
+        origin: 'http://example.test',
       },
       method: 'POST',
       remoteAddress: '192.0.2.10',
@@ -142,7 +146,7 @@ describe('operations monitoring routes', () => {
       headers: {
         cookie,
         host: 'example.test',
-        origin: 'https://example.test',
+        origin: 'http://example.test',
       },
       method: 'POST',
       remoteAddress: '192.0.2.10',
@@ -152,7 +156,7 @@ describe('operations monitoring routes', () => {
       headers: {
         cookie,
         host: 'example.test',
-        origin: 'https://example.test',
+        origin: 'http://example.test',
       },
       method: 'POST',
       payload: { resolution: 'received' },
@@ -170,7 +174,7 @@ describe('operations monitoring routes', () => {
     expect(crossOrigin.statusCode).toBe(403);
     expect(login.statusCode).toBe(200);
     expect(login.headers['set-cookie']).toContain(
-      '__Host-mh-ops-session=synthetic-operations-session',
+      '__Host-mh-admin-session=synthetic-admin-session',
     );
     expect(status.statusCode).toBe(200);
     expect(usageMetrics.statusCode).toBe(200);
@@ -217,16 +221,15 @@ describe('operations monitoring routes', () => {
   it('hides remote monitoring when its password is not configured', async () => {
     const app = createApp(config);
     apps.add(app);
-    registerOperationsRoutes(
-      app,
-      createMonitoringService(),
-      new OperationsAccess(undefined),
-      {
-        allowLocalBypass: false,
-        assets: operationsAssets,
-        secureCookies: true,
-      },
-    );
+    const access = new PasswordSessionAccess(undefined);
+    const routeAccess = createAdminRouteAccess(app, access, {
+      allowLocalBypass: false,
+      secureCookies: true,
+    });
+    registerAdminSessionRoutes(app, access, routeAccess, true);
+    registerOperationsRoutes(app, createMonitoringService(), routeAccess, {
+      assets: operationsAssets,
+    });
 
     const response = await app.inject({
       method: 'GET',
@@ -240,16 +243,15 @@ describe('operations monitoring routes', () => {
   it('keeps local development monitoring available without a password', async () => {
     const app = createApp(config);
     apps.add(app);
-    registerOperationsRoutes(
-      app,
-      createMonitoringService(),
-      new OperationsAccess(undefined),
-      {
-        allowLocalBypass: true,
-        assets: operationsAssets,
-        secureCookies: false,
-      },
-    );
+    const access = new PasswordSessionAccess(undefined);
+    const routeAccess = createAdminRouteAccess(app, access, {
+      allowLocalBypass: true,
+      secureCookies: false,
+    });
+    registerAdminSessionRoutes(app, access, routeAccess, false);
+    registerOperationsRoutes(app, createMonitoringService(), routeAccess, {
+      assets: operationsAssets,
+    });
 
     const response = await app.inject({
       method: 'GET',

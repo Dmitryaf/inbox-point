@@ -4,17 +4,18 @@ import { loadRuntimeConfig } from '@/config/runtime-config.js';
 import { ClientInformationCatalog } from '@/core/application/client-information.js';
 import { DataRetentionService } from '@/core/application/data-retention-service.js';
 import { HandoffRuntime } from '@/core/application/handoff-runtime.js';
+import { createAdminRouteAccess } from '@/infrastructure/http/admin-route-access.js';
+import { registerAdminSessionRoutes } from '@/infrastructure/http/admin-session-routes.js';
 import { createApp, registerSetupRoutes } from '@/infrastructure/http/app.js';
+import { PasswordSessionAccess } from '@/infrastructure/security/password-session-access.js';
 import { ContentManagementService } from '@/modules/content-management/application/content-management-service.js';
 import { FileContentSettingsStore } from '@/modules/content-management/infrastructure/file-store/file-content-settings-store.js';
 import { registerManagementRoutes } from '@/modules/content-management/presentation/http/routes.js';
-import { ContentManagementAccess } from '@/modules/content-management/security/content-management-access.js';
 import { ChannelActivityMonitor } from '@/modules/operations-monitoring/application/channel-activity-monitor.js';
 import { DeliveryWorkerActivityMonitor } from '@/modules/operations-monitoring/application/delivery-worker-activity-monitor.js';
 import { OperationsMonitoringService } from '@/modules/operations-monitoring/application/operations-monitoring-service.js';
 import { registerOperationsRoutes } from '@/modules/operations-monitoring/presentation/http/routes.js';
 import { registerReadinessRoute } from '@/modules/operations-monitoring/presentation/http/readiness-route.js';
-import { OperationsAccess } from '@/modules/operations-monitoring/security/operations-access.js';
 import { OperatorInboxService } from '@/modules/operator-inbox/application/operator-inbox-service.js';
 import { ServiceControlService } from '@/modules/service-control/application/service-control-service.js';
 import { FileServiceControlStore } from '@/modules/service-control/infrastructure/file-store/file-service-control-store.js';
@@ -160,15 +161,18 @@ async function start(): Promise<void> {
     registerSetupRoutes(app, setup, repository, backupService, vkSetup, {
       enabled: config.nodeEnv !== 'production',
     });
-    registerManagementRoutes(
+    const adminAccess = new PasswordSessionAccess(config.adminPassword);
+    const adminRouteAccess = createAdminRouteAccess(app, adminAccess, {
+      allowLocalBypass: config.nodeEnv !== 'production',
+      secureCookies: config.nodeEnv === 'production',
+    });
+    registerAdminSessionRoutes(
       app,
-      contentSetup,
-      new ContentManagementAccess(config.contentAdminPassword),
-      {
-        allowLocalBypass: config.nodeEnv !== 'production',
-        secureCookies: config.nodeEnv === 'production',
-      },
+      adminAccess,
+      adminRouteAccess,
+      config.nodeEnv === 'production',
     );
+    registerManagementRoutes(app, contentSetup, adminRouteAccess);
     const operationsMonitoring = new OperationsMonitoringService({
       channelActivity: (channel) => channelActivity.snapshot(channel),
       deliveryActivity: () => deliveryActivity.snapshot(),
@@ -185,11 +189,8 @@ async function start(): Promise<void> {
     registerOperationsRoutes(
       app,
       operationsMonitoring,
-      new OperationsAccess(config.operationsAdminPassword),
-      {
-        allowLocalBypass: config.nodeEnv !== 'production',
-        secureCookies: config.nodeEnv === 'production',
-      },
+      adminRouteAccess,
+      {},
       serviceControl,
       repository,
       operatorInbox,
@@ -219,14 +220,14 @@ async function start(): Promise<void> {
         `Open http://${config.host}:${config.port}/setup to configure the service`,
       );
     }
-    if (config.contentAdminPassword || config.nodeEnv !== 'production') {
+    if (config.adminPassword || config.nodeEnv !== 'production') {
       app.log.info(
         `Open http://${config.host}:${config.port}/manage to edit client information`,
       );
     } else {
       app.log.warn('Remote content management is disabled');
     }
-    if (config.operationsAdminPassword || config.nodeEnv !== 'production') {
+    if (config.adminPassword || config.nodeEnv !== 'production') {
       app.log.info(
         `Operational status API is available at http://${config.host}:${config.port}/api/ops/status`,
       );

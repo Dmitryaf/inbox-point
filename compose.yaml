@@ -5,13 +5,12 @@ services:
     build:
       context: .
     environment:
-      CONTENT_ADMIN_PASSWORD: '${CONTENT_ADMIN_PASSWORD:-}'
+      ADMIN_PASSWORD: '${ADMIN_PASSWORD:-}'
       CLOSED_REQUEST_RETENTION_DAYS: '${CLOSED_REQUEST_RETENTION_DAYS:-7}'
       DATABASE_PATH: /app/data/messenger-handoff.sqlite
       HOST: 0.0.0.0
       LOG_LEVEL: info
       NODE_ENV: production
-      OPS_ADMIN_PASSWORD: '${OPS_ADMIN_PASSWORD:-}'
       PORT: 3000
       TELEGRAM_BOT_TOKEN: '${TELEGRAM_BOT_TOKEN:-}'
       TELEGRAM_ENABLED: '${TELEGRAM_ENABLED:-false}'
