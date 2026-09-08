@@ -1,13 +1,13 @@
 import { type ComponentAttributes } from '@frontend/shared/lib/component-model';
 
 import { ref, watch } from '@frontend/shared/lib/model-state';
-import { useManagementSession } from '@frontend/features/management-auth/model/use-management-session';
+import { useAdminSession } from '@frontend/features/admin-auth/model/use-admin-session';
 
 export type ComponentProps = ComponentAttributes;
 export const componentDefaults = {};
 
 export function createComponentModel() {
-  const session = useManagementSession();
+  const session = useAdminSession();
   const hasUnsavedChanges = ref(false);
   const workspaceActivated = ref(false);
   watch(

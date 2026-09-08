@@ -13,7 +13,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 final class ProtectedRouteHeaders extends OncePerRequestFilter {
     private static final List<String> SCOPES = List.of("/setup", "/manage", "/ops",
-            "/api/setup", "/api/manage", "/api/ops");
+            "/api/setup", "/api/admin", "/api/manage", "/api/ops");
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain next)

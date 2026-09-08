@@ -6,7 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 
-import com.inboxpoint.content.ContentAdmin;
+import com.inboxpoint.admin.AdminSessions;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,14 +29,12 @@ final class StaticFrontend {
             Map.entry("/setup/style.css", new Asset("style.css", "text/css;charset=UTF-8")));
 
     private final Path frontend;
-    private final ContentAdmin admin;
-    private final OperationsAdmin ops;
+    private final AdminSessions admin;
     private final boolean development;
 
-    StaticFrontend(@Value("${inboxpoint.frontend.path:dist/frontend}") String directory, ContentAdmin admin, OperationsAdmin ops,
+    StaticFrontend(@Value("${inboxpoint.frontend.path:dist/frontend}") String directory, AdminSessions admin,
             @Value("${INBOXPOINT_ENV:development}") String environment) {
         development = !"production".equals(environment);
-        this.ops = ops;
         this.admin = admin;
         frontend = Path.of(directory);
     }
@@ -47,7 +45,7 @@ final class StaticFrontend {
         var operations = route.startsWith("/ops");
         var content = route.startsWith("/manage");
         if (operations || content) {
-            if (!(operations ? ops : admin).available(request, response)) {
+            if (!admin.available(request, response)) {
                 return ResponseEntity.notFound().build();
             }
             response.setHeader("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; "

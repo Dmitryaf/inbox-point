@@ -1,7 +1,7 @@
 import { type ComponentAttributes } from '@frontend/shared/lib/component-model';
 
 import { onBeforeUnmount, ref, watch } from '@frontend/shared/lib/model-state';
-import { useOperationsSession } from '@frontend/features/operations-auth/model/use-operations-session';
+import { useAdminSession } from '@frontend/features/admin-auth/model/use-admin-session';
 
 import { useOutboundDeliveryControl } from '@frontend/features/control-outbound-delivery/model/use-outbound-delivery-control';
 import { useOperationsStatus } from '@frontend/features/refresh-status/model/use-operations-status';
@@ -12,7 +12,7 @@ export const componentDefaults = {};
 
 export function createComponentModel() {
   const refreshIntervalMs = 30000;
-  const session = useOperationsSession();
+  const session = useAdminSession();
   const operations = useOperationsStatus(session.expireSession);
   const intakeControl = ref<{
     refresh: () => Promise<void>;

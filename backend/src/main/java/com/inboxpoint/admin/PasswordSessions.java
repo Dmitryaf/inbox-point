@@ -58,7 +58,7 @@ public class PasswordSessions {
             return true;
         }
         var host = request.getHeader("Host");
-        return origin.equals("https://" + host) || (!request.isSecure() && origin.equals("http://" + host));
+        return origin.equals(request.getScheme() + "://" + host);
     }
 
     public synchronized Login login(String password, String client) {

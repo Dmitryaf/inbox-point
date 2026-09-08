@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Map;
 
+import com.inboxpoint.admin.AdminSessions;
 import com.inboxpoint.admin.PasswordSessions;
 import com.inboxpoint.telegram.TelegramRuntime;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,10 +21,10 @@ import tools.jackson.databind.JsonNode;
 @RestController
 @RequestMapping("/api/ops/inbox/requests")
 final class OperatorInboxController {
-    private final OperationsAdmin admin;
+    private final AdminSessions admin;
     private final TelegramRuntime runtime;
 
-    OperatorInboxController(OperationsAdmin admin, TelegramRuntime runtime) {
+    OperatorInboxController(AdminSessions admin, TelegramRuntime runtime) {
         this.admin = admin;
         this.runtime = runtime;
     }

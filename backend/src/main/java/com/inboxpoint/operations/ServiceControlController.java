@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.Map;
 
+import com.inboxpoint.admin.AdminSessions;
 import com.inboxpoint.admin.PasswordSessions;
 import com.inboxpoint.telegram.TelegramRuntime;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,10 +19,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/ops/service-control")
 final class ServiceControlController {
-    private final OperationsAdmin operations;
+    private final AdminSessions operations;
     private final LocalServiceControl control;
 
-    ServiceControlController(OperationsAdmin operations, TelegramRuntime runtime) {
+    ServiceControlController(AdminSessions operations, TelegramRuntime runtime) {
         this.operations = operations;
         control = runtime.serviceControl();
     }

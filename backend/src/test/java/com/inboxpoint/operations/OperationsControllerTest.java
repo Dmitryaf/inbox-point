@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @DirtiesContext
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
-        "INBOXPOINT_ENV=production", "OPS_ADMIN_PASSWORD=synthetic-ops-password", "TELEGRAM_ENABLED=false", "VK_ENABLED=false"
+        "INBOXPOINT_ENV=production", "ADMIN_PASSWORD=synthetic-ops-password", "TELEGRAM_ENABLED=false", "VK_ENABLED=false"
 })
 class OperationsControllerTest {
     @TempDir
@@ -40,16 +40,19 @@ class OperationsControllerTest {
             var hidden = client.send(HttpRequest.newBuilder(URI.create(base + "/status")).GET().build(),
                     HttpResponse.BodyHandlers.ofString());
             assertThat(hidden.statusCode()).isEqualTo(401);
-            var login = client.send(HttpRequest.newBuilder(URI.create(base + "/login"))
+            var login = client.send(HttpRequest.newBuilder(URI.create(base.replace("/api/ops", "/api/admin/login")))
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString("{\"password\":\"synthetic-ops-password\"}")).build(),
                     HttpResponse.BodyHandlers.ofString());
             assertThat(login.statusCode()).isEqualTo(200);
             var cookie = login.headers().firstValue("Set-Cookie").orElseThrow().split(";", 2)[0];
-            assertThat(cookie).startsWith("__Host-mh-ops-session=");
+            assertThat(cookie).startsWith("__Host-mh-admin-session=");
             var current = client.send(HttpRequest.newBuilder(URI.create(base + "/status")).header("Cookie", cookie)
                     .GET().build(), HttpResponse.BodyHandlers.ofString());
             assertThat(current.statusCode()).isEqualTo(200);
+            var content = client.send(HttpRequest.newBuilder(URI.create(base.replace("/api/ops", "/api/manage/content")))
+                    .header("Cookie", cookie).GET().build(), HttpResponse.BodyHandlers.ofString());
+            assertThat(content.statusCode()).isEqualTo(200);
             var listUri = URI.create(base + "/inbox/requests");
             var anonymousInbox = client.send(HttpRequest.newBuilder(listUri).GET().build(), HttpResponse.BodyHandlers.ofString());
             assertThat(anonymousInbox.statusCode()).isEqualTo(401);
