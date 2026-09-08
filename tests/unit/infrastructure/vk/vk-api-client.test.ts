@@ -50,6 +50,62 @@ describe('VkApiClient', () => {
     expect(pollUrl.toString()).toContain('act=a_check');
   });
 
+  it('accepts supported and unsupported events in one Long Poll batch', async () => {
+    const updates = [
+      {
+        event_id: 'message-1',
+        group_id: 42,
+        object: {
+          message: {
+            date: 1_788_177_600,
+            from_id: 101,
+            id: 501,
+            peer_id: 101,
+            text: 'First question',
+          },
+        },
+        type: 'message_new',
+      },
+      {
+        event_id: 'group-join-1',
+        group_id: 42,
+        object: {
+          join_type: 'join',
+          user_id: 101,
+        },
+        type: 'group_join',
+      },
+      {
+        event_id: 'message-2',
+        group_id: 42,
+        object: {
+          message: {
+            date: 1_788_177_601,
+            from_id: 102,
+            id: 502,
+            peer_id: 102,
+            text: 'Second question',
+          },
+        },
+        type: 'message_new',
+      },
+    ];
+    const client = new VkApiClient(
+      'synthetic-vk-token-for-mixed-batch',
+      vi
+        .fn<typeof fetch>()
+        .mockResolvedValue(Response.json({ ts: '12', updates })),
+    );
+
+    await expect(
+      client.poll(
+        { key: 'key', server: 'https://lp.vk.test/poll', ts: '11' },
+        25,
+        new AbortController().signal,
+      ),
+    ).resolves.toEqual({ ts: '12', updates });
+  });
+
   it('does not expose the token or VK error text', async () => {
     const token = 'private-vk-token';
     const client = new VkApiClient(
