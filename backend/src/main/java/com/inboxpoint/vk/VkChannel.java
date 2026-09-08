@@ -57,7 +57,7 @@ public final class VkChannel implements AutoCloseable {
                                     || !"message_new".equals(update.path("type").asString(""))) {
                                 continue;
                             }
-                            var message = update.at("/object/message");
+                            var message = messageNew(update);
                             long from = message.path("from_id").asLong();
                             long peer = message.path("peer_id").asLong();
                             long id = message.path("conversation_message_id").asLong(message.path("id").asLong());
@@ -89,6 +89,34 @@ public final class VkChannel implements AutoCloseable {
                 Thread.sleep(Duration.ofSeconds(1));
             }
         }
+    }
+
+    static tools.jackson.databind.JsonNode messageNew(tools.jackson.databind.JsonNode update) throws IOException {
+        var message = update.at("/object/message");
+        if (!message.isObject() || !message.path("date").isIntegralNumber() || message.path("date").asLong() < 0
+                || !message.path("from_id").isIntegralNumber() || !message.path("peer_id").isIntegralNumber()
+                || !message.path("id").isIntegralNumber() || message.path("id").asLong() < 0
+                || !message.path("text").isString() || !optionalNumber(message.path("out"))
+                || !optionalNumber(message.path("conversation_message_id"))
+                || message.path("conversation_message_id").asLong(0) < 0) {
+            throw new IOException("Invalid VK message_new event");
+        }
+        var attachments = message.path("attachments");
+        if (!attachments.isMissingNode()) {
+            if (!attachments.isArray()) {
+                throw new IOException("Invalid VK message_new attachments");
+            }
+            for (var attachment : attachments) {
+                if (!attachment.path("type").isString()) {
+                    throw new IOException("Invalid VK message_new attachment");
+                }
+            }
+        }
+        return message;
+    }
+
+    private static boolean optionalNumber(tools.jackson.databind.JsonNode value) {
+        return value.isMissingNode() || value.isIntegralNumber();
     }
 
     @Override
