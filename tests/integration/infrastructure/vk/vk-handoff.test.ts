@@ -27,7 +27,10 @@ import type {
 } from '@/infrastructure/vk/vk-api-client.js';
 import { VkClientChannel } from '@/infrastructure/vk/vk-client-channel.js';
 import { VkClientMenu } from '@/infrastructure/vk/vk-client-menu.js';
-import type { VkLongPollEvent } from '@/infrastructure/vk/vk-types.js';
+import type {
+  VkLongPollEvent,
+  VkMessageNewEvent,
+} from '@/infrastructure/vk/vk-types.js';
 import { VkUpdateRouter } from '@/infrastructure/vk/vk-update-router.js';
 
 class FakeVkGateway implements VkGateway {
@@ -350,6 +353,41 @@ describe('VK handoff integration', () => {
     expect(inbox.opened).toHaveLength(0);
   });
 
+  it('ignores unsupported Long Poll event types', async () => {
+    const event: VkLongPollEvent = {
+      event_id: 'group-join-1',
+      group_id: 42,
+      object: {
+        join_type: 'join',
+        user_id: 101,
+      },
+      type: 'group_join',
+    };
+
+    await expect(router.route(event)).resolves.toBeUndefined();
+
+    expect(inbox.opened).toHaveLength(0);
+    expect(gateway.sent).toHaveLength(0);
+  });
+
+  it('reports an invalid message_new event instead of ignoring it', async () => {
+    const event: VkLongPollEvent = {
+      event_id: 'invalid-message-1',
+      group_id: 42,
+      object: {
+        user_id: 101,
+      },
+      type: 'message_new',
+    };
+
+    await expect(router.route(event)).rejects.toThrow(
+      'VK message_new event invalid-message-1 is invalid',
+    );
+
+    expect(inbox.opened).toHaveLength(0);
+    expect(gateway.sent).toHaveLength(0);
+  });
+
   it('explains that VK attachments are not supported', async () => {
     await router.route(
       createMessageEvent({
@@ -368,8 +406,8 @@ describe('VK handoff integration', () => {
 });
 
 function createMessageEvent(
-  overrides: Partial<VkLongPollEvent['object']['message']> = {},
-): VkLongPollEvent {
+  overrides: Partial<VkMessageNewEvent['object']['message']> = {},
+): VkMessageNewEvent {
   return {
     event_id: 'event-' + String(overrides.conversation_message_id ?? 7),
     group_id: 42,

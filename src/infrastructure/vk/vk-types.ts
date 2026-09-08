@@ -11,13 +11,21 @@ const vkMessageSchema = z.object({
   text: z.string(),
 });
 
-export const vkLongPollEventSchema = z.object({
-  event_id: z.string().optional(),
-  group_id: z.number().int().positive(),
+export const vkLongPollEventSchema = z
+  .object({
+    event_id: z.string().optional(),
+    group_id: z.number().int().positive(),
+    object: z.record(z.string(), z.unknown()),
+    type: z.string().min(1),
+  })
+  .passthrough();
+
+export const vkMessageNewEventSchema = vkLongPollEventSchema.extend({
   object: z.object({
     message: vkMessageSchema,
   }),
-  type: z.string(),
+  type: z.literal('message_new'),
 });
 
 export type VkLongPollEvent = z.infer<typeof vkLongPollEventSchema>;
+export type VkMessageNewEvent = z.infer<typeof vkMessageNewEventSchema>;

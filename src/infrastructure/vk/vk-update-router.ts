@@ -3,7 +3,7 @@ import type { SupportMessage } from '@/core/model/support-message.js';
 import type { VkGateway } from './vk-api-client.js';
 import type { VkClientMenuHandler } from './vk-client-menu.js';
 import { createVkRandomId } from './vk-random-id.js';
-import type { VkLongPollEvent } from './vk-types.js';
+import { vkMessageNewEventSchema, type VkLongPollEvent } from './vk-types.js';
 
 export interface VkClientMessageHandler {
   handleClientMessage(
@@ -26,7 +26,12 @@ export class VkUpdateRouter {
     if (event.type !== 'message_new') {
       return;
     }
-    const message = event.object.message;
+    const parsedEvent = vkMessageNewEventSchema.safeParse(event);
+    if (!parsedEvent.success) {
+      const eventId = event.event_id ?? 'without event_id';
+      throw new Error(`VK message_new event ${eventId} is invalid`);
+    }
+    const message = parsedEvent.data.object.message;
     if (
       message.out === 1 ||
       message.from_id <= 0 ||
@@ -37,7 +42,8 @@ export class VkUpdateRouter {
     const externalMessageId = `${message.peer_id}:${
       message.conversation_message_id ?? message.id
     }`;
-    const externalEventId = event.event_id ?? `vk-message:${externalMessageId}`;
+    const externalEventId =
+      parsedEvent.data.event_id ?? `vk-message:${externalMessageId}`;
     if ((message.attachments?.length ?? 0) > 0) {
       await this.gateway.sendMessage(
         message.peer_id,

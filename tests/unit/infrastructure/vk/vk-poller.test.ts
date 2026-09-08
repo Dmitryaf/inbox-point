@@ -10,7 +10,11 @@ import type {
   VkLongPollServer,
 } from '@/infrastructure/vk/vk-api-client.js';
 import { VkPoller } from '@/infrastructure/vk/vk-poller.js';
-import type { VkLongPollEvent } from '@/infrastructure/vk/vk-types.js';
+import type {
+  VkLongPollEvent,
+  VkMessageNewEvent,
+} from '@/infrastructure/vk/vk-types.js';
+import { VkUpdateRouter } from '@/infrastructure/vk/vk-update-router.js';
 
 describe('VkPoller', () => {
   it('updates ts for failed=1 and refreshes the server for failed=2', async () => {
@@ -83,6 +87,95 @@ describe('VkPoller', () => {
 
     expect(routed).toEqual(['event-1', 'event-2', 'event-2']);
     expect(gateway.pollRequests.map((request) => request.ts)).toEqual(['1']);
+  });
+
+  it('processes a mixed event batch and continues from the returned cursor', async () => {
+    const abortController = new AbortController();
+    const gateway = new ScriptedGateway([
+      {
+        ts: '2',
+        updates: [
+          createEvent('event-1'),
+          {
+            event_id: 'group-join-1',
+            group_id: 42,
+            object: { join_type: 'join', user_id: 101 },
+            type: 'group_join',
+          },
+          createEvent('event-2'),
+        ],
+      },
+      { ts: '3', updates: [] },
+    ]);
+    const routedMessages: string[] = [];
+    const poller = new VkPoller(
+      gateway,
+      42,
+      {
+        route: (event) => {
+          if (event.type === 'message_new' && event.event_id) {
+            routedMessages.push(event.event_id);
+          }
+          return Promise.resolve();
+        },
+      },
+      new MemoryInboundEventStore(),
+      {
+        onSuccess: () => {
+          if (gateway.pollRequests.length === 2) {
+            abortController.abort();
+          }
+        },
+      },
+    );
+
+    await poller.run(abortController.signal);
+
+    expect(routedMessages).toEqual(['event-1', 'event-2']);
+    expect(gateway.pollRequests.map((request) => request.ts)).toEqual([
+      '1',
+      '2',
+    ]);
+  });
+
+  it('keeps an invalid message_new event pending and reports the error', async () => {
+    const abortController = new AbortController();
+    const eventStore = new MemoryInboundEventStore();
+    const errors: unknown[] = [];
+    const invalidEvent: VkLongPollEvent = {
+      event_id: 'invalid-message-1',
+      group_id: 42,
+      object: { user_id: 101 },
+      type: 'message_new',
+    };
+    const gateway = new ScriptedGateway([{ ts: '2', updates: [invalidEvent] }]);
+    const router = new VkUpdateRouter(
+      { handleClientMessage: () => Promise.resolve() },
+      {
+        getUserDisplayName: () => Promise.resolve('Customer'),
+        sendMessage: () => Promise.resolve({ externalMessageId: '1' }),
+      },
+    );
+    const poller = new VkPoller(gateway, 42, router, eventStore, {
+      onError: (error) => errors.push(error),
+      retryDelay: () => {
+        abortController.abort();
+        return Promise.resolve();
+      },
+    });
+
+    await poller.run(abortController.signal);
+
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toEqual(
+      new Error('VK message_new event invalid-message-1 is invalid'),
+    );
+    expect(eventStore.findPendingInboundEvents('vk:long-poll', 10)).toEqual([
+      expect.objectContaining({
+        externalEventId: 'invalid-message-1',
+        payload: JSON.stringify(invalidEvent),
+      }),
+    ]);
   });
 
   it('retries initial server discovery instead of stopping the poller', async () => {
@@ -267,7 +360,7 @@ class ScriptedGateway implements VkGateway {
   }
 }
 
-function createEvent(eventId = 'event-1'): VkLongPollEvent {
+function createEvent(eventId = 'event-1'): VkMessageNewEvent {
   return {
     event_id: eventId,
     group_id: 42,
