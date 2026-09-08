@@ -193,9 +193,7 @@ describe('operator inbox routes', () => {
     expect(
       repository.getUsageEventCounts(new Date('2026-01-01')).web_takeover,
     ).toBe(1);
-    expect(
-      repository.findPendingDeliveries(new Date('2026-09-08'), 10),
-    ).toHaveLength(1);
+    expect(repository.findPendingDeliveries(new Date(), 10)).toHaveLength(1);
     const updatedMessagePayload = updatedMessages.json<{
       messages: {
         deliveryOutcomeUnknown?: boolean;
