@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import type { RuntimeConfig } from '@/config/runtime-config.js';
 import { HandoffRuntime } from '@/core/application/handoff-runtime.js';
@@ -21,7 +21,6 @@ const apps = new Set<ReturnType<typeof createApp>>();
 const repositories = new Set<SqliteSupportRepository>();
 
 afterEach(async () => {
-  vi.useRealTimers();
   await Promise.all([...apps].map(async (app) => app.close()));
   apps.clear();
   for (const repository of repositories) {
@@ -32,8 +31,6 @@ afterEach(async () => {
 
 describe('operator inbox routes', () => {
   it('protects, reads, replies to and closes an emergency web request', async () => {
-    vi.useFakeTimers({ toFake: ['Date'] });
-    vi.setSystemTime(new Date('2026-09-06T12:01:00.000Z'));
     const app = createApp(config);
     const repository = new SqliteSupportRepository(':memory:');
     const handoff = new HandoffRuntime({
@@ -196,9 +193,7 @@ describe('operator inbox routes', () => {
     expect(
       repository.getUsageEventCounts(new Date('2026-01-01')).web_takeover,
     ).toBe(1);
-    expect(
-      repository.findPendingDeliveries(new Date('2026-09-08'), 10),
-    ).toHaveLength(1);
+    expect(repository.findPendingDeliveries(new Date(), 10)).toHaveLength(1);
     const updatedMessagePayload = updatedMessages.json<{
       messages: {
         deliveryOutcomeUnknown?: boolean;
