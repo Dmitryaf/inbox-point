@@ -1,5 +1,6 @@
 import ChannelStatusCard from './ChannelStatusCard';
 import DeliveryStatusCard from './DeliveryStatusCard';
+import InboundEventStatusCard from './InboundEventStatusCard';
 
 import type { WithDefaults } from '@frontend/shared/lib/component-model';
 import type {
@@ -42,6 +43,13 @@ export function renderOperationsOverviewPart2(
           onRetry={($event) => void $emit('retryDelivery', $event)}
           onResolveOperatorAction={(id, resolution) =>
             $emit('resolveOperatorAction', id, resolution)
+          }
+        />
+        <InboundEventStatusCard
+          inboundEvents={$props.status.inboundEvents}
+          pendingEventId={$props.pendingInboundEventId}
+          onResolve={(id, source, resolution) =>
+            $emit('resolveInboundEvent', id, source, resolution)
           }
         />
       </div>

@@ -42,6 +42,20 @@ export function resolveOperatorAction(
   );
 }
 
+export function resolveInboundEvent(
+  eventId: string,
+  source: string,
+  resolution: 'retry' | 'skip',
+): Promise<void> {
+  return request(
+    `/api/ops/inbound-events/${encodeURIComponent(eventId)}/resolve`,
+    {
+      body: JSON.stringify({ resolution, source }),
+      method: 'POST',
+    },
+  );
+}
+
 export function readOperatorInboxRequests(): Promise<{
   requests: readonly OperatorInboxRequest[];
 }> {

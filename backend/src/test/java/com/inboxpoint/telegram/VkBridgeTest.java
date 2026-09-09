@@ -114,7 +114,8 @@ class VkBridgeTest {
     @Test
     void persistsABatchBeforeDeliveryAndRecoversOnlyIncompleteClaims() throws Exception {
         var database = directory.resolve("inbound.sqlite");
-        var event = new VkChannel.Message("vk-batch-1", 123, 456, "Synthetic", "An inbound message");
+        var message = new VkChannel.Message("vk-batch-1", 123, 456, "Synthetic", "An inbound message");
+        var event = new VkChannel.Inbound(message.event(), JsonMapper.shared().valueToTree(message).toString());
         var now = java.time.Instant.parse("2026-09-01T08:00:00Z");
         try (var store = new TelegramStore(database)) {
             store.saveVkBatch(java.util.List.of(event, event), now);
@@ -124,12 +125,33 @@ class VkBridgeTest {
         }
         try (var restarted = new TelegramStore(database)) {
             restarted.recoverInterrupted();
-            assertThat(restarted.nextVk()).isEqualTo(event);
+            assertThat(restarted.nextVk().event()).isEqualTo(event);
             assertThat(restarted.claim("client:vk", event.event(), now)).isTrue();
             assertThat(restarted.claim("client:vk", "completed", now)).isFalse();
             restarted.completeEvent("client:vk", event.event(), now);
             restarted.deleteVk(event.event());
             assertThat(restarted.nextVk()).isNull();
+        }
+    }
+
+    @Test
+    void quarantinesAnEventAfterThreeAttemptsAndLetsTheNextOneProceed() throws Exception {
+        var database = directory.resolve("quarantine.sqlite");
+        var now = java.time.Instant.parse("2026-09-11T10:00:00Z");
+        try (var store = new TelegramStore(database)) {
+            store.saveVkBatch(java.util.List.of(new VkChannel.Inbound("broken", "{}"),
+                    new VkChannel.Inbound("next", "{}")), now);
+            assertThat(store.nextVk().event().event()).isEqualTo("broken");
+            store.failVk("broken", now.plusSeconds(1));
+            assertThat(store.nextVk().nextAttemptAt()).isEqualTo(now.plusSeconds(1));
+            store.failVk("broken", now.plusSeconds(2));
+            store.failVk("broken", now.plusSeconds(3));
+            assertThat(store.inboundStatus().quarantined()).isEqualTo(1);
+            assertThat(store.nextVk().event().event()).isEqualTo("next");
+            assertThat(store.resolveInbound("broken", true)).isTrue();
+            assertThat(store.inboundStatus().incidents()).isEmpty();
+            assertThat(store.nextVk().event().event()).isEqualTo("broken");
+            assertThat(store.resolveInbound("broken", false)).isFalse();
         }
     }
 

@@ -46,8 +46,9 @@ final class OperationsController {
             var vk = ChannelState.observe(runtime.vkStatus(), runtime.vkPolling(), started, now);
             var delivery = runtime.deliveryState(now);
             var operatorRelays = runtime.operatorRelayStatus();
+            var inboundEvents = runtime.inboundStatus();
             boolean attention = !"healthy".equals(delivery.state()) && !"paused".equals(delivery.state())
-                    || telegram.needsAttention() || vk.needsAttention() || operatorRelays.uncertain() > 0;
+                    || telegram.needsAttention() || vk.needsAttention() || operatorRelays.uncertain() > 0 || inboundEvents.quarantined() > 0;
             var control = runtime.serviceControl().current();
             var intake = control.channels();
             boolean maintenance = "paused".equals(control.delivery().mode())
@@ -55,7 +56,7 @@ final class OperationsController {
             return ResponseEntity.ok(Map.of(
                     "state", attention ? "attention" : maintenance ? "maintenance" : "healthy",
                     "channels", Map.of("telegram", telegram, "vk", vk),
-                    "deliveries", delivery, "operatorRelays", operatorRelays, "intake", intake, "outbound", control.delivery(), "observedAt", now.toString(), "startedAt", started.toString(),
+                    "deliveries", delivery, "operatorRelays", operatorRelays, "inboundEvents", inboundEvents, "intake", intake, "outbound", control.delivery(), "observedAt", now.toString(), "startedAt", started.toString(),
                     "uptimeSeconds", Math.max(0, Duration.between(started, now).toSeconds())));
         } catch (IOException | SQLException unavailable) {
             return message(503, "Не удалось прочитать состояние сервиса.");
@@ -143,6 +144,29 @@ final class OperationsController {
         }
     }
 
+    @PostMapping("/inbound-events/{id}/resolve")
+    ResponseEntity<?> resolveInboundEvent(@PathVariable String id, @RequestBody(required = false) JsonNode input,
+            HttpServletRequest request, HttpServletResponse response) {
+        var denied = deliveryAccess(request, response);
+        if (denied != null) {
+            return denied;
+        }
+        var source = input == null ? "" : input.path("source").asString("");
+        var choice = input == null ? "" : input.path("resolution").asString("");
+        var retry = "retry".equals(choice);
+        if (id.length() > 500 || !"vk:long-poll".equals(source) || !retry && !"skip".equals(choice)) {
+            return message(400, "Не удалось обработать входящее событие.");
+        }
+        try {
+            if (!runtime.resolveInbound(id, retry)) {
+                return message(409, "Инцидент уже обработан.");
+            }
+            return ResponseEntity.ok(Map.of("resolved", true));
+        } catch (IOException | SQLException unavailable) {
+            return message(503, "Управление входящими событиями недоступно.");
+        }
+    }
+
     private ResponseEntity<?> deliveryAccess(HttpServletRequest request, HttpServletResponse response) {
         if (!admin.available(request, response)) {
             return message(404, "Not found");
@@ -157,7 +181,7 @@ final class OperationsController {
         var now = Instant.now();
         var delivery = runtime.deliveryState(now);
         return !"stalled".equals(delivery.state()) && !"backlog".equals(delivery.state())
-                && runtime.operatorRelayStatus().uncertain() == 0
+                && runtime.operatorRelayStatus().uncertain() == 0 && runtime.inboundStatus().quarantined() == 0
                 && ChannelState.observe(runtime.status(), runtime.telegramPolling(), started, now).ready()
                 && ChannelState.observe(runtime.vkStatus(), runtime.vkPolling(), started, now).ready();
     }

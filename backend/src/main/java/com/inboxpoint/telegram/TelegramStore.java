@@ -14,7 +14,6 @@ import java.util.List;
 import java.util.UUID;
 
 import com.inboxpoint.vk.VkChannel;
-import tools.jackson.databind.json.JsonMapper;
 
 import org.sqlite.SQLiteConfig;
 
@@ -53,7 +52,7 @@ final class TelegramStore implements AutoCloseable {
             statement.execute("UPDATE deliveries SET outcome_unknown = 1 WHERE last_error = 'Uncertain Telegram result' "
                     + "AND status = 'failed' AND outcome_unknown = 0");
             try (var version = statement.executeQuery("PRAGMA user_version")) {
-                if (version.next() && version.getInt(1) > 4) {
+                if (version.next() && version.getInt(1) > 5) {
                     throw new SQLException("Unsupported SQLite schema version");
                 }
             }
@@ -66,7 +65,12 @@ final class TelegramStore implements AutoCloseable {
                         received_at TEXT NOT NULL, PRIMARY KEY (source, external_event_id)
                     ) STRICT
                     """);
-            statement.execute("PRAGMA user_version = 4");
+            ensureColumn("inbound_events", "attempts", "INTEGER NOT NULL DEFAULT 0");
+            ensureColumn("inbound_events", "status", "TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'quarantined'))");
+            ensureColumn("inbound_events", "last_error", "TEXT");
+            ensureColumn("inbound_events", "next_attempt_at", "TEXT");
+            statement.execute("CREATE INDEX IF NOT EXISTS inbound_events_by_status ON inbound_events(source, status, received_at)");
+            statement.execute("PRAGMA user_version = 5");
         } catch (IOException | SQLException failure) {
             try {
                 connection.close();
@@ -186,14 +190,14 @@ final class TelegramStore implements AutoCloseable {
                 """, "Delivery was interrupted after the attempt started");
     }
 
-    void saveVkBatch(List<VkChannel.Message> batch, Instant now) throws SQLException {
+    void saveVkBatch(List<VkChannel.Inbound> batch, Instant now) throws SQLException {
         connection.setAutoCommit(false);
         try {
             for (var item : batch) {
                 update("""
                         INSERT OR IGNORE INTO inbound_events (source, external_event_id, payload, received_at)
                         VALUES ('vk:long-poll', ?, ?, ?)
-                        """, item.event(), JsonMapper.shared().valueToTree(item).toString(), now.toString());
+                        """, item.event(), item.payload(), now.toString());
             }
             connection.commit();
         } catch (SQLException | RuntimeException failure) {
@@ -204,13 +208,54 @@ final class TelegramStore implements AutoCloseable {
         }
     }
 
-    VkChannel.Message nextVk() throws SQLException {
+    record QueuedVk(VkChannel.Inbound event, Instant nextAttemptAt) { }
+
+    QueuedVk nextVk() throws SQLException {
         try (var query = connection.createStatement(); var row = query.executeQuery("""
-                SELECT payload FROM inbound_events WHERE source = 'vk:long-poll'
-                ORDER BY received_at, rowid LIMIT 1
+                SELECT external_event_id, payload, next_attempt_at FROM inbound_events
+                WHERE source = 'vk:long-poll' AND status = 'pending' ORDER BY julianday(received_at), rowid LIMIT 1
                 """)) {
-            return row.next() ? JsonMapper.shared().readValue(row.getString(1), VkChannel.Message.class) : null;
+            if (!row.next()) {
+                return null;
+            }
+            var date = row.getString("next_attempt_at");
+            return new QueuedVk(new VkChannel.Inbound(row.getString("external_event_id"), row.getString("payload")),
+                    date == null ? null : Instant.parse(date));
         }
+    }
+
+    void failVk(String event, Instant retryAt) throws SQLException {
+        update("""
+                UPDATE inbound_events SET attempts = attempts + 1,
+                    status = CASE WHEN attempts + 1 >= 3 THEN 'quarantined' ELSE 'pending' END,
+                    last_error = 'Не удалось обработать входящее событие VK.',
+                    next_attempt_at = CASE WHEN attempts + 1 >= 3 THEN NULL ELSE ? END
+                WHERE source = 'vk:long-poll' AND external_event_id = ? AND status = 'pending'
+                """, retryAt.toString(), event);
+    }
+
+    TelegramRuntime.InboundStatus inboundStatus() throws SQLException {
+        try (var query = connection.createStatement(); var rows = query.executeQuery("""
+                SELECT external_event_id, attempts, source, received_at, last_error, COUNT(*) OVER () AS total
+                FROM inbound_events WHERE source = 'vk:long-poll' AND status = 'quarantined'
+                ORDER BY julianday(received_at), rowid LIMIT 20
+                """)) {
+            var result = new ArrayList<TelegramRuntime.InboundIncident>();
+            long total = 0;
+            while (rows.next()) {
+                total = rows.getLong("total");
+                result.add(new TelegramRuntime.InboundIncident(rows.getString("external_event_id"), "VK",
+                        rows.getString("source"), rows.getInt("attempts"), rows.getString("received_at"), rows.getString("last_error")));
+            }
+            return new TelegramRuntime.InboundStatus(total == 0 ? "healthy" : "quarantined", total, result);
+        }
+    }
+
+    boolean resolveInbound(String event, boolean retry) throws SQLException {
+        var condition = "WHERE source = 'vk:long-poll' AND external_event_id = ? AND status = 'quarantined'";
+        return update((retry
+                ? "UPDATE inbound_events SET status = 'pending', attempts = 0, next_attempt_at = NULL, last_error = NULL "
+                : "DELETE FROM inbound_events ") + condition, event) == 1;
     }
 
     void deleteVk(String event) throws SQLException {

@@ -48,28 +48,19 @@ public final class VkChannel implements AutoCloseable {
                     server = api.open(group);
                     cursor = server.initialCursor();
                 }
-                sink.drain();
+                if (!sink.drain()) {
+                    Thread.sleep(Duration.ofMillis(250));
+                    continue;
+                }
                 switch (api.poll(server, cursor, timeout)) {
                     case VkApiClient.Batch batch -> {
-                        var messages = new ArrayList<Message>();
+                        var events = new ArrayList<Inbound>();
                         for (var update : batch.updates()) {
-                            if (update.path("group_id").asLong() != group
-                                    || !"message_new".equals(update.path("type").asString(""))) {
-                                continue;
-                            }
-                            var message = messageNew(update);
-                            long from = message.path("from_id").asLong();
-                            long peer = message.path("peer_id").asLong();
-                            long id = message.path("conversation_message_id").asLong(message.path("id").asLong());
-                            var text = message.path("text").asString("");
-                            var unsupported = message.path("attachments").isArray() && !message.path("attachments").isEmpty();
-                            if (from == peer && peer > 0 && peer < FIRST_GROUP_CHAT && id > 0 && (unsupported || !text.isBlank())
-                                    && message.path("out").asInt(0) == 0) {
-                                var event = update.path("event_id").asString("vk-message:" + peer + ":" + id);
-                                messages.add(new Message(event, peer, id, unsupported ? "" : api.userDisplayName(peer), text, unsupported));
+                            if (update.path("group_id").asLong() == group) {
+                                events.add(new Inbound(eventId(update), update.toString()));
                             }
                         }
-                        sink.save(messages);
+                        sink.save(events);
                         cursor = batch.cursor();
                         activity.succeeded();
                     }
@@ -89,6 +80,47 @@ public final class VkChannel implements AutoCloseable {
                 Thread.sleep(Duration.ofSeconds(1));
             }
         }
+    }
+
+    public Message readQueued(Inbound item) throws IOException, InterruptedException {
+        var stored = tools.jackson.databind.json.JsonMapper.shared().readTree(item.payload());
+        if (stored == null || !stored.isObject()) {
+            throw new IOException("Invalid stored VK update");
+        }
+        if (stored.has("event") && stored.path("peer").isIntegralNumber()) {
+            return tools.jackson.databind.json.JsonMapper.shared().treeToValue(stored, Message.class);
+        }
+        if (!VkApiClient.isEvent(stored)) {
+            throw new IOException("Invalid stored VK update");
+        }
+        if (!"message_new".equals(stored.path("type").asString())) {
+            return null;
+        }
+        var message = messageNew(stored);
+        var from = message.path("from_id").asLong();
+        var peer = message.path("peer_id").asLong();
+        var id = message.path("conversation_message_id").asLong(message.path("id").asLong());
+        var text = message.path("text").asString();
+        var unsupported = message.path("attachments").isArray() && !message.path("attachments").isEmpty();
+        if (from != peer || peer <= 0 || peer >= FIRST_GROUP_CHAT || id <= 0 || !unsupported && text.isBlank()
+                || message.path("out").asInt(0) != 0) {
+            return null;
+        }
+        return new Message(item.event(), peer, id, unsupported ? "" : api.userDisplayName(peer), text, unsupported);
+    }
+
+    private static String eventId(JsonNode update) {
+        var provided = update.path("event_id").asString("");
+        if (!provided.isEmpty()) {
+            return provided;
+        }
+        var message = update.at("/object/message");
+        var peer = message.path("peer_id").asLong();
+        var id = message.path("conversation_message_id").asLong(message.path("id").asLong());
+        if (peer > 0 && id > 0) {
+            return "vk-message:" + peer + ":" + id;
+        }
+        return "vk-update:" + java.util.UUID.nameUUIDFromBytes(update.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 
     static tools.jackson.databind.JsonNode messageNew(tools.jackson.databind.JsonNode update) throws IOException {
@@ -130,9 +162,11 @@ public final class VkChannel implements AutoCloseable {
         }
     }
 
-    public interface Incoming {
-        void save(List<Message> batch) throws SQLException, IOException;
+    public record Inbound(String event, String payload) { }
 
-        void drain() throws IOException, SQLException, InterruptedException;
+    public interface Incoming {
+        void save(List<Inbound> batch) throws SQLException, IOException;
+
+        boolean drain() throws IOException, SQLException, InterruptedException;
     }
 }

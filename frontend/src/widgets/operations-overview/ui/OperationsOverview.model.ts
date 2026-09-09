@@ -12,6 +12,7 @@ export type ComponentProps = {
   deliveryControlPending: 'pause' | 'resume' | undefined;
   pendingDeliveryId: string | undefined;
   pendingOperatorActionId: string | undefined;
+  pendingInboundEventId: string | undefined;
   status: OperationsStatus;
 } & EventProps<{
   changeDeliveryMode: [mode: 'pause' | 'resume'];
@@ -21,6 +22,11 @@ export type ComponentProps = {
   ];
   retryDelivery: [deliveryId: string];
   resolveOperatorAction: [actionId: string, resolution: 'received' | 'use_web'];
+  resolveInboundEvent: [
+    eventId: string,
+    source: string,
+    resolution: 'retry' | 'skip',
+  ];
 }> &
   ComponentAttributes;
 export const componentDefaults = {};

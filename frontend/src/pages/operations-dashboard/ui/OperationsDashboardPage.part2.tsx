@@ -16,6 +16,7 @@ export function renderOperationsDashboardPagePart2(
   const deliveryControl = $unref($state.deliveryControl);
   const deliveryRetry = $unref($state.deliveryRetry);
   const operatorResolution = $unref($state.operatorResolution);
+  const inboundEventResolution = $unref($state.inboundEventResolution);
   if (!!session.booting.value) {
     return null;
   }
@@ -35,6 +36,10 @@ export function renderOperationsDashboardPagePart2(
             operatorResolution.pendingActionId.value,
             () => undefined,
           )}
+          pendingInboundEventId={$or(
+            inboundEventResolution.pendingEventId.value,
+            () => undefined,
+          )}
           status={operations.status.value}
           onChangeDeliveryMode={$callback(
             $required($unref($state.deliveryControl)).change,
@@ -47,6 +52,9 @@ export function renderOperationsDashboardPagePart2(
           )}
           onResolveOperatorAction={$callback(
             $required($unref($state.operatorResolution)).resolve,
+          )}
+          onResolveInboundEvent={$callback(
+            $required($unref($state.inboundEventResolution)).resolve,
           )}
         />
       ) : (

@@ -122,36 +122,52 @@ public final class TelegramRuntime {
     private VkChannel.Incoming incomingVk() {
         return new VkChannel.Incoming() {
             @Override
-            public void save(List<VkChannel.Message> batch) throws IOException, SQLException {
+            public void save(List<VkChannel.Inbound> batch) throws IOException, SQLException {
                 try (var store = new TelegramStore(database)) {
                     store.saveVkBatch(batch, Instant.now());
                 }
             }
 
             @Override
-            public void drain() throws IOException, SQLException, InterruptedException {
-                var inbox = handoff.routingInbox();
+            public boolean drain() throws IOException, SQLException, InterruptedException {
                 try (var store = new TelegramStore(database)) {
-                    for (var item = store.nextVk(); item != null; item = store.nextVk()) {
-                        if (item.unsupported()) {
-                            var source = "vk:unsupported";
-                            if (store.claim(source, item.event(), Instant.now())) {
-                                try {
-                                    vk.channel().send(item.peer(), TelegramTextHandoff.TEXT_ONLY, "vk-attachment:" + item.event());
-                                    store.completeEvent(source, item.event(), Instant.now());
-                                } catch (IOException failure) {
-                                    store.release(source, item.event());
-                                    throw failure;
-                                }
-                            }
-                        } else {
-                            receiveVk(inbox, store, item.event(), item.peer(), item.message(), item.name(), item.text());
+                    for (var queued = store.nextVk(); queued != null; queued = store.nextVk()) {
+                        if (queued.nextAttemptAt() != null && queued.nextAttemptAt().isAfter(Instant.now())) {
+                            return false;
                         }
-                        store.deleteVk(item.event());
+                        var event = queued.event().event();
+                        try {
+                            var item = vk.channel().readQueued(queued.event());
+                            if (item != null) {
+                                processVkInbound(store, item);
+                            }
+                            store.deleteVk(event);
+                        } catch (IOException | tools.jackson.core.JacksonException failed) {
+                            store.failVk(event, Instant.now().plusSeconds(1));
+                        }
                     }
                 }
+                return true;
             }
         };
+    }
+
+    private void processVkInbound(TelegramStore store, VkChannel.Message item)
+            throws IOException, SQLException, InterruptedException {
+        if (!item.unsupported()) {
+            receiveVk(handoff.routingInbox(), store, item.event(), item.peer(), item.message(), item.name(), item.text());
+            return;
+        }
+        var source = "vk:unsupported";
+        if (store.claim(source, item.event(), Instant.now())) {
+            try {
+                vk.channel().send(item.peer(), TelegramTextHandoff.TEXT_ONLY, "vk-attachment:" + item.event());
+                store.completeEvent(source, item.event(), Instant.now());
+            } catch (IOException failed) {
+                store.release(source, item.event());
+                throw failed;
+            }
+        }
     }
 
     public synchronized Status status() {
@@ -249,6 +265,22 @@ public final class TelegramRuntime {
             return store.resolve(id, received, Instant.now());
         }
     }
+
+    public InboundStatus inboundStatus() throws IOException, SQLException {
+        try (var store = new TelegramStore(database)) {
+            return store.inboundStatus();
+        }
+    }
+
+    public boolean resolveInbound(String id, boolean retry) throws IOException, SQLException {
+        try (var store = new TelegramStore(database)) {
+            return store.resolveInbound(id, retry);
+        }
+    }
+
+    public record InboundStatus(String state, long quarantined, List<InboundIncident> incidents) { }
+
+    public record InboundIncident(String eventId, String channel, String source, int attempts, String receivedAt, String reason) { }
 
     public OperatorRelayStatus operatorRelayStatus() throws IOException, SQLException {
         try (var store = new TelegramStore(database)) {
