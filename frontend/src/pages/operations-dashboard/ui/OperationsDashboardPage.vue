@@ -7,6 +7,7 @@ import ClientIntakeControl from '@frontend/features/control-client-intake/ui/Cli
 import { useOutboundDeliveryControl } from '@frontend/features/control-outbound-delivery/model/use-outbound-delivery-control';
 import { useOperationsStatus } from '@frontend/features/refresh-status/model/use-operations-status';
 import { useDeliveryRetry } from '@frontend/features/retry-delivery/model/use-delivery-retry';
+import { useOperatorActionResolution } from '@frontend/features/resolve-operator-action/model/use-operator-action-resolution';
 import AdminPageHeader from '@frontend/widgets/admin-shell/ui/AdminPageHeader.vue';
 import OperationsOverview from '@frontend/widgets/operations-overview/ui/OperationsOverview.vue';
 import OperatorInbox from '@frontend/widgets/operator-inbox/ui/OperatorInbox.vue';
@@ -18,6 +19,10 @@ const operations = useOperationsStatus(session.expireSession);
 const intakeControl = ref<{ refresh: () => Promise<void> }>();
 const operatorInbox = ref<{ refresh: () => Promise<void> }>();
 const deliveryRetry = useDeliveryRetry(refreshAll, session.expireSession);
+const operatorResolution = useOperatorActionResolution(
+  refreshAll,
+  session.expireSession,
+);
 const deliveryControl = useOutboundDeliveryControl(
   refreshAll,
   session.expireSession,
@@ -115,10 +120,14 @@ function stopAutomaticRefresh(): void {
         :pending-delivery-id="
           deliveryRetry.pendingDeliveryId.value || undefined
         "
+        :pending-operator-action-id="
+          operatorResolution.pendingActionId.value || undefined
+        "
         :status="operations.status.value"
         @change-delivery-mode="deliveryControl.change"
         @resolve-delivery="deliveryRetry.resolve"
         @retry-delivery="deliveryRetry.retry"
+        @resolve-operator-action="operatorResolution.resolve"
       />
       <section v-else class="card loading-card">
         <p>Получаем состояние сервиса…</p>
@@ -132,6 +141,8 @@ function stopAutomaticRefresh(): void {
 
       <AsyncMessage kind="error" :text="deliveryRetry.error.value" />
       <AsyncMessage kind="success" :text="deliveryRetry.notice.value" />
+      <AsyncMessage kind="error" :text="operatorResolution.error.value" />
+      <AsyncMessage kind="success" :text="operatorResolution.notice.value" />
       <AsyncMessage kind="error" :text="deliveryControl.error.value" />
       <AsyncMessage kind="success" :text="deliveryControl.notice.value" />
 

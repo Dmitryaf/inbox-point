@@ -96,7 +96,7 @@ describe('ServiceSnapshotService', () => {
       expiresAt: '2026-09-13T12:05:00.000Z',
       formatVersion: 1,
       secretsIncluded: false,
-      sqliteSchemaVersion: 3,
+      sqliteSchemaVersion: 4,
     });
     expect(manifest.files.map((file) => file.name)).toEqual([
       'database.sqlite',

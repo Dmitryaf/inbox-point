@@ -1,13 +1,18 @@
 import { randomUUID } from 'node:crypto';
 
 import { KeyedTaskQueue } from '@/core/application/keyed-task-queue.js';
+import { enqueueHandoffAcknowledgement } from '@/core/application/handoff-acknowledgement.js';
 import {
+  OperatorActionOutcomeUnknownError,
   OperatorConversationUnavailableError,
   type OperatorInbox,
 } from '@/core/contracts/operator-inbox.js';
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
 import type { OperatorMessage } from '@/core/model/operator-message.js';
-import { isWebOperatorTopic } from '@/core/model/operator-topic.js';
+import {
+  createWebOperatorTopicId,
+  isWebOperatorTopic,
+} from '@/core/model/operator-topic.js';
 import type { SupportMessage } from '@/core/model/support-message.js';
 
 export interface HandoffServiceDependencies {
@@ -16,8 +21,6 @@ export interface HandoffServiceDependencies {
   operatorInbox: OperatorInbox;
   repository: SupportRepository;
 }
-
-export const handoffAcknowledgement = 'Вопрос отправлен. Ответ появится здесь.';
 
 export class HandoffService {
   private readonly clientMessageQueue = new KeyedTaskQueue();
@@ -57,10 +60,16 @@ export class HandoffService {
     );
 
     if (existingRequest) {
+      if (isWebOperatorTopic(existingRequest.operatorTopicId)) {
+        this.recordWebTakeover(existingRequest.id, message.channel);
+      }
       try {
         await this.relayClientMessage(existingRequest, message);
         return;
       } catch (error: unknown) {
+        if (error instanceof OperatorActionOutcomeUnknownError) {
+          return;
+        }
         if (!(error instanceof OperatorConversationUnavailableError)) {
           throw error;
         }
@@ -113,7 +122,7 @@ export class HandoffService {
       }
     }
     for (const operatorMessageId of relayed.operatorMessageIds) {
-      this.repository.addMessageLink({
+      this.repository.ensureMessageLink({
         clientMessageId: message.externalMessageId,
         createdAt: this.clock(),
         direction: 'client_to_operator',
@@ -122,34 +131,21 @@ export class HandoffService {
         requestId: request.id,
       });
     }
-    this.enqueueHandoffAcknowledgement(request.id, message);
-  }
-
-  private enqueueHandoffAcknowledgement(
-    requestId: string,
-    message: SupportMessage,
-  ): void {
-    const deliveryId = `system:handoff-ack:${requestId}`;
-    this.repository.enqueueDelivery({
-      channel: message.channel,
-      conversationId: message.conversationId,
-      createdAt: this.clock(),
-      id: deliveryId,
-      idempotencyKey: deliveryId,
-      operatorMessageId: deliveryId,
-      requestId,
-      text: handoffAcknowledgement,
-    });
+    enqueueHandoffAcknowledgement(
+      this.repository,
+      {
+        channel: message.channel,
+        conversationId: message.conversationId,
+        id: request.id,
+      },
+      this.clock(),
+    );
   }
 
   private async openClientRequest(message: SupportMessage): Promise<void> {
     const requestId = this.createId();
-    const opened = await this.operatorInbox.openRequest({
-      requestId,
-      source: message,
-      title: createTopicTitle(message.channel, message.displayName),
-    });
     const createdAt = this.clock();
+    const webTopicId = createWebOperatorTopicId(requestId);
 
     this.repository.createRequest({
       channel: message.channel,
@@ -157,8 +153,17 @@ export class HandoffService {
       createdAt,
       displayName: message.displayName,
       id: requestId,
-      operatorTopicId: opened.topicId,
+      operatorTopicId: webTopicId,
       status: 'active',
+    });
+    this.repository.recordConversationMessage({
+      createdAt: message.receivedAt,
+      direction: 'client_to_operator',
+      externalMessageId: message.externalMessageId,
+      id: this.createId(),
+      requestId,
+      senderName: message.displayName,
+      text: message.text,
     });
     this.repository.recordUsageEvent({
       channel: message.channel,
@@ -167,14 +172,56 @@ export class HandoffService {
       requestId,
       type: 'new_request',
     });
+    let opened: { topicId: string };
+    try {
+      opened = await this.operatorInbox.openRequest({
+        requestId,
+        source: message,
+        title: createTopicTitle(message.channel, message.displayName),
+      });
+    } catch (error: unknown) {
+      if (!(error instanceof OperatorActionOutcomeUnknownError)) {
+        throw error;
+      }
+      this.recordWebTakeover(requestId, message.channel);
+      enqueueHandoffAcknowledgement(
+        this.repository,
+        {
+          channel: message.channel,
+          conversationId: message.conversationId,
+          id: requestId,
+        },
+        this.clock(),
+      );
+      return;
+    }
+    if (opened.topicId !== webTopicId) {
+      const switched = this.repository.switchOperatorTopic(
+        requestId,
+        webTopicId,
+        opened.topicId,
+      );
+      if (!switched) {
+        const current = this.repository.findRequestById(requestId);
+        if (current?.operatorTopicId !== opened.topicId) {
+          throw new Error('The operator surface changed concurrently');
+        }
+      }
+    }
     if (isWebOperatorTopic(opened.topicId)) {
       this.recordWebTakeover(requestId, message.channel);
     }
-    await this.relayClientMessage(
-      { id: requestId, operatorTopicId: opened.topicId },
-      message,
-      true,
-    );
+    try {
+      await this.relayClientMessage(
+        { id: requestId, operatorTopicId: opened.topicId },
+        message,
+        true,
+      );
+    } catch (error: unknown) {
+      if (!(error instanceof OperatorActionOutcomeUnknownError)) {
+        throw error;
+      }
+    }
   }
 
   public async handleOperatorMessage(

@@ -9,6 +9,7 @@ import DeliveryStatusCard from './DeliveryStatusCard.vue';
 const props = defineProps<{
   deliveryControlPending: 'pause' | 'resume' | undefined;
   pendingDeliveryId: string | undefined;
+  pendingOperatorActionId: string | undefined;
   status: OperationsStatus;
 }>();
 defineEmits<{
@@ -18,6 +19,7 @@ defineEmits<{
     resolution: 'not_received' | 'received',
   ];
   retryDelivery: [deliveryId: string];
+  resolveOperatorAction: [actionId: string, resolution: 'received' | 'use_web'];
 }>();
 
 const observedAt = computed(() =>
@@ -93,10 +95,15 @@ const overallDescription = computed(() => {
         :deliveries="status.deliveries"
         :delivery-control-pending="deliveryControlPending"
         :outbound="status.outbound"
+        :operator-relays="status.operatorRelays"
         :pending-delivery-id="pendingDeliveryId"
+        :pending-operator-action-id="pendingOperatorActionId"
         @change-delivery-mode="$emit('changeDeliveryMode', $event)"
         @resolve="(id, resolution) => $emit('resolveDelivery', id, resolution)"
         @retry="$emit('retryDelivery', $event)"
+        @resolve-operator-action="
+          (id, resolution) => $emit('resolveOperatorAction', id, resolution)
+        "
       />
     </div>
   </section>

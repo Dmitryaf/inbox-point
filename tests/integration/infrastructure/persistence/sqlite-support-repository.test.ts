@@ -95,6 +95,128 @@ describe('SqliteSupportRepository', () => {
     second.close();
   });
 
+  it('marks an interrupted operator relay as unknown after restart', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-test-'));
+    temporaryDirectories.push(directory);
+    const databasePath = join(directory, 'handoff.sqlite');
+    const createdAt = new Date('2026-09-06T12:00:00.000Z');
+    const action = {
+      clientMessageId: 'client-message-1',
+      createdAt,
+      id: 'operator-relay:request-1:client-message-1:0',
+      initial: false,
+      kind: 'relay_message' as const,
+      operatorTopicId: '900',
+      requestId: 'request-1',
+      sequence: 0,
+    };
+
+    const first = new SqliteSupportRepository(databasePath);
+    first.createRequest({
+      channel: 'telegram',
+      conversationId: '101',
+      createdAt,
+      id: 'request-1',
+      operatorTopicId: '900',
+      status: 'active',
+    });
+    expect(first.prepareOperatorAction(action).status).toBe('pending');
+    expect(first.claimOperatorAction(action.id, createdAt)).toBe(true);
+    first.close();
+
+    const restored = new SqliteSupportRepository(databasePath);
+    expect(restored.prepareOperatorAction(action).status).toBe(
+      'outcome_unknown',
+    );
+    expect(restored.getOperatorActionSummary()).toEqual({ uncertain: 1 });
+    expect(restored.findOperatorActionIncidents(10)).toEqual([
+      expect.objectContaining({
+        clientMessageId: 'client-message-1',
+        id: action.id,
+        operatorTopicId: '900',
+        requestId: 'request-1',
+      }),
+    ]);
+    restored.close();
+  });
+
+  it('keeps the web owner when topic creation is interrupted', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-test-'));
+    temporaryDirectories.push(directory);
+    const databasePath = join(directory, 'handoff.sqlite');
+    const createdAt = new Date('2026-09-06T12:00:00.000Z');
+    const action = {
+      clientMessageId: 'client-message-1',
+      createdAt,
+      id: 'operator-open:request-1',
+      initial: true,
+      kind: 'open_request' as const,
+      operatorTopicId: 'web:request-1',
+      requestId: 'request-1',
+      sequence: 0,
+    };
+    const beforeCrash = new SqliteSupportRepository(databasePath);
+    beforeCrash.createRequest({
+      channel: 'telegram',
+      conversationId: '101',
+      createdAt,
+      id: 'request-1',
+      operatorTopicId: 'web:request-1',
+      status: 'active',
+    });
+    beforeCrash.prepareOperatorAction(action);
+    beforeCrash.claimOperatorAction(action.id, createdAt);
+    beforeCrash.close();
+
+    const restored = new SqliteSupportRepository(databasePath);
+    expect(restored.findRequestById('request-1')?.operatorTopicId).toBe(
+      'web:request-1',
+    );
+    expect(restored.findOperatorActionIncidents(10)).toEqual([
+      expect.objectContaining({
+        id: action.id,
+        kind: 'open_request',
+      }),
+    ]);
+    restored.close();
+  });
+
+  it('commits a created Telegram topic together with its request owner', () => {
+    const repository = new SqliteSupportRepository(':memory:');
+    const createdAt = new Date('2026-09-06T12:00:00.000Z');
+    repository.createRequest({
+      channel: 'telegram',
+      conversationId: '101',
+      createdAt,
+      id: 'request-1',
+      operatorTopicId: 'web:request-1',
+      status: 'active',
+    });
+    const action = {
+      clientMessageId: 'client-message-1',
+      createdAt,
+      id: 'operator-open:request-1',
+      initial: true,
+      kind: 'open_request' as const,
+      operatorTopicId: 'web:request-1',
+      requestId: 'request-1',
+      sequence: 0,
+    };
+    repository.prepareOperatorAction(action);
+    repository.claimOperatorAction(action.id, createdAt);
+
+    repository.completeOperatorAction(action.id, '900', createdAt);
+
+    expect(repository.findRequestById('request-1')?.operatorTopicId).toBe(
+      '900',
+    );
+    expect(repository.prepareOperatorAction(action)).toMatchObject({
+      externalResultId: '900',
+      status: 'sent',
+    });
+    repository.close();
+  });
+
   it('restores request and duplicate-event state after restart', () => {
     const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-test-'));
     temporaryDirectories.push(directory);
@@ -333,8 +455,47 @@ describe('SqliteSupportRepository', () => {
     database.close();
 
     expect(() => new SqliteSupportRepository(databasePath)).toThrow(
-      'Unsupported SQLite schema version 2; expected 3',
+      'Unsupported SQLite schema version 2; expected 4',
     );
+  });
+
+  it('migrates a version 3 database without losing requests', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-test-'));
+    temporaryDirectories.push(directory);
+    const databasePath = join(directory, 'handoff.sqlite');
+    const current = new SqliteSupportRepository(databasePath);
+    current.createRequest({
+      channel: 'telegram',
+      conversationId: '101',
+      createdAt: new Date('2026-09-06T12:00:00.000Z'),
+      id: 'request-1',
+      operatorTopicId: '900',
+      status: 'active',
+    });
+    current.close();
+
+    const oldDatabase = new DatabaseSync(databasePath);
+    oldDatabase.exec('DROP TABLE operator_actions; PRAGMA user_version = 3');
+    oldDatabase.close();
+
+    const migrated = new SqliteSupportRepository(databasePath);
+    expect(migrated.findRequestById('request-1')).toMatchObject({
+      operatorTopicId: '900',
+    });
+    migrated.close();
+
+    const verified = new DatabaseSync(databasePath, { readOnly: true });
+    expect(verified.prepare('PRAGMA user_version').get()).toEqual({
+      user_version: 4,
+    });
+    expect(
+      verified
+        .prepare(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'operator_actions'",
+        )
+        .get(),
+    ).toEqual({ name: 'operator_actions' });
+    verified.close();
   });
 
   it('returns the durable operator conversation with delivery state', () => {

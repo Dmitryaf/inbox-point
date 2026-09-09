@@ -18,6 +18,14 @@ import type {
   SupportRequest,
   SupportRequestStatus,
 } from '@/core/model/support-request.js';
+import type {
+  OperatorAction,
+  OperatorActionIncident,
+  OperatorActionKind,
+  OperatorActionStatus,
+  OperatorActionSummary,
+  PendingOperatorAction,
+} from '@/core/model/operator-action.js';
 import { webOperatorTopicPrefix } from '@/core/model/operator-topic.js';
 import type { ClientChannelKind } from '@/core/model/support-message.js';
 import {
@@ -80,6 +88,26 @@ interface FailedDeliveryRow {
   request_id: string;
 }
 
+interface OperatorActionRow {
+  client_message_id: string;
+  created_at: string;
+  external_result_id: string | null;
+  id: string;
+  initial: number;
+  kind: OperatorActionKind;
+  last_error: string | null;
+  operator_topic_id: string;
+  request_id: string;
+  sequence: number;
+  status: OperatorActionStatus;
+}
+
+interface OperatorActionIncidentRow extends OperatorActionRow {
+  channel: ClientChannelKind;
+  confirmable: number;
+  external_conversation_id: string;
+}
+
 export class SqliteSupportRepository implements SupportRepository {
   private readonly database: DatabaseSync;
 
@@ -102,6 +130,7 @@ export class SqliteSupportRepository implements SupportRepository {
     }
     this.releaseInterruptedEvents();
     this.markInterruptedDeliveriesUnknown();
+    this.markInterruptedOperatorActionsUnknown();
   }
 
   public addMessageLink(link: MessageLink): void {
@@ -124,6 +153,28 @@ export class SqliteSupportRepository implements SupportRepository {
         link.operatorMessageId,
         link.createdAt.toISOString(),
       );
+  }
+
+  public ensureMessageLink(link: MessageLink): void {
+    const existing = this.database
+      .prepare(
+        `SELECT 1
+         FROM message_links
+         WHERE request_id = ?
+           AND direction = ?
+           AND client_message_id = ?
+           AND operator_message_id = ?
+         LIMIT 1`,
+      )
+      .get(
+        link.requestId,
+        link.direction,
+        link.clientMessageId,
+        link.operatorMessageId,
+      );
+    if (!existing) {
+      this.addMessageLink(link);
+    }
   }
 
   public getUsageEventCounts(since: Date): UsageEventCounts {
@@ -197,6 +248,18 @@ export class SqliteSupportRepository implements SupportRepository {
            AND attempt_started_at IS NULL`,
       )
       .run(startedAt.toISOString(), deliveryId);
+
+    return Number(result.changes) === 1;
+  }
+
+  public claimOperatorAction(actionId: string, startedAt: Date): boolean {
+    const result = this.database
+      .prepare(
+        `UPDATE operator_actions
+         SET status = 'sending', attempt_started_at = ?
+         WHERE id = ? AND status IN ('pending', 'failed')`,
+      )
+      .run(startedAt.toISOString(), actionId);
 
     return Number(result.changes) === 1;
   }
@@ -323,6 +386,72 @@ export class SqliteSupportRepository implements SupportRepository {
     }
   }
 
+  public completeOperatorAction(
+    actionId: string,
+    externalResultId: string,
+    completedAt: Date,
+  ): void {
+    this.database.exec('BEGIN IMMEDIATE');
+    try {
+      const action = this.database
+        .prepare(
+          `SELECT id, request_id, kind, client_message_id, operator_topic_id,
+                  sequence, initial, status, external_result_id, created_at,
+                  last_error
+           FROM operator_actions
+           WHERE id = ? AND status = 'sending'`,
+        )
+        .get(actionId) as OperatorActionRow | undefined;
+      if (!action) {
+        throw new Error('Claimed operator action was not found');
+      }
+
+      if (action.kind === 'open_request') {
+        const switched = this.database
+          .prepare(
+            `UPDATE support_requests
+             SET operator_topic_id = ?
+             WHERE id = ? AND operator_topic_id = ? AND status = 'active'`,
+          )
+          .run(externalResultId, action.request_id, action.operator_topic_id);
+        if (Number(switched.changes) !== 1) {
+          const request = this.findRequestById(action.request_id);
+          if (request?.operatorTopicId !== externalResultId) {
+            throw new Error('The operator surface changed concurrently');
+          }
+        }
+      } else {
+        this.addMessageLink({
+          clientMessageId: action.client_message_id,
+          createdAt: completedAt,
+          direction: 'client_to_operator',
+          id: `operator-action-link:${action.id}`,
+          operatorMessageId: externalResultId,
+          requestId: action.request_id,
+        });
+      }
+
+      const completed = this.database
+        .prepare(
+          `UPDATE operator_actions
+           SET status = 'sent',
+               external_result_id = ?,
+               last_error = NULL,
+               attempt_started_at = NULL,
+               completed_at = ?
+           WHERE id = ? AND status = 'sending'`,
+        )
+        .run(externalResultId, completedAt.toISOString(), actionId);
+      if (Number(completed.changes) !== 1) {
+        throw new Error('Claimed operator action was not completed');
+      }
+      this.database.exec('COMMIT');
+    } catch (error: unknown) {
+      this.database.exec('ROLLBACK');
+      throw error;
+    }
+  }
+
   public createRequest(request: SupportRequest): void {
     this.database
       .prepare(
@@ -422,6 +551,39 @@ export class SqliteSupportRepository implements SupportRepository {
       this.database.exec('ROLLBACK');
       throw error;
     }
+  }
+
+  public prepareOperatorAction(action: PendingOperatorAction): OperatorAction {
+    this.database
+      .prepare(
+        `INSERT OR IGNORE INTO operator_actions (
+          id,
+          request_id,
+          kind,
+          client_message_id,
+          operator_topic_id,
+          sequence,
+          initial,
+          status,
+          created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)`,
+      )
+      .run(
+        action.id,
+        action.requestId,
+        action.kind,
+        action.clientMessageId,
+        action.operatorTopicId,
+        action.sequence,
+        action.initial ? 1 : 0,
+        action.createdAt.toISOString(),
+      );
+
+    const row = this.findOperatorActionRow(action.id);
+    if (!row || !operatorActionMatches(row, action)) {
+      throw new Error('Operator action identity collision');
+    }
+    return mapOperatorAction(row);
   }
 
   public findActiveRequest(
@@ -624,6 +786,86 @@ export class SqliteSupportRepository implements SupportRepository {
     return row ? mapRequest(row) : undefined;
   }
 
+  public findOperatorActionIncident(
+    actionId: string,
+  ): OperatorActionIncident | undefined {
+    const rows = this.findOperatorActionIncidentRows(
+      `WHERE action.id = ? AND action.status = 'outcome_unknown'`,
+      actionId,
+    );
+    const row = rows[0];
+    return row ? mapOperatorActionIncident(row) : undefined;
+  }
+
+  public findOperatorActionIncidents(
+    limit: number,
+  ): readonly OperatorActionIncident[] {
+    return this.findOperatorActionIncidentRows(
+      `WHERE action.status = 'outcome_unknown'
+       ORDER BY action.created_at DESC, action.id DESC
+       LIMIT ?`,
+      limit,
+    ).map(mapOperatorActionIncident);
+  }
+
+  public hasUnknownOperatorActions(
+    requestId: string,
+    clientMessageId: string,
+  ): boolean {
+    const row = this.database
+      .prepare(
+        `SELECT 1
+         FROM operator_actions
+         WHERE request_id = ?
+           AND client_message_id = ?
+           AND status = 'outcome_unknown'
+         LIMIT 1`,
+      )
+      .get(requestId, clientMessageId);
+    return row !== undefined;
+  }
+
+  private findOperatorActionIncidentRows(
+    whereClause: string,
+    ...parameters: readonly (number | string)[]
+  ): readonly OperatorActionIncidentRow[] {
+    return this.database
+      .prepare(
+        `SELECT action.id, action.request_id, action.kind,
+                action.client_message_id, action.operator_topic_id,
+                action.sequence, action.initial, action.status,
+                action.external_result_id, action.last_error,
+                action.created_at, request.channel,
+                CASE WHEN action.kind = 'relay_message' AND NOT EXISTS (
+                  SELECT 1
+                  FROM operator_actions AS blocking_action
+                  WHERE blocking_action.request_id = action.request_id
+                    AND blocking_action.client_message_id = action.client_message_id
+                    AND blocking_action.id != action.id
+                    AND blocking_action.status IN ('pending', 'sending', 'failed')
+                ) THEN 1 ELSE 0 END AS confirmable,
+                request.external_conversation_id
+         FROM operator_actions AS action
+         JOIN support_requests AS request ON request.id = action.request_id
+         ${whereClause}`,
+      )
+      .all(...parameters) as unknown as OperatorActionIncidentRow[];
+  }
+
+  private findOperatorActionRow(
+    actionId: string,
+  ): OperatorActionRow | undefined {
+    return this.database
+      .prepare(
+        `SELECT id, request_id, kind, client_message_id, operator_topic_id,
+                sequence, initial, status, external_result_id, last_error,
+                created_at
+         FROM operator_actions
+         WHERE id = ?`,
+      )
+      .get(actionId) as OperatorActionRow | undefined;
+  }
+
   public findPendingInboundEvents(
     source: string,
     limit: number,
@@ -716,6 +958,17 @@ export class SqliteSupportRepository implements SupportRepository {
       pending: row.pending ?? 0,
       ...((row.uncertain ?? 0) > 0 ? { uncertain: row.uncertain ?? 0 } : {}),
     };
+  }
+
+  public getOperatorActionSummary(): OperatorActionSummary {
+    const row = this.database
+      .prepare(
+        `SELECT COUNT(*) AS uncertain
+         FROM operator_actions
+         WHERE status = 'outcome_unknown'`,
+      )
+      .get() as { uncertain: number };
+    return { uncertain: row.uncertain };
   }
 
   public findPendingDeliveries(
@@ -824,6 +1077,33 @@ export class SqliteSupportRepository implements SupportRepository {
          WHERE id = ? AND status = 'pending'`,
       )
       .run(error, deliveryId);
+  }
+
+  public markOperatorActionFailed(actionId: string, error: string): void {
+    this.database
+      .prepare(
+        `UPDATE operator_actions
+         SET status = 'failed',
+             last_error = ?,
+             attempt_started_at = NULL
+         WHERE id = ? AND status = 'sending'`,
+      )
+      .run(error, actionId);
+  }
+
+  public markOperatorActionOutcomeUnknown(
+    actionId: string,
+    error: string,
+  ): void {
+    this.database
+      .prepare(
+        `UPDATE operator_actions
+         SET status = 'outcome_unknown',
+             last_error = ?,
+             attempt_started_at = NULL
+         WHERE id = ? AND status = 'sending'`,
+      )
+      .run(error, actionId);
   }
 
   public markDeliveryRetry(
@@ -983,6 +1263,84 @@ export class SqliteSupportRepository implements SupportRepository {
     return Number(result.changes) === 1;
   }
 
+  public confirmOperatorActionReceived(
+    actionId: string,
+    confirmedAt: Date,
+  ): boolean {
+    const result = this.database
+      .prepare(
+        `UPDATE operator_actions
+         SET status = 'sent',
+             last_error = NULL,
+             completed_at = ?,
+             manual_resolution = 'confirmed_received',
+             resolved_at = ?
+         WHERE id = ?
+           AND kind = 'relay_message'
+           AND status = 'outcome_unknown'
+           AND NOT EXISTS (
+             SELECT 1
+             FROM operator_actions AS blocking_action
+             WHERE blocking_action.request_id = operator_actions.request_id
+               AND blocking_action.client_message_id = operator_actions.client_message_id
+               AND blocking_action.id != operator_actions.id
+               AND blocking_action.status IN ('pending', 'sending', 'failed')
+           )`,
+      )
+      .run(confirmedAt.toISOString(), confirmedAt.toISOString(), actionId);
+    return Number(result.changes) === 1;
+  }
+
+  public moveOperatorActionRequestToWeb(actionId: string): boolean {
+    const incident = this.findOperatorActionIncident(actionId);
+    if (!incident) {
+      return false;
+    }
+    const webTopicId = `${webOperatorTopicPrefix}${incident.requestId}`;
+    const request = this.findRequestById(incident.requestId);
+    if (request?.status !== 'active') {
+      return false;
+    }
+    if (request.operatorTopicId === webTopicId) {
+      return true;
+    }
+    if (request.operatorTopicId !== incident.operatorTopicId) {
+      return false;
+    }
+    return this.switchOperatorTopic(
+      incident.requestId,
+      incident.operatorTopicId,
+      webTopicId,
+    );
+  }
+
+  public resolveOperatorActionAsWeb(
+    actionId: string,
+    resolvedAt: Date,
+  ): boolean {
+    const incident = this.findOperatorActionIncident(actionId);
+    if (!incident) {
+      return false;
+    }
+    const result = this.database
+      .prepare(
+        `UPDATE operator_actions
+         SET status = 'abandoned',
+             last_error = NULL,
+             manual_resolution = 'use_web',
+             resolved_at = ?
+         WHERE request_id = ?
+           AND client_message_id = ?
+           AND status = 'outcome_unknown'`,
+      )
+      .run(
+        resolvedAt.toISOString(),
+        incident.requestId,
+        incident.clientMessageId,
+      );
+    return Number(result.changes) > 0;
+  }
+
   public switchOperatorTopic(
     requestId: string,
     expectedTopicId: string,
@@ -1002,7 +1360,7 @@ export class SqliteSupportRepository implements SupportRepository {
   }
 
   private initializeSchema(): void {
-    const version = this.database.prepare('PRAGMA user_version').get() as {
+    let version = this.database.prepare('PRAGMA user_version').get() as {
       user_version: number;
     };
     const existingTable = this.database
@@ -1010,6 +1368,18 @@ export class SqliteSupportRepository implements SupportRepository {
         "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' LIMIT 1",
       )
       .get();
+    if (existingTable !== undefined && version.user_version === 3) {
+      this.database.exec('BEGIN IMMEDIATE');
+      try {
+        this.database.exec(operatorActionsTableSql);
+        this.database.exec(`PRAGMA user_version = ${sqliteSchemaVersion}`);
+        this.database.exec('COMMIT');
+      } catch (error: unknown) {
+        this.database.exec('ROLLBACK');
+        throw error;
+      }
+      version = { user_version: sqliteSchemaVersion };
+    }
     if (
       existingTable !== undefined &&
       version.user_version !== sqliteSchemaVersion
@@ -1127,6 +1497,8 @@ export class SqliteSupportRepository implements SupportRepository {
         attempt_started_at TEXT,
         sent_at TEXT
       ) STRICT;
+
+      ${operatorActionsTableSql}
     `);
 
     this.database.exec(`PRAGMA user_version = ${sqliteSchemaVersion}`);
@@ -1154,6 +1526,18 @@ export class SqliteSupportRepository implements SupportRepository {
       .run();
   }
 
+  private markInterruptedOperatorActionsUnknown(): void {
+    this.database
+      .prepare(
+        `UPDATE operator_actions
+         SET status = 'outcome_unknown',
+             last_error = 'Operator action was interrupted after the attempt started',
+             attempt_started_at = NULL
+         WHERE status = 'sending'`,
+      )
+      .run();
+  }
+
   private countRequests(whereClause: string, cutoff: string): number {
     const row = this.database
       .prepare(
@@ -1166,6 +1550,38 @@ export class SqliteSupportRepository implements SupportRepository {
     return row.count;
   }
 }
+
+const operatorActionsTableSql = `
+  CREATE TABLE IF NOT EXISTS operator_actions (
+    id TEXT PRIMARY KEY,
+    request_id TEXT NOT NULL REFERENCES support_requests(id),
+    kind TEXT NOT NULL CHECK (kind IN ('open_request', 'relay_message')),
+    client_message_id TEXT NOT NULL,
+    operator_topic_id TEXT NOT NULL,
+    sequence INTEGER NOT NULL,
+    initial INTEGER NOT NULL CHECK (initial IN (0, 1)),
+    status TEXT NOT NULL CHECK (status IN (
+      'pending',
+      'sending',
+      'sent',
+      'failed',
+      'outcome_unknown',
+      'abandoned'
+    )),
+    external_result_id TEXT,
+    last_error TEXT,
+    created_at TEXT NOT NULL,
+    attempt_started_at TEXT,
+    completed_at TEXT,
+    manual_resolution TEXT CHECK (
+      manual_resolution IN ('confirmed_received', 'use_web')
+    ),
+    resolved_at TEXT
+  ) STRICT;
+
+  CREATE INDEX IF NOT EXISTS operator_actions_by_status
+    ON operator_actions(status, created_at, id);
+`;
 
 function mapRequest(row: SupportRequestRow): SupportRequest {
   return {
@@ -1180,4 +1596,46 @@ function mapRequest(row: SupportRequestRow): SupportRequest {
     operatorTopicId: row.operator_topic_id,
     status: row.status,
   };
+}
+
+function mapOperatorAction(row: OperatorActionRow): OperatorAction {
+  return {
+    clientMessageId: row.client_message_id,
+    createdAt: new Date(row.created_at),
+    ...(row.external_result_id
+      ? { externalResultId: row.external_result_id }
+      : {}),
+    id: row.id,
+    initial: row.initial === 1,
+    kind: row.kind,
+    operatorTopicId: row.operator_topic_id,
+    requestId: row.request_id,
+    sequence: row.sequence,
+    status: row.status,
+  };
+}
+
+function mapOperatorActionIncident(
+  row: OperatorActionIncidentRow,
+): OperatorActionIncident {
+  return {
+    ...mapOperatorAction(row),
+    channel: row.channel,
+    confirmable: row.confirmable === 1,
+    conversationId: row.external_conversation_id,
+    lastError: row.last_error ?? 'Unknown operator action error',
+  };
+}
+
+function operatorActionMatches(
+  row: OperatorActionRow,
+  action: PendingOperatorAction,
+): boolean {
+  return (
+    row.request_id === action.requestId &&
+    row.kind === action.kind &&
+    row.client_message_id === action.clientMessageId &&
+    row.operator_topic_id === action.operatorTopicId &&
+    row.sequence === action.sequence
+  );
 }

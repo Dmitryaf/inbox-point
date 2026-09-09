@@ -4,18 +4,22 @@ import { computed } from 'vue';
 import { formatUptime } from '@frontend/entities/operations/lib/status-format';
 import type { OperationsStatus } from '@frontend/entities/operations/model/types';
 import DeliveryIncidentList from './DeliveryIncidentList.vue';
+import OperatorRelayIncidentList from './OperatorRelayIncidentList.vue';
 import OutboundDeliveryControl from './OutboundDeliveryControl.vue';
 
 const props = defineProps<{
   deliveries: OperationsStatus['deliveries'];
   deliveryControlPending: 'pause' | 'resume' | undefined;
   outbound: OperationsStatus['outbound'];
+  operatorRelays: OperationsStatus['operatorRelays'];
+  pendingOperatorActionId: string | undefined;
   pendingDeliveryId: string | undefined;
 }>();
 defineEmits<{
   changeDeliveryMode: [mode: 'pause' | 'resume'];
   resolve: [deliveryId: string, resolution: 'not_received' | 'received'];
   retry: [deliveryId: string];
+  resolveOperatorAction: [actionId: string, resolution: 'received' | 'use_web'];
 }>();
 
 const state = computed(() => {
@@ -75,6 +79,13 @@ const state = computed(() => {
       :pending-delivery-id="pendingDeliveryId"
       @resolve="(id, resolution) => $emit('resolve', id, resolution)"
       @retry="$emit('retry', $event)"
+    />
+    <OperatorRelayIncidentList
+      :incidents="operatorRelays.incidents"
+      :pending-action-id="pendingOperatorActionId"
+      @resolve="
+        (id, resolution) => $emit('resolveOperatorAction', id, resolution)
+      "
     />
   </article>
 </template>

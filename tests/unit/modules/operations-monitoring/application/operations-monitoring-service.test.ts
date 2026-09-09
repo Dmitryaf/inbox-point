@@ -53,6 +53,11 @@ describe('OperationsMonitoringService', () => {
         vk: { mode: 'active' },
       },
       observedAt: '2026-09-04T12:01:05.000Z',
+      operatorRelays: {
+        incidents: [],
+        state: 'healthy',
+        uncertain: 0,
+      },
       outbound: { mode: 'active' },
       startedAt: '2026-09-04T12:00:00.000Z',
       state: 'healthy',
@@ -161,6 +166,62 @@ describe('OperationsMonitoringService', () => {
         retryAllowed: true,
       },
     ]);
+  });
+
+  it('blocks readiness and exposes an uncertain operator relay', () => {
+    const monitoring = new OperationsMonitoringService({
+      channelActivity: () => ({
+        lastSuccessfulPollAt: new Date('2026-09-04T12:01:00.000Z'),
+      }),
+      clock: () => new Date('2026-09-04T12:01:05.000Z'),
+      deliveryActivity: () => ({ running: true }),
+      deliverySummary: () => ({ failed: 0, pending: 0 }),
+      operatorActionIncidents: () => [
+        {
+          channel: 'telegram',
+          clientMessageId: 'client-message-1',
+          confirmable: true,
+          conversationId: 'private-conversation',
+          createdAt: new Date('2026-09-04T12:01:00.000Z'),
+          id: 'operator-relay:request-1:client-message-1:1',
+          initial: true,
+          kind: 'relay_message',
+          lastError: 'private upstream error',
+          operatorTopicId: '900',
+          requestId: 'request-1',
+          sequence: 1,
+          status: 'outcome_unknown',
+        },
+      ],
+      operatorActionSummary: () => ({ uncertain: 1 }),
+      startedAt: new Date('2026-09-04T12:00:00.000Z'),
+      telegramStatus: () => ({ connected: true, source: 'local' }),
+      vkStatus: () => ({ connected: true, source: 'local' }),
+    });
+
+    expect(monitoring.getStatus()).toMatchObject({
+      operatorRelays: {
+        incidents: [
+          {
+            action: 'relay_message',
+            channel: 'Telegram',
+            clientMessageId: 'client-message-1',
+            requestId: 'request-1',
+            sequence: 1,
+          },
+        ],
+        state: 'uncertain',
+        uncertain: 1,
+      },
+      state: 'attention',
+    });
+    expect(JSON.stringify(monitoring.getStatus())).not.toContain(
+      'private upstream error',
+    );
+    expect(JSON.stringify(monitoring.getStatus())).not.toContain(
+      'private-conversation',
+    );
+    expect(monitoring.isReady()).toBe(false);
   });
 
   it('requires attention while the latest poll failure is not recovered', () => {

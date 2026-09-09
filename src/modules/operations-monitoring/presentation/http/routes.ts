@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
+import type { OperatorActionIncidentService } from '@/core/application/operator-action-incident-service.js';
 import type { AdminRouteAccess } from '@/infrastructure/http/admin-route-access.js';
 import {
   loadFrontendAssets,
@@ -14,6 +15,7 @@ import { registerServiceControlRoutes } from '@/modules/service-control/presenta
 import { registerOperationsAssetRoutes } from './asset-routes.js';
 import { registerOperationsDeliveryRoutes } from './delivery-routes.js';
 import { registerOperationsStatusRoutes } from './status-routes.js';
+import { registerOperatorActionRoutes } from './operator-action-routes.js';
 import { registerUsageMetricsRoute } from './usage-metrics-route.js';
 
 export function registerOperationsRoutes(
@@ -30,12 +32,14 @@ export function registerOperationsRoutes(
   >,
   operatorInbox?: OperatorInboxService,
   usageMetrics?: Pick<SupportRepository, 'getUsageEventCounts'>,
+  operatorActions?: Pick<OperatorActionIncidentService, 'resolve'>,
 ): void {
   const assets = options.assets ?? loadFrontendAssets('/ops');
 
   registerOperationsAssetRoutes(app, routeAccess, assets);
   registerOperationsStatusRoutes(app, monitoring, routeAccess);
   registerOperationsDeliveryRoutes(app, deliveries, routeAccess);
+  registerOperatorActionRoutes(app, operatorActions, routeAccess);
   registerOperatorInboxRoutes(app, operatorInbox, routeAccess);
   registerUsageMetricsRoute(app, usageMetrics, routeAccess);
   if (serviceControl) {

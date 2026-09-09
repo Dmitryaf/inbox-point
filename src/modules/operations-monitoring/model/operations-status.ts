@@ -26,10 +26,31 @@ export interface OperationsStatus {
     vk: ClientIntakeOperationsStatus;
   };
   observedAt: string;
+  operatorRelays: OperatorRelayOperationsStatus;
   outbound: OutboundDeliveryOperationsStatus;
   startedAt: string;
   state: 'attention' | 'healthy' | 'maintenance';
   uptimeSeconds: number;
+}
+
+export interface OperatorRelayOperationsStatus {
+  incidents: readonly OperatorRelayIncident[];
+  state: 'healthy' | 'uncertain';
+  uncertain: number;
+}
+
+export interface OperatorRelayIncident {
+  action: 'open_request' | 'relay_message';
+  channel: 'Telegram' | 'VK';
+  clientMessageId: string;
+  confirmable: boolean;
+  createdAt: string;
+  id: string;
+  initial: boolean;
+  operatorTopicId: string;
+  reason: string;
+  requestId: string;
+  sequence: number;
 }
 
 export interface OutboundDeliveryOperationsStatus {

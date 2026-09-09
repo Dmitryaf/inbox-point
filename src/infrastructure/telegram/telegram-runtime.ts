@@ -72,6 +72,7 @@ export class TelegramRuntime implements TelegramRuntimeControl {
     const operatorInbox = new TelegramTopicsInbox(
       gateway,
       config.operatorChatId,
+      this.repository,
     );
     const poller = new TelegramPoller(
       gateway,

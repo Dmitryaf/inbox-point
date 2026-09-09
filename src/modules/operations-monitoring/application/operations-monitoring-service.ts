@@ -1,10 +1,15 @@
 import type { DeliverySummary } from '@/core/contracts/support-repository.js';
+import type {
+  OperatorActionIncident,
+  OperatorActionSummary,
+} from '@/core/model/operator-action.js';
 import type { ClientChannelKind } from '@/core/model/support-message.js';
 import type { FailedDelivery } from '@/core/model/support-request.js';
 import type { ChannelActivitySnapshot } from '@/modules/operations-monitoring/application/channel-activity-monitor.js';
 import type { DeliveryWorkerActivitySnapshot } from '@/modules/operations-monitoring/application/delivery-worker-activity-monitor.js';
 import { mapDeliveryStatus } from '@/modules/operations-monitoring/application/delivery-status.js';
 import { mapDeliveryIncident } from '@/modules/operations-monitoring/application/delivery-incident.js';
+import { mapOperatorRelayStatus } from '@/modules/operations-monitoring/application/operator-relay-status.js';
 import {
   channelIsReady,
   channelNeedsAttention,
@@ -22,6 +27,8 @@ export interface OperationsMonitoringDependencies {
   deliverySummary: () => DeliverySummary;
   deliveryControlStatus?: () => ServiceControlState['delivery'];
   intakeStatus?: () => ServiceControlState['channels'];
+  operatorActionIncidents?: () => readonly OperatorActionIncident[];
+  operatorActionSummary?: () => OperatorActionSummary;
   pendingDeliveryStaleAfterMs?: number;
   pollStaleAfterMs?: number;
   startedAt: Date;
@@ -88,19 +95,29 @@ export class OperationsMonitoringService {
       intake.telegram.mode === 'paused' ||
       intake.vk.mode === 'paused' ||
       outbound.mode === 'paused';
+    const operatorActionSummary =
+      this.dependencies.operatorActionSummary?.() ?? { uncertain: 0 };
+    const operatorActionIncidents: readonly OperatorActionIncident[] =
+      this.dependencies.operatorActionIncidents?.() ?? [];
+    const operatorRelays = mapOperatorRelayStatus(
+      operatorActionSummary,
+      operatorActionIncidents,
+    );
 
     return {
       channels: { telegram, vk },
       deliveries,
       intake,
       observedAt: observedAt.toISOString(),
+      operatorRelays,
       outbound,
       startedAt: this.dependencies.startedAt.toISOString(),
-      state: needsAttention
-        ? 'attention'
-        : maintenance
-          ? 'maintenance'
-          : 'healthy',
+      state:
+        needsAttention || operatorRelays.state === 'uncertain'
+          ? 'attention'
+          : maintenance
+            ? 'maintenance'
+            : 'healthy',
       uptimeSeconds: Math.max(
         0,
         Math.floor(
@@ -117,6 +134,7 @@ export class OperationsMonitoringService {
     return (
       status.deliveries.state !== 'backlog' &&
       status.deliveries.state !== 'stalled' &&
+      status.operatorRelays.state === 'healthy' &&
       channelIsReady(status.channels.telegram) &&
       channelIsReady(status.channels.vk)
     );
