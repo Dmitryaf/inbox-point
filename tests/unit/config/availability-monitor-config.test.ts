@@ -6,26 +6,33 @@ describe('loadAvailabilityMonitorConfig', () => {
   it('requires HTTPS and maps monitor settings without exposing credentials', () => {
     expect(() =>
       loadAvailabilityMonitorConfig({
-        MONITOR_HEALTH_URL: 'http://example.test/health',
-        MONITOR_TELEGRAM_BOT_TOKEN: 'secret-token',
-        MONITOR_TELEGRAM_CHAT_ID: '123',
+        MONITOR_ALERT_WEBHOOK_URL: 'https://alerts.example.test/hook',
+        MONITOR_READINESS_URL: 'http://example.test/ready',
+      }),
+    ).toThrow('Availability monitor requires');
+    expect(() =>
+      loadAvailabilityMonitorConfig({
+        MONITOR_ALERT_WEBHOOK_URL: 'https://alerts.example.test/hook',
+        MONITOR_READINESS_URL: 'https://example.test/health',
       }),
     ).toThrow('Availability monitor requires');
 
     const config = loadAvailabilityMonitorConfig({
-      MONITOR_HEALTH_URL: 'https://example.test/health',
+      MONITOR_ALERT_BEARER_TOKEN: 'synthetic-token',
+      MONITOR_ALERT_WEBHOOK_URL: 'https://alerts.example.test/hook',
       MONITOR_INTERVAL_SECONDS: '30',
-      MONITOR_TELEGRAM_BOT_TOKEN: 'synthetic-token',
-      MONITOR_TELEGRAM_CHAT_ID: '123',
+      MONITOR_READINESS_URL: 'https://example.test/ready',
       MONITOR_TIMEOUT_SECONDS: '5',
     });
 
     expect(config).toMatchObject({
       intervalMs: 30_000,
-      telegramBotToken: 'synthetic-token',
-      telegramChatId: '123',
+      alertBearerToken: 'synthetic-token',
       timeoutMs: 5_000,
     });
-    expect(config.healthUrl.toString()).toBe('https://example.test/health');
+    expect(config.readinessUrl.toString()).toBe('https://example.test/ready');
+    expect(config.alertWebhookUrl.toString()).toBe(
+      'https://alerts.example.test/hook',
+    );
   });
 });
