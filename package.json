@@ -13,6 +13,7 @@
     "build": "npm run build:frontend && npm run build:server",
     "build:frontend": "vite build --config frontend/vite.config.ts",
     "build:server": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json -f -fe .js",
+    "backup:create": "node --env-file-if-exists=.env dist/create-external-backup.js",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run build",
     "dev": "npm run build:frontend && tsx watch --env-file-if-exists=.env src/main.ts",
     "format": "prettier --write .",

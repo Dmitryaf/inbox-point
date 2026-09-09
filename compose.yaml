@@ -31,5 +31,22 @@ services:
     volumes:
       - messenger-handoff-data:/app/data
 
+  backup:
+    profiles: ['operations']
+    build:
+      context: .
+    command: ['node', 'dist/create-external-backup.js']
+    environment:
+      BACKUP_ALERT_BEARER_TOKEN: '${BACKUP_ALERT_BEARER_TOKEN:-}'
+      BACKUP_ALERT_WEBHOOK_URL: '${BACKUP_ALERT_WEBHOOK_URL}'
+      BACKUP_EXPORT_PATH: /backup
+      BACKUP_TIMEOUT_SECONDS: '${BACKUP_TIMEOUT_SECONDS:-10}'
+      CLOSED_REQUEST_RETENTION_DAYS: '${CLOSED_REQUEST_RETENTION_DAYS:-7}'
+      DATABASE_PATH: /app/data/messenger-handoff.sqlite
+    restart: 'no'
+    volumes:
+      - messenger-handoff-data:/app/data:ro
+      - '${BACKUP_HOST_PATH}:/backup'
+
 volumes:
   messenger-handoff-data:
