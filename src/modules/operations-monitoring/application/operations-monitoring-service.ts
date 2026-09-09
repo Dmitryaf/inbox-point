@@ -5,17 +5,22 @@ import type {
 } from '@/core/model/operator-action.js';
 import type { ClientChannelKind } from '@/core/model/support-message.js';
 import type { FailedDelivery } from '@/core/model/support-request.js';
+import type {
+  InboundEventIncident,
+  InboundEventSummary,
+} from '@/core/model/inbound-event.js';
 import type { ChannelActivitySnapshot } from '@/modules/operations-monitoring/application/channel-activity-monitor.js';
 import type { DeliveryWorkerActivitySnapshot } from '@/modules/operations-monitoring/application/delivery-worker-activity-monitor.js';
 import { mapDeliveryStatus } from '@/modules/operations-monitoring/application/delivery-status.js';
 import { mapDeliveryIncident } from '@/modules/operations-monitoring/application/delivery-incident.js';
 import { mapOperatorRelayStatus } from '@/modules/operations-monitoring/application/operator-relay-status.js';
+import { mapInboundEventStatus } from '@/modules/operations-monitoring/application/inbound-event-status.js';
 import {
-  channelIsReady,
   channelNeedsAttention,
   mapChannelStatus,
   type ChannelStatusSnapshot,
 } from '@/modules/operations-monitoring/application/channel-status.js';
+import { operationsAreReady } from '@/modules/operations-monitoring/application/operations-readiness.js';
 import type { OperationsStatus } from '@/modules/operations-monitoring/model/operations-status.js';
 import type { ServiceControlState } from '@/modules/service-control/model/service-control-state.js';
 
@@ -27,6 +32,8 @@ export interface OperationsMonitoringDependencies {
   deliverySummary: () => DeliverySummary;
   deliveryControlStatus?: () => ServiceControlState['delivery'];
   intakeStatus?: () => ServiceControlState['channels'];
+  inboundEventIncidents?: () => readonly InboundEventIncident[];
+  inboundEventSummary?: () => InboundEventSummary;
   operatorActionIncidents?: () => readonly OperatorActionIncident[];
   operatorActionSummary?: () => OperatorActionSummary;
   pendingDeliveryStaleAfterMs?: number;
@@ -95,25 +102,30 @@ export class OperationsMonitoringService {
       intake.telegram.mode === 'paused' ||
       intake.vk.mode === 'paused' ||
       outbound.mode === 'paused';
-    const operatorActionSummary =
-      this.dependencies.operatorActionSummary?.() ?? { uncertain: 0 };
     const operatorActionIncidents: readonly OperatorActionIncident[] =
       this.dependencies.operatorActionIncidents?.() ?? [];
     const operatorRelays = mapOperatorRelayStatus(
-      operatorActionSummary,
+      this.dependencies.operatorActionSummary?.() ?? { uncertain: 0 },
       operatorActionIncidents,
+    );
+    const inboundEvents = mapInboundEventStatus(
+      this.dependencies.inboundEventSummary?.() ?? { quarantined: 0 },
+      this.dependencies.inboundEventIncidents?.() ?? [],
     );
 
     return {
       channels: { telegram, vk },
       deliveries,
       intake,
+      inboundEvents,
       observedAt: observedAt.toISOString(),
       operatorRelays,
       outbound,
       startedAt: this.dependencies.startedAt.toISOString(),
       state:
-        needsAttention || operatorRelays.state === 'uncertain'
+        needsAttention ||
+        operatorRelays.state === 'uncertain' ||
+        inboundEvents.state === 'quarantined'
           ? 'attention'
           : maintenance
             ? 'maintenance'
@@ -129,14 +141,6 @@ export class OperationsMonitoringService {
   }
 
   public isReady(): boolean {
-    const status = this.getStatus();
-
-    return (
-      status.deliveries.state !== 'backlog' &&
-      status.deliveries.state !== 'stalled' &&
-      status.operatorRelays.state === 'healthy' &&
-      channelIsReady(status.channels.telegram) &&
-      channelIsReady(status.channels.vk)
-    );
+    return operationsAreReady(this.getStatus());
   }
 }

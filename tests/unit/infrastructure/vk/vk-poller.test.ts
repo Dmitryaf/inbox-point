@@ -1,9 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import type { InboundEventStore } from '@/core/contracts/support-repository.js';
 import type {
-  InboundEventStore,
+  InboundEventFailureOutcome,
+  InboundEventIncident,
+  InboundEventSummary,
   PendingInboundEvent,
-} from '@/core/contracts/support-repository.js';
+  QueuedInboundEvent,
+} from '@/core/model/inbound-event.js';
 import type {
   VkGateway,
   VkLongPollResponse,
@@ -289,10 +293,60 @@ describe('VkPoller', () => {
     expect(gateway.serverRequests).toBe(0);
     expect(eventStore.findPendingInboundEvents('vk:long-poll', 10)).toEqual([]);
   });
+
+  it('quarantines a poison event and continues with the next event', async () => {
+    const abortController = new AbortController();
+    const eventStore = new MemoryInboundEventStore();
+    const routed: string[] = [];
+    const gateway = new ScriptedGateway([
+      {
+        ts: '2',
+        updates: [
+          createEvent('valid-1'),
+          createEvent('poison'),
+          createEvent('valid-2'),
+        ],
+      },
+    ]);
+    const poller = new VkPoller(
+      gateway,
+      42,
+      {
+        route: (event) => {
+          const eventId = event.event_id ?? '';
+          routed.push(eventId);
+          if (eventId === 'poison') {
+            return Promise.reject(new Error('Permanent routing failure'));
+          }
+          if (eventId === 'valid-2') {
+            abortController.abort();
+          }
+          return Promise.resolve();
+        },
+      },
+      eventStore,
+      {
+        maxEventAttempts: 2,
+        retryDelay: () => Promise.resolve(),
+      },
+    );
+
+    await poller.run(abortController.signal);
+
+    expect(routed).toEqual(['valid-1', 'poison', 'poison', 'valid-2']);
+    expect(eventStore.getInboundEventSummary()).toEqual({ quarantined: 1 });
+    expect(eventStore.findQuarantinedInboundEvents(10)).toEqual([
+      expect.objectContaining({
+        attempts: 2,
+        externalEventId: 'poison',
+        lastError: 'Permanent routing failure',
+      }),
+    ]);
+  });
 });
 
 class MemoryInboundEventStore implements InboundEventStore {
-  private readonly events: PendingInboundEvent[] = [];
+  private readonly events: StoredInboundEvent[] = [];
 
   public completeInboundEvent(source: string, externalEventId: string): void {
     const index = this.events.findIndex(
@@ -312,7 +366,7 @@ class MemoryInboundEventStore implements InboundEventStore {
           stored.externalEventId === event.externalEventId,
       );
       if (!exists) {
-        this.events.push(event);
+        this.events.push({ ...event, attempts: 0, status: 'pending' });
       }
     }
   }
@@ -320,11 +374,102 @@ class MemoryInboundEventStore implements InboundEventStore {
   public findPendingInboundEvents(
     source: string,
     limit: number,
-  ): readonly PendingInboundEvent[] {
+  ): readonly QueuedInboundEvent[] {
     return this.events
-      .filter((event) => event.source === source)
+      .filter((event) => event.source === source && event.status === 'pending')
       .slice(0, limit);
   }
+
+  public findQuarantinedInboundEvents(
+    limit: number,
+  ): readonly InboundEventIncident[] {
+    return this.events
+      .filter((event) => event.status === 'quarantined')
+      .slice(0, limit)
+      .map((event) => ({
+        attempts: event.attempts,
+        externalEventId: event.externalEventId,
+        lastError: event.lastError ?? '',
+        receivedAt: event.receivedAt,
+        source: event.source,
+      }));
+  }
+
+  public getInboundEventSummary(): InboundEventSummary {
+    return {
+      quarantined: this.events.filter((event) => event.status === 'quarantined')
+        .length,
+    };
+  }
+
+  public recordInboundEventFailure(
+    source: string,
+    externalEventId: string,
+    error: string,
+    nextAttemptAt: Date,
+    maxAttempts: number,
+  ): InboundEventFailureOutcome {
+    const event = this.events.find(
+      (candidate) =>
+        candidate.source === source &&
+        candidate.externalEventId === externalEventId &&
+        candidate.status === 'pending',
+    );
+    if (!event) {
+      throw new Error('Pending inbound event was not found');
+    }
+    event.attempts += 1;
+    event.lastError = error;
+    event.nextAttemptAt = nextAttemptAt;
+    if (event.attempts >= maxAttempts) {
+      event.status = 'quarantined';
+      delete event.nextAttemptAt;
+      return 'quarantined';
+    }
+    return 'retry';
+  }
+
+  public retryQuarantinedInboundEvent(
+    source: string,
+    externalEventId: string,
+  ): boolean {
+    const event = this.findQuarantined(source, externalEventId);
+    if (!event) {
+      return false;
+    }
+    event.status = 'pending';
+    event.attempts = 0;
+    return true;
+  }
+
+  public skipQuarantinedInboundEvent(
+    source: string,
+    externalEventId: string,
+  ): boolean {
+    const event = this.findQuarantined(source, externalEventId);
+    if (!event) {
+      return false;
+    }
+    this.events.splice(this.events.indexOf(event), 1);
+    return true;
+  }
+
+  private findQuarantined(
+    source: string,
+    externalEventId: string,
+  ): StoredInboundEvent | undefined {
+    return this.events.find(
+      (event) =>
+        event.source === source &&
+        event.externalEventId === externalEventId &&
+        event.status === 'quarantined',
+    );
+  }
+}
+
+interface StoredInboundEvent extends QueuedInboundEvent {
+  lastError?: string;
+  status: 'pending' | 'quarantined';
 }
 
 class ScriptedGateway implements VkGateway {

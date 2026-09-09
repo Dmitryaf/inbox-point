@@ -49,6 +49,11 @@ export function attentionOperationsStatus(): OperationsStatus {
       telegram: { mode: 'paused' },
       vk: { mode: 'active' },
     },
+    inboundEvents: {
+      incidents: [],
+      quarantined: 0,
+      state: 'healthy',
+    },
     observedAt: '2026-09-04T12:01:00.000Z',
     operatorRelays: {
       incidents: [],

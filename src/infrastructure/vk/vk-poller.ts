@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 
 import { waitForDelay } from '@/core/application/wait-for-delay.js';
 import type { InboundEventStore } from '@/core/contracts/support-repository.js';
+import type { QueuedInboundEvent } from '@/core/model/inbound-event.js';
 
 import type { VkGateway, VkLongPollServer } from './vk-api-client.js';
 import { vkLongPollEventSchema, type VkLongPollEvent } from './vk-types.js';
@@ -13,16 +14,22 @@ export interface VkEventHandler {
 }
 
 export interface VkPollerOptions {
+  clock?: () => Date;
+  maxEventAttempts?: number;
   onError?: (error: unknown) => void;
   onSuccess?: () => void;
+  retryDelayMs?: number;
   retryDelay?: (signal: AbortSignal) => Promise<void>;
   waitSeconds?: number;
 }
 
 export class VkPoller {
+  private readonly clock: () => Date;
+  private readonly maxEventAttempts: number;
   private readonly onError: (error: unknown) => void;
   private readonly onSuccess: () => void;
   private readonly retryDelay: (signal: AbortSignal) => Promise<void>;
+  private readonly retryDelayMs: number;
   private readonly waitSeconds: number;
 
   public constructor(
@@ -32,10 +39,13 @@ export class VkPoller {
     private readonly eventStore: InboundEventStore,
     options: VkPollerOptions = {},
   ) {
+    this.clock = options.clock ?? (() => new Date());
+    this.maxEventAttempts = options.maxEventAttempts ?? 3;
     this.onError = options.onError ?? (() => undefined);
     this.onSuccess = options.onSuccess ?? (() => undefined);
     this.retryDelay =
       options.retryDelay ?? ((signal) => waitForDelay(1_000, signal));
+    this.retryDelayMs = options.retryDelayMs ?? 1_000;
     this.waitSeconds = options.waitSeconds ?? 25;
   }
 
@@ -49,12 +59,7 @@ export class VkPoller {
           1,
         )[0];
         if (pendingEvent) {
-          const update = parseStoredUpdate(pendingEvent.payload);
-          await this.router.route(update);
-          this.eventStore.completeInboundEvent(
-            inboundEventSource,
-            pendingEvent.externalEventId,
-          );
+          await this.processPendingEvent(pendingEvent, signal);
           continue;
         }
 
@@ -83,6 +88,41 @@ export class VkPoller {
         this.onError(error);
         await this.retryDelay(signal);
       }
+    }
+  }
+
+  private async processPendingEvent(
+    event: QueuedInboundEvent,
+    signal: AbortSignal,
+  ): Promise<void> {
+    if (event.nextAttemptAt && event.nextAttemptAt > this.clock()) {
+      await this.retryDelay(signal);
+      if (signal.aborted) {
+        return;
+      }
+    }
+    try {
+      const update = parseStoredUpdate(event.payload);
+      await this.router.route(update);
+      this.eventStore.completeInboundEvent(
+        inboundEventSource,
+        event.externalEventId,
+      );
+    } catch (error: unknown) {
+      if (signal.aborted || isAbortError(error)) {
+        throw error;
+      }
+      const nextAttemptAt = new Date(
+        this.clock().getTime() + this.retryDelayMs,
+      );
+      this.eventStore.recordInboundEventFailure(
+        inboundEventSource,
+        event.externalEventId,
+        safeErrorMessage(error),
+        nextAttemptAt,
+        this.maxEventAttempts,
+      );
+      this.onError(error);
     }
   }
 
@@ -130,4 +170,10 @@ function parseStoredUpdate(payload: string): VkLongPollEvent {
 
 function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'AbortError';
+}
+
+function safeErrorMessage(error: unknown): string {
+  return error instanceof Error
+    ? error.message.slice(0, 500)
+    : 'Unknown VK event processing error';
 }

@@ -1,4 +1,4 @@
-export const sqliteSchemaVersion = 4;
+export const sqliteSchemaVersion = 5;
 
 export const requiredSqliteTables = [
   'conversation_messages',

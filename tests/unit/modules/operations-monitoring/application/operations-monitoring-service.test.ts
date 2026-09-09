@@ -52,6 +52,11 @@ describe('OperationsMonitoringService', () => {
         telegram: { mode: 'active' },
         vk: { mode: 'active' },
       },
+      inboundEvents: {
+        incidents: [],
+        quarantined: 0,
+        state: 'healthy',
+      },
       observedAt: '2026-09-04T12:01:05.000Z',
       operatorRelays: {
         incidents: [],
@@ -221,6 +226,46 @@ describe('OperationsMonitoringService', () => {
     expect(JSON.stringify(monitoring.getStatus())).not.toContain(
       'private-conversation',
     );
+    expect(monitoring.isReady()).toBe(false);
+  });
+
+  it('blocks readiness and exposes a quarantined VK event', () => {
+    const monitoring = new OperationsMonitoringService({
+      channelActivity: () => ({
+        lastSuccessfulPollAt: new Date('2026-09-04T12:01:00.000Z'),
+      }),
+      clock: () => new Date('2026-09-04T12:01:05.000Z'),
+      deliveryActivity: () => ({ running: true }),
+      deliverySummary: () => ({ failed: 0, pending: 0 }),
+      inboundEventIncidents: () => [
+        {
+          attempts: 3,
+          externalEventId: 'vk-event-1',
+          lastError: 'Stored VK event is invalid',
+          receivedAt: new Date('2026-09-04T12:00:00.000Z'),
+          source: 'vk:long-poll',
+        },
+      ],
+      inboundEventSummary: () => ({ quarantined: 1 }),
+      startedAt: new Date('2026-09-04T12:00:00.000Z'),
+      telegramStatus: () => ({ connected: true, source: 'local' }),
+      vkStatus: () => ({ connected: true, source: 'local' }),
+    });
+
+    expect(monitoring.getStatus()).toMatchObject({
+      inboundEvents: {
+        incidents: [
+          {
+            attempts: 3,
+            channel: 'VK',
+            eventId: 'vk-event-1',
+          },
+        ],
+        quarantined: 1,
+        state: 'quarantined',
+      },
+      state: 'attention',
+    });
     expect(monitoring.isReady()).toBe(false);
   });
 

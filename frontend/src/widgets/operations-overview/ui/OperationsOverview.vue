@@ -5,11 +5,13 @@ import { formatUptime } from '@frontend/entities/operations/lib/status-format';
 import type { OperationsStatus } from '@frontend/entities/operations/model/types';
 import ChannelStatusCard from './ChannelStatusCard.vue';
 import DeliveryStatusCard from './DeliveryStatusCard.vue';
+import InboundEventStatusCard from './InboundEventStatusCard.vue';
 
 const props = defineProps<{
   deliveryControlPending: 'pause' | 'resume' | undefined;
   pendingDeliveryId: string | undefined;
   pendingOperatorActionId: string | undefined;
+  pendingInboundEventId: string | undefined;
   status: OperationsStatus;
 }>();
 defineEmits<{
@@ -20,6 +22,11 @@ defineEmits<{
   ];
   retryDelivery: [deliveryId: string];
   resolveOperatorAction: [actionId: string, resolution: 'received' | 'use_web'];
+  resolveInboundEvent: [
+    eventId: string,
+    source: string,
+    resolution: 'retry' | 'skip',
+  ];
 }>();
 
 const observedAt = computed(() =>
@@ -103,6 +110,14 @@ const overallDescription = computed(() => {
         @retry="$emit('retryDelivery', $event)"
         @resolve-operator-action="
           (id, resolution) => $emit('resolveOperatorAction', id, resolution)
+        "
+      />
+      <InboundEventStatusCard
+        :inbound-events="status.inboundEvents"
+        :pending-event-id="pendingInboundEventId"
+        @resolve="
+          (id, source, resolution) =>
+            $emit('resolveInboundEvent', id, source, resolution)
         "
       />
     </div>

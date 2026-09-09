@@ -455,7 +455,7 @@ describe('SqliteSupportRepository', () => {
     database.close();
 
     expect(() => new SqliteSupportRepository(databasePath)).toThrow(
-      'Unsupported SQLite schema version 2; expected 4',
+      'Unsupported SQLite schema version 2; expected 5',
     );
   });
 
@@ -475,7 +475,18 @@ describe('SqliteSupportRepository', () => {
     current.close();
 
     const oldDatabase = new DatabaseSync(databasePath);
-    oldDatabase.exec('DROP TABLE operator_actions; PRAGMA user_version = 3');
+    oldDatabase.exec(`
+      DROP TABLE operator_actions;
+      DROP TABLE inbound_events;
+      CREATE TABLE inbound_events (
+        source TEXT NOT NULL,
+        external_event_id TEXT NOT NULL,
+        payload TEXT NOT NULL,
+        received_at TEXT NOT NULL,
+        PRIMARY KEY (source, external_event_id)
+      ) STRICT;
+      PRAGMA user_version = 3;
+    `);
     oldDatabase.close();
 
     const migrated = new SqliteSupportRepository(databasePath);
@@ -486,7 +497,7 @@ describe('SqliteSupportRepository', () => {
 
     const verified = new DatabaseSync(databasePath, { readOnly: true });
     expect(verified.prepare('PRAGMA user_version').get()).toEqual({
-      user_version: 4,
+      user_version: 5,
     });
     expect(
       verified
@@ -633,7 +644,7 @@ describe('SqliteSupportRepository', () => {
 
     const second = new SqliteSupportRepository(databasePath);
     expect(second.findPendingInboundEvents('vk:long-poll', 10)).toEqual([
-      event,
+      { ...event, attempts: 0 },
     ]);
     second.completeInboundEvent('vk:long-poll', 'vk-event-1');
     second.close();
@@ -641,6 +652,69 @@ describe('SqliteSupportRepository', () => {
     const third = new SqliteSupportRepository(databasePath);
     expect(third.findPendingInboundEvents('vk:long-poll', 10)).toEqual([]);
     third.close();
+  });
+
+  it('quarantines, retries, and skips failed inbound events', () => {
+    const repository = new SqliteSupportRepository(':memory:');
+    const event = {
+      externalEventId: 'vk-event-1',
+      payload: '{"type":"message_new"}',
+      receivedAt: new Date('2026-09-05T12:00:00.000Z'),
+      source: 'vk:long-poll',
+    };
+    repository.enqueueInboundEvents([event]);
+
+    expect(
+      repository.recordInboundEventFailure(
+        event.source,
+        event.externalEventId,
+        'Invalid stored event',
+        new Date('2026-09-05T12:00:01.000Z'),
+        2,
+      ),
+    ).toBe('retry');
+    expect(
+      repository.recordInboundEventFailure(
+        event.source,
+        event.externalEventId,
+        'Invalid stored event',
+        new Date('2026-09-05T12:00:02.000Z'),
+        2,
+      ),
+    ).toBe('quarantined');
+    expect(repository.findPendingInboundEvents(event.source, 10)).toEqual([]);
+    expect(repository.findQuarantinedInboundEvents(10)).toEqual([
+      expect.objectContaining({
+        attempts: 2,
+        externalEventId: event.externalEventId,
+        lastError: 'Invalid stored event',
+      }),
+    ]);
+
+    expect(
+      repository.retryQuarantinedInboundEvent(
+        event.source,
+        event.externalEventId,
+      ),
+    ).toBe(true);
+    expect(repository.findPendingInboundEvents(event.source, 10)).toEqual([
+      { ...event, attempts: 0 },
+    ]);
+    repository.recordInboundEventFailure(
+      event.source,
+      event.externalEventId,
+      'Invalid stored event',
+      new Date('2026-09-05T12:00:03.000Z'),
+      1,
+    );
+    expect(
+      repository.skipQuarantinedInboundEvent(
+        event.source,
+        event.externalEventId,
+      ),
+    ).toBe(true);
+    expect(repository.getInboundEventSummary()).toEqual({ quarantined: 0 });
+    repository.close();
   });
 
   it('rolls back delivery completion when the message link cannot be stored', () => {

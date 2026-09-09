@@ -4,6 +4,7 @@ import { loadRuntimeConfig } from '@/config/runtime-config.js';
 import { ClientInformationCatalog } from '@/core/application/client-information.js';
 import { DataRetentionService } from '@/core/application/data-retention-service.js';
 import { HandoffRuntime } from '@/core/application/handoff-runtime.js';
+import { InboundEventIncidentService } from '@/core/application/inbound-event-incident-service.js';
 import { OperatorActionIncidentService } from '@/core/application/operator-action-incident-service.js';
 import { createAdminRouteAccess } from '@/infrastructure/http/admin-route-access.js';
 import { registerAdminSessionRoutes } from '@/infrastructure/http/admin-session-routes.js';
@@ -175,6 +176,8 @@ async function start(): Promise<void> {
       deliverySummary: () => repository.getDeliverySummary(),
       deliveryControlStatus: () => serviceControl.getState().delivery,
       intakeStatus: () => serviceControl.getState().channels,
+      inboundEventIncidents: () => repository.findQuarantinedInboundEvents(20),
+      inboundEventSummary: () => repository.getInboundEventSummary(),
       operatorActionIncidents: () => repository.findOperatorActionIncidents(20),
       operatorActionSummary: () => repository.getOperatorActionSummary(),
       startedAt,
@@ -186,6 +189,7 @@ async function start(): Promise<void> {
     const operatorActionIncidents = new OperatorActionIncidentService(
       repository,
     );
+    const inboundEventIncidents = new InboundEventIncidentService(repository);
     registerOperationsRoutes(
       app,
       operationsMonitoring,
@@ -196,6 +200,7 @@ async function start(): Promise<void> {
       operatorInbox,
       repository,
       operatorActionIncidents,
+      inboundEventIncidents,
     );
     await app.listen({ host: config.host, port: config.port });
     const runtimeLogger = {

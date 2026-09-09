@@ -1,63 +1,23 @@
 <script setup lang="ts">
-import { onBeforeUnmount, ref, watch } from 'vue';
-
-import { useAdminSession } from '@frontend/features/admin-auth/model/use-admin-session';
 import AdminLoginForm from '@frontend/features/admin-auth/ui/AdminLoginForm.vue';
 import ClientIntakeControl from '@frontend/features/control-client-intake/ui/ClientIntakeControl.vue';
-import { useOutboundDeliveryControl } from '@frontend/features/control-outbound-delivery/model/use-outbound-delivery-control';
-import { useOperationsStatus } from '@frontend/features/refresh-status/model/use-operations-status';
-import { useDeliveryRetry } from '@frontend/features/retry-delivery/model/use-delivery-retry';
-import { useOperatorActionResolution } from '@frontend/features/resolve-operator-action/model/use-operator-action-resolution';
+import { useOperationsDashboard } from '@frontend/pages/operations-dashboard/model/use-operations-dashboard';
 import AdminPageHeader from '@frontend/widgets/admin-shell/ui/AdminPageHeader.vue';
 import OperationsOverview from '@frontend/widgets/operations-overview/ui/OperationsOverview.vue';
 import OperatorInbox from '@frontend/widgets/operator-inbox/ui/OperatorInbox.vue';
 import AsyncMessage from '@frontend/shared/ui/AsyncMessage.vue';
 
-const refreshIntervalMs = 30_000;
-const session = useAdminSession();
-const operations = useOperationsStatus(session.expireSession);
-const intakeControl = ref<{ refresh: () => Promise<void> }>();
-const operatorInbox = ref<{ refresh: () => Promise<void> }>();
-const deliveryRetry = useDeliveryRetry(refreshAll, session.expireSession);
-const operatorResolution = useOperatorActionResolution(
+const {
+  deliveryControl,
+  deliveryRetry,
+  inboundEventResolution,
+  intakeControl,
+  operations,
+  operatorInbox,
+  operatorResolution,
   refreshAll,
-  session.expireSession,
-);
-const deliveryControl = useOutboundDeliveryControl(
-  refreshAll,
-  session.expireSession,
-);
-let refreshTimer: ReturnType<typeof setInterval> | undefined;
-
-watch(session.authenticated, (authenticated) => {
-  stopAutomaticRefresh();
-  if (!authenticated) {
-    operations.clear();
-    return;
-  }
-
-  void refreshAll();
-  refreshTimer = setInterval(() => {
-    void refreshAll();
-  }, refreshIntervalMs);
-});
-
-onBeforeUnmount(stopAutomaticRefresh);
-
-async function refreshAll(): Promise<void> {
-  await Promise.all([
-    operations.refresh(),
-    operatorInbox.value?.refresh() ?? Promise.resolve(),
-    intakeControl.value?.refresh() ?? Promise.resolve(),
-  ]);
-}
-
-function stopAutomaticRefresh(): void {
-  if (refreshTimer) {
-    clearInterval(refreshTimer);
-    refreshTimer = undefined;
-  }
-}
+  session,
+} = useOperationsDashboard();
 </script>
 
 <template>
@@ -123,11 +83,15 @@ function stopAutomaticRefresh(): void {
         :pending-operator-action-id="
           operatorResolution.pendingActionId.value || undefined
         "
+        :pending-inbound-event-id="
+          inboundEventResolution.pendingEventId.value || undefined
+        "
         :status="operations.status.value"
         @change-delivery-mode="deliveryControl.change"
         @resolve-delivery="deliveryRetry.resolve"
         @retry-delivery="deliveryRetry.retry"
         @resolve-operator-action="operatorResolution.resolve"
+        @resolve-inbound-event="inboundEventResolution.resolve"
       />
       <section v-else class="card loading-card">
         <p>Получаем состояние сервиса…</p>
@@ -149,6 +113,11 @@ function stopAutomaticRefresh(): void {
       <OperatorInbox
         ref="operatorInbox"
         :on-unauthorized="session.expireSession"
+      />
+      <AsyncMessage kind="error" :text="inboundEventResolution.error.value" />
+      <AsyncMessage
+        kind="success"
+        :text="inboundEventResolution.notice.value"
       />
     </section>
   </main>
