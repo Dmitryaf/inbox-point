@@ -12,7 +12,7 @@ export class HttpAvailabilityChecker implements AvailabilityChecker {
       signal: AbortSignal.timeout(this.timeoutMs),
     });
     if (!response.ok) {
-      throw new Error(`Health endpoint returned HTTP ${response.status}`);
+      throw new Error(`Readiness endpoint returned HTTP ${response.status}`);
     }
   }
 }
