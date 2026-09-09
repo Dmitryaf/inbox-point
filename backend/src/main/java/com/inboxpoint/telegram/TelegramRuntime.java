@@ -9,7 +9,6 @@ import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.UUID;
 import java.util.List;
 import java.util.Map;
 
@@ -239,26 +238,10 @@ public final class TelegramRuntime {
         }
     }
 
-    Map<String, ?> deliveryStatus() throws IOException, SQLException {
-        try (var store = new TelegramStore(database)) {
-            return Map.of("summary", store.summary(), "failures", store.failures());
-        }
-    }
-
     public boolean retry(String id) throws IOException, SQLException {
         try (var store = new TelegramStore(database)) {
             return store.retry(id, Instant.now());
         }
-    }
-
-    Map<String, String> backup() throws IOException, SQLException {
-        var createdAt = Instant.now();
-        var name = "messenger-handoff-" + createdAt.toString().replace(':', '-') + "-" + UUID.randomUUID() + ".sqlite";
-        var folder = database.toAbsolutePath().resolveSibling("backups");
-        try (var store = new TelegramStore(database)) {
-            store.backup(folder.resolve(name));
-        }
-        return Map.of("fileName", name, "createdAt", createdAt.toString());
     }
 
     public boolean resolve(String id, boolean received) throws IOException, SQLException {

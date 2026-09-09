@@ -7,6 +7,7 @@ import { classNames as $class } from '@frontend/shared/lib/component-view';
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
 import { renderSetupPagePart1 } from './SetupPage.part1';
+import { renderSetupPagePart2 } from './SetupPage.part2';
 import {
   createComponentModel,
   componentDefaults,
@@ -30,16 +31,8 @@ export default function SetupPage($incomingProps: ComponentProps) {
         {...$attributes}
         className={$class('setup-shell', $attributes.className)}
       >
-        <header className="setup-header">
-          <p className="eyebrow">{'Messenger Handoff'}</p>
-          <h1>{'Настройка сервиса'}</h1>
-          <p className="page-intro">
-            {
-              ' Подключите каналы и проверьте техническое состояние локального сервиса. '
-            }
-          </p>
-        </header>
         {renderSetupPagePart1($state)}
+        {renderSetupPagePart2($state)}
       </main>
     </ModelScopeProvider>
   );

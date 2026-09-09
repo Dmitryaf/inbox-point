@@ -4,10 +4,10 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Map;
 
-import com.inboxpoint.operations.LocalSetupAccess;
+import com.inboxpoint.admin.AdminSessions;
+import com.inboxpoint.admin.PasswordSessions;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,24 +20,29 @@ import tools.jackson.databind.JsonNode;
 @RequestMapping("/api/setup")
 final class TelegramSetupController {
     private final TelegramRuntime runtime;
-    private final boolean development;
+    private final AdminSessions admin;
 
-    TelegramSetupController(TelegramRuntime runtime, @Value("${INBOXPOINT_ENV:development}") String environment) {
-        development = !"production".equals(environment);
+    TelegramSetupController(TelegramRuntime runtime, AdminSessions admin) {
+        this.admin = admin;
         this.runtime = runtime;
     }
 
     @GetMapping("/status")
     ResponseEntity<?> status(HttpServletRequest request, HttpServletResponse response) {
-        return development && LocalSetupAccess.allow(request, response)
-                ? ResponseEntity.ok(Map.of("connected", runtime.status().connected(), "locked", runtime.status().locked(),
-                        "source", runtime.status().source(), "vk", runtime.vkStatus())) : error(404, "Not found");
+        var denied = setupAccess(request, response, false);
+        if (denied != null) {
+            return denied;
+        }
+        var status = runtime.status();
+        return ResponseEntity.ok(Map.of("connected", status.connected(), "locked", status.locked(),
+                "source", status.source(), "vk", runtime.vkStatus()));
     }
 
     @PostMapping("/telegram/discover")
     ResponseEntity<?> discover(@RequestBody JsonNode input, HttpServletRequest request, HttpServletResponse response) {
-        if (!development || !LocalSetupAccess.allow(request, response)) {
-            return error(404, "Not found");
+        var denied = setupAccess(request, response, true);
+        if (denied != null) {
+            return denied;
         }
         try {
             return ResponseEntity.ok(Map.of("chats", runtime.discover(input.path("botToken").asString(""))));
@@ -51,8 +56,9 @@ final class TelegramSetupController {
 
     @PostMapping("/telegram/connect")
     ResponseEntity<?> connect(@RequestBody JsonNode input, HttpServletRequest request, HttpServletResponse response) {
-        if (!development || !LocalSetupAccess.allow(request, response)) {
-            return error(404, "Not found");
+        var denied = setupAccess(request, response, true);
+        if (denied != null) {
+            return denied;
         }
         var group = input.path("operatorChatId");
         if (!group.isIntegralNumber() || !group.canConvertToLong() || group.longValue() >= 0
@@ -72,8 +78,9 @@ final class TelegramSetupController {
 
     @PostMapping("/vk/connect")
     ResponseEntity<?> connectVk(@RequestBody JsonNode input, HttpServletRequest request, HttpServletResponse response) {
-        if (!development || !LocalSetupAccess.allow(request, response)) {
-            return error(404, "Not found");
+        var denied = setupAccess(request, response, true);
+        if (denied != null) {
+            return denied;
         }
         try {
             runtime.connectVk(input.path("accessToken").asString(""), input.path("community").asString(""));
@@ -88,42 +95,14 @@ final class TelegramSetupController {
         }
     }
 
-    @GetMapping("/deliveries")
-    ResponseEntity<?> deliveries(HttpServletRequest request, HttpServletResponse response) {
-        if (!development || !LocalSetupAccess.allow(request, response)) {
+    private ResponseEntity<?> setupAccess(HttpServletRequest request, HttpServletResponse response, boolean write) {
+        if (!admin.available(request, response)) {
             return error(404, "Not found");
         }
-        try {
-            return ResponseEntity.ok(runtime.deliveryStatus());
-        } catch (IOException | SQLException failure) {
-            return error(503, "Не удалось проверить доставку.");
+        if (!admin.authorized(request, response)) {
+            return error(401, "Войдите, чтобы продолжить.");
         }
-    }
-
-    @PostMapping("/deliveries/retry")
-    ResponseEntity<?> retry(@RequestBody JsonNode input, HttpServletRequest request, HttpServletResponse response) {
-        if (!development || !LocalSetupAccess.allow(request, response)) {
-            return error(404, "Not found");
-        }
-        try {
-            return runtime.retry(input.path("deliveryId").asString(""))
-                    ? ResponseEntity.ok(Map.of("queued", true))
-                    : error(409, "Ответ недоступен для повторной отправки. Обновите страницу.");
-        } catch (IOException | SQLException failure) {
-            return error(503, "Не удалось повторить отправку.");
-        }
-    }
-
-    @PostMapping("/backups")
-    ResponseEntity<?> backup(HttpServletRequest request, HttpServletResponse response) {
-        if (!development || !LocalSetupAccess.allow(request, response)) {
-            return error(404, "Not found");
-        }
-        try {
-            return ResponseEntity.ok(runtime.backup());
-        } catch (IOException | SQLException failure) {
-            return error(503, "Не удалось создать резервную копию.");
-        }
+        return write && !PasswordSessions.sameOrigin(request) ? error(403, "Запрос отклонён.") : null;
     }
 
     private static ResponseEntity<Map<String, String>> error(int status, String message) {

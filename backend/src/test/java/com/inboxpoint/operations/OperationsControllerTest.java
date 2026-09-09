@@ -53,6 +53,20 @@ class OperationsControllerTest {
             var content = client.send(HttpRequest.newBuilder(URI.create(base.replace("/api/ops", "/api/manage/content")))
                     .header("Cookie", cookie).GET().build(), HttpResponse.BodyHandlers.ofString());
             assertThat(content.statusCode()).isEqualTo(200);
+            var setup = base.replace("/api/ops", "/api/setup");
+            var settings = URI.create(setup + "/status");
+            var anonymousSetup = client.send(HttpRequest.newBuilder(settings).GET().build(), HttpResponse.BodyHandlers.ofString());
+            assertThat(anonymousSetup.statusCode()).isEqualTo(401);
+            var authorizedSetup = client.send(HttpRequest.newBuilder(settings).header("Cookie", cookie).GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+            assertThat(authorizedSetup.statusCode()).isEqualTo(200);
+            var deniedWrite = client.send(HttpRequest.newBuilder(URI.create(setup + "/telegram/discover"))
+                    .header("Cookie", cookie).header("Origin", "https://foreign.example").header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString("{}")).build(), HttpResponse.BodyHandlers.ofString());
+            assertThat(deniedWrite.statusCode()).isEqualTo(403);
+            var former = client.send(HttpRequest.newBuilder(URI.create(setup + "/deliveries")).header("Cookie", cookie)
+                    .GET().build(), HttpResponse.BodyHandlers.ofString());
+            assertThat(former.statusCode()).isEqualTo(404);
             var listUri = URI.create(base + "/inbox/requests");
             var anonymousInbox = client.send(HttpRequest.newBuilder(listUri).GET().build(), HttpResponse.BodyHandlers.ofString());
             assertThat(anonymousInbox.statusCode()).isEqualTo(401);

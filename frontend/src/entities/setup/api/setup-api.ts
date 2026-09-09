@@ -1,6 +1,4 @@
 import type {
-  BackupResult,
-  DeliveryStatus,
   SetupStatus,
   TelegramOperatorChat,
 } from '@frontend/entities/setup/model/types';
@@ -35,26 +33,6 @@ export function connectVk(
 ): Promise<{ connected: boolean }> {
   return request('/api/setup/vk/connect', {
     body: JSON.stringify({ accessToken, community }),
-    method: 'POST',
-  });
-}
-
-export function readDeliveryStatus(): Promise<DeliveryStatus> {
-  return request('/api/setup/deliveries');
-}
-
-export function retryDelivery(
-  deliveryId: string,
-): Promise<{ queued: boolean }> {
-  return request('/api/setup/deliveries/retry', {
-    body: JSON.stringify({ deliveryId }),
-    method: 'POST',
-  });
-}
-
-export function createBackup(): Promise<BackupResult> {
-  return request('/api/setup/backups', {
-    body: '{}',
     method: 'POST',
   });
 }

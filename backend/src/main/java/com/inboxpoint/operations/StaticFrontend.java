@@ -30,11 +30,8 @@ final class StaticFrontend {
 
     private final Path frontend;
     private final AdminSessions admin;
-    private final boolean development;
 
-    StaticFrontend(@Value("${inboxpoint.frontend.path:dist/frontend}") String directory, AdminSessions admin,
-            @Value("${INBOXPOINT_ENV:development}") String environment) {
-        development = !"production".equals(environment);
+    StaticFrontend(@Value("${inboxpoint.frontend.path:dist/frontend}") String directory, AdminSessions admin) {
         this.admin = admin;
         frontend = Path.of(directory);
     }
@@ -44,19 +41,12 @@ final class StaticFrontend {
         var route = request.getRequestURI();
         var operations = route.startsWith("/ops");
         var content = route.startsWith("/manage");
-        if (operations || content) {
+        if (operations || content || route.startsWith("/setup")) {
             if (!admin.available(request, response)) {
                 return ResponseEntity.notFound().build();
             }
             response.setHeader("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; "
                     + "connect-src 'self'; frame-ancestors 'none'; form-action 'self'");
-        }
-        if (route.startsWith("/setup")) {
-            if (!development || !LocalSetupAccess.allow(request, response)) {
-                return ResponseEntity.notFound().build();
-            }
-            response.setHeader("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; "
-                    + "connect-src 'self'; frame-ancestors 'none'");
         }
         var asset = ASSETS.get(route);
         var file = frontend.resolve(asset.file());
