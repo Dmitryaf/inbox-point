@@ -30,7 +30,7 @@
     "typecheck:server": "tsc --noEmit"
   },
   "dependencies": {
-    "fastify": "^5.12.1",
+    "fastify": "^5.12.3",
     "vue": "^3.5.42",
     "zod": "^4.5.4"
   },
