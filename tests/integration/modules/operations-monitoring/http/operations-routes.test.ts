@@ -38,6 +38,7 @@ describe('operations monitoring routes', () => {
     const retriedDeliveries: string[] = [];
     const resolvedDeliveries: string[] = [];
     const resolvedOperatorActions: string[] = [];
+    const resolvedInboundEvents: string[] = [];
     apps.add(app);
     const access = new PasswordSessionAccess('correct-admin-password', {
       createToken: () => 'synthetic-admin-session',
@@ -80,6 +81,12 @@ describe('operations monitoring routes', () => {
       {
         resolve: (actionId, resolution) => {
           resolvedOperatorActions.push(`${resolution}:${actionId}`);
+          return true;
+        },
+      },
+      {
+        resolve: (source, eventId, resolution) => {
+          resolvedInboundEvents.push(`${resolution}:${source}:${eventId}`);
           return true;
         },
       },
@@ -198,6 +205,34 @@ describe('operations monitoring routes', () => {
       remoteAddress: '192.0.2.10',
       url: '/api/ops/operator-actions/operator-relay-3/resolve',
     });
+    const resolveInboundEvent = await app.inject({
+      headers: {
+        cookie,
+        host: 'example.test',
+        origin: 'http://example.test',
+      },
+      method: 'POST',
+      payload: { resolution: 'retry', source: 'vk:long-poll' },
+      remoteAddress: '192.0.2.10',
+      url: '/api/ops/inbound-events/vk-event-1/resolve',
+    });
+    const unauthorizedInboundEvent = await app.inject({
+      method: 'POST',
+      payload: { resolution: 'skip', source: 'vk:long-poll' },
+      remoteAddress: '192.0.2.10',
+      url: '/api/ops/inbound-events/vk-event-2/resolve',
+    });
+    const crossOriginInboundEvent = await app.inject({
+      headers: {
+        cookie,
+        host: 'example.test',
+        origin: 'https://attacker.test',
+      },
+      method: 'POST',
+      payload: { resolution: 'skip', source: 'vk:long-poll' },
+      remoteAddress: '192.0.2.10',
+      url: '/api/ops/inbound-events/vk-event-3/resolve',
+    });
 
     expect(unauthorized.statusCode).toBe(401);
     expect(page.statusCode).toBe(200);
@@ -240,6 +275,10 @@ describe('operations monitoring routes', () => {
     expect(unauthorizedOperatorAction.statusCode).toBe(401);
     expect(crossOriginOperatorAction.statusCode).toBe(403);
     expect(resolvedOperatorActions).toEqual(['use_web:operator-relay-1']);
+    expect(resolveInboundEvent.statusCode).toBe(200);
+    expect(unauthorizedInboundEvent.statusCode).toBe(401);
+    expect(crossOriginInboundEvent.statusCode).toBe(403);
+    expect(resolvedInboundEvents).toEqual(['retry:vk:long-poll:vk-event-1']);
     expect(serviceControl.json()).toMatchObject({
       channels: {
         telegram: { mode: 'active' },

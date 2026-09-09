@@ -25,12 +25,28 @@ export interface OperationsStatus {
     telegram: ClientIntakeOperationsStatus;
     vk: ClientIntakeOperationsStatus;
   };
+  inboundEvents: InboundEventOperationsStatus;
   observedAt: string;
   operatorRelays: OperatorRelayOperationsStatus;
   outbound: OutboundDeliveryOperationsStatus;
   startedAt: string;
   state: 'attention' | 'healthy' | 'maintenance';
   uptimeSeconds: number;
+}
+
+export interface InboundEventOperationsStatus {
+  incidents: readonly InboundEventIncident[];
+  quarantined: number;
+  state: 'healthy' | 'quarantined';
+}
+
+export interface InboundEventIncident {
+  attempts: number;
+  channel: 'VK';
+  eventId: string;
+  reason: string;
+  receivedAt: string;
+  source: string;
 }
 
 export interface OperatorRelayOperationsStatus {

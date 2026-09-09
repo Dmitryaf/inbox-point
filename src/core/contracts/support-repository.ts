@@ -15,19 +15,19 @@ import type {
   PendingOperatorAction,
 } from '@/core/model/operator-action.js';
 import type { UsageEvent, UsageEventCounts } from '@/core/model/usage-event.js';
+import type {
+  InboundEventFailureOutcome,
+  InboundEventIncident,
+  InboundEventSummary,
+  PendingInboundEvent,
+  QueuedInboundEvent,
+} from '@/core/model/inbound-event.js';
 
 export interface DeliverySummary {
   failed: number;
   oldestPendingAt?: Date;
   pending: number;
   uncertain?: number;
-}
-
-export interface PendingInboundEvent {
-  externalEventId: string;
-  payload: string;
-  receivedAt: Date;
-  source: string;
 }
 
 export interface RetentionCleanupResult {
@@ -44,7 +44,21 @@ export interface InboundEventStore {
   findPendingInboundEvents(
     source: string,
     limit: number,
-  ): readonly PendingInboundEvent[];
+  ): readonly QueuedInboundEvent[];
+  findQuarantinedInboundEvents(limit: number): readonly InboundEventIncident[];
+  getInboundEventSummary(): InboundEventSummary;
+  recordInboundEventFailure(
+    source: string,
+    externalEventId: string,
+    error: string,
+    nextAttemptAt: Date,
+    maxAttempts: number,
+  ): InboundEventFailureOutcome;
+  retryQuarantinedInboundEvent(
+    source: string,
+    externalEventId: string,
+  ): boolean;
+  skipQuarantinedInboundEvent(source: string, externalEventId: string): boolean;
 }
 
 export interface OperatorActionStore {

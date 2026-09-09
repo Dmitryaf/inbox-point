@@ -4,10 +4,16 @@ import { DatabaseSync } from 'node:sqlite';
 
 import type {
   DeliverySummary,
-  PendingInboundEvent,
   RetentionCleanupResult,
   SupportRepository,
 } from '@/core/contracts/support-repository.js';
+import type {
+  InboundEventFailureOutcome,
+  InboundEventIncident,
+  InboundEventSummary,
+  PendingInboundEvent,
+  QueuedInboundEvent,
+} from '@/core/model/inbound-event.js';
 import type {
   ConversationMessage,
   FailedDelivery,
@@ -353,6 +359,45 @@ export class SqliteSupportRepository implements SupportRepository {
          WHERE source = ? AND external_event_id = ?`,
       )
       .run(source, externalEventId);
+  }
+
+  public recordInboundEventFailure(
+    source: string,
+    externalEventId: string,
+    error: string,
+    nextAttemptAt: Date,
+    maxAttempts: number,
+  ): InboundEventFailureOutcome {
+    const result = this.database
+      .prepare(
+        `UPDATE inbound_events
+         SET attempts = attempts + 1,
+             status = CASE
+               WHEN attempts + 1 >= ? THEN 'quarantined'
+               ELSE 'pending'
+             END,
+             last_error = ?,
+             next_attempt_at = CASE
+               WHEN attempts + 1 >= ? THEN NULL
+               ELSE ?
+             END
+         WHERE source = ?
+           AND external_event_id = ?
+           AND status = 'pending'
+         RETURNING status`,
+      )
+      .get(
+        maxAttempts,
+        error,
+        maxAttempts,
+        nextAttemptAt.toISOString(),
+        source,
+        externalEventId,
+      ) as { status: 'pending' | 'quarantined' } | undefined;
+    if (!result) {
+      throw new Error('Pending inbound event was not found');
+    }
+    return result.status === 'quarantined' ? 'quarantined' : 'retry';
   }
 
   public completeDelivery(
@@ -869,28 +914,105 @@ export class SqliteSupportRepository implements SupportRepository {
   public findPendingInboundEvents(
     source: string,
     limit: number,
-  ): readonly PendingInboundEvent[] {
+  ): readonly QueuedInboundEvent[] {
     const rows = this.database
       .prepare(
-        `SELECT source, external_event_id, payload, received_at
+        `SELECT source, external_event_id, payload, received_at,
+                attempts, next_attempt_at
          FROM inbound_events
-         WHERE source = ?
+         WHERE source = ? AND status = 'pending'
          ORDER BY received_at, rowid
          LIMIT ?`,
       )
       .all(source, limit) as unknown as {
+      attempts: number;
       external_event_id: string;
+      next_attempt_at: string | null;
       payload: string;
       received_at: string;
       source: string;
     }[];
 
     return rows.map((row) => ({
+      attempts: row.attempts,
       externalEventId: row.external_event_id,
+      ...(row.next_attempt_at
+        ? { nextAttemptAt: new Date(row.next_attempt_at) }
+        : {}),
       payload: row.payload,
       receivedAt: new Date(row.received_at),
       source: row.source,
     }));
+  }
+
+  public findQuarantinedInboundEvents(
+    limit: number,
+  ): readonly InboundEventIncident[] {
+    const rows = this.database
+      .prepare(
+        `SELECT source, external_event_id, attempts, last_error, received_at
+         FROM inbound_events
+         WHERE status = 'quarantined'
+         ORDER BY received_at, rowid
+         LIMIT ?`,
+      )
+      .all(limit) as unknown as {
+      attempts: number;
+      external_event_id: string;
+      last_error: string;
+      received_at: string;
+      source: string;
+    }[];
+    return rows.map((row) => ({
+      attempts: row.attempts,
+      externalEventId: row.external_event_id,
+      lastError: row.last_error,
+      receivedAt: new Date(row.received_at),
+      source: row.source,
+    }));
+  }
+
+  public getInboundEventSummary(): InboundEventSummary {
+    const row = this.database
+      .prepare(
+        `SELECT COUNT(*) AS quarantined
+         FROM inbound_events
+         WHERE status = 'quarantined'`,
+      )
+      .get() as { quarantined: number };
+    return row;
+  }
+
+  public retryQuarantinedInboundEvent(
+    source: string,
+    externalEventId: string,
+  ): boolean {
+    const result = this.database
+      .prepare(
+        `UPDATE inbound_events
+         SET status = 'pending', attempts = 0, last_error = NULL,
+             next_attempt_at = NULL
+         WHERE source = ?
+           AND external_event_id = ?
+           AND status = 'quarantined'`,
+      )
+      .run(source, externalEventId);
+    return Number(result.changes) === 1;
+  }
+
+  public skipQuarantinedInboundEvent(
+    source: string,
+    externalEventId: string,
+  ): boolean {
+    const result = this.database
+      .prepare(
+        `DELETE FROM inbound_events
+         WHERE source = ?
+           AND external_event_id = ?
+           AND status = 'quarantined'`,
+      )
+      .run(source, externalEventId);
+    return Number(result.changes) === 1;
   }
 
   public findRequestByTopicId(topicId: string): SupportRequest | undefined {
@@ -1372,6 +1494,29 @@ export class SqliteSupportRepository implements SupportRepository {
       this.database.exec('BEGIN IMMEDIATE');
       try {
         this.database.exec(operatorActionsTableSql);
+        this.database.exec('PRAGMA user_version = 4');
+        this.database.exec('COMMIT');
+      } catch (error: unknown) {
+        this.database.exec('ROLLBACK');
+        throw error;
+      }
+      version = { user_version: 4 };
+    }
+    if (existingTable !== undefined && version.user_version === 4) {
+      this.database.exec('BEGIN IMMEDIATE');
+      try {
+        this.database.exec(`
+          ALTER TABLE inbound_events
+            ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0;
+          ALTER TABLE inbound_events
+            ADD COLUMN status TEXT NOT NULL DEFAULT 'pending' CHECK (
+              status IN ('pending', 'quarantined')
+            );
+          ALTER TABLE inbound_events ADD COLUMN last_error TEXT;
+          ALTER TABLE inbound_events ADD COLUMN next_attempt_at TEXT;
+          CREATE INDEX inbound_events_by_status
+            ON inbound_events(source, status, received_at);
+        `);
         this.database.exec(`PRAGMA user_version = ${sqliteSchemaVersion}`);
         this.database.exec('COMMIT');
       } catch (error: unknown) {
@@ -1448,8 +1593,17 @@ export class SqliteSupportRepository implements SupportRepository {
         external_event_id TEXT NOT NULL,
         payload TEXT NOT NULL,
         received_at TEXT NOT NULL,
+        attempts INTEGER NOT NULL DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'pending' CHECK (
+          status IN ('pending', 'quarantined')
+        ),
+        last_error TEXT,
+        next_attempt_at TEXT,
         PRIMARY KEY (source, external_event_id)
       ) STRICT;
+
+      CREATE INDEX IF NOT EXISTS inbound_events_by_status
+        ON inbound_events(source, status, received_at);
 
       CREATE TABLE IF NOT EXISTS usage_events (
         id TEXT PRIMARY KEY,

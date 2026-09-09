@@ -20,12 +20,12 @@ export function renderOperationsDashboardPagePart1(
   $state: ReturnType<typeof createComponentModel>,
   $scope: ModelScope,
 ) {
-  const { refreshAll } = $state;
   const session = $unref($state.session);
   const operations = $unref($state.operations);
   const deliveryControl = $unref($state.deliveryControl);
   const deliveryRetry = $unref($state.deliveryRetry);
   const operatorResolution = $unref($state.operatorResolution);
+  const inboundEventResolution = $unref($state.inboundEventResolution);
 
   return (
     <>
@@ -61,7 +61,7 @@ export function renderOperationsDashboardPagePart1(
             <button
               disabled={operations.loading.value}
               type="button"
-              onClick={$nativeHandler(refreshAll)}
+              onClick={$nativeHandler($unref($state.refreshAll))}
               className="secondary-button"
             >
               {operations.loading.value ? 'Обновляем…' : 'Обновить'}
@@ -74,7 +74,7 @@ export function renderOperationsDashboardPagePart1(
           ) : null}
           {renderOperationsDashboardPagePart2($state)}
           <ClientIntakeControl
-            onChanged={$callback(refreshAll)}
+            onChanged={$callback($unref($state.refreshAll))}
             onUnauthorized={$callback(
               $required($unref($state.session)).expireSession,
             )}
@@ -89,6 +89,14 @@ export function renderOperationsDashboardPagePart1(
           <OperatorInbox
             onUnauthorized={session.expireSession}
             ref={$templateRef($state, 'operatorInbox', $scope)}
+          />
+          <AsyncMessage
+            kind="error"
+            text={inboundEventResolution.error.value}
+          />
+          <AsyncMessage
+            kind="success"
+            text={inboundEventResolution.notice.value}
           />
         </section>
       )}
