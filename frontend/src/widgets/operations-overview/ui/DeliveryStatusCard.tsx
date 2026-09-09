@@ -7,6 +7,7 @@ import { classNames as $class } from '@frontend/shared/lib/component-view';
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
 import DeliveryIncidentList from './DeliveryIncidentList';
+import OperatorRelayIncidentList from './OperatorRelayIncidentList';
 import OutboundDeliveryControl from './OutboundDeliveryControl';
 
 import { renderDeliveryStatusCardPart1 } from './DeliveryStatusCard.part1';
@@ -52,6 +53,13 @@ export default function DeliveryStatusCard($incomingProps: ComponentProps) {
           pendingDeliveryId={$props.pendingDeliveryId}
           onResolve={(id, resolution) => $emit('resolve', id, resolution)}
           onRetry={($event) => void $emit('retry', $event)}
+        />
+        <OperatorRelayIncidentList
+          incidents={$props.operatorRelays.incidents}
+          pendingActionId={$props.pendingOperatorActionId}
+          onResolve={(id, resolution) =>
+            $emit('resolveOperatorAction', id, resolution)
+          }
         />
       </article>
     </ModelScopeProvider>

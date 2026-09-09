@@ -8,6 +8,12 @@ import type {
   SupportRequest,
 } from '@/core/model/support-request.js';
 import type { ClientChannelKind } from '@/core/model/support-message.js';
+import type {
+  OperatorAction,
+  OperatorActionIncident,
+  OperatorActionSummary,
+  PendingOperatorAction,
+} from '@/core/model/operator-action.js';
 import type { UsageEvent, UsageEventCounts } from '@/core/model/usage-event.js';
 
 export interface DeliverySummary {
@@ -41,8 +47,22 @@ export interface InboundEventStore {
   ): readonly PendingInboundEvent[];
 }
 
-export interface SupportRepository extends InboundEventStore {
+export interface OperatorActionStore {
+  claimOperatorAction(actionId: string, startedAt: Date): boolean;
+  completeOperatorAction(
+    actionId: string,
+    externalResultId: string,
+    completedAt: Date,
+  ): void;
+  markOperatorActionFailed(actionId: string, error: string): void;
+  markOperatorActionOutcomeUnknown(actionId: string, error: string): void;
+  prepareOperatorAction(action: PendingOperatorAction): OperatorAction;
+}
+
+export interface SupportRepository
+  extends InboundEventStore, OperatorActionStore {
   addMessageLink(link: MessageLink): void;
+  ensureMessageLink(link: MessageLink): void;
   claimDeliveryAttempt(deliveryId: string, startedAt: Date): boolean;
   claimEvent(source: string, externalEventId: string, claimedAt: Date): boolean;
   confirmUnknownDeliveryNotReceived(deliveryId: string, retryAt: Date): boolean;
@@ -85,6 +105,14 @@ export interface SupportRepository extends InboundEventStore {
     channel: ClientChannelKind,
     conversationId: string,
   ): SupportRequest | undefined;
+  findOperatorActionIncident(
+    actionId: string,
+  ): OperatorActionIncident | undefined;
+  findOperatorActionIncidents(limit: number): readonly OperatorActionIncident[];
+  hasUnknownOperatorActions(
+    requestId: string,
+    clientMessageId: string,
+  ): boolean;
   findRequestByTopicId(topicId: string): SupportRequest | undefined;
   findRequestById(requestId: string): SupportRequest | undefined;
   findPendingDeliveries(
@@ -93,6 +121,7 @@ export interface SupportRepository extends InboundEventStore {
   ): readonly QueuedDelivery[];
   getUsageEventCounts(since: Date): UsageEventCounts;
   getDeliverySummary(): DeliverySummary;
+  getOperatorActionSummary(): OperatorActionSummary;
   markDeliveryFailed(deliveryId: string, error: string): void;
   markDeliveryFailureNotificationRetry(
     deliveryId: string,
@@ -105,12 +134,15 @@ export interface SupportRepository extends InboundEventStore {
     error: string,
     nextAttemptAt: Date,
   ): void;
+  confirmOperatorActionReceived(actionId: string, confirmedAt: Date): boolean;
+  moveOperatorActionRequestToWeb(actionId: string): boolean;
   purgeClosedConversationContent(closedBefore: Date): RetentionCleanupResult;
   releaseEvent(source: string, externalEventId: string): void;
   reopenRequest(requestId: string): void;
   recordUsageEvent(event: UsageEvent): void;
   recordConversationMessage(message: ConversationMessage): void;
   retryFailedDelivery(deliveryId: string, retryAt: Date): boolean;
+  resolveOperatorActionAsWeb(actionId: string, resolvedAt: Date): boolean;
   switchOperatorTopic(
     requestId: string,
     expectedTopicId: string,

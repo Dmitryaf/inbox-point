@@ -11,6 +11,7 @@ import type { OperationsStatus } from '@frontend/entities/operations/model/types
 export type ComponentProps = {
   deliveryControlPending: 'pause' | 'resume' | undefined;
   pendingDeliveryId: string | undefined;
+  pendingOperatorActionId: string | undefined;
   status: OperationsStatus;
 } & EventProps<{
   changeDeliveryMode: [mode: 'pause' | 'resume'];
@@ -19,6 +20,7 @@ export type ComponentProps = {
     resolution: 'not_received' | 'received',
   ];
   retryDelivery: [deliveryId: string];
+  resolveOperatorAction: [actionId: string, resolution: 'received' | 'use_web'];
 }> &
   ComponentAttributes;
 export const componentDefaults = {};

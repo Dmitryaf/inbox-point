@@ -14,6 +14,16 @@ export class OperatorInboxUnavailableError extends Error {
   }
 }
 
+export class OperatorActionOutcomeUnknownError extends Error {
+  public constructor(
+    public readonly actionId: string,
+    public readonly operation: 'open' | 'relay',
+  ) {
+    super(`Operator inbox ${operation} outcome is unknown`);
+    this.name = 'OperatorActionOutcomeUnknownError';
+  }
+}
+
 export interface OpenOperatorRequest {
   requestId: string;
   source: SupportMessage;

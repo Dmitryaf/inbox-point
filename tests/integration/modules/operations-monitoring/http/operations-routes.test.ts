@@ -37,6 +37,7 @@ describe('operations monitoring routes', () => {
     const app = createApp(config);
     const retriedDeliveries: string[] = [];
     const resolvedDeliveries: string[] = [];
+    const resolvedOperatorActions: string[] = [];
     apps.add(app);
     const access = new PasswordSessionAccess('correct-admin-password', {
       createToken: () => 'synthetic-admin-session',
@@ -75,6 +76,12 @@ describe('operations monitoring routes', () => {
           new_request: 8,
           web_takeover: 1,
         }),
+      },
+      {
+        resolve: (actionId, resolution) => {
+          resolvedOperatorActions.push(`${resolution}:${actionId}`);
+          return true;
+        },
       },
     );
 
@@ -163,6 +170,34 @@ describe('operations monitoring routes', () => {
       remoteAddress: '192.0.2.10',
       url: '/api/ops/deliveries/delivery-unknown/resolve',
     });
+    const resolveOperatorAction = await app.inject({
+      headers: {
+        cookie,
+        host: 'example.test',
+        origin: 'http://example.test',
+      },
+      method: 'POST',
+      payload: { resolution: 'use_web' },
+      remoteAddress: '192.0.2.10',
+      url: '/api/ops/operator-actions/operator-relay-1/resolve',
+    });
+    const unauthorizedOperatorAction = await app.inject({
+      method: 'POST',
+      payload: { resolution: 'use_web' },
+      remoteAddress: '192.0.2.10',
+      url: '/api/ops/operator-actions/operator-relay-2/resolve',
+    });
+    const crossOriginOperatorAction = await app.inject({
+      headers: {
+        cookie,
+        host: 'example.test',
+        origin: 'https://attacker.test',
+      },
+      method: 'POST',
+      payload: { resolution: 'use_web' },
+      remoteAddress: '192.0.2.10',
+      url: '/api/ops/operator-actions/operator-relay-3/resolve',
+    });
 
     expect(unauthorized.statusCode).toBe(401);
     expect(page.statusCode).toBe(200);
@@ -201,6 +236,10 @@ describe('operations monitoring routes', () => {
     expect(retriedDeliveries).toEqual(['delivery-1']);
     expect(resolveDelivery.statusCode).toBe(200);
     expect(resolvedDeliveries).toEqual(['received:delivery-unknown']);
+    expect(resolveOperatorAction.statusCode).toBe(200);
+    expect(unauthorizedOperatorAction.statusCode).toBe(401);
+    expect(crossOriginOperatorAction.statusCode).toBe(403);
+    expect(resolvedOperatorActions).toEqual(['use_web:operator-relay-1']);
     expect(serviceControl.json()).toMatchObject({
       channels: {
         telegram: { mode: 'active' },

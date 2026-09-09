@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { HandoffRuntime } from '@/core/application/handoff-runtime.js';
 import {
+  OperatorActionOutcomeUnknownError,
   type OpenOperatorRequest,
   type OperatorInbox,
   type RelayCustomerMessageOptions,
@@ -11,6 +12,7 @@ import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-sup
 
 class FakeOperatorInbox implements OperatorInbox {
   public failNextRelay = false;
+  public unknownNextRelay = false;
   public onRelay: (() => void) | undefined;
   public readonly opened: OpenOperatorRequest[] = [];
   public relayGate: Promise<void> | undefined;
@@ -47,6 +49,10 @@ class FakeOperatorInbox implements OperatorInbox {
     if (this.failNextRelay) {
       this.failNextRelay = false;
       throw new Error('Telegram unavailable');
+    }
+    if (this.unknownNextRelay) {
+      this.unknownNextRelay = false;
+      throw new OperatorActionOutcomeUnknownError('relay-action-1', 'relay');
     }
     return {
       operatorMessageIds: ['operator-message-1'],
@@ -263,6 +269,44 @@ describe('HandoffRuntime', () => {
     expect(nextRequest?.id).not.toBe(request.id);
     expect(inbox.opened).toHaveLength(2);
     expect(inbox.relayCount).toBe(2);
+  });
+
+  it('does not use web fallback when a Telegram relay outcome is unknown', async () => {
+    const repository = new SqliteSupportRepository(':memory:');
+    repositories.push(repository);
+    const errors: string[] = [];
+    const runtime = new HandoffRuntime({
+      logger: {
+        error: (_error, message) => errors.push(message),
+      },
+      repository,
+    });
+    const inbox = new FakeOperatorInbox();
+    runtime.registerOperatorInbox(inbox);
+    const message = {
+      channel: 'telegram' as const,
+      conversationId: '101',
+      displayName: 'Telegram Customer',
+      externalMessageId: 'message-1',
+      receivedAt: new Date('2026-09-06T12:00:00.000Z'),
+      text: 'First question',
+    };
+    await runtime.handleClientMessage('event-1', message);
+    inbox.unknownNextRelay = true;
+
+    await runtime.handleClientMessage('event-2', {
+      ...message,
+      externalMessageId: 'message-2',
+      text: 'Uncertain follow-up',
+    });
+
+    expect(repository.findActiveRequest('telegram', '101')).toMatchObject({
+      operatorTopicId: 'topic-1',
+    });
+    expect(errors).not.toContain(
+      'Operator inbox relay failed; using emergency web inbox',
+    );
+    expect(repository.getDeliverySummary().pending).toBe(1);
   });
 
   it('orders a Telegram reply before a concurrent web takeover without duplication', async () => {

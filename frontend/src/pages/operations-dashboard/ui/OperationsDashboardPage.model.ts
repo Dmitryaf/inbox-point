@@ -6,6 +6,7 @@ import { useAdminSession } from '@frontend/features/admin-auth/model/use-admin-s
 import { useOutboundDeliveryControl } from '@frontend/features/control-outbound-delivery/model/use-outbound-delivery-control';
 import { useOperationsStatus } from '@frontend/features/refresh-status/model/use-operations-status';
 import { useDeliveryRetry } from '@frontend/features/retry-delivery/model/use-delivery-retry';
+import { useOperatorActionResolution } from '@frontend/features/resolve-operator-action/model/use-operator-action-resolution';
 
 export type ComponentProps = ComponentAttributes;
 export const componentDefaults = {};
@@ -21,6 +22,10 @@ export function createComponentModel() {
     refresh: () => Promise<void>;
   }>();
   const deliveryRetry = useDeliveryRetry(refreshAll, session.expireSession);
+  const operatorResolution = useOperatorActionResolution(
+    refreshAll,
+    session.expireSession,
+  );
   const deliveryControl = useOutboundDeliveryControl(
     refreshAll,
     session.expireSession,
@@ -57,6 +62,7 @@ export function createComponentModel() {
     intakeControl,
     operatorInbox,
     deliveryRetry,
+    operatorResolution,
     deliveryControl,
     refreshAll,
   };

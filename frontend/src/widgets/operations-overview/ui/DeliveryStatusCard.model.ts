@@ -12,11 +12,14 @@ export type ComponentProps = {
   deliveries: OperationsStatus['deliveries'];
   deliveryControlPending: 'pause' | 'resume' | undefined;
   outbound: OperationsStatus['outbound'];
+  operatorRelays: OperationsStatus['operatorRelays'];
+  pendingOperatorActionId: string | undefined;
   pendingDeliveryId: string | undefined;
 } & EventProps<{
   changeDeliveryMode: [mode: 'pause' | 'resume'];
   resolve: [deliveryId: string, resolution: 'not_received' | 'received'];
   retry: [deliveryId: string];
+  resolveOperatorAction: [actionId: string, resolution: 'received' | 'use_web'];
 }> &
   ComponentAttributes;
 export const componentDefaults = {};

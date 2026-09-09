@@ -1,4 +1,5 @@
 import {
+  OperatorActionOutcomeUnknownError,
   OperatorInboxUnavailableError,
   type OpenOperatorRequest,
   type OperatorInbox,
@@ -108,6 +109,9 @@ export class SwitchableOperatorInbox
     try {
       return await runPrimary(inbox);
     } catch (error: unknown) {
+      if (error instanceof OperatorActionOutcomeUnknownError) {
+        throw error;
+      }
       this.onFallback(error, operation);
       return runFallback();
     }

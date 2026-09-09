@@ -211,4 +211,15 @@ describe('TelegramApiClient', () => {
       client.sendMessage({ chatId: 101, text: 'Ответ' }),
     ).rejects.toBeInstanceOf(DeliveryOutcomeUnknownError);
   });
+
+  it('marks a lost createForumTopic response as an unknown outcome', async () => {
+    const client = new TelegramApiClient(
+      'synthetic-token',
+      vi.fn(() => Promise.reject(new Error('connection reset'))),
+    );
+
+    await expect(
+      client.createForumTopic(-1_001, 'New request'),
+    ).rejects.toBeInstanceOf(DeliveryOutcomeUnknownError);
+  });
 });

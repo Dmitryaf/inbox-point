@@ -277,7 +277,7 @@ export class TelegramApiClient implements TelegramGateway {
       if (isAbortError(error)) {
         throw error;
       }
-      if (method === 'sendMessage') {
+      if (hasUncertainSideEffect(method)) {
         throw new DeliveryOutcomeUnknownError('telegram');
       }
       throw new Error(`Telegram API request failed for ${method}`);
@@ -309,10 +309,14 @@ export class TelegramApiClient implements TelegramGateway {
 }
 
 function responseValidationError(method: string, problem: string): Error {
-  if (method === 'sendMessage') {
+  if (hasUncertainSideEffect(method)) {
     return new DeliveryOutcomeUnknownError('telegram');
   }
   return new Error(`Telegram API returned ${problem} for ${method}`);
+}
+
+function hasUncertainSideEffect(method: string): boolean {
+  return method === 'createForumTopic' || method === 'sendMessage';
 }
 
 function isAbortError(error: unknown): boolean {

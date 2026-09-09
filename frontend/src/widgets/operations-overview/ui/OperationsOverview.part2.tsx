@@ -30,7 +30,9 @@ export function renderOperationsOverviewPart2(
           deliveries={$props.status.deliveries}
           deliveryControlPending={$props.deliveryControlPending}
           outbound={$props.status.outbound}
+          operatorRelays={$props.status.operatorRelays}
           pendingDeliveryId={$props.pendingDeliveryId}
+          pendingOperatorActionId={$props.pendingOperatorActionId}
           onChangeDeliveryMode={($event) =>
             void $emit('changeDeliveryMode', $event)
           }
@@ -38,6 +40,9 @@ export function renderOperationsOverviewPart2(
             $emit('resolveDelivery', id, resolution)
           }
           onRetry={($event) => void $emit('retryDelivery', $event)}
+          onResolveOperatorAction={(id, resolution) =>
+            $emit('resolveOperatorAction', id, resolution)
+          }
         />
       </div>
     </>

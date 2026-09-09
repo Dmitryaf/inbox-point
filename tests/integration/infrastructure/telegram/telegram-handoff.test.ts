@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { DeliveryWorker } from '@/core/application/delivery-worker.js';
 import { HandoffService } from '@/core/application/handoff-service.js';
+import { DeliveryOutcomeUnknownError } from '@/core/contracts/client-channel.js';
 import {
   ClientInformationCatalog,
   faqButton,
@@ -29,6 +30,8 @@ class FakeTelegramGateway implements TelegramGateway {
   public readonly closedTopics: number[] = [];
   public readonly createdTopics: number[] = [];
   public failNextSend = false;
+  public unknownNextOpen = false;
+  public unknownOnSendNumber: number | undefined;
   public readonly reopened: number[] = [];
   public readonly sent: SendMessageOptions[] = [];
   public readonly unavailableTopics = new Set<number>();
@@ -58,6 +61,10 @@ class FakeTelegramGateway implements TelegramGateway {
     void name;
     const topicId = this.nextTopicId++;
     this.createdTopics.push(topicId);
+    if (this.unknownNextOpen) {
+      this.unknownNextOpen = false;
+      return Promise.reject(new DeliveryOutcomeUnknownError('telegram'));
+    }
     return Promise.resolve({ topicId });
   }
 
@@ -105,6 +112,9 @@ class FakeTelegramGateway implements TelegramGateway {
       );
     }
     this.sent.push(options);
+    if (this.sent.length === this.unknownOnSendNumber) {
+      return Promise.reject(new DeliveryOutcomeUnknownError('telegram'));
+    }
     return Promise.resolve({ messageId: 700 + this.sent.length });
   }
 }
@@ -130,7 +140,7 @@ describe('Telegram handoff integration', () => {
         let nextId = 1;
         return () => `id-${nextId++}`;
       })(),
-      operatorInbox: new TelegramTopicsInbox(gateway, -1_001),
+      operatorInbox: new TelegramTopicsInbox(gateway, -1_001, repository),
       repository,
     });
     deliveryWorker = new DeliveryWorker({
@@ -210,7 +220,7 @@ describe('Telegram handoff integration', () => {
   });
 
   it('posts a privacy-safe delivery failure notice in the affected topic', async () => {
-    const inbox = new TelegramTopicsInbox(gateway, -1_001);
+    const inbox = new TelegramTopicsInbox(gateway, -1_001, repository);
 
     await inbox.notifyDeliveryFailure({
       attempts: 5,
@@ -238,7 +248,7 @@ describe('Telegram handoff integration', () => {
   });
 
   it('warns against blind retries when delivery outcome is unknown', async () => {
-    const inbox = new TelegramTopicsInbox(gateway, -1_001);
+    const inbox = new TelegramTopicsInbox(gateway, -1_001, repository);
 
     await inbox.notifyDeliveryFailure({
       attempts: 1,
@@ -262,6 +272,68 @@ describe('Telegram handoff integration', () => {
     expect(gateway.sent[0]?.text).toContain(
       'Не удалось подтвердить доставку ответа',
     );
+  });
+
+  it('keeps a new request in web inbox when topic creation is uncertain', async () => {
+    gateway.unknownNextOpen = true;
+    const message = {
+      channel: 'telegram' as const,
+      conversationId: '101',
+      displayName: 'Test Customer',
+      externalMessageId: 'message-uncertain-open',
+      receivedAt: new Date('2026-09-06T12:00:00.000Z'),
+      text: 'Question',
+    };
+    const handoff = new HandoffService({
+      operatorInbox: new TelegramTopicsInbox(gateway, -1_001, repository),
+      repository,
+    });
+
+    await handoff.handleClientMessage('update-uncertain-open', message);
+    await handoff.handleClientMessage('update-uncertain-open', message);
+
+    expect(gateway.createdTopics).toHaveLength(1);
+    expect(
+      repository
+        .findActiveRequest('telegram', '101')
+        ?.operatorTopicId.startsWith('web:'),
+    ).toBe(true);
+    expect(repository.getOperatorActionSummary()).toEqual({ uncertain: 1 });
+    expect(repository.getDeliverySummary()).toMatchObject({ pending: 1 });
+  });
+
+  it('does not resend a partial multi-chunk relay with an unknown outcome', async () => {
+    repository.createRequest({
+      channel: 'telegram',
+      conversationId: '202',
+      createdAt: new Date('2026-09-06T12:00:00.000Z'),
+      id: 'request-partial',
+      operatorTopicId: '900',
+      status: 'active',
+    });
+    gateway.unknownOnSendNumber = 1;
+    const handoff = new HandoffService({
+      operatorInbox: new TelegramTopicsInbox(gateway, -1_001, repository),
+      repository,
+    });
+    const message = {
+      channel: 'telegram' as const,
+      conversationId: '202',
+      displayName: 'Test Customer',
+      externalMessageId: 'message-partial',
+      receivedAt: new Date('2026-09-06T12:00:00.000Z'),
+      text: 'Я'.repeat(5_000),
+    };
+
+    await handoff.handleClientMessage('update-partial', message);
+    await handoff.handleClientMessage('update-partial', message);
+
+    expect(gateway.sent).toHaveLength(2);
+    expect(repository.findRequestById('request-partial')).toMatchObject({
+      operatorTopicId: '900',
+    });
+    expect(repository.getOperatorActionSummary()).toEqual({ uncertain: 1 });
+    expect(repository.getDeliverySummary()).toMatchObject({ pending: 0 });
   });
 
   it('splits a maximum-length customer message without creating extra topics', async () => {
