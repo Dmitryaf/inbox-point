@@ -26,10 +26,14 @@ is handled either in Telegram or in the web inbox, never in both at once.
 - configurable information sections;
 - durable SQLite delivery queue with bounded retries;
 - explicit handling of uncertain delivery outcomes;
+- crash-safe operator relay state with manual resolution for uncertain Telegram
+  outcomes;
+- bounded VK event retries with quarantine and operator retry/skip controls;
 - protected channel setup, content management, and operations pages with one
   administrator sign-in;
 - emergency web inbox;
-- snapshots for the database, content, and service-control state.
+- verified snapshots for the database, content, and service-control state, plus
+  an external backup job and daily systemd timer template.
 
 Message attachments, voice messages, AI-generated replies, CRM entities,
 operator assignment, multi-tenancy, and SaaS billing are outside the first
@@ -74,14 +78,19 @@ application port is intended to remain on loopback behind an HTTPS reverse
 proxy. Set `ADMIN_PASSWORD` before production; without it the administrative
 pages are unavailable in production mode.
 
+The Docker liveness check uses `/health`. The external monitor must use
+`/ready` and an alert webhook independent of Telegram. The `operations` Compose
+profile provides a one-shot verified backup job; its bind-mounted target must
+be stored outside the application volume and preferably outside the VPS.
+
 ## Status
 
-The text handoff workflow, delivery recovery, emergency web inbox, management
-UI, operational controls, snapshots, and local deployment hardening are
-implemented and covered by automated checks. Production deployment is not yet
-verified: the Docker image, persistent volume, reverse proxy, external monitor,
-real test channels, restart, restore, rollback, and operator acceptance must be
-completed in the target environment before real conversations are enabled.
+The release-blocking dependency, operator-relay, VK quarantine, readiness
+monitoring, and external-backup mechanisms are implemented and covered by
+automated checks. Production deployment is not yet verified: the Docker image,
+persistent volume, reverse proxy, external monitor host, offsite storage, real
+test channels, host restart, rollback, and operator acceptance must be completed
+in the target environment before real conversations are enabled.
 
 ## License
 
