@@ -39,11 +39,15 @@ public final class ServiceSnapshot {
     private final int days;
 
     public ServiceSnapshot(Path database, int days) {
+        this(database, database.toAbsolutePath().normalize().getParent().resolve("snapshots"), days);
+    }
+
+    public ServiceSnapshot(Path database, Path directory, int days) {
         if (database.toString().equals(":memory:") || days < 1 || days > 365) {
             throw new IllegalArgumentException("Invalid snapshot configuration");
         }
         this.database = database.toAbsolutePath().normalize();
-        this.directory = this.database.getParent().resolve("snapshots");
+        this.directory = directory.toAbsolutePath().normalize();
         this.days = days;
     }
 

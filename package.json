@@ -19,6 +19,7 @@
     "format:check": "prettier --check .",
     "lint": "eslint .",
     "prepare": "husky",
+    "backup:create": "node --env-file-if-exists=.env scripts/run-java.mjs backup-create",
     "snapshot:create": "node --env-file-if-exists=.env scripts/run-java.mjs snapshot-create",
     "snapshot:restore": "node scripts/run-java.mjs snapshot-restore",
     "start": "node --env-file-if-exists=.env scripts/run-java.mjs start",

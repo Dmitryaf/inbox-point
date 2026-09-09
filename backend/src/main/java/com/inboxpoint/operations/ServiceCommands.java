@@ -18,13 +18,16 @@ public final class ServiceCommands {
 
     public static boolean handles(String command) {
         return "healthcheck".equals(command) || "availability-monitor".equals(command)
-                || "snapshot-create".equals(command) || "snapshot-restore".equals(command);
+                || "snapshot-create".equals(command) || "snapshot-restore".equals(command) || "backup-create".equals(command);
     }
 
     public static int run(String[] args, Map<String, String> environment) {
         var command = args[0];
         if (command.startsWith("snapshot-")) {
             return snapshot(args, environment);
+        }
+        if ("backup-create".equals(command)) {
+            return backup(environment);
         }
         try (var http = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).build()) {
             if ("healthcheck".equals(command)) {
@@ -49,6 +52,52 @@ public final class ServiceCommands {
             System.err.println("Service check or monitor could not initialize or continue.");
             return 1;
         }
+    }
+
+    private static int backup(Map<String, String> environment) {
+        try (var http = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).build()) {
+            var database = Path.of(required(environment, "DATABASE_PATH")).toAbsolutePath().normalize();
+            var target = Path.of(required(environment, "BACKUP_EXPORT_PATH")).toAbsolutePath().normalize();
+            requireExternalTarget(database, target);
+            var timeout = Duration.ofSeconds(number(environment, "BACKUP_TIMEOUT_SECONDS", 10, 1, 30));
+            var notifier = new WebhookAlert(http, WebhookAlert.https(environment.get("BACKUP_ALERT_WEBHOOK_URL")),
+                    timeout, environment.get("BACKUP_ALERT_BEARER_TOKEN"));
+            try {
+                var snapshot = new ServiceSnapshot(database, target, number(environment, "CLOSED_REQUEST_RETENTION_DAYS", 7, 1, 365))
+                        .create(Instant.now());
+                ServiceSnapshot.verify(snapshot);
+                System.out.println(snapshot);
+                return 0;
+            } catch (IOException | SQLException | RuntimeException failure) {
+                try {
+                    notifier.send("Не удалось создать или проверить внешний backup.");
+                } catch (IOException alertFailed) {
+                    System.err.println("External backup alert could not be delivered");
+                }
+                System.err.println("External backup failed (" + failure.getClass().getSimpleName() + ")");
+                return 1;
+            }
+        } catch (IllegalArgumentException invalid) {
+            System.err.println("External backup configuration is invalid");
+            return 1;
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            return 1;
+        }
+    }
+
+    static void requireExternalTarget(Path database, Path target) {
+        if (target.startsWith(database.getParent())) {
+            throw new IllegalArgumentException("Backup export must be outside the application data directory");
+        }
+    }
+
+    private static String required(Map<String, String> environment, String key) {
+        var value = environment.get(key);
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("Missing backup configuration");
+        }
+        return value;
     }
 
     private static int snapshot(String[] args, Map<String, String> environment) {
