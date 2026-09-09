@@ -12,7 +12,6 @@ import java.time.Instant;
 import java.util.Map;
 
 import com.inboxpoint.persistence.ServiceSnapshot;
-import com.inboxpoint.telegram.TelegramAlert;
 
 public final class ServiceCommands {
     private ServiceCommands() { }
@@ -32,17 +31,15 @@ public final class ServiceCommands {
                 int port = number(environment, "PORT", 3000, 1, 65535);
                 check(http, URI.create("http://127.0.0.1:" + port + "/health"), Duration.ofSeconds(3));
             } else {
-                var target = URI.create(environment.getOrDefault("MONITOR_HEALTH_URL", ""));
-                if (!"https".equals(target.getScheme()) || target.getHost() == null || target.getUserInfo() != null) {
-                    throw new IllegalArgumentException("Health endpoint must use HTTPS");
+                var readiness = WebhookAlert.https(environment.get("MONITOR_READINESS_URL"));
+                if (!readiness.getPath().endsWith("/ready")) {
+                    throw new IllegalArgumentException("Expected an HTTPS readiness endpoint");
                 }
-                var interval = Duration.ofSeconds(number(environment, "MONITOR_INTERVAL_SECONDS", 60, 10, 86_400));
+                var target = WebhookAlert.https(environment.get("MONITOR_ALERT_WEBHOOK_URL"));
+                var interval = Duration.ofSeconds(number(environment, "MONITOR_INTERVAL_SECONDS", 60, 10, Integer.MAX_VALUE));
                 var timeout = Duration.ofSeconds(number(environment, "MONITOR_TIMEOUT_SECONDS", 10, 1, 30));
-                long chat = Long.parseLong(environment.getOrDefault("MONITOR_TELEGRAM_CHAT_ID", ""));
-                var token = environment.getOrDefault("MONITOR_TELEGRAM_BOT_TOKEN", "");
-                try (var alert = new TelegramAlert(token, chat, timeout)) {
-                    new AvailabilityMonitor(() -> check(http, target, timeout), alert::send).run(interval);
-                }
+                var alert = new WebhookAlert(http, target, timeout, environment.get("MONITOR_ALERT_BEARER_TOKEN"));
+                new AvailabilityMonitor(() -> check(http, readiness, timeout), alert::send).run(interval);
             }
             return 0;
         } catch (InterruptedException stopping) {
