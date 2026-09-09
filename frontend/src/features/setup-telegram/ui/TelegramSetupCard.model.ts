@@ -31,7 +31,7 @@ export function createComponentModel(
   const botToken = ref('');
   const chats = ref<TelegramOperatorChat[]>([]);
   const selectedChatId = ref<number | null>(null);
-  const message = ref('Выполните три шага и найдите группу.');
+  const message = ref('Выполните шаги ниже и найдите операторскую группу.');
   const pending = ref<'connect' | 'discover' | null>(null);
   function chatLabel(chat: TelegramOperatorChat): string {
     if (chat.isForum) {

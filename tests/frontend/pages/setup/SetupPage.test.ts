@@ -21,8 +21,10 @@ describe('SetupPage', () => {
     const wrapper = mount(SetupPage);
     await flushPromises();
 
-    expect(wrapper.text()).toContain('Подключение Telegram');
-    expect(wrapper.text()).toContain('Подключение VK');
+    expect(wrapper.get('h1').text()).toBe('Каналы');
+    expect(wrapper.get('#telegram-setup-title').text()).toBe('Telegram');
+    expect(wrapper.get('#vk-setup-title').text()).toBe('VK');
+    expect(wrapper.get('[aria-current="page"]').text()).toBe('Каналы');
     expect(wrapper.text()).toContain('Настройте Long Poll API');
     expect(wrapper.text()).toContain(
       'Ключ даёт доступ к сообщениям сообщества',
@@ -91,14 +93,14 @@ describe('SetupPage', () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain('Введите пароль');
-    expect(wrapper.text()).not.toContain('Подключение Telegram');
+    expect(wrapper.find('#telegram-setup-title').exists()).toBe(false);
     expect(requestedUrls).not.toContain('/api/setup/status');
 
-    await wrapper.get('#password').setValue('synthetic-admin-password');
+    await wrapper.get('#admin-password').setValue('synthetic-admin-password');
     await wrapper.get('.auth-card').trigger('submit');
     await flushPromises();
 
-    expect(wrapper.text()).toContain('Подключение Telegram');
+    expect(wrapper.get('#telegram-setup-title').text()).toBe('Telegram');
     expect(requestedUrls).toContain('/api/setup/status');
 
     wrapper.unmount();

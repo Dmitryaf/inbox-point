@@ -12,9 +12,9 @@ import {
   createComponentModel,
   componentDefaults,
   type ComponentProps,
-} from './OperationsLoginForm.model';
+} from './AdminLoginForm.model';
 
-export default function OperationsLoginForm($incomingProps: ComponentProps) {
+export default function AdminLoginForm($incomingProps: ComponentProps) {
   const {
     state: $state,
     props: $props,
@@ -34,11 +34,11 @@ export default function OperationsLoginForm($incomingProps: ComponentProps) {
         onSubmit={$nativeHandler(submit, { prevent: true })}
         className={$class('auth-card card', $attributes.className)}
       >
-        <h2>{'Вход владельца'}</h2>
-        <p>{'Введите отдельный пароль мониторинга сервиса.'}</p>
-        <label htmlFor="ops-password">{'Пароль'}</label>
+        <h2>{'Вход'}</h2>
+        <p>{'Введите пароль администратора.'}</p>
+        <label htmlFor="admin-password">{'Пароль'}</label>
         <input
-          id="ops-password"
+          id="admin-password"
           autoComplete="current-password"
           required
           type="password"

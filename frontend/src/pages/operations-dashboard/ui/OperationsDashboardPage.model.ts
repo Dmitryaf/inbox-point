@@ -38,8 +38,6 @@ export function createComponentModel() {
     }, refreshIntervalMs);
   });
   onBeforeUnmount(stopAutomaticRefresh);
-  const authenticate = (password: string) => session.authenticate(password);
-  const logout = () => session.endSession();
   async function refreshAll(): Promise<void> {
     await Promise.all([
       operations.refresh(),
@@ -60,8 +58,6 @@ export function createComponentModel() {
     operatorInbox,
     deliveryRetry,
     deliveryControl,
-    authenticate,
-    logout,
     refreshAll,
   };
 }

@@ -22,7 +22,7 @@ const config: RuntimeConfig = {
 
 const apps = new Set<ReturnType<typeof createApp>>();
 const operationsAssets = {
-  html: '<!doctype html><title>Состояние сервиса</title>',
+  html: '<!doctype html><title>Состояние — Messenger Handoff</title>',
   script: 'globalThis.operationsApp = true;',
   styles: ':root { color: black; }',
 };

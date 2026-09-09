@@ -3,11 +3,14 @@ import {
   ModelScopeProvider,
 } from '@frontend/shared/lib/component-model';
 import { classNames as $class } from '@frontend/shared/lib/component-view';
+import { eventCallback as $callback } from '@frontend/shared/lib/component-events';
+import { unref as $unref } from '@frontend/shared/lib/model-state';
 
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
+import AdminPageHeader from '@frontend/widgets/admin-shell/ui/AdminPageHeader';
+
 import { renderContentManagementPagePart1 } from './ContentManagementPage.part1';
-import { renderContentManagementPagePart2 } from './ContentManagementPage.part2';
 import {
   createComponentModel,
   componentDefaults,
@@ -24,12 +27,20 @@ export default function ContentManagementPage($incomingProps: ComponentProps) {
     componentDefaults,
     createComponentModel,
   );
+  const { logOut } = $state;
+  const session = $unref($state.session);
   const $attributes = inheritedAttributes($props);
   return (
     <ModelScopeProvider scope={$scope}>
       <div {...$attributes} className={$class('shell', $attributes.className)}>
+        <AdminPageHeader
+          authenticated={session.authenticated.value}
+          current="information"
+          intro="Настройте готовые ответы для Telegram и VK."
+          title="Информация"
+          onLogout={$callback(logOut)}
+        />
         {renderContentManagementPagePart1($state)}
-        {renderContentManagementPagePart2($state)}
       </div>
     </ModelScopeProvider>
   );

@@ -15,6 +15,7 @@ export function renderOperationsOverviewPart1(
   $props: WithDefaults<ComponentProps, typeof componentDefaults>,
 ) {
   const overallLabel = $state.overallLabel.value;
+  const overallDescription = $state.overallDescription.value;
   const observedAt = $state.observedAt.value;
 
   return (
@@ -28,6 +29,7 @@ export function renderOperationsOverviewPart1(
         <div>
           <p className="eyebrow">{'Общее состояние'}</p>
           <h2 id="overview-title">{overallLabel}</h2>
+          <p className="summary-description">{overallDescription}</p>
         </div>
         <dl className="summary-facts">
           <div>

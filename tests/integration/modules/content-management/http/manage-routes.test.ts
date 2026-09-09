@@ -24,7 +24,7 @@ const config: RuntimeConfig = {
 
 const apps = new Set<ReturnType<typeof createApp>>();
 const managementAssets = {
-  html: '<!doctype html><title>Информация в каналах</title>',
+  html: '<!doctype html><title>Информация — Messenger Handoff</title>',
   script: 'globalThis.managementApp = true;',
   styles: ':root { color: black; }',
 };
@@ -210,7 +210,7 @@ describe('managed content routes', () => {
     });
 
     expect(page.statusCode).toBe(200);
-    expect(page.body).toContain('Информация в каналах');
+    expect(page.body).toContain('Информация — Messenger Handoff');
     expect(page.body).not.toContain('Токен');
     expect(page.headers['content-security-policy']).toContain(
       "default-src 'none'",

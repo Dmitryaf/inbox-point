@@ -46,6 +46,11 @@ describe('OperationsDashboardPage', () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain('Нужно проверить');
+    expect(wrapper.text()).toContain(
+      'Один из разделов требует внимания. Подробности отмечены ниже.',
+    );
+    expect(wrapper.get('h1').text()).toBe('Состояние');
+    expect(wrapper.get('[aria-current="page"]').text()).toBe('Состояние');
     const statusCards = wrapper.findAll('.status-card');
     expect(statusCards[0]?.text()).toContain('Telegram');
     expect(statusCards[0]?.text()).toContain('Запущен');
@@ -124,7 +129,7 @@ describe('OperationsDashboardPage', () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain('Сессия завершилась');
-    expect(wrapper.text()).toContain('Вход владельца');
+    expect(wrapper.text()).toContain('Введите пароль администратора.');
     expect(wrapper.find('.auth-panel .auth-card').exists()).toBe(true);
 
     wrapper.unmount();

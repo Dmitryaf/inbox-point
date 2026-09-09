@@ -29,7 +29,9 @@ export function renderVkSetupCardPart2(
         </p>
       ) : $props.status.locked ? (
         <p className="setup-status">
-          {' Подключение управляется настройками сервера. '}
+          {
+            ' VK настроен на сервере. Если он не работает, откройте раздел «Состояние». '
+          }
         </p>
       ) : (
         <form
