@@ -32,7 +32,7 @@ export default function TelegramSetupCard($incomingProps: ComponentProps) {
         className={$class('setup-card card', $attributes.className)}
       >
         <p className="step">{'Шаг 1'}</p>
-        <h2 id="telegram-setup-title">{'Подключение Telegram'}</h2>
+        <h2 id="telegram-setup-title">{'Telegram'}</h2>
         {renderTelegramSetupCardPart1($state, $props)}
       </section>
     </ModelScopeProvider>

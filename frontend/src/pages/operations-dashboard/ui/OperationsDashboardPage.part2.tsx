@@ -1,90 +1,49 @@
-import { templateRef as $templateRef } from '@frontend/shared/lib/component-view';
-import {
-  eventCallback as $callback,
-  nativeHandler as $nativeHandler,
-} from '@frontend/shared/lib/component-events';
+import { eventCallback as $callback } from '@frontend/shared/lib/component-events';
 import { unref as $unref } from '@frontend/shared/lib/model-state';
-import { requiredValue as $required } from '@frontend/shared/lib/component-bindings';
+import {
+  requiredValue as $required,
+  logicalOr as $or,
+} from '@frontend/shared/lib/component-bindings';
 
-import OperationsLoginForm from '@frontend/features/operations-auth/ui/OperationsLoginForm';
-import ClientIntakeControl from '@frontend/features/control-client-intake/ui/ClientIntakeControl';
-
-import OperatorInbox from '@frontend/widgets/operator-inbox/ui/OperatorInbox';
-import AsyncMessage from '@frontend/shared/ui/AsyncMessage';
-
-import { renderOperationsDashboardPagePart3 } from './OperationsDashboardPage.part3';
-import type { ModelScope } from '@frontend/shared/lib/model-state';
+import OperationsOverview from '@frontend/widgets/operations-overview/ui/OperationsOverview';
 
 import type { createComponentModel } from './OperationsDashboardPage.model';
 export function renderOperationsDashboardPagePart2(
   $state: ReturnType<typeof createComponentModel>,
-  $scope: ModelScope,
 ) {
-  const { refreshAll } = $state;
   const session = $unref($state.session);
   const operations = $unref($state.operations);
   const deliveryControl = $unref($state.deliveryControl);
   const deliveryRetry = $unref($state.deliveryRetry);
-
+  if (!!session.booting.value) {
+    return null;
+  }
+  if (!!!session.authenticated.value) {
+    return null;
+  }
   return (
     <>
-      {session.booting.value ? (
-        <section className="card loading-card">
-          <p>{'Проверяем доступ…'}</p>
-        </section>
-      ) : !session.authenticated.value ? (
-        <section className="auth-panel">
-          <div className="auth-stack">
-            {session.error.value ? (
-              <p role="alert" className="message message--error">
-                {session.error.value}
-              </p>
-            ) : null}
-            <OperationsLoginForm
-              pending={session.pending.value}
-              onSubmit={$callback($unref($state.authenticate))}
-            />
-          </div>
-        </section>
+      {operations.status.value ? (
+        <OperationsOverview
+          deliveryControlPending={deliveryControl.pendingMode.value}
+          pendingDeliveryId={$or(
+            deliveryRetry.pendingDeliveryId.value,
+            () => undefined,
+          )}
+          status={operations.status.value}
+          onChangeDeliveryMode={$callback(
+            $required($unref($state.deliveryControl)).change,
+          )}
+          onResolveDelivery={$callback(
+            $required($unref($state.deliveryRetry)).resolve,
+          )}
+          onRetryDelivery={$callback(
+            $required($unref($state.deliveryRetry)).retry,
+          )}
+        />
       ) : (
-        <section className="ops-workspace">
-          {session.error.value ? (
-            <p role="alert" className="message message--error">
-              {session.error.value}
-            </p>
-          ) : null}
-          <div className="toolbar">
-            <p>{'Состояние обновляется автоматически каждые 30 секунд.'}</p>
-            <button
-              disabled={operations.loading.value}
-              type="button"
-              onClick={$nativeHandler(refreshAll)}
-              className="secondary-button"
-            >
-              {operations.loading.value ? 'Обновляем…' : 'Обновить'}
-            </button>
-          </div>
-          {operations.error.value ? (
-            <p role="alert" className="message message--error">
-              {operations.error.value}
-            </p>
-          ) : null}
-          {renderOperationsDashboardPagePart3($state)}
-          <ClientIntakeControl
-            onChanged={$callback(refreshAll)}
-            onUnauthorized={$callback(
-              $required($unref($state.session)).expireSession,
-            )}
-            ref={$templateRef($state, 'intakeControl', $scope)}
-          />
-          <AsyncMessage kind="error" text={deliveryRetry.error.value} />
-          <AsyncMessage kind="success" text={deliveryRetry.notice.value} />
-          <AsyncMessage kind="error" text={deliveryControl.error.value} />
-          <AsyncMessage kind="success" text={deliveryControl.notice.value} />
-          <OperatorInbox
-            onUnauthorized={session.expireSession}
-            ref={$templateRef($state, 'operatorInbox', $scope)}
-          />
+        <section className="card loading-card">
+          <p>{'Получаем состояние сервиса…'}</p>
         </section>
       )}
     </>

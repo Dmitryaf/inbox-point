@@ -28,7 +28,9 @@ export function renderTelegramSetupCardPart2(
     <>
       {$props.status.locked ? (
         <p className="setup-status">
-          {' Подключение управляется настройками сервера. '}
+          {
+            ' Telegram настроен на сервере. Если он не работает, откройте раздел «Состояние». '
+          }
         </p>
       ) : (
         <>
