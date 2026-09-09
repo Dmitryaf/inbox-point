@@ -1,0 +1,9 @@
+[Unit]
+Description=Create and verify Messenger Handoff external backup
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/messenger-handoff
+ExecStart=/usr/bin/docker compose --env-file .env --profile operations run --rm backup

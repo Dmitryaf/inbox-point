@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Messenger Handoff external backup daily
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=30m
+Unit=messenger-handoff-backup.service
+
+[Install]
+WantedBy=timers.target
