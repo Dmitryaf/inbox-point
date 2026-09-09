@@ -2,12 +2,12 @@ package com.inboxpoint.telegram;
 
 final class EmergencyOperatorInbox implements OperatorInbox {
     @Override
-    public String open(String request, String title) {
+    public String open(String request, String message, String title) {
         return webTopic(request);
     }
 
     @Override
-    public Relay relay(String request, String topic, String message, int offset, String text) {
+    public Relay relay(String request, String topic, String message, int offset, boolean initial, String text) {
         return new Relay(isWebTopic(topic) ? topic : webTopic(request), "web:" + message + ":" + offset);
     }
 

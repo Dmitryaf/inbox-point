@@ -3,6 +3,8 @@ package com.inboxpoint.telegram;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.time.Clock;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -49,7 +51,7 @@ final class HandoffService {
         var request = store.activeRequest(channel, chat);
         if (request != null) {
             try {
-                relayChunks(request, message, name, "Сообщение:\n\n", text);
+                relayChunks(request, message, name, text, false);
                 return;
             } catch (TelegramBotApi.RequestFailed failure) {
                 if (failure.topicProblem() != TelegramBotApi.TopicProblem.MISSING
@@ -59,49 +61,91 @@ final class HandoffService {
                 store.changeStatus(request.id(), false, clock.instant());
             }
         }
-        var platform = "telegram".equals(channel) ? "Telegram" : "VK";
         var title = ("telegram".equals(channel) ? "TG" : "VK") + " - " + name;
         title = title.substring(0, title.offsetByCodePoints(0, Math.min(128, title.codePointCount(0, title.length()))));
         var requestId = UUID.randomUUID().toString();
-        request = new TelegramStore.Request(requestId, chat, inbox.open(requestId, title), true, channel);
+        var webTopic = "web:" + requestId;
+        request = new TelegramStore.Request(requestId, chat, webTopic, true, channel);
         store.open(request, name, clock.instant());
+        store.recordMessage(requestId, "client_to_operator", message, name, text, clock.instant());
         store.usageEvent("new-request:" + requestId, "new_request", channel, requestId, clock.instant());
-        if (EmergencyOperatorInbox.isWebTopic(request.topic())) {
+        String topic;
+        try {
+            topic = inbox.open(requestId, message, title);
+        } catch (DurableTelegramInbox.UnknownOutcome uncertain) {
+            recordWebTakeover(request);
+            store.acknowledge(request, ACKNOWLEDGEMENT, clock.instant());
+            return;
+        }
+        if (!webTopic.equals(topic)) {
+            switchOperatorTopic(requestId, webTopic, topic);
+            request = new TelegramStore.Request(requestId, chat, topic, true, channel);
+        } else {
             recordWebTakeover(request);
         }
-        var prefix = "Новое обращение из " + platform + "\nОтправитель: " + name
-                + "\n\nОтветьте сообщением в этой теме.\nЧтобы закрыть обращение, отправьте /close.\n\nВопрос:\n";
-        relayChunks(request, message, name, prefix, text);
+        relayChunks(request, message, name, text, true);
     }
 
-    private void relayChunks(TelegramStore.Request request, String message, String sender, String firstPrefix, String text)
+    private void relayChunks(TelegramStore.Request request, String message, String sender, String text, boolean initial)
             throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
         store.recordMessage(request.id(), "client_to_operator", message, sender, text, clock.instant());
-        var prefix = firstPrefix;
         var topic = request.topic();
-        for (int start = 0; start < text.length();) {
-            var capacity = MESSAGE_LIMIT - prefix.codePointCount(0, prefix.length());
-            var size = Math.min(text.codePointCount(start, text.length()), capacity);
-            var end = text.offsetByCodePoints(start, size);
-            var sent = inbox.relay(request.id(), topic, request.channel() + ":" + message, start,
-                    prefix + text.substring(start, end));
+        var key = DurableTelegramInbox.relayKey(request.id(), topic, message, 0, initial);
+        var firstAttempt = store.operatorActions().attempt(key.id());
+        var initialRelay = firstAttempt == null ? initial : firstAttempt.initial();
+        var chunks = chunks(request.channel(), sender, text, initialRelay);
+        for (int index = 0; index < chunks.size(); index++) {
+            inbox.prepareRelay(request.id(), topic, message, index, initialRelay);
+        }
+        boolean uncertain = false;
+        for (int index = 0; index < chunks.size(); index++) {
+            OperatorInbox.Relay sent;
+            try {
+                sent = inbox.relay(request.id(), topic, message, index, initialRelay, chunks.get(index));
+            } catch (DurableTelegramInbox.UnknownOutcome unknown) {
+                uncertain = true;
+                continue;
+            }
             if (!topic.equals(sent.topic())) {
-                if (!store.switchTopic(request.id(), topic, sent.topic())) {
-                    var current = store.byId(request.id());
-                    if (current == null || !current.topic().equals(sent.topic())) {
-                        throw new SQLException("Operator inbox changed concurrently");
-                    }
+                if (uncertain) {
+                    break;
                 }
+                switchOperatorTopic(request.id(), topic, sent.topic());
                 topic = sent.topic();
                 if (EmergencyOperatorInbox.isWebTopic(topic)) {
                     recordWebTakeover(request);
                 }
             }
             store.link(request.id(), "client_to_operator", message, sent.messageId(), clock.instant());
+        }
+        if (!uncertain) {
+            store.acknowledge(request, ACKNOWLEDGEMENT, clock.instant());
+        }
+    }
+
+    private void switchOperatorTopic(String request, String current, String next) throws SQLException {
+        if (!store.switchTopic(request, current, next)) {
+            var stored = store.byId(request);
+            if (stored == null || !stored.topic().equals(next)) {
+                throw new SQLException("Operator inbox changed concurrently");
+            }
+        }
+    }
+
+    private static List<String> chunks(String channel, String sender, String text, boolean initial) {
+        var platform = "telegram".equals(channel) ? "Telegram" : "VK";
+        var prefix = initial ? "Новое обращение из " + platform + "\nОтправитель: " + sender
+                + "\n\nОтветьте сообщением в этой теме.\nЧтобы закрыть обращение, отправьте /close.\n\nВопрос:\n" : "Сообщение:\n\n";
+        var messages = new ArrayList<String>();
+        for (int start = 0; start < text.length();) {
+            var capacity = MESSAGE_LIMIT - prefix.codePointCount(0, prefix.length());
+            var size = Math.min(text.codePointCount(start, text.length()), capacity);
+            var end = text.offsetByCodePoints(start, size);
+            messages.add(prefix + text.substring(start, end));
             start = end;
             prefix = "Новое сообщение:\n\n";
         }
-        store.acknowledge(request, ACKNOWLEDGEMENT, clock.instant());
+        return messages;
     }
 
     private void recordWebTakeover(TelegramStore.Request request) throws SQLException {

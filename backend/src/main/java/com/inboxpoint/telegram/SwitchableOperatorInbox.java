@@ -10,12 +10,20 @@ final class SwitchableOperatorInbox implements OperatorInbox {
         this.primary = primary;
     }
 
-    public String open(String request, String title) throws InterruptedException {
-        return route("", target -> target.open(request, title));
+    public String open(String request, String message, String title) throws InterruptedException {
+        return route("", target -> target.open(request, message, title));
     }
 
-    public Relay relay(String request, String topic, String message, int offset, String text) throws InterruptedException {
-        return route(topic, target -> target.relay(request, topic, message, offset, text));
+    @Override
+    public void prepareRelay(String request, String topic, String message, int sequence, boolean initial) {
+        var target = EmergencyOperatorInbox.isWebTopic(topic) ? null : primary.get();
+        if (target != null) {
+            target.prepareRelay(request, topic, message, sequence, initial);
+        }
+    }
+
+    public Relay relay(String request, String topic, String message, int offset, boolean initial, String text) throws InterruptedException {
+        return route(topic, target -> target.relay(request, topic, message, offset, initial, text));
     }
 
     public void close(String topic) throws InterruptedException {

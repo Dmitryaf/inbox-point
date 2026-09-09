@@ -50,6 +50,11 @@ export function attentionOperationsStatus(): OperationsStatus {
       vk: { mode: 'active' },
     },
     observedAt: '2026-09-04T12:01:00.000Z',
+    operatorRelays: {
+      incidents: [],
+      state: 'healthy',
+      uncertain: 0,
+    },
     outbound: { mode: 'active' },
     startedAt: '2026-09-04T12:00:00.000Z',
     state: 'attention',

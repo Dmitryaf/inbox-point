@@ -29,6 +29,19 @@ export function resolveOperationsDelivery(
   );
 }
 
+export function resolveOperatorAction(
+  actionId: string,
+  resolution: 'received' | 'use_web',
+): Promise<void> {
+  return request(
+    `/api/ops/operator-actions/${encodeURIComponent(actionId)}/resolve`,
+    {
+      body: JSON.stringify({ resolution }),
+      method: 'POST',
+    },
+  );
+}
+
 export function readOperatorInboxRequests(): Promise<{
   requests: readonly OperatorInboxRequest[];
 }> {

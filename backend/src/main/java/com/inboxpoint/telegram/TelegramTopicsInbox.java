@@ -1,11 +1,11 @@
 package com.inboxpoint.telegram;
 
 record TelegramTopicsInbox(TelegramBotApi api, long group) implements OperatorInbox {
-    public String open(String request, String title) throws TelegramBotApi.RequestFailed, InterruptedException {
+    public String open(String request, String message, String title) throws TelegramBotApi.RequestFailed, InterruptedException {
         return Long.toString(api.createForumTopic(group, title));
     }
 
-    public Relay relay(String request, String topic, String message, int offset, String text) throws TelegramBotApi.RequestFailed, InterruptedException {
+    public Relay relay(String request, String topic, String message, int offset, boolean initial, String text) throws TelegramBotApi.RequestFailed, InterruptedException {
         return new Relay(topic, Long.toString(api.sendMessage(group, Long.parseLong(topic), text)));
     }
 
@@ -18,7 +18,7 @@ record TelegramTopicsInbox(TelegramBotApi api, long group) implements OperatorIn
                 ? "Не отправляйте ответ повторно вслепую. Владелец должен уточнить получение и разрешить инцидент в /ops."
                 : "Владелец может повторить доставку в /ops.";
         var reference = delivery.operatorMessageId() == null ? "" : "\nСообщение оператора: " + delivery.operatorMessageId();
-        relay(delivery.requestId(), delivery.operatorTopicId(), delivery.id(), 0, heading + "\n\nКанал: " + delivery.channel() + reference + "\n\n" + next);
+        relay(delivery.requestId(), delivery.operatorTopicId(), delivery.id(), 0, false, heading + "\n\nКанал: " + delivery.channel() + reference + "\n\n" + next);
     }
 
     public void close(String topic) throws TelegramBotApi.RequestFailed, InterruptedException {

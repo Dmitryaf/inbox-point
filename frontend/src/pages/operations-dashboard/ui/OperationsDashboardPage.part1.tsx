@@ -25,6 +25,7 @@ export function renderOperationsDashboardPagePart1(
   const operations = $unref($state.operations);
   const deliveryControl = $unref($state.deliveryControl);
   const deliveryRetry = $unref($state.deliveryRetry);
+  const operatorResolution = $unref($state.operatorResolution);
 
   return (
     <>
@@ -81,6 +82,8 @@ export function renderOperationsDashboardPagePart1(
           />
           <AsyncMessage kind="error" text={deliveryRetry.error.value} />
           <AsyncMessage kind="success" text={deliveryRetry.notice.value} />
+          <AsyncMessage kind="error" text={operatorResolution.error.value} />
+          <AsyncMessage kind="success" text={operatorResolution.notice.value} />
           <AsyncMessage kind="error" text={deliveryControl.error.value} />
           <AsyncMessage kind="success" text={deliveryControl.notice.value} />
           <OperatorInbox

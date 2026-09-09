@@ -250,6 +250,23 @@ public final class TelegramRuntime {
         }
     }
 
+    public OperatorRelayStatus operatorRelayStatus() throws IOException, SQLException {
+        try (var store = new TelegramStore(database)) {
+            return store.operatorActions().status();
+        }
+    }
+
+    public boolean resolveOperatorAction(String id, boolean received) throws IOException, SQLException {
+        try (var store = new TelegramStore(database)) {
+            return store.resolveOperatorAction(id, received, Instant.now());
+        }
+    }
+
+    public record OperatorRelayStatus(String state, long uncertain, List<OperatorRelayIncident> incidents) { }
+
+    public record OperatorRelayIncident(String id, String action, String channel, String clientMessageId, boolean confirmable,
+            String createdAt, boolean initial, String operatorTopicId, String reason, String requestId, int sequence) { }
+
     public Map<String, Long> usageCounts(Instant since) throws IOException, SQLException {
         try (var store = new TelegramStore(database)) {
             return store.usageCounts(since);
@@ -354,7 +371,7 @@ public final class TelegramRuntime {
         try (var store = new TelegramStore(database); var transport = TelegramHttpTransport.open("", API_TIMEOUT)) {
             var api = new TelegramBotApi(transport, origin, token, API_TIMEOUT);
             var unregisterClient = handoff.registerTelegram(api);
-            var unregisterInbox = handoff.registerOperatorInbox(new TelegramTopicsInbox(api, group));
+            var unregisterInbox = handoff.registerOperatorInbox(new DurableTelegramInbox(new TelegramTopicsInbox(api, group), database, Clock.systemUTC()));
             try {
                 var handler = new TelegramTextHandoff(group, store, api, Clock.systemUTC(), information, queue, serviceControl::intakePaused, handoff.routingInbox());
                 new TelegramPoller(api, handler, timeout, activity).run();

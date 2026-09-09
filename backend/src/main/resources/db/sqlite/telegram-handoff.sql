@@ -37,6 +37,27 @@ CREATE TABLE IF NOT EXISTS conversation_messages (
 CREATE INDEX IF NOT EXISTS conversation_messages_by_request
   ON conversation_messages(request_id, created_at);
 
+CREATE TABLE IF NOT EXISTS operator_actions (
+  id TEXT PRIMARY KEY,
+  request_id TEXT NOT NULL REFERENCES support_requests(id),
+  kind TEXT NOT NULL CHECK (kind IN ('open_request', 'relay_message')),
+  client_message_id TEXT NOT NULL,
+  operator_topic_id TEXT NOT NULL,
+  sequence INTEGER NOT NULL,
+  initial INTEGER NOT NULL CHECK (initial IN (0, 1)),
+  status TEXT NOT NULL CHECK (status IN ('pending', 'sending', 'sent', 'failed', 'outcome_unknown', 'abandoned')),
+  external_result_id TEXT,
+  last_error TEXT,
+  attempt_started_at TEXT,
+  completed_at TEXT,
+  manual_resolution TEXT CHECK (manual_resolution IN ('confirmed_received', 'use_web')),
+  resolved_at TEXT,
+  created_at TEXT NOT NULL
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS operator_actions_by_request ON operator_actions(request_id, client_message_id, sequence);
+CREATE INDEX IF NOT EXISTS operator_actions_by_status ON operator_actions(status, created_at);
+
 CREATE TABLE IF NOT EXISTS usage_events (
   id TEXT PRIMARY KEY,
   event_type TEXT NOT NULL CHECK (event_type IN (

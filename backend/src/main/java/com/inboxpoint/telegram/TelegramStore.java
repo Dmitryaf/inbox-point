@@ -53,7 +53,7 @@ final class TelegramStore implements AutoCloseable {
             statement.execute("UPDATE deliveries SET outcome_unknown = 1 WHERE last_error = 'Uncertain Telegram result' "
                     + "AND status = 'failed' AND outcome_unknown = 0");
             try (var version = statement.executeQuery("PRAGMA user_version")) {
-                if (version.next() && version.getInt(1) > 3) {
+                if (version.next() && version.getInt(1) > 4) {
                     throw new SQLException("Unsupported SQLite schema version");
                 }
             }
@@ -66,7 +66,7 @@ final class TelegramStore implements AutoCloseable {
                         received_at TEXT NOT NULL, PRIMARY KEY (source, external_event_id)
                     ) STRICT
                     """);
-            statement.execute("PRAGMA user_version = 3");
+            statement.execute("PRAGMA user_version = 4");
         } catch (IOException | SQLException failure) {
             try {
                 connection.close();
@@ -172,7 +172,12 @@ final class TelegramStore implements AutoCloseable {
                 """, now.toString(), source, event);
     }
 
+    OperatorActions operatorActions() {
+        return new OperatorActions(connection);
+    }
+
     void recoverInterrupted() throws SQLException {
+        operatorActions().recover();
         update("DELETE FROM processed_events WHERE status = 'processing'");
         update("""
                 UPDATE deliveries SET status = 'failed', attempts = attempts + 1,
@@ -217,8 +222,12 @@ final class TelegramStore implements AutoCloseable {
         update("""
                 INSERT INTO message_links
                     (id, request_id, direction, client_message_id, operator_message_id, created_at)
-                VALUES (?, ?, ?, ?, ?, ?)
-                """, UUID.randomUUID().toString(), requestId, direction, customerMessage, operatorMessage, now.toString());
+                SELECT ?, ?, ?, ?, ?, ? WHERE NOT EXISTS (
+                    SELECT 1 FROM message_links WHERE request_id = ? AND direction = ?
+                        AND client_message_id = ? AND operator_message_id = ?
+                )
+                """, UUID.randomUUID().toString(), requestId, direction, customerMessage, operatorMessage, now.toString(),
+                requestId, direction, customerMessage, operatorMessage);
     }
 
     void queue(Request request, String event, long message, String text, Instant now) throws SQLException {
@@ -247,6 +256,48 @@ final class TelegramStore implements AutoCloseable {
                 VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
                 """, UUID.randomUUID().toString(), request.id(), "operator:" + event, message, request.channel(),
                 Long.toString(request.conversation()), text, now.toString(), now.toString());
+    }
+
+    boolean resolveOperatorAction(String id, boolean received, Instant now) throws SQLException {
+        connection.setAutoCommit(false);
+        try {
+            var resolved = resolveOperatorActionInTransaction(id, received, now);
+            connection.commit();
+            return resolved;
+        } catch (SQLException | RuntimeException failure) {
+            connection.rollback();
+            throw failure;
+        } finally {
+            connection.setAutoCommit(true);
+        }
+    }
+
+    private boolean resolveOperatorActionInTransaction(String id, boolean received, Instant now) throws SQLException {
+        var actions = operatorActions();
+        var incident = actions.incident(id);
+        if (incident == null) {
+            return false;
+        }
+        var request = byId(incident.requestId());
+        if (received) {
+            if (!actions.confirm(id, now)) {
+                return false;
+            }
+            if (incident.initial() && !actions.unresolved(request.id(), incident.clientMessageId())) {
+                acknowledge(request, HandoffService.ACKNOWLEDGEMENT, now);
+            }
+            return true;
+        }
+        if (!EmergencyOperatorInbox.isWebTopic(request.topic())
+                && !switchTopic(request.id(), request.topic(), "web:" + request.id())) {
+            return false;
+        }
+        usageEvent("web-takeover:" + request.id(), "web_takeover", request.channel(), request.id(), now);
+        if (incident.initial()) {
+            acknowledge(request, HandoffService.ACKNOWLEDGEMENT, now);
+        }
+        actions.abandon(incident, now);
+        return true;
     }
 
     void acknowledge(Request request, String text, Instant now) throws SQLException {
