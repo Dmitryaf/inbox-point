@@ -2,11 +2,12 @@
 import { onBeforeUnmount, ref, watch } from 'vue';
 
 import { useAdminSession } from '@frontend/features/admin-auth/model/use-admin-session';
-import OperationsLoginForm from '@frontend/features/operations-auth/ui/OperationsLoginForm.vue';
+import AdminLoginForm from '@frontend/features/admin-auth/ui/AdminLoginForm.vue';
 import ClientIntakeControl from '@frontend/features/control-client-intake/ui/ClientIntakeControl.vue';
 import { useOutboundDeliveryControl } from '@frontend/features/control-outbound-delivery/model/use-outbound-delivery-control';
 import { useOperationsStatus } from '@frontend/features/refresh-status/model/use-operations-status';
 import { useDeliveryRetry } from '@frontend/features/retry-delivery/model/use-delivery-retry';
+import AdminPageHeader from '@frontend/widgets/admin-shell/ui/AdminPageHeader.vue';
 import OperationsOverview from '@frontend/widgets/operations-overview/ui/OperationsOverview.vue';
 import OperatorInbox from '@frontend/widgets/operator-inbox/ui/OperatorInbox.vue';
 import AsyncMessage from '@frontend/shared/ui/AsyncMessage.vue';
@@ -38,9 +39,6 @@ watch(session.authenticated, (authenticated) => {
 
 onBeforeUnmount(stopAutomaticRefresh);
 
-const authenticate = (password: string) => session.authenticate(password);
-const logout = () => session.endSession();
-
 async function refreshAll(): Promise<void> {
   await Promise.all([
     operations.refresh(),
@@ -59,23 +57,13 @@ function stopAutomaticRefresh(): void {
 
 <template>
   <main class="ops-shell">
-    <header class="ops-header">
-      <div>
-        <p class="brand">MESSENGER HANDOFF</p>
-        <h1>Состояние сервиса</h1>
-        <p class="page-intro">
-          Проверяйте подключения, обращения и доставку ответов.
-        </p>
-      </div>
-      <button
-        v-if="session.authenticated.value"
-        class="secondary-button"
-        type="button"
-        @click="logout"
-      >
-        Выйти
-      </button>
-    </header>
+    <AdminPageHeader
+      :authenticated="session.authenticated.value"
+      current="status"
+      intro="Проверьте, работают ли каналы и доходят ли ответы."
+      title="Состояние"
+      @logout="session.endSession"
+    />
 
     <section v-if="session.booting.value" class="card loading-card">
       <p>Проверяем доступ…</p>
@@ -90,9 +78,9 @@ function stopAutomaticRefresh(): void {
         >
           {{ session.error.value }}
         </p>
-        <OperationsLoginForm
+        <AdminLoginForm
           :pending="session.pending.value"
-          @submit="authenticate"
+          @submit="session.authenticate"
         />
       </div>
     </section>

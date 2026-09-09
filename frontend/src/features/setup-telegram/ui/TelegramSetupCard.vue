@@ -17,7 +17,7 @@ const emit = defineEmits<{ connected: [] }>();
 const botToken = ref('');
 const chats = ref<TelegramOperatorChat[]>([]);
 const selectedChatId = ref<number | null>(null);
-const message = ref('Выполните три шага и найдите группу.');
+const message = ref('Выполните шаги ниже и найдите операторскую группу.');
 const pending = ref<'connect' | 'discover' | null>(null);
 
 function chatLabel(chat: TelegramOperatorChat): string {
@@ -66,7 +66,7 @@ async function connect(): Promise<void> {
 <template>
   <section class="setup-card card" aria-labelledby="telegram-setup-title">
     <p class="step">Шаг 1</p>
-    <h2 id="telegram-setup-title">Подключение Telegram</h2>
+    <h2 id="telegram-setup-title">Telegram</h2>
     <p v-if="status.connected" class="setup-status setup-status--success">
       Telegram подключён. После перезапуска сервис восстановит подключение
       автоматически.
@@ -74,7 +74,8 @@ async function connect(): Promise<void> {
     <template v-else>
       <TelegramSetupInstructions />
       <p v-if="status.locked" class="setup-status">
-        Подключение управляется настройками сервера.
+        Telegram настроен на сервере. Если он не работает, откройте раздел
+        «Состояние».
       </p>
       <template v-else>
         <label for="telegram-token">Токен от @BotFather</label>

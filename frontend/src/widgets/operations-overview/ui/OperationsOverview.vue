@@ -37,6 +37,17 @@ const overallLabel = computed(() => {
     ? 'Доставка ответов остановлена'
     : 'Приём обращений приостановлен';
 });
+const overallDescription = computed(() => {
+  if (props.status.state === 'healthy') {
+    return 'Всё работает: каналы принимают сообщения, ответы отправляются.';
+  }
+  if (props.status.state === 'attention') {
+    return 'Один из разделов требует внимания. Подробности отмечены ниже.';
+  }
+  return props.status.outbound.mode === 'paused'
+    ? 'Ответы сохраняются в очереди и будут отправлены после возобновления.'
+    : 'Новые обращения временно не создаются, активные диалоги продолжаются.';
+});
 </script>
 
 <template>
@@ -53,6 +64,7 @@ const overallLabel = computed(() => {
         <h2 id="overview-title">
           {{ overallLabel }}
         </h2>
+        <p class="summary-description">{{ overallDescription }}</p>
       </div>
       <dl class="summary-facts">
         <div>

@@ -4,12 +4,13 @@ import { ref, watch } from 'vue';
 import { readSetupStatus } from '@frontend/entities/setup/api/setup-api';
 import type { SetupStatus } from '@frontend/entities/setup/model/types';
 import { useAdminSession } from '@frontend/features/admin-auth/model/use-admin-session';
-import LoginForm from '@frontend/features/management-auth/ui/LoginForm.vue';
+import AdminLoginForm from '@frontend/features/admin-auth/ui/AdminLoginForm.vue';
 import TelegramSetupCard from '@frontend/features/setup-telegram/ui/TelegramSetupCard.vue';
 import VkSetupCard from '@frontend/features/setup-vk/ui/VkSetupCard.vue';
 import { HttpError } from '@frontend/shared/api/http-client';
 import { errorMessage } from '@frontend/shared/lib/error-message';
 import AsyncMessage from '@frontend/shared/ui/AsyncMessage.vue';
+import AdminPageHeader from '@frontend/widgets/admin-shell/ui/AdminPageHeader.vue';
 
 const session = useAdminSession();
 const status = ref<SetupStatus>();
@@ -54,21 +55,13 @@ function markVkConnected(): void {
 
 <template>
   <main class="setup-shell">
-    <header class="setup-header">
-      <div>
-        <p class="eyebrow">Messenger Handoff</p>
-        <h1>Настройка сервиса</h1>
-        <p class="page-intro">Подключите Telegram и VK.</p>
-      </div>
-      <button
-        v-if="session.authenticated.value"
-        class="secondary-button"
-        type="button"
-        @click="session.endSession"
-      >
-        Выйти
-      </button>
-    </header>
+    <AdminPageHeader
+      :authenticated="session.authenticated.value"
+      current="channels"
+      intro="Сначала подключите Telegram для операторов, затем VK для сообщений клиентов."
+      title="Каналы"
+      @logout="session.endSession"
+    />
 
     <p v-if="session.booting.value" class="state-card" role="status">
       Проверяем доступ…
@@ -77,7 +70,7 @@ function markVkConnected(): void {
       <section v-if="!session.authenticated.value" class="auth-panel">
         <div class="auth-stack">
           <AsyncMessage kind="error" :text="session.error.value" />
-          <LoginForm
+          <AdminLoginForm
             :pending="session.pending.value"
             @submit="session.authenticate"
           />

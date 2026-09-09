@@ -34,7 +34,7 @@ async function connect(): Promise<void> {
 <template>
   <section class="setup-card card" aria-labelledby="vk-setup-title">
     <p class="step">Шаг 2</p>
-    <h2 id="vk-setup-title">Подключение VK</h2>
+    <h2 id="vk-setup-title">VK</h2>
     <p v-if="status.connected" class="setup-status setup-status--success">
       VK подключён. После перезапуска сервис восстановит подключение
       автоматически.
@@ -45,7 +45,8 @@ async function connect(): Promise<void> {
         Сначала подключите Telegram для операторов.
       </p>
       <p v-else-if="status.locked" class="setup-status">
-        Подключение управляется настройками сервера.
+        VK настроен на сервере. Если он не работает, откройте раздел
+        «Состояние».
       </p>
       <form v-else class="setup-form" @submit.prevent="connect">
         <label for="vk-community">Адрес сообщества VK</label>

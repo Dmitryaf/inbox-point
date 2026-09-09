@@ -17,10 +17,10 @@ function submit(): void {
 <template>
   <form class="auth-card card" @submit.prevent="submit">
     <h2>Вход</h2>
-    <p>Введите пароль, который выдал владелец сервиса.</p>
-    <label for="password">Пароль</label>
+    <p>Введите пароль администратора.</p>
+    <label for="admin-password">Пароль</label>
     <input
-      id="password"
+      id="admin-password"
       v-model="password"
       autocomplete="current-password"
       required
