@@ -2,11 +2,9 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
 import type { RuntimeConfig } from '@/config/runtime-config.js';
-import type { SupportRepository } from '@/core/contracts/support-repository.js';
-import type { SqliteBackupService } from '@/infrastructure/persistence/sqlite-backup-service.js';
 import type { TelegramSetupController } from '@/infrastructure/telegram/telegram-setup-controller.js';
 import type { VkSetupController } from '@/infrastructure/vk/vk-setup-controller.js';
-import { createPublicDeliveryStatus } from './delivery-status.js';
+import type { AdminRouteAccess } from './admin-route-access.js';
 import { loadFrontendAssets, type FrontendAssets } from './frontend-assets.js';
 
 export function createApp(config: RuntimeConfig): FastifyInstance {
@@ -26,9 +24,6 @@ const tokenSchema = z.object({ botToken: z.string().min(20).max(200) });
 const connectSchema = tokenSchema.extend({
   operatorChatId: z.number().int().safe().negative(),
 });
-const deliveryRetrySchema = z.object({
-  deliveryId: z.string().min(1).max(100),
-});
 const vkConnectSchema = z.object({
   accessToken: z.string().min(20).max(500),
   community: z.string().trim().min(1).max(300),
@@ -37,13 +32,9 @@ const vkConnectSchema = z.object({
 export function registerSetupRoutes(
   app: FastifyInstance,
   setup: TelegramSetupController,
-  deliveries?: Pick<
-    SupportRepository,
-    'findFailedDeliveries' | 'getDeliverySummary' | 'retryFailedDelivery'
-  >,
-  backups?: Pick<SqliteBackupService, 'createBackup'>,
-  vkSetup?: VkSetupController,
-  options: { assets?: FrontendAssets; enabled: boolean } = { enabled: true },
+  vkSetup: VkSetupController | undefined,
+  routeAccess: AdminRouteAccess,
+  options: { assets?: FrontendAssets } = {},
 ): void {
   let assets = options.assets;
 
@@ -52,155 +43,112 @@ export function registerSetupRoutes(
     return assets;
   }
 
-  app.addHook('onRequest', async (request, reply) => {
-    if (
-      isSetupUrl(request.url) &&
-      (!options.enabled || !isLoopback(request.ip))
-    ) {
-      await reply.code(404).send({ message: 'Not found' });
-    }
-  });
-  app.addHook('onSend', async (request, reply, payload) => {
-    if (isSetupUrl(request.url)) {
-      void reply.header('cache-control', 'no-store');
-      void reply.header('x-content-type-options', 'nosniff');
-      void reply.header('x-frame-options', 'DENY');
-    }
-    return payload;
-  });
-  app.get('/setup', async (_request, reply) => {
-    void reply.header(
-      'content-security-policy',
-      [
-        `default-src 'none'`,
-        `script-src 'self'`,
-        `style-src 'self'`,
-        `connect-src 'self'`,
-        `frame-ancestors 'none'`,
-      ].join('; '),
-    );
-    return reply.type('text/html; charset=utf-8').send(getAssets().html);
-  });
-  app.get('/setup/app.js', async (_request, reply) =>
-    reply
-      .type('application/javascript; charset=utf-8')
-      .send(getAssets().script),
-  );
-  app.get('/setup/style.css', async (_request, reply) =>
-    reply.type('text/css; charset=utf-8').send(getAssets().styles),
-  );
-  app.get('/api/setup/status', () => ({
-    ...setup.status(),
-    vk: vkSetup?.status() ?? {
-      connected: false,
-      locked: true,
-      source: 'none',
+  app.get(
+    '/setup',
+    { preHandler: routeAccess.requireAvailable },
+    async (_request, reply) => {
+      void reply.header(
+        'content-security-policy',
+        [
+          `default-src 'none'`,
+          `script-src 'self'`,
+          `style-src 'self'`,
+          `connect-src 'self'`,
+          `frame-ancestors 'none'`,
+          `form-action 'self'`,
+        ].join('; '),
+      );
+      return reply.type('text/html; charset=utf-8').send(getAssets().html);
     },
-  }));
-  app.get('/api/setup/deliveries', () =>
-    createPublicDeliveryStatus(deliveries),
   );
-  app.post('/api/setup/deliveries/retry', async (request, reply) => {
-    if (!deliveries) {
-      return reply
-        .code(503)
-        .send({ message: 'Управление доставкой пока недоступно.' });
-    }
-    const parsed = deliveryRetrySchema.safeParse(request.body);
-    if (!parsed.success) {
-      return reply.code(400).send({ message: 'Не удалось выбрать ответ.' });
-    }
-    const queued = deliveries.retryFailedDelivery(
-      parsed.data.deliveryId,
-      new Date(),
-    );
-    if (!queued) {
-      return reply.code(409).send({
-        message: 'Ответ уже отправляется или больше не требует повтора.',
-      });
-    }
-    return { queued: true };
-  });
-  app.post('/api/setup/backups', async (_request, reply) => {
-    if (!backups) {
-      return reply
-        .code(503)
-        .send({ message: 'Резервное копирование пока недоступно.' });
-    }
-    try {
-      const created = await backups.createBackup();
-      return {
-        createdAt: created.createdAt.toISOString(),
-        fileName: created.fileName,
-      };
-    } catch (error: unknown) {
-      app.log.error({ err: error }, 'SQLite backup failed');
-      return reply.code(500).send({
-        message: 'Не удалось создать резервную копию. Попробуйте ещё раз.',
-      });
-    }
-  });
-  app.post('/api/setup/telegram/discover', async (request, reply) => {
-    const parsed = tokenSchema.safeParse(request.body);
-    if (!parsed.success) {
-      return reply
-        .code(400)
-        .send({ message: 'Введите корректный токен бота.' });
-    }
-    try {
-      return { chats: await setup.discover(parsed.data.botToken) };
-    } catch (error: unknown) {
-      return reply.code(400).send({ message: setupErrorMessage(error) });
-    }
-  });
-  app.post('/api/setup/telegram/connect', async (request, reply) => {
-    const parsed = connectSchema.safeParse(request.body);
-    if (!parsed.success) {
-      return reply.code(400).send({ message: 'Проверьте токен и группу.' });
-    }
-    try {
-      await setup.connect(parsed.data.botToken, parsed.data.operatorChatId);
-      return { connected: true };
-    } catch (error: unknown) {
-      return reply.code(400).send({ message: setupErrorMessage(error) });
-    }
-  });
-  app.post('/api/setup/vk/connect', async (request, reply) => {
-    if (!vkSetup) {
-      return reply
-        .code(503)
-        .send({ message: 'Подключение VK пока недоступно.' });
-    }
-    const parsed = vkConnectSchema.safeParse(request.body);
-    if (!parsed.success) {
-      return reply
-        .code(400)
-        .send({ message: 'Проверьте ссылку и ключ доступа.' });
-    }
-    try {
-      await vkSetup.connect(parsed.data.accessToken, parsed.data.community);
-      return { connected: true };
-    } catch (error: unknown) {
-      return reply.code(400).send({ message: vkSetupErrorMessage(error) });
-    }
-  });
-}
-
-function isSetupUrl(url: string): boolean {
-  const path = url.split('?', 1)[0] ?? url;
-  return (
-    path === '/setup' ||
-    path.startsWith('/setup/') ||
-    path.startsWith('/api/setup/')
+  app.get(
+    '/setup/app.js',
+    { preHandler: routeAccess.requireAvailable },
+    async (_request, reply) =>
+      reply
+        .type('application/javascript; charset=utf-8')
+        .send(getAssets().script),
   );
-}
-
-function isLoopback(address: string): boolean {
-  return (
-    address === '127.0.0.1' ||
-    address === '::1' ||
-    address === '::ffff:127.0.0.1'
+  app.get(
+    '/setup/style.css',
+    { preHandler: routeAccess.requireAvailable },
+    async (_request, reply) =>
+      reply.type('text/css; charset=utf-8').send(getAssets().styles),
   );
+  app.get(
+    '/api/setup/status',
+    { preHandler: routeAccess.requireAuthorization },
+    () => ({
+      ...setup.status(),
+      vk: vkSetup?.status() ?? {
+        connected: false,
+        locked: true,
+        source: 'none',
+      },
+    }),
+  );
+  app.post('/api/setup/telegram/discover', {
+    preHandler: [
+      routeAccess.requireAuthorization,
+      routeAccess.requireSameOrigin,
+    ],
+    handler: async (request, reply) => {
+      const parsed = tokenSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply
+          .code(400)
+          .send({ message: 'Введите корректный токен бота.' });
+      }
+      try {
+        return { chats: await setup.discover(parsed.data.botToken) };
+      } catch (error: unknown) {
+        return reply.code(400).send({ message: setupErrorMessage(error) });
+      }
+    },
+  });
+  app.post('/api/setup/telegram/connect', {
+    preHandler: [
+      routeAccess.requireAuthorization,
+      routeAccess.requireSameOrigin,
+    ],
+    handler: async (request, reply) => {
+      const parsed = connectSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply.code(400).send({ message: 'Проверьте токен и группу.' });
+      }
+      try {
+        await setup.connect(parsed.data.botToken, parsed.data.operatorChatId);
+        return { connected: true };
+      } catch (error: unknown) {
+        return reply.code(400).send({ message: setupErrorMessage(error) });
+      }
+    },
+  });
+  app.post('/api/setup/vk/connect', {
+    preHandler: [
+      routeAccess.requireAuthorization,
+      routeAccess.requireSameOrigin,
+    ],
+    handler: async (request, reply) => {
+      if (!vkSetup) {
+        return reply
+          .code(503)
+          .send({ message: 'Подключение VK пока недоступно.' });
+      }
+      const parsed = vkConnectSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply
+          .code(400)
+          .send({ message: 'Проверьте ссылку и ключ доступа.' });
+      }
+      try {
+        await vkSetup.connect(parsed.data.accessToken, parsed.data.community);
+        return { connected: true };
+      } catch (error: unknown) {
+        return reply.code(400).send({ message: vkSetupErrorMessage(error) });
+      }
+    },
+  });
 }
 
 function setupErrorMessage(error: unknown): string {
@@ -244,4 +192,12 @@ function vkSetupErrorMessage(error: unknown): string {
     return 'Включите Long Poll API в настройках сообщества VK.';
   }
   return 'Не удалось подключить VK. Проверьте ссылку, ключ и права сообщества.';
+}
+
+function isLoopback(address: string): boolean {
+  return (
+    address === '127.0.0.1' ||
+    address === '::1' ||
+    address === '::ffff:127.0.0.1'
+  );
 }

@@ -24,8 +24,7 @@
   padding: 1rem;
 }
 
-.setup-channel-grid,
-.setup-service-grid {
+.setup-channel-grid {
   align-items: start;
   display: grid;
   gap: 1rem;
@@ -78,8 +77,7 @@
   display: grid;
 }
 
-.setup-status,
-.setup-note {
+.setup-status {
   color: var(--color-text-muted);
   margin: 0.85rem 0 0;
 }
@@ -98,10 +96,6 @@
 
 .setup-lead {
   color: var(--color-text-muted);
-}
-
-.setup-note {
-  font-size: 0.84rem;
 }
 
 .setup-options {
@@ -130,38 +124,12 @@
   width: auto;
 }
 
-.delivery-failures {
-  display: grid;
-  gap: 0.7rem;
-  list-style: none;
-  margin: 1rem 0 0;
-  padding: 0;
-}
-
-.delivery-failures li {
-  align-items: center;
-  background: var(--color-danger-soft);
-  border: 1px solid #e3bab6;
-  border-radius: 0.8rem;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  justify-content: space-between;
-  padding: 0.8rem;
-}
-
-.delivery-failures p,
-.delivery-failures small {
-  margin: 0.2rem 0 0;
-}
-
 @media (min-width: 760px) {
   .setup-shell {
     padding: 1.5rem 2.5rem 5rem;
   }
 
-  .setup-channel-grid,
-  .setup-service-grid {
+  .setup-channel-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

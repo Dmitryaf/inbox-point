@@ -20,7 +20,6 @@ import { OperatorInboxService } from '@/modules/operator-inbox/application/opera
 import { ServiceControlService } from '@/modules/service-control/application/service-control-service.js';
 import { FileServiceControlStore } from '@/modules/service-control/infrastructure/file-store/file-service-control-store.js';
 import { createDefaultServiceControlState } from '@/modules/service-control/model/service-control-state.js';
-import { SqliteBackupService } from '@/infrastructure/persistence/sqlite-backup-service.js';
 import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-support-repository.js';
 import { FileTelegramSettingsStore } from '@/infrastructure/persistence/telegram-settings-store.js';
 import { FileVkSettingsStore } from '@/infrastructure/persistence/vk-settings-store.js';
@@ -49,9 +48,6 @@ async function start(): Promise<void> {
       warn: (details, message) => app.log.warn(details, message),
     },
   );
-  const backupService = new SqliteBackupService(config.databasePath, {
-    retentionDays: config.closedRequestRetentionDays,
-  });
   const contentSettingsStore = new FileContentSettingsStore(
     resolve(dirname(config.databasePath), 'content-settings.json'),
   );
@@ -158,9 +154,6 @@ async function start(): Promise<void> {
       informationCatalog,
       contentSettingsStore,
     );
-    registerSetupRoutes(app, setup, repository, backupService, vkSetup, {
-      enabled: config.nodeEnv !== 'production',
-    });
     const adminAccess = new PasswordSessionAccess(config.adminPassword);
     const adminRouteAccess = createAdminRouteAccess(app, adminAccess, {
       allowLocalBypass: config.nodeEnv !== 'production',
@@ -172,6 +165,7 @@ async function start(): Promise<void> {
       adminRouteAccess,
       config.nodeEnv === 'production',
     );
+    registerSetupRoutes(app, setup, vkSetup, adminRouteAccess);
     registerManagementRoutes(app, contentSetup, adminRouteAccess);
     const operationsMonitoring = new OperationsMonitoringService({
       channelActivity: (channel) => channelActivity.snapshot(channel),
@@ -215,7 +209,7 @@ async function start(): Promise<void> {
         runtime: vkRuntime,
       }),
     ]);
-    if (config.nodeEnv !== 'production') {
+    if (config.adminPassword || config.nodeEnv !== 'production') {
       app.log.info(
         `Open http://${config.host}:${config.port}/setup to configure the service`,
       );

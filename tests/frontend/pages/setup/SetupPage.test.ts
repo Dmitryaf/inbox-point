@@ -3,30 +3,20 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 
+import type { SetupStatus } from '@frontend/entities/setup/model/types';
 import SetupPage from '@frontend/pages/setup/ui/SetupPage.vue';
 import { requestUrl, response } from '@test/frontend/support/fake-response';
 
+const disconnectedStatus: SetupStatus = {
+  connected: false,
+  locked: false,
+  source: 'none',
+  vk: { connected: false, locked: false, source: 'none' },
+};
+
 describe('SetupPage', () => {
-  it('shows all local setup workflows in the shared Vue application', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn((input: RequestInfo | URL) => {
-        const url = requestUrl(input);
-        if (url.endsWith('/status')) {
-          return Promise.resolve(
-            response({
-              connected: false,
-              locked: false,
-              source: 'none',
-              vk: { connected: false, locked: false, source: 'none' },
-            }),
-          );
-        }
-        return Promise.resolve(
-          response({ failures: [], summary: { failed: 0, pending: 0 } }),
-        );
-      }),
-    );
+  it('shows only channel setup workflows to an authenticated admin', async () => {
+    vi.stubGlobal('fetch', createAuthenticatedFetch(disconnectedStatus));
 
     const wrapper = mount(SetupPage);
     await flushPromises();
@@ -37,8 +27,8 @@ describe('SetupPage', () => {
     expect(wrapper.text()).toContain(
       'Ключ даёт доступ к сообщениям сообщества',
     );
-    expect(wrapper.text()).toContain('Доставка ответов');
-    expect(wrapper.text()).toContain('Резервная копия');
+    expect(wrapper.text()).not.toContain('Доставка ответов');
+    expect(wrapper.text()).not.toContain('Резервная копия');
     expect(wrapper.find('#telegram-token').exists()).toBe(true);
     expect(wrapper.find('#vk-token').exists()).toBe(false);
 
@@ -48,24 +38,18 @@ describe('SetupPage', () => {
   it('discovers Telegram groups without exposing the token in the page', async () => {
     const fetchMock = vi.fn((input: RequestInfo | URL) => {
       const url = requestUrl(input);
-      if (url.endsWith('/status')) {
-        return Promise.resolve(
-          response({
-            connected: false,
-            locked: false,
-            source: 'none',
-            vk: { connected: false, locked: false, source: 'none' },
-          }),
-        );
+      if (url.endsWith('/admin/session')) {
+        return Promise.resolve(response({ authenticated: true }));
+      }
+      if (url.endsWith('/setup/status')) {
+        return Promise.resolve(response(disconnectedStatus));
       }
       if (url.endsWith('/telegram/discover')) {
         return Promise.resolve(
           response({ chats: [{ id: -1001, isForum: true, title: 'Тест' }] }),
         );
       }
-      return Promise.resolve(
-        response({ failures: [], summary: { failed: 0, pending: 0 } }),
-      );
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
     });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -74,7 +58,7 @@ describe('SetupPage', () => {
     await wrapper
       .get('#telegram-token')
       .setValue('123456789:synthetic-telegram-token');
-    await wrapper.get('button').trigger('click');
+    await wrapper.get('.setup-card button').trigger('click');
     await flushPromises();
 
     expect(wrapper.text()).toContain('Тест');
@@ -83,45 +67,39 @@ describe('SetupPage', () => {
     wrapper.unmount();
   });
 
-  it('does not offer an automatic retry for an uncertain delivery', async () => {
+  it('requires the shared admin login before loading channel status', async () => {
+    const requestedUrls: string[] = [];
     vi.stubGlobal(
       'fetch',
       vi.fn((input: RequestInfo | URL) => {
         const url = requestUrl(input);
-        if (url.endsWith('/status')) {
-          return Promise.resolve(
-            response({
-              connected: true,
-              locked: true,
-              source: 'environment',
-              vk: { connected: false, locked: false, source: 'none' },
-            }),
-          );
+        requestedUrls.push(url);
+        if (url.endsWith('/admin/session')) {
+          return Promise.resolve(response({ authenticated: false }));
         }
-        return Promise.resolve(
-          response({
-            failures: [
-              {
-                attempts: 1,
-                channel: 'Telegram',
-                createdAt: '2026-09-05T10:00:00.000Z',
-                id: 'delivery-1',
-                reason: 'Проверьте диалог клиента вручную.',
-                retryAllowed: false,
-              },
-            ],
-            summary: { failed: 1, pending: 0, uncertain: 1 },
-          }),
-        );
+        if (url.endsWith('/admin/login')) {
+          return Promise.resolve(response({ authenticated: true }));
+        }
+        if (url.endsWith('/setup/status')) {
+          return Promise.resolve(response(disconnectedStatus));
+        }
+        return Promise.reject(new Error(`Unexpected request: ${url}`));
       }),
     );
 
     const wrapper = mount(SetupPage);
     await flushPromises();
 
-    expect(wrapper.text()).toContain('Требуют ручной проверки: 1');
-    expect(wrapper.text()).toContain('Проверить вручную');
-    expect(wrapper.text()).not.toContain('Повторить');
+    expect(wrapper.text()).toContain('Введите пароль');
+    expect(wrapper.text()).not.toContain('Подключение Telegram');
+    expect(requestedUrls).not.toContain('/api/setup/status');
+
+    await wrapper.get('#password').setValue('synthetic-admin-password');
+    await wrapper.get('.auth-card').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Подключение Telegram');
+    expect(requestedUrls).toContain('/api/setup/status');
 
     wrapper.unmount();
   });
@@ -129,21 +107,11 @@ describe('SetupPage', () => {
   it('uses a single column when only one channel needs setup', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn((input: RequestInfo | URL) => {
-        const url = requestUrl(input);
-        if (url.endsWith('/status')) {
-          return Promise.resolve(
-            response({
-              connected: true,
-              locked: true,
-              source: 'local',
-              vk: { connected: false, locked: false, source: 'none' },
-            }),
-          );
-        }
-        return Promise.resolve(
-          response({ failures: [], summary: { failed: 0, pending: 0 } }),
-        );
+      createAuthenticatedFetch({
+        connected: true,
+        locked: true,
+        source: 'local',
+        vk: { connected: false, locked: false, source: 'none' },
       }),
     );
 
@@ -157,3 +125,16 @@ describe('SetupPage', () => {
     wrapper.unmount();
   });
 });
+
+function createAuthenticatedFetch(status: SetupStatus) {
+  return vi.fn((input: RequestInfo | URL) => {
+    const url = requestUrl(input);
+    if (url.endsWith('/admin/session')) {
+      return Promise.resolve(response({ authenticated: true }));
+    }
+    if (url.endsWith('/setup/status')) {
+      return Promise.resolve(response(status));
+    }
+    return Promise.reject(new Error(`Unexpected request: ${url}`));
+  });
+}

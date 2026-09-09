@@ -29,7 +29,9 @@ describe('FileTelegramSettingsStore', () => {
     await expect(store.load()).resolves.toBeUndefined();
     await store.save(settings);
 
-    await expect(store.load()).resolves.toEqual(settings);
+    await expect(new FileTelegramSettingsStore(path).load()).resolves.toEqual(
+      settings,
+    );
     expect(JSON.parse(await readFile(path, 'utf8'))).toEqual(settings);
   });
 });
