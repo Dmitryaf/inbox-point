@@ -1,8 +1,12 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { RuntimeConfig } from '@/config/runtime-config.js';
+import { createAdminRouteAccess } from '@/infrastructure/http/admin-route-access.js';
+import { registerAdminSessionRoutes } from '@/infrastructure/http/admin-session-routes.js';
 import { createApp, registerSetupRoutes } from '@/infrastructure/http/app.js';
+import { PasswordSessionAccess } from '@/infrastructure/security/password-session-access.js';
 import { TelegramSetupController } from '@/infrastructure/telegram/telegram-setup-controller.js';
+import { VkSetupController } from '@/infrastructure/vk/vk-setup-controller.js';
 import { OperationsMonitoringService } from '@/modules/operations-monitoring/application/operations-monitoring-service.js';
 import { registerReadinessRoute } from '@/modules/operations-monitoring/presentation/http/readiness-route.js';
 
@@ -17,7 +21,7 @@ const config: RuntimeConfig = {
 
 const apps = new Set<ReturnType<typeof createApp>>();
 const setupAssets = {
-  html: '<div id="app">Подключение Telegram Доставка ответов Резервная копия</div>',
+  html: '<div id="app">Подключение Telegram Подключение VK</div>',
   script: 'globalThis.setup = true;',
   styles: ':root { color: black; }',
 };
@@ -124,213 +128,225 @@ describe('HTTP service status', () => {
     expect(response.body).not.toContain('telegram');
   });
 
-  it('serves setup only on the loopback interface', async () => {
+  it('allows setup without a password only from loopback in development', async () => {
     const app = createApp(config);
     apps.add(app);
-    registerSetupRoutes(
-      app,
-      new TelegramSetupController(
-        {
-          running: false,
-          start: () => Promise.resolve(),
-          stop: () => Promise.resolve(),
-        },
-        {
-          load: () => Promise.resolve(undefined),
-          save: () => Promise.resolve(),
-        },
-        'none',
-      ),
-      undefined,
-      undefined,
-      undefined,
-      { assets: setupAssets, enabled: true },
-    );
+    registerTestSetup(app, { allowLocalBypass: true });
 
-    const local = await app.inject({ method: 'GET', url: '/setup' });
+    const localPage = await app.inject({ method: 'GET', url: '/setup' });
+    const localStatus = await app.inject({
+      method: 'GET',
+      url: '/api/setup/status',
+    });
     const styles = await app.inject({
       method: 'GET',
       url: '/setup/style.css',
     });
-    const remote = await app.inject({
+    const remotePage = await app.inject({
       method: 'GET',
       remoteAddress: '192.0.2.10',
       url: '/setup',
     });
 
-    expect(local.statusCode).toBe(200);
-    expect(local.body).toContain('Подключение Telegram');
-    expect(local.body).toContain('Доставка ответов');
-    expect(local.body).toContain('Резервная копия');
-    expect(local.headers['content-security-policy']).toContain('style-src');
-    expect(local.headers['cache-control']).toBe('no-store');
+    expect(localPage.statusCode).toBe(200);
+    expect(localPage.body).toContain('Подключение Telegram');
+    expect(localPage.body).not.toContain('Резервная копия');
+    expect(localPage.headers['content-security-policy']).toContain('style-src');
+    expect(localPage.headers['cache-control']).toBe('no-store');
+    expect(localStatus.statusCode).toBe(200);
     expect(styles.statusCode).toBe(200);
     expect(styles.headers['content-type']).toContain('text/css');
-    expect(remote.statusCode).toBe(404);
+    expect(remotePage.statusCode).toBe(404);
   });
 
-  it('keeps technical setup disabled in production even on loopback', async () => {
+  it('hides production setup when the admin password is not configured', async () => {
     const app = createApp({ ...config, nodeEnv: 'production' });
     apps.add(app);
-    registerSetupRoutes(
-      app,
-      new TelegramSetupController(
-        {
-          running: false,
-          start: () => Promise.resolve(),
-          stop: () => Promise.resolve(),
-        },
-        {
-          load: () => Promise.resolve(undefined),
-          save: () => Promise.resolve(),
-        },
-        'none',
-      ),
-      undefined,
-      undefined,
-      undefined,
-      { enabled: false },
-    );
+    registerTestSetup(app, { allowLocalBypass: false });
 
-    const page = await app.inject({ method: 'GET', url: '/setup' });
-    const pageWithQuery = await app.inject({
+    const page = await app.inject({
       method: 'GET',
-      url: '/setup?test=1',
+      remoteAddress: '192.0.2.10',
+      url: '/setup',
     });
-    const api = await app.inject({
+    const session = await app.inject({
       method: 'GET',
+      remoteAddress: '192.0.2.10',
+      url: '/api/admin/session',
+    });
+    const status = await app.inject({
+      method: 'GET',
+      remoteAddress: '192.0.2.10',
       url: '/api/setup/status',
     });
 
     expect(page.statusCode).toBe(404);
-    expect(pageWithQuery.statusCode).toBe(404);
-    expect(api.statusCode).toBe(404);
+    expect(session.statusCode).toBe(404);
+    expect(status.statusCode).toBe(404);
   });
 
-  it('returns sanitized delivery failures only on loopback', async () => {
-    const app = createApp(config);
-    const retriedDeliveries: string[] = [];
+  it('protects production setup with the shared admin session', async () => {
+    const app = createApp({ ...config, nodeEnv: 'production' });
     apps.add(app);
-    registerSetupRoutes(
-      app,
-      new TelegramSetupController(
-        {
-          running: true,
-          start: () => Promise.resolve(),
-          stop: () => Promise.resolve(),
-        },
-        {
-          load: () => Promise.resolve(undefined),
-          save: () => Promise.resolve(),
-        },
-        'local',
-      ),
-      {
-        findFailedDeliveries: () => [
-          {
-            attempts: 5,
-            channel: 'telegram',
-            createdAt: new Date('2026-09-01T12:00:00.000Z'),
-            id: 'delivery-1',
-            lastError:
-              'Telegram API sendMessage failed: Forbidden: bot was blocked; private answer',
-            operatorMessageId: 'operator-message-1',
-            operatorTopicId: 'topic-1',
-            outcomeUnknown: false,
-            requestId: 'request-1',
-          },
-        ],
-        getDeliverySummary: () => ({ failed: 1, pending: 2 }),
-        retryFailedDelivery: (deliveryId) => {
-          if (
-            deliveryId !== 'delivery-1' ||
-            retriedDeliveries.includes(deliveryId)
-          ) {
-            return false;
-          }
-          retriedDeliveries.push(deliveryId);
-          return true;
-        },
-      },
-      {
-        createBackup: () =>
-          Promise.resolve({
-            createdAt: new Date('2026-09-01T12:30:00.000Z'),
-            fileName: 'messenger-handoff-backup.sqlite',
-            path: 'C:\\private\\messenger-handoff-backup.sqlite',
-          }),
-      },
-    );
+    registerTestSetup(app, {
+      allowLocalBypass: false,
+      password: 'correct-admin-password',
+      telegramSource: 'environment',
+      telegramRunning: true,
+      vkSource: 'environment',
+    });
 
-    const local = await app.inject({
-      method: 'GET',
-      url: '/api/setup/deliveries',
-    });
-    const remote = await app.inject({
+    const page = await app.inject({
       method: 'GET',
       remoteAddress: '192.0.2.10',
-      url: '/api/setup/deliveries',
+      url: '/setup',
     });
-    const retry = await app.inject({
-      method: 'POST',
-      payload: { deliveryId: 'delivery-1' },
-      url: '/api/setup/deliveries/retry',
-    });
-    const repeatedRetry = await app.inject({
-      method: 'POST',
-      payload: { deliveryId: 'delivery-1' },
-      url: '/api/setup/deliveries/retry',
-    });
-    const remoteRetry = await app.inject({
-      method: 'POST',
-      payload: { deliveryId: 'delivery-1' },
+    const unauthorizedStatus = await app.inject({
+      method: 'GET',
       remoteAddress: '192.0.2.10',
-      url: '/api/setup/deliveries/retry',
+      url: '/api/setup/status',
     });
-    const backup = await app.inject({
+    const unauthorizedMutation = await app.inject({
+      method: 'POST',
+      payload: { botToken: 'synthetic-token-that-must-not-appear' },
+      remoteAddress: '192.0.2.10',
+      url: '/api/setup/telegram/discover',
+    });
+    const login = await app.inject({
+      headers: { host: 'example.test', origin: 'http://example.test' },
+      method: 'POST',
+      payload: { password: 'correct-admin-password' },
+      remoteAddress: '192.0.2.10',
+      url: '/api/admin/login',
+    });
+    const cookie = readSessionCookie(login.headers['set-cookie']);
+    const status = await app.inject({
+      headers: { cookie },
+      method: 'GET',
+      remoteAddress: '192.0.2.10',
+      url: '/api/setup/status',
+    });
+    const crossOriginMutation = await app.inject({
+      headers: {
+        cookie,
+        host: 'example.test',
+        origin: 'http://attacker.test',
+      },
+      method: 'POST',
+      payload: { botToken: 'synthetic-token-that-must-not-appear' },
+      remoteAddress: '192.0.2.10',
+      url: '/api/setup/telegram/discover',
+    });
+    const invalidMutation = await app.inject({
+      headers: {
+        cookie,
+        host: 'example.test',
+        origin: 'http://example.test',
+      },
       method: 'POST',
       payload: {},
-      url: '/api/setup/backups',
+      remoteAddress: '192.0.2.10',
+      url: '/api/setup/vk/connect',
     });
-    const remoteBackup = await app.inject({
+    const removedDeliveries = await app.inject({
+      headers: { cookie },
+      method: 'GET',
+      remoteAddress: '192.0.2.10',
+      url: '/api/setup/deliveries',
+    });
+    const removedBackup = await app.inject({
+      headers: {
+        cookie,
+        host: 'example.test',
+        origin: 'http://example.test',
+      },
       method: 'POST',
       payload: {},
       remoteAddress: '192.0.2.10',
       url: '/api/setup/backups',
     });
 
-    expect(local.statusCode).toBe(200);
-    expect(local.json()).toEqual({
-      failures: [
-        {
-          attempts: 5,
-          channel: 'Telegram',
-          createdAt: '2026-09-01T12:00:00.000Z',
-          id: 'delivery-1',
-          reason:
-            'Бот не может отправить ответ. Возможно, пользователь заблокировал бота.',
-          retryAllowed: true,
-        },
-      ],
-      summary: { failed: 1, pending: 2 },
+    expect(page.statusCode).toBe(200);
+    expect(unauthorizedStatus.statusCode).toBe(401);
+    expect(unauthorizedMutation.statusCode).toBe(401);
+    expect(login.statusCode).toBe(200);
+    expect(status.statusCode).toBe(200);
+    expect(status.json()).toEqual({
+      connected: true,
+      locked: true,
+      source: 'environment',
+      vk: { connected: false, locked: true, source: 'environment' },
     });
-    expect(local.body).not.toContain('private answer');
-    expect(local.body).not.toContain('Forbidden');
-    expect(retry.statusCode).toBe(200);
-    expect(retry.json()).toEqual({ queued: true });
-    expect(retriedDeliveries).toEqual(['delivery-1']);
-    expect(repeatedRetry.statusCode).toBe(409);
-    expect(backup.statusCode).toBe(200);
-    expect(backup.json()).toEqual({
-      createdAt: '2026-09-01T12:30:00.000Z',
-      fileName: 'messenger-handoff-backup.sqlite',
-    });
-    expect(backup.body).not.toContain('C:\\private');
-    expect(remote.statusCode).toBe(404);
-    expect(remoteRetry.statusCode).toBe(404);
-    expect(remoteBackup.statusCode).toBe(404);
+    expect(status.body).not.toContain('correct-admin-password');
+    expect(status.body).not.toContain('synthetic-token');
+    expect(crossOriginMutation.statusCode).toBe(403);
+    expect(invalidMutation.statusCode).toBe(400);
+    expect(removedDeliveries.statusCode).toBe(404);
+    expect(removedBackup.statusCode).toBe(404);
   });
 });
+
+function registerTestSetup(
+  app: ReturnType<typeof createApp>,
+  options: {
+    allowLocalBypass: boolean;
+    password?: string;
+    telegramRunning?: boolean;
+    telegramSource?: 'environment' | 'local' | 'none';
+    vkSource?: 'environment' | 'local' | 'none';
+  },
+): void {
+  const access = new PasswordSessionAccess(options.password, {
+    createToken: () => 'synthetic-admin-session',
+  });
+  const routeAccess = createAdminRouteAccess(app, access, {
+    allowLocalBypass: options.allowLocalBypass,
+    secureCookies: true,
+  });
+  const telegram = new TelegramSetupController(
+    {
+      running: options.telegramRunning ?? false,
+      start: () => Promise.resolve(),
+      stop: () => Promise.resolve(),
+    },
+    {
+      load: () => Promise.resolve(undefined),
+      save: () => Promise.resolve(),
+    },
+    options.telegramSource ?? 'none',
+  );
+  const vk = new VkSetupController(
+    {
+      running: false,
+      start: () => Promise.resolve(),
+      stop: () => Promise.resolve(),
+    },
+    {
+      load: () => Promise.resolve(undefined),
+      save: () => Promise.resolve(),
+    },
+    options.vkSource ?? 'none',
+  );
+  registerAdminSessionRoutes(app, access, routeAccess, true);
+  registerSetupRoutes(app, telegram, vk, routeAccess, { assets: setupAssets });
+}
+
+function readSessionCookie(setCookie: unknown): string {
+  const header =
+    typeof setCookie === 'string'
+      ? setCookie
+      : Array.isArray(setCookie) && typeof setCookie[0] === 'string'
+        ? setCookie[0]
+        : undefined;
+  if (!header) {
+    throw new Error('Expected a session cookie');
+  }
+  const [cookie] = header.split(';', 1);
+  if (!cookie) {
+    throw new Error('Expected a session cookie value');
+  }
+  return cookie;
+}
 
 function createMonitoringService(
   deliverySummary: () => { failed: number; pending: number },

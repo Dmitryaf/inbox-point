@@ -93,9 +93,12 @@ function isAdminUrl(url: string): boolean {
     path.startsWith('/manage/') ||
     path === '/ops' ||
     path.startsWith('/ops/') ||
+    path === '/setup' ||
+    path.startsWith('/setup/') ||
     path.startsWith('/api/admin/') ||
     path.startsWith('/api/manage/') ||
-    path.startsWith('/api/ops/')
+    path.startsWith('/api/ops/') ||
+    path.startsWith('/api/setup/')
   );
 }
 

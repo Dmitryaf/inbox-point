@@ -1,53 +1,33 @@
-import { classNames as $class } from '@frontend/shared/lib/component-view';
-import { eventCallback as $callback } from '@frontend/shared/lib/component-events';
-
-import BackupCard from '@frontend/features/create-backup/ui/BackupCard';
-import DeliveryStatusCard from '@frontend/features/manage-deliveries/ui/DeliveryStatusCard';
-import TelegramSetupCard from '@frontend/features/setup-telegram/ui/TelegramSetupCard';
-import VkSetupCard from '@frontend/features/setup-vk/ui/VkSetupCard';
+import { nativeHandler as $nativeHandler } from '@frontend/shared/lib/component-events';
+import { unref as $unref } from '@frontend/shared/lib/model-state';
+import { requiredValue as $required } from '@frontend/shared/lib/component-bindings';
 
 import type { createComponentModel } from './SetupPage.model';
 export function renderSetupPagePart1(
   $state: ReturnType<typeof createComponentModel>,
 ) {
-  const { markTelegramConnected, markVkConnected } = $state;
-  const status = $state.status.value;
-  const error = $state.error.value;
+  const session = $unref($state.session);
 
   return (
     <>
-      {error ? (
-        <p role="alert" className="message message--error">
-          {error}
-        </p>
-      ) : !status ? (
-        <p role="status" className="state-card">
-          {' Проверяем подключения… '}
-        </p>
-      ) : (
-        <div className="setup-workspace">
-          <div
-            className={$class('setup-channel-grid', {
-              'setup-channel-grid--mixed':
-                status.connected !== status.vk.connected,
-            })}
-          >
-            <TelegramSetupCard
-              status={status}
-              onConnected={$callback(markTelegramConnected)}
-            />
-            <VkSetupCard
-              status={status.vk}
-              telegramConnected={status.connected}
-              onConnected={$callback(markVkConnected)}
-            />
-          </div>
-          <div className="setup-service-grid">
-            <DeliveryStatusCard />
-            <BackupCard />
-          </div>
+      <header className="setup-header">
+        <div>
+          <p className="eyebrow">{'Messenger Handoff'}</p>
+          <h1>{'Настройка сервиса'}</h1>
+          <p className="page-intro">{'Подключите Telegram и VK.'}</p>
         </div>
-      )}
+        {session.authenticated.value ? (
+          <button
+            type="button"
+            onClick={$nativeHandler(
+              $required($unref($state.session)).endSession,
+            )}
+            className="secondary-button"
+          >
+            {' Выйти '}
+          </button>
+        ) : null}
+      </header>
     </>
   );
 }
