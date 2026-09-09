@@ -10,15 +10,15 @@ messaging channel without adopting a full helpdesk platform.
 1. A person writes to a Telegram bot or VK community.
 2. The service can return configured information such as a schedule, prices,
    address, FAQs, or custom sections.
-3. A question that needs a person becomes a separate topic in a private
+3. A question that needs an operator becomes a separate topic in a private
    Telegram group.
 4. An operator replies in that topic.
 5. The reply is delivered to the same Telegram or VK conversation.
 
 Telegram Topics keep each active request in a separate thread while allowing
-operators to stay in a familiar interface. If the Telegram operator interface
-is unavailable, the request can be moved to a protected emergency web inbox.
-Only one of these operator surfaces owns an active request at a time.
+operators to stay in a familiar interface. If Telegram is unavailable, the
+request can be moved to a protected emergency web inbox. An active conversation
+is handled either in Telegram or in the web inbox, never in both at once.
 
 ## Supported scope
 
@@ -26,7 +26,8 @@ Only one of these operator surfaces owns an active request at a time.
 - configurable information sections;
 - durable SQLite delivery queue with bounded retries;
 - explicit handling of uncertain delivery outcomes;
-- protected content management and operations pages;
+- protected channel setup, content management, and operations pages with one
+  administrator sign-in;
 - emergency web inbox;
 - snapshots for the database, content, and service-control state.
 
@@ -47,14 +48,16 @@ snapshots exclude Telegram and VK credentials, passwords, and `.env` files.
 Requires Node.js 24 and npm 11.
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
+The service uses safe local defaults. To override them, copy `.env.example` to
+an untracked `.env`; both `npm run dev` and `npm start` load it automatically.
+
 Local routes:
 
-- `http://127.0.0.1:3000/setup` — connect development channels and create a
-  backup;
+- `http://127.0.0.1:3000/setup` — connect Telegram and VK;
 - `http://127.0.0.1:3000/manage` — edit information shown in Telegram and VK;
 - `http://127.0.0.1:3000/ops` — inspect service state, delivery incidents, and
   emergency requests;
@@ -68,7 +71,8 @@ npm run check
 
 Docker deployment files and a separate availability monitor are included. The
 application port is intended to remain on loopback behind an HTTPS reverse
-proxy, and `/ops` requires an additional network restriction in production.
+proxy. Set `ADMIN_PASSWORD` before production; without it the administrative
+pages are unavailable in production mode.
 
 ## Status
 
