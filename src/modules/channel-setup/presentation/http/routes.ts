@@ -37,7 +37,12 @@ export function registerSetupRoutes(
     routeAccess,
     () => vkSetup?.status().source !== 'none',
   );
-  registerVkSetupRoute(app, vkSetup, routeAccess);
+  registerVkSetupRoute(
+    app,
+    vkSetup,
+    routeAccess,
+    () => telegramSetup.status().connected,
+  );
 }
 
 function registerSetupStatusRoute(

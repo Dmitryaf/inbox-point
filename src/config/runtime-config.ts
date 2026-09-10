@@ -128,7 +128,8 @@ export function loadRuntimeConfig(
 }
 
 function optionalEnvironmentValue<Output>(schema: z.ZodType<Output>) {
-  return z
-    .preprocess((value) => (value === '' ? undefined : value), schema)
-    .optional();
+  return z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    schema.optional(),
+  );
 }

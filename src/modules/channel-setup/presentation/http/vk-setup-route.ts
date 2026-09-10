@@ -19,6 +19,7 @@ export function registerVkSetupRoute(
   app: FastifyInstance,
   vkSetup: VkSetupRouteController | undefined,
   routeAccess: AdminRouteAccess,
+  isTelegramConnected: () => boolean,
 ): void {
   app.post('/api/setup/vk/connect', {
     preHandler: [
@@ -30,6 +31,11 @@ export function registerVkSetupRoute(
         return reply
           .code(503)
           .send({ message: 'Подключение VK пока недоступно.' });
+      }
+      if (!isTelegramConnected()) {
+        return reply
+          .code(409)
+          .send({ message: 'Сначала подключите Telegram.' });
       }
       const parsed = vkConnectSchema.safeParse(request.body);
       if (!parsed.success) {

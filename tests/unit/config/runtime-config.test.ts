@@ -14,6 +14,27 @@ describe('loadRuntimeConfig', () => {
     });
   });
 
+  it('treats empty optional values from .env.example as unset', () => {
+    expect(
+      loadRuntimeConfig({
+        ADMIN_PASSWORD: '',
+        TELEGRAM_BOT_TOKEN: '',
+        TELEGRAM_ENABLED: 'false',
+        TELEGRAM_OPERATOR_CHAT_ID: '',
+        VK_ACCESS_TOKEN: '',
+        VK_ENABLED: 'false',
+        VK_GROUP_ID: '',
+      }),
+    ).toEqual({
+      closedRequestRetentionDays: 7,
+      databasePath: './data/messenger-handoff.sqlite',
+      host: '127.0.0.1',
+      logLevel: 'info',
+      nodeEnv: 'development',
+      port: 3000,
+    });
+  });
+
   it('configures a bounded closed-request retention period', () => {
     expect(
       loadRuntimeConfig({ CLOSED_REQUEST_RETENTION_DAYS: '14' }),

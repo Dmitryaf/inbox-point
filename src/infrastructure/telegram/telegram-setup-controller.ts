@@ -68,8 +68,8 @@ export class TelegramSetupController {
     if (this.source === 'none') {
       return;
     }
-    await this.settingsStore.clear();
     await this.runtime.stop();
+    await this.settingsStore.clear();
     this.source = 'none';
   }
 
