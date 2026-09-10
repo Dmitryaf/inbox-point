@@ -34,8 +34,8 @@ class AdminSessionsTest {
         assertThat(admin.available(request, response)).isTrue();
         assertThat(admin.authorized(request, response)).isFalse();
         var login = admin.login("synthetic-editor-password", "address");
-        assertThat(admin.cookie(login.token(), true)).contains("__Host-mh-admin-session=", "HttpOnly", "SameSite=Strict", "Secure");
-        request.setCookies(new Cookie("__Host-mh-admin-session", login.token()));
+        assertThat(admin.cookie(login.token(), true)).contains("__Host-inbox-point-admin-session=", "HttpOnly", "SameSite=Strict", "Secure");
+        request.setCookies(new Cookie("__Host-inbox-point-admin-session", login.token()));
         assertThat(admin.authorized(request, response)).isTrue();
         admin.logout(request);
         assertThat(admin.authorized(request, response)).isFalse();

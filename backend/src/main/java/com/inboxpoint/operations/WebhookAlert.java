@@ -27,7 +27,7 @@ record WebhookAlert(HttpClient client, URI target, Duration timeout, String bear
     }
 
     HttpRequest request(String text) {
-        var payload = JsonMapper.shared().writeValueAsString(Map.of("message", text, "service", "messenger-handoff", "instanceId", instance));
+        var payload = JsonMapper.shared().writeValueAsString(Map.of("message", text, "service", "inbox-point", "instanceId", instance));
         var request = HttpRequest.newBuilder(target).timeout(timeout).header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(payload));
         if (bearer != null && !bearer.isEmpty()) {

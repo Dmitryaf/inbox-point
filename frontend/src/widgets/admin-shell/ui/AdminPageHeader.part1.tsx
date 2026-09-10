@@ -21,7 +21,7 @@ export function renderAdminPageHeaderPart1(
     <>
       <div className="admin-topbar" data-r-e15afcb7="">
         <RouterLink to="/manage" className="admin-brand" data-r-e15afcb7="">
-          {' Messenger Handoff '}
+          {' Inbox Point '}
         </RouterLink>
         <nav
           aria-label="Разделы администратора"

@@ -107,7 +107,7 @@ public final class ServiceCommands {
     private static int snapshot(String[] args, Map<String, String> environment) {
         try {
             if ("snapshot-create".equals(args[0])) {
-                var database = Path.of(environment.getOrDefault("DATABASE_PATH", "./data/messenger-handoff.sqlite"));
+                var database = Path.of(environment.getOrDefault("DATABASE_PATH", "./data/inbox-point.sqlite"));
                 var days = number(environment, "CLOSED_REQUEST_RETENTION_DAYS", 7, 1, 365);
                 System.out.println(new ServiceSnapshot(database, database.toAbsolutePath().normalize().getParent().resolve("snapshots"),
                         instance(environment), days).create(Instant.now()));

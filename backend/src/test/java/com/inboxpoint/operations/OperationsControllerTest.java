@@ -46,7 +46,7 @@ class OperationsControllerTest {
                     HttpResponse.BodyHandlers.ofString());
             assertThat(login.statusCode()).isEqualTo(200);
             var cookie = login.headers().firstValue("Set-Cookie").orElseThrow().split(";", 2)[0];
-            assertThat(cookie).startsWith("__Host-mh-admin-session=");
+            assertThat(cookie).startsWith("__Host-inbox-point-admin-session=");
             var current = client.send(HttpRequest.newBuilder(URI.create(base + "/status")).header("Cookie", cookie)
                     .GET().build(), HttpResponse.BodyHandlers.ofString());
             assertThat(current.statusCode()).isEqualTo(200);

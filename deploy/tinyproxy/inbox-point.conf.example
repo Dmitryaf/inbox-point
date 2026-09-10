@@ -13,7 +13,7 @@ ConnectPort 443
 
 # With FilterURLs disabled, filtering is performed against the destination
 # host. The allowlist file contains only api.telegram.org.
-Filter "/etc/tinyproxy/messenger-handoff-telegram-domains"
+Filter "/etc/tinyproxy/inbox-point-telegram-domains"
 FilterURLs Off
 FilterExtended Off
 FilterCaseSensitive Off

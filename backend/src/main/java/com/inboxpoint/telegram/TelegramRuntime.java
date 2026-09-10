@@ -62,7 +62,7 @@ public final class TelegramRuntime {
         if (retentionDays < 1 || retentionDays > 365) {
             throw new IllegalArgumentException("Invalid closed request retention days");
         }
-        database = Path.of(environment.getProperty("DATABASE_PATH", "./data/messenger-handoff.sqlite"));
+        database = Path.of(environment.getProperty("DATABASE_PATH", "./data/inbox-point.sqlite"));
         serviceControl = new LocalServiceControl(database);
         settingsFile = database.toAbsolutePath().resolveSibling("telegram-settings.json");
         origin = URI.create(environment.getProperty("inboxpoint.telegram.api-origin", "https://api.telegram.org"));

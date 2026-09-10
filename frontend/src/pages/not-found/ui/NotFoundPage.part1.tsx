@@ -5,7 +5,7 @@ export function renderNotFoundPagePart1() {
     <>
       <section data-r-e17337c8="">
         <p className="brand" data-r-e17337c8="">
-          {'Messenger Handoff'}
+          {'Inbox Point'}
         </p>
         <h1 data-r-e17337c8="">{'Страница не найдена'}</h1>
         <p data-r-e17337c8="">

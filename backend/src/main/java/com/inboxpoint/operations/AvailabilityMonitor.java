@@ -35,12 +35,12 @@ final class AvailabilityMonitor {
         } catch (IOException unavailable) {
             outage = true;
             if (!notified) {
-                notified = send("Messenger Handoff [" + instance + "] недоступен. Проверьте сервер и контейнер приложения.");
+                notified = send("Inbox Point [" + instance + "] недоступен. Проверьте сервер и контейнер приложения.");
             }
             return;
         }
         if (outage && notified) {
-            send("Messenger Handoff [" + instance + "] снова доступен.");
+            send("Inbox Point [" + instance + "] снова доступен.");
         }
         outage = false;
         notified = false;

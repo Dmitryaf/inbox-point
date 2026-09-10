@@ -18,7 +18,7 @@ const routes: readonly RouteRecordRaw[] = [
     path: '/login',
     name: 'login',
     component: AdminLoginPage,
-    meta: { documentTitle: 'Вход в управление — Messenger Handoff' },
+    meta: { documentTitle: 'Вход в управление — Inbox Point' },
   },
   {
     path: '/',
@@ -32,7 +32,7 @@ const routes: readonly RouteRecordRaw[] = [
         meta: {
           adminSection: 'answers',
           description: 'Настройте готовые ответы для Telegram и VK.',
-          documentTitle: 'Ответы клиентам — Messenger Handoff',
+          documentTitle: 'Ответы клиентам — Inbox Point',
           pageTitle: 'Ответы клиентам',
         },
       },
@@ -43,7 +43,7 @@ const routes: readonly RouteRecordRaw[] = [
         meta: {
           adminSection: 'channels',
           description: 'Подключения Telegram и VK.',
-          documentTitle: 'Каналы — Messenger Handoff',
+          documentTitle: 'Каналы — Inbox Point',
           pageTitle: 'Каналы',
         },
       },
@@ -54,7 +54,7 @@ const routes: readonly RouteRecordRaw[] = [
         meta: {
           adminSection: 'monitoring',
           description: 'Каналы, доставка и резервные обращения.',
-          documentTitle: 'Состояние сервиса — Messenger Handoff',
+          documentTitle: 'Состояние сервиса — Inbox Point',
           pageTitle: 'Состояние сервиса',
         },
       },
@@ -64,7 +64,7 @@ const routes: readonly RouteRecordRaw[] = [
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: NotFoundPage,
-    meta: { documentTitle: 'Страница не найдена — Messenger Handoff' },
+    meta: { documentTitle: 'Страница не найдена — Inbox Point' },
   },
 ];
 
@@ -76,7 +76,7 @@ export function createAdminRouter(
     document.title =
       typeof route.meta.documentTitle === 'string'
         ? route.meta.documentTitle
-        : 'Messenger Handoff';
+        : 'Inbox Point';
   });
   return router;
 }

@@ -55,8 +55,8 @@ public final class ServiceSnapshot {
     }
 
     public Path create(Instant created) throws IOException, SQLException {
-        var prefix = "default".equals(instance) ? "messenger-handoff-snapshot-"
-                : "messenger-handoff." + instance + ".snapshot-";
+        var prefix = "default".equals(instance) ? "inbox-point-snapshot-"
+                : "inbox-point." + instance + ".snapshot-";
         var name = prefix + created.toString().replace(':', '-') + "-" + UUID.randomUUID();
         Files.createDirectories(directory);
         var staging = directory.resolve(name + ".tmp");
@@ -155,7 +155,7 @@ public final class ServiceSnapshot {
         }
         var manifest = verify(snapshot);
         privateDirectory(target);
-        var database = target.resolve("messenger-handoff.sqlite");
+        var database = target.resolve("inbox-point.sqlite");
         try {
             for (var entry : manifest.files()) {
                 var path = entry.name().equals(DATABASE) ? database : target.resolve(entry.name());

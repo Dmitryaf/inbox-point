@@ -41,7 +41,7 @@ public final class ClientInformation {
     private final Path file;
     private volatile State state;
 
-    public ClientInformation(@Value("${DATABASE_PATH:./data/messenger-handoff.sqlite}") String database) {
+    public ClientInformation(@Value("${DATABASE_PATH:./data/inbox-point.sqlite}") String database) {
         file = Path.of(database).toAbsolutePath().resolveSibling("content-settings.json");
         try {
             var json = JsonMapper.shared().readTree(Files.readString(file));

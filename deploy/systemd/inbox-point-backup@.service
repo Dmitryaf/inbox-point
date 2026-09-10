@@ -1,9 +1,9 @@
 [Unit]
-Description=Create and verify Messenger Handoff external backup for %i
+Description=Create and verify Inbox Point external backup for %i
 Requires=docker.service
 After=docker.service
 
 [Service]
 Type=oneshot
-WorkingDirectory=/opt/messenger-handoff-%i
+WorkingDirectory=/opt/inbox-point-%i
 ExecStart=/usr/bin/docker compose -p %i --env-file .env --profile operations run --rm backup
