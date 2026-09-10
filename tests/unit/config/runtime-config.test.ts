@@ -6,7 +6,7 @@ describe('loadRuntimeConfig', () => {
   it('returns safe defaults for an empty environment', () => {
     expect(loadRuntimeConfig({})).toEqual({
       closedRequestRetentionDays: 7,
-      databasePath: './data/messenger-handoff.sqlite',
+      databasePath: './data/inbox-point.sqlite',
       host: '127.0.0.1',
       instanceId: 'default',
       logLevel: 'info',
@@ -28,7 +28,7 @@ describe('loadRuntimeConfig', () => {
       }),
     ).toEqual({
       closedRequestRetentionDays: 7,
-      databasePath: './data/messenger-handoff.sqlite',
+      databasePath: './data/inbox-point.sqlite',
       host: '127.0.0.1',
       instanceId: 'default',
       logLevel: 'info',

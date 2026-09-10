@@ -1,14 +1,14 @@
 [Unit]
-Description=Messenger Handoff independent availability monitor
+Description=Inbox Point independent availability monitor
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-User=messenger-monitor
-Group=messenger-monitor
-WorkingDirectory=/opt/messenger-handoff-monitor
-EnvironmentFile=/etc/messenger-handoff/monitor.env
+User=inbox-point-monitor
+Group=inbox-point-monitor
+WorkingDirectory=/opt/inbox-point-monitor
+EnvironmentFile=/etc/inbox-point/monitor.env
 ExecStart=/usr/bin/node dist/availability-monitor.js
 Restart=on-failure
 RestartSec=10

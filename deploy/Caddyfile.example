@@ -1,4 +1,4 @@
-messenger.example.com {
+inboxpoint.ru {
 	encode zstd gzip
 
 	# Requires Caddy 2.10+. Keep ordinary administration requests small.

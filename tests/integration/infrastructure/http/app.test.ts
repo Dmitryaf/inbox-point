@@ -81,7 +81,7 @@ describe('HTTP service status', () => {
       headers: {
         host: 'app:3000',
         'x-forwarded-for': '198.51.100.24',
-        'x-forwarded-host': 'messenger.example.com',
+        'x-forwarded-host': 'inboxpoint.ru',
         'x-forwarded-proto': 'https',
       },
       method: 'GET',
@@ -101,7 +101,7 @@ describe('HTTP service status', () => {
     });
 
     expect(throughConfiguredGateway.json()).toEqual({
-      host: 'messenger.example.com',
+      host: 'inboxpoint.ru',
       ip: '198.51.100.24',
       protocol: 'https',
     });

@@ -4,7 +4,7 @@ import {
 } from '@frontend/entities/content/model/content-draft';
 import type { ContentDraft } from '@frontend/entities/content/model/types';
 
-const recoveryKey = 'messenger-handoff:content-draft';
+const recoveryKey = 'inbox-point:content-draft';
 
 interface ContentDraftRecovery {
   draft: ContentDraft;

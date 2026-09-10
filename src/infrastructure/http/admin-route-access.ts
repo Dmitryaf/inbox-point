@@ -32,8 +32,8 @@ export function createAdminRouteAccess(
   options: AdminRouteAccessOptions,
 ): AdminRouteAccess {
   const cookieName = options.secureCookies
-    ? '__Host-mh-admin-session'
-    : 'mh-admin-session';
+    ? '__Host-inbox-point-admin-session'
+    : 'inbox-point-admin-session';
   const isBypassActive = (request: FastifyRequest): boolean =>
     !access.isConfigured() &&
     options.allowLocalBypass &&

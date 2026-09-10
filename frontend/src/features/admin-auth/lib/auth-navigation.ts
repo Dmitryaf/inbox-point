@@ -1,5 +1,5 @@
-const returnPathKey = 'messenger-handoff:return-path';
-const loginMessageKey = 'messenger-handoff:login-message';
+const returnPathKey = 'inbox-point:return-path';
+const loginMessageKey = 'inbox-point:login-message';
 const adminPaths = new Set(['/manage', '/ops', '/setup']);
 
 export function openAdminLogin(

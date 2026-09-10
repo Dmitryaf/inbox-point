@@ -1,6 +1,6 @@
 # Production deployment
 
-This guide deploys one Messenger Handoff instance for one organization. It is
+This guide deploys one Inbox Point instance for one organization. It is
 not a multi-tenant deployment: each additional organization gets a separate
 Compose project, data volume, `.env`, host port, backup directory, domain, and
 monitor.
@@ -46,12 +46,12 @@ On the foreign VPS, install Tinyproxy from the operating-system repository.
 Copy the templates and service:
 
 ```bash
-sudo install -m 0644 deploy/tinyproxy/messenger-handoff.conf.example /etc/tinyproxy/messenger-handoff.conf
-sudo install -m 0644 deploy/tinyproxy/telegram-domains.example /etc/tinyproxy/messenger-handoff-telegram-domains
-sudo install -m 0644 deploy/systemd/messenger-handoff-telegram-egress.service /etc/systemd/system/messenger-handoff-telegram-egress.service
+sudo install -m 0644 deploy/tinyproxy/inbox-point.conf.example /etc/tinyproxy/inbox-point.conf
+sudo install -m 0644 deploy/tinyproxy/telegram-domains.example /etc/tinyproxy/inbox-point-telegram-domains
+sudo install -m 0644 deploy/systemd/inbox-point-telegram-egress.service /etc/systemd/system/inbox-point-telegram-egress.service
 sudo systemctl daemon-reload
-sudo systemctl enable --now messenger-handoff-telegram-egress
-sudo systemctl status messenger-handoff-telegram-egress
+sudo systemctl enable --now inbox-point-telegram-egress
+sudo systemctl status inbox-point-telegram-egress
 ```
 
 The proxy listens only on `10.77.0.2:8888`, accepts only `10.77.0.1`, permits
@@ -67,7 +67,7 @@ curl --proxy http://10.77.0.2:8888 --head https://api.telegram.org
 curl --proxy http://10.77.0.2:8888 --head https://example.com   # must fail
 ```
 
-`systemctl is-active messenger-handoff-telegram-egress` is the local process
+`systemctl is-active inbox-point-telegram-egress` is the local process
 health check. The first `curl` also verifies WireGuard, CONNECT, DNS on the
 egress host, TLS reachability, and the destination allowlist.
 
@@ -106,7 +106,7 @@ TCP 443 only.
 
 ## 4. Configure the application instance
 
-On the RU server, check out a pinned release under `/opt/messenger-handoff`, copy
+On the RU server, check out a pinned release under `/opt/inbox-point`, copy
 `.env.example` to `.env`, restrict it to the deployment account, and set at
 least:
 
@@ -118,8 +118,8 @@ HOST_PORT=3101
 APP_NETWORK_SUBNET=172.30.1.0/24
 APP_NETWORK_GATEWAY=172.30.1.1
 TELEGRAM_PROXY_URL=http://10.77.0.2:8888
-BACKUP_HOST_PATH=/srv/backups/messenger-handoff/organization-a
-BACKUP_EXPORT_PATH=/srv/backups/messenger-handoff/organization-a
+BACKUP_HOST_PATH=/srv/backups/inbox-point/organization-a
+BACKUP_EXPORT_PATH=/srv/backups/inbox-point/organization-a
 ```
 
 Set channel credentials in `.env` or connect them later through the protected
@@ -139,7 +139,7 @@ Create the backup directory separately from application data, then start the
 instance with an explicit Compose project:
 
 ```bash
-sudo install -d -m 0700 -o <DEPLOY_USER> -g <DEPLOY_GROUP> /srv/backups/messenger-handoff/organization-a
+sudo install -d -m 0700 -o <DEPLOY_USER> -g <DEPLOY_GROUP> /srv/backups/inbox-point/organization-a
 docker compose -p organization-a --env-file .env config --quiet
 docker compose -p organization-a --env-file .env up -d --build
 docker compose -p organization-a ps
@@ -158,8 +158,8 @@ replace the domain and upstream port, and validate before reload:
 ```bash
 sudo caddy validate --config /etc/caddy/Caddyfile
 sudo systemctl reload caddy
-curl --fail https://messenger.example.com/health
-curl --fail https://messenger.example.com/ready
+curl --fail https://inboxpoint.ru/health
+curl --fail https://inboxpoint.ru/ready
 ```
 
 The template relies on Caddy 2.10 or newer for the 1 MB request-body limit. It
@@ -176,17 +176,17 @@ GET health checks above.
 ## 6. Configure monitoring
 
 Build the same pinned source on an independent host. Copy
-`.env.monitor.example` to `/etc/messenger-handoff/monitor.env`, set mode `0600`,
+`.env.monitor.example` to `/etc/inbox-point/monitor.env`, set mode `0600`,
 and use the same `INSTANCE_ID`. The alert webhook must remain usable when the
 application host or Telegram is unavailable.
 
 Install and enable the example service after adapting its user and paths:
 
 ```bash
-sudo install -m 0644 deploy/systemd/messenger-handoff-availability-monitor.service.example /etc/systemd/system/messenger-handoff-availability-monitor.service
+sudo install -m 0644 deploy/systemd/inbox-point-availability-monitor.service.example /etc/systemd/system/inbox-point-availability-monitor.service
 sudo systemctl daemon-reload
-sudo systemctl enable --now messenger-handoff-availability-monitor
-sudo journalctl -u messenger-handoff-availability-monitor -f
+sudo systemctl enable --now inbox-point-availability-monitor
+sudo journalctl -u inbox-point-availability-monitor -f
 ```
 
 Stop the application long enough to confirm one outage alert, restart it, and
@@ -199,17 +199,17 @@ Run and inspect the external backup before scheduling it:
 
 ```bash
 docker compose -p organization-a --env-file .env --profile operations run --rm backup
-find /srv/backups/messenger-handoff/organization-a -maxdepth 2 -type f -name manifest.json -print
+find /srv/backups/inbox-point/organization-a -maxdepth 2 -type f -name manifest.json -print
 ```
 
 For multiple isolated deployments on one host, place each checkout at
-`/opt/messenger-handoff-<instance>` and enable its template timer, for example:
+`/opt/inbox-point-<instance>` and enable its template timer, for example:
 
 ```bash
-sudo install -m 0644 deploy/systemd/messenger-handoff-backup@.service /etc/systemd/system/
-sudo install -m 0644 deploy/systemd/messenger-handoff-backup@.timer /etc/systemd/system/
+sudo install -m 0644 deploy/systemd/inbox-point-backup@.service /etc/systemd/system/
+sudo install -m 0644 deploy/systemd/inbox-point-backup@.timer /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable --now messenger-handoff-backup@organization-a.timer
+sudo systemctl enable --now inbox-point-backup@organization-a.timer
 ```
 
 Snapshot directories and manifests identify the instance. Rotation matches only

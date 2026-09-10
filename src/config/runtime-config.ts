@@ -35,7 +35,7 @@ const runtimeConfigSchema = z.object({
   LOG_LEVEL: z
     .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
     .default('info'),
-  DATABASE_PATH: z.string().min(1).default('./data/messenger-handoff.sqlite'),
+  DATABASE_PATH: z.string().min(1).default('./data/inbox-point.sqlite'),
   CLOSED_REQUEST_RETENTION_DAYS: z.coerce
     .number()
     .int()

@@ -1,11 +1,11 @@
 [Unit]
-Description=Run Messenger Handoff external backup daily for %i
+Description=Run Inbox Point external backup daily
 
 [Timer]
 OnCalendar=daily
 Persistent=true
 RandomizedDelaySec=30m
-Unit=messenger-handoff-backup@%i.service
+Unit=inbox-point-backup.service
 
 [Install]
 WantedBy=timers.target

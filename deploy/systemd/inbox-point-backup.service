@@ -1,0 +1,9 @@
+[Unit]
+Description=Create and verify Inbox Point external backup
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/inbox-point
+ExecStart=/usr/bin/docker compose -p inbox-point --env-file .env --profile operations run --rm backup

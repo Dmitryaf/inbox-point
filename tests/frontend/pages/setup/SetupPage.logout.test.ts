@@ -51,7 +51,7 @@ describe('SetupPage logout', () => {
     await flushPromises();
 
     expect(router.currentRoute.value.path).toBe('/login');
-    expect(document.title).toBe('Вход в управление — Messenger Handoff');
+    expect(document.title).toBe('Вход в управление — Inbox Point');
     expect(wrapper.get('h1').text()).toBe('Вход в управление');
     expect(wrapper.text()).not.toContain('Каналы');
     expect(wrapper.find('#admin-password').exists()).toBe(true);

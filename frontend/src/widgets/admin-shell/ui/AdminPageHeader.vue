@@ -23,9 +23,7 @@ const sections: readonly {
 <template>
   <header class="admin-header">
     <div class="admin-topbar">
-      <RouterLink class="admin-brand" to="/manage">
-        Messenger Handoff
-      </RouterLink>
+      <RouterLink class="admin-brand" to="/manage"> Inbox Point </RouterLink>
       <nav class="admin-navigation" aria-label="Разделы администратора">
         <RouterLink
           v-for="section in sections"

@@ -16,7 +16,7 @@ export class WebhookAvailabilityAlert implements AvailabilityAlert {
         body: JSON.stringify({
           instanceId: this.instanceId,
           message,
-          service: 'messenger-handoff',
+          service: 'inbox-point',
         }),
         headers: {
           ...(this.bearerToken

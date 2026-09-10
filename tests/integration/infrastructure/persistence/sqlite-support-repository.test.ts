@@ -17,7 +17,7 @@ afterEach(() => {
 
 describe('SqliteSupportRepository', () => {
   it('stores idempotent usage counters without message text', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-test-'));
+    const directory = mkdtempSync(join(tmpdir(), 'inbox-point-test-'));
     temporaryDirectories.push(directory);
     const databasePath = join(directory, 'handoff.sqlite');
     const repository = new SqliteSupportRepository(databasePath);
@@ -44,7 +44,7 @@ describe('SqliteSupportRepository', () => {
   });
 
   it('marks an interrupted delivery attempt as unknown after restart', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-test-'));
+    const directory = mkdtempSync(join(tmpdir(), 'inbox-point-test-'));
     temporaryDirectories.push(directory);
     const databasePath = join(directory, 'handoff.sqlite');
     const createdAt = new Date('2026-09-06T12:00:00.000Z');
@@ -96,7 +96,7 @@ describe('SqliteSupportRepository', () => {
   });
 
   it('marks an interrupted operator relay as unknown after restart', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-test-'));
+    const directory = mkdtempSync(join(tmpdir(), 'inbox-point-test-'));
     temporaryDirectories.push(directory);
     const databasePath = join(directory, 'handoff.sqlite');
     const createdAt = new Date('2026-09-06T12:00:00.000Z');
@@ -141,7 +141,7 @@ describe('SqliteSupportRepository', () => {
   });
 
   it('keeps the web owner when topic creation is interrupted', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-test-'));
+    const directory = mkdtempSync(join(tmpdir(), 'inbox-point-test-'));
     temporaryDirectories.push(directory);
     const databasePath = join(directory, 'handoff.sqlite');
     const createdAt = new Date('2026-09-06T12:00:00.000Z');
@@ -218,7 +218,7 @@ describe('SqliteSupportRepository', () => {
   });
 
   it('restores request and duplicate-event state after restart', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-test-'));
+    const directory = mkdtempSync(join(tmpdir(), 'inbox-point-test-'));
     temporaryDirectories.push(directory);
     const databasePath = join(directory, 'handoff.sqlite');
 
@@ -302,7 +302,7 @@ describe('SqliteSupportRepository', () => {
   });
 
   it('records an explicit resolution for deliveries with an unknown outcome', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-test-'));
+    const directory = mkdtempSync(join(tmpdir(), 'inbox-point-test-'));
     temporaryDirectories.push(directory);
     const databasePath = join(directory, 'handoff.sqlite');
     const repository = new SqliteSupportRepository(databasePath);
@@ -401,7 +401,7 @@ describe('SqliteSupportRepository', () => {
   });
 
   it('switches an active request to a new operator topic conditionally', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-test-'));
+    const directory = mkdtempSync(join(tmpdir(), 'inbox-point-test-'));
     temporaryDirectories.push(directory);
     const databasePath = join(directory, 'handoff.sqlite');
     const repository = new SqliteSupportRepository(databasePath);
@@ -444,7 +444,7 @@ describe('SqliteSupportRepository', () => {
   });
 
   it('rejects a database with an outdated schema', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-test-'));
+    const directory = mkdtempSync(join(tmpdir(), 'inbox-point-test-'));
     temporaryDirectories.push(directory);
     const databasePath = join(directory, 'handoff.sqlite');
     const current = new SqliteSupportRepository(databasePath);
@@ -460,7 +460,7 @@ describe('SqliteSupportRepository', () => {
   });
 
   it('migrates a version 3 database without losing requests', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-test-'));
+    const directory = mkdtempSync(join(tmpdir(), 'inbox-point-test-'));
     temporaryDirectories.push(directory);
     const databasePath = join(directory, 'handoff.sqlite');
     const current = new SqliteSupportRepository(databasePath);
@@ -590,7 +590,7 @@ describe('SqliteSupportRepository', () => {
   });
 
   it('releases an interrupted event claim when the process restarts', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-test-'));
+    const directory = mkdtempSync(join(tmpdir(), 'inbox-point-test-'));
     temporaryDirectories.push(directory);
     const databasePath = join(directory, 'handoff.sqlite');
 
@@ -628,7 +628,7 @@ describe('SqliteSupportRepository', () => {
   });
 
   it('restores queued inbound events after restart', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-test-'));
+    const directory = mkdtempSync(join(tmpdir(), 'inbox-point-test-'));
     temporaryDirectories.push(directory);
     const databasePath = join(directory, 'handoff.sqlite');
     const event = {

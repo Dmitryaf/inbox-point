@@ -19,7 +19,7 @@ afterEach(() => {
 
 describe('operator relay restart recovery', () => {
   it('does not repeat a Telegram side effect interrupted before persistence', async () => {
-    const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-test-'));
+    const directory = mkdtempSync(join(tmpdir(), 'inbox-point-test-'));
     temporaryDirectories.push(directory);
     const databasePath = join(directory, 'handoff.sqlite');
     const createdAt = new Date('2026-09-06T12:00:00.000Z');

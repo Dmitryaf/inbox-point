@@ -27,7 +27,7 @@ afterEach(() => {
 
 describe('SqliteBackupService', () => {
   it('creates an integrity-checked snapshot that can be reopened', async () => {
-    const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-backup-'));
+    const directory = mkdtempSync(join(tmpdir(), 'inbox-point-backup-'));
     temporaryDirectories.push(directory);
     const databasePath = join(directory, 'handoff.sqlite');
     const repository = new SqliteSupportRepository(databasePath);
@@ -66,7 +66,7 @@ describe('SqliteBackupService', () => {
     const result = await backups.createBackup();
 
     expect(result.fileName).toBe(
-      'messenger-handoff-2026-09-01T12-02-00.000Z-backup-1.sqlite',
+      'inbox-point-2026-09-01T12-02-00.000Z-backup-1.sqlite',
     );
     expect(() => verifySqliteBackup(result.path)).not.toThrow();
     const backupDatabase = new DatabaseSync(result.path, { readOnly: true });
@@ -95,7 +95,7 @@ describe('SqliteBackupService', () => {
   });
 
   it('deletes expired application backups but leaves unrelated files', async () => {
-    const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-backup-'));
+    const directory = mkdtempSync(join(tmpdir(), 'inbox-point-backup-'));
     temporaryDirectories.push(directory);
     const databasePath = join(directory, 'handoff.sqlite');
     const repository = new SqliteSupportRepository(databasePath);
@@ -128,7 +128,7 @@ describe('SqliteBackupService', () => {
   });
 
   it('rejects a valid SQLite file without the application schema', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-backup-'));
+    const directory = mkdtempSync(join(tmpdir(), 'inbox-point-backup-'));
     temporaryDirectories.push(directory);
     const unrelatedPath = join(directory, 'unrelated.sqlite');
     const unrelated = new DatabaseSync(unrelatedPath);
@@ -141,7 +141,7 @@ describe('SqliteBackupService', () => {
   });
 
   it('rejects an application database with an unsupported schema version', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'messenger-handoff-backup-'));
+    const directory = mkdtempSync(join(tmpdir(), 'inbox-point-backup-'));
     temporaryDirectories.push(directory);
     const databasePath = join(directory, 'unsupported.sqlite');
     const repository = new SqliteSupportRepository(databasePath);

@@ -219,7 +219,7 @@ describe('operations monitoring routes', () => {
     expect(crossOrigin.statusCode).toBe(403);
     expect(login.statusCode).toBe(200);
     expect(login.headers['set-cookie']).toContain(
-      '__Host-mh-admin-session=synthetic-admin-session',
+      '__Host-inbox-point-admin-session=synthetic-admin-session',
     );
     expect(status.statusCode).toBe(200);
     expect(usageMetrics.statusCode).toBe(200);

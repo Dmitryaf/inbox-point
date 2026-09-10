@@ -32,7 +32,7 @@ async function authenticate(password: string): Promise<void> {
 <template>
   <main class="login-page">
     <div class="login-stack">
-      <p class="login-brand">Messenger Handoff</p>
+      <p class="login-brand">Inbox Point</p>
       <AsyncMessage kind="error" :text="session.error.value || loginMessage" />
       <p v-if="session.booting.value" class="login-state" role="status">
         Проверяем доступ…

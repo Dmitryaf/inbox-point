@@ -18,7 +18,7 @@ afterEach(async () => {
 
 describe('FileServiceControlStore', () => {
   it('restores a paused channel after a service restart', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'messenger-handoff-'));
+    const directory = await mkdtemp(join(tmpdir(), 'inbox-point-'));
     temporaryDirectories.push(directory);
     const store = new FileServiceControlStore(
       join(directory, 'service-control.json'),
@@ -48,7 +48,7 @@ describe('FileServiceControlStore', () => {
   });
 
   it('rejects an incomplete local state', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'messenger-handoff-'));
+    const directory = await mkdtemp(join(tmpdir(), 'inbox-point-'));
     temporaryDirectories.push(directory);
     const path = join(directory, 'service-control.json');
     await writeFile(

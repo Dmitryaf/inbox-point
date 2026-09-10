@@ -258,6 +258,6 @@ async function start(): Promise<void> {
 }
 
 start().catch((error: unknown) => {
-  console.error('Failed to start Messenger Handoff', error);
+  console.error('Failed to start Inbox Point', error);
   process.exitCode = 1;
 });
