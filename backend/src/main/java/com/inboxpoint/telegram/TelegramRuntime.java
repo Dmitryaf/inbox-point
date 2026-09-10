@@ -350,8 +350,7 @@ public final class TelegramRuntime {
             var age = oldest == null ? null : Math.max(0, Duration.between(oldest, now).toSeconds());
             var cycle = handoff.lastCycle();
             boolean running = handoff.running();
-            boolean stalled = summary.pending() > 0 && (!running || cycle == null
-                    || Duration.between(cycle, now).compareTo(Duration.ofMinutes(5)) > 0);
+            boolean stalled = workerStalled(running, handoff.lastActivity(), now);
             var worker = new DeliveryProcess(cycle == null ? null : cycle.toString(), running,
                     stalled ? "stalled" : running ? "running" : "inactive");
             var state = serviceControl.deliveryPaused() ? "paused" : stalled ? "stalled" : age != null && age > 300 ? "backlog"
@@ -359,6 +358,10 @@ public final class TelegramRuntime {
             return new DeliveryState(summary.pending(), summary.failed(), summary.uncertain(), oldest == null ? null : oldest.toString(),
                     age, state, worker, store.incidents());
         }
+    }
+
+    static boolean workerStalled(boolean running, Instant lastActivity, Instant now) {
+        return !running || lastActivity != null && Duration.between(lastActivity, now).compareTo(Duration.ofMinutes(5)) > 0;
     }
 
     @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)

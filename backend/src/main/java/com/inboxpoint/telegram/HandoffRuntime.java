@@ -22,6 +22,7 @@ final class HandoffRuntime {
     private final AtomicReference<TelegramBotApi> telegram = new AtomicReference<>();
     private volatile Thread deliveries;
     private volatile Instant lastCycle;
+    private volatile Instant startedAt;
 
     HandoffRuntime(Path database, BooleanSupplier paused, Supplier<VkChannel> vk) {
         this.database = database;
@@ -49,6 +50,8 @@ final class HandoffRuntime {
 
     synchronized void start() {
         if (!running()) {
+            lastCycle = null;
+            startedAt = Instant.now();
             deliveries = Thread.ofVirtual().name("handoff-deliveries").start(this::deliver);
         }
     }
@@ -60,6 +63,10 @@ final class HandoffRuntime {
 
     Instant lastCycle() {
         return lastCycle;
+    }
+
+    Instant lastActivity() {
+        return lastCycle == null ? startedAt : lastCycle;
     }
 
     private void deliver() {

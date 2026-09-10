@@ -48,7 +48,7 @@ final class OperationsController {
             var operatorRelays = runtime.operatorRelayStatus();
             var inboundEvents = runtime.inboundStatus();
             boolean attention = !"healthy".equals(delivery.state()) && !"paused".equals(delivery.state())
-                    || telegram.needsAttention() || vk.needsAttention() || operatorRelays.uncertain() > 0 || inboundEvents.quarantined() > 0;
+                    || "stalled".equals(delivery.worker().state()) || telegram.needsAttention() || vk.needsAttention() || operatorRelays.uncertain() > 0 || inboundEvents.quarantined() > 0;
             var control = runtime.serviceControl().current();
             var intake = control.channels();
             boolean maintenance = "paused".equals(control.delivery().mode())
@@ -180,7 +180,7 @@ final class OperationsController {
     boolean isReady() throws IOException, SQLException {
         var now = Instant.now();
         var delivery = runtime.deliveryState(now);
-        return !"stalled".equals(delivery.state()) && !"backlog".equals(delivery.state())
+        return "running".equals(delivery.worker().state()) && !"stalled".equals(delivery.state()) && !"backlog".equals(delivery.state())
                 && runtime.operatorRelayStatus().uncertain() == 0 && runtime.inboundStatus().quarantined() == 0
                 && ChannelState.observe(runtime.status(), runtime.telegramPolling(), started, now).ready()
                 && ChannelState.observe(runtime.vkStatus(), runtime.vkPolling(), started, now).ready();

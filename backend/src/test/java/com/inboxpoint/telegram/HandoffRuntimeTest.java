@@ -63,6 +63,14 @@ class HandoffRuntimeTest {
     }
 
     @Test
+    void detectsAStoppedWorkerEvenWhenTheQueueIsEmpty() {
+        var now = java.time.Instant.parse("2026-09-15T12:00:00Z");
+        assertThat(TelegramRuntime.workerStalled(false, null, now)).isTrue();
+        assertThat(TelegramRuntime.workerStalled(true, now.minusSeconds(301), now)).isTrue();
+        assertThat(TelegramRuntime.workerStalled(true, now, now)).isFalse();
+    }
+
+    @Test
     void startsWithoutTelegramAndUnregistersOnlyTheCurrentInbox() throws Exception {
         var runtime = new HandoffRuntime(directory.resolve("service.sqlite"), () -> false, () -> null);
         var first = new TelegramTopicsInbox(null, 10);
