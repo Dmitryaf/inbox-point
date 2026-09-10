@@ -1,9 +1,8 @@
 import { ref } from 'vue';
 
-import { HttpError } from '@frontend/shared/api/http-client';
-import { errorMessage } from '@frontend/shared/lib/error-message';
 import { readOperationsStatus } from '@frontend/entities/operations/api/operations-api';
 import type { OperationsStatus } from '@frontend/entities/operations/model/types';
+import { requestErrorMessage } from '@frontend/shared/lib/request-error-message';
 
 export function useOperationsStatus(onUnauthorized: () => void) {
   const error = ref('');
@@ -16,11 +15,7 @@ export function useOperationsStatus(onUnauthorized: () => void) {
     try {
       status.value = await readOperationsStatus();
     } catch (cause: unknown) {
-      if (cause instanceof HttpError && cause.status === 401) {
-        onUnauthorized();
-        return;
-      }
-      error.value = errorMessage(cause);
+      error.value = requestErrorMessage(cause, onUnauthorized);
     } finally {
       loading.value = false;
     }

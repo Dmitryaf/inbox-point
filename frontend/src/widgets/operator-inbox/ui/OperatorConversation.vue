@@ -5,6 +5,7 @@ import type {
   OperatorInboxMessage,
   OperatorInboxRequest,
 } from '@frontend/entities/operations/model/types';
+import { formatShortDateTime } from '@frontend/shared/lib/format-date-time';
 
 const props = defineProps<{
   actionPending: boolean;
@@ -31,19 +32,12 @@ async function closeRequest(): Promise<void> {
   }
 }
 
-function formatDate(value: string): string {
-  return new Intl.DateTimeFormat('ru-RU', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-  }).format(new Date(value));
-}
-
 function deliveryLabel(message: OperatorInboxMessage): string | undefined {
   if (message.deliveryStatus === 'sent') {
     return 'Доставлен';
   }
   if (message.deliveryStatus === 'pending') {
-    return 'В очереди';
+    return 'Готовится к отправке';
   }
   if (message.deliveryStatus === 'failed') {
     return message.deliveryOutcomeUnknown
@@ -91,7 +85,7 @@ function deliveryLabel(message: OperatorInboxMessage): string | undefined {
             }}
           </strong>
           <time :datetime="message.createdAt">
-            {{ formatDate(message.createdAt) }}
+            {{ formatShortDateTime(message.createdAt) }}
           </time>
         </div>
         <p>{{ message.text }}</p>
@@ -122,9 +116,11 @@ function deliveryLabel(message: OperatorInboxMessage): string | undefined {
       <div class="operator-reply-actions">
         <span>{{ replyText.length }} / 4000</span>
         <button type="submit" :disabled="actionPending || !replyText.trim()">
-          {{ actionPending ? 'Добавляем в очередь…' : 'Отправить' }}
+          {{ actionPending ? 'Готовим к отправке…' : 'Отправить' }}
         </button>
       </div>
     </form>
   </article>
 </template>
+
+<style scoped src="../styles/operator-conversation.css"></style>

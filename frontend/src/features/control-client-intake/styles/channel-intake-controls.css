@@ -36,7 +36,7 @@ p {
 }
 
 .intake-status {
-  color: #256548;
+  color: var(--color-success);
   font-size: 0.8rem;
   font-weight: 700;
 }

@@ -23,10 +23,9 @@ const sections: readonly {
 <template>
   <header class="admin-header">
     <div class="admin-header-row">
-      <div>
+      <div class="admin-title-block">
         <p class="eyebrow">Messenger Handoff</p>
         <h1>{{ title }}</h1>
-        <p class="page-intro">{{ intro }}</p>
       </div>
       <button
         v-if="authenticated"
@@ -37,6 +36,7 @@ const sections: readonly {
         Выйти
       </button>
     </div>
+    <p class="page-intro">{{ intro }}</p>
 
     <nav
       v-if="authenticated"
@@ -54,3 +54,5 @@ const sections: readonly {
     </nav>
   </header>
 </template>
+
+<style scoped src="../styles/admin-page-header.css"></style>

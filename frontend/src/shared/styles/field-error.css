@@ -1,0 +1,6 @@
+.field-error {
+  color: var(--color-danger);
+  font-size: 0.86rem;
+  font-weight: 650;
+  margin: 0.35rem 0 0;
+}

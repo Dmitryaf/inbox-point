@@ -3,9 +3,11 @@ import { computed } from 'vue';
 
 import { formatUptime } from '@frontend/entities/operations/lib/status-format';
 import type { OperationsStatus } from '@frontend/entities/operations/model/types';
+import { formatShortDateTimeWithSeconds } from '@frontend/shared/lib/format-date-time';
 import ChannelStatusCard from './ChannelStatusCard.vue';
 import DeliveryStatusCard from './DeliveryStatusCard.vue';
 import InboundEventStatusCard from './InboundEventStatusCard.vue';
+import OperationsAttentionPanel from './OperationsAttentionPanel.vue';
 
 const props = defineProps<{
   deliveryControlPending: 'pause' | 'resume' | undefined;
@@ -30,20 +32,17 @@ defineEmits<{
 }>();
 
 const observedAt = computed(() =>
-  new Intl.DateTimeFormat('ru-RU', {
-    dateStyle: 'short',
-    timeStyle: 'medium',
-  }).format(new Date(props.status.observedAt)),
+  formatShortDateTimeWithSeconds(props.status.observedAt),
 );
 const overallLabel = computed(() => {
   if (props.status.state === 'healthy') {
-    return 'Сервис работает';
+    return 'Всё работает';
   }
   if (props.status.state === 'attention') {
     return 'Нужно проверить';
   }
   return props.status.outbound.mode === 'paused'
-    ? 'Доставка ответов остановлена'
+    ? 'Отправка ответов остановлена'
     : 'Приём обращений приостановлен';
 });
 const overallDescription = computed(() => {
@@ -51,16 +50,34 @@ const overallDescription = computed(() => {
     return 'Всё работает: каналы принимают сообщения, ответы отправляются.';
   }
   if (props.status.state === 'attention') {
-    return 'Один из разделов требует внимания. Подробности отмечены ниже.';
+    return 'Выше показано, что не работает и что нужно сделать.';
   }
   return props.status.outbound.mode === 'paused'
-    ? 'Ответы сохраняются в очереди и будут отправлены после возобновления.'
+    ? 'Ответы сохраняются и будут отправлены после возобновления.'
     : 'Новые обращения временно не создаются, активные диалоги продолжаются.';
 });
 </script>
 
 <template>
   <section class="overview" aria-labelledby="overview-title">
+    <OperationsAttentionPanel
+      :pending-delivery-id="pendingDeliveryId"
+      :pending-inbound-event-id="pendingInboundEventId"
+      :pending-operator-action-id="pendingOperatorActionId"
+      :status="status"
+      @resolve-delivery="
+        (id, resolution) => $emit('resolveDelivery', id, resolution)
+      "
+      @retry-delivery="$emit('retryDelivery', $event)"
+      @resolve-operator-action="
+        (id, resolution) => $emit('resolveOperatorAction', id, resolution)
+      "
+      @resolve-inbound-event="
+        (id, source, resolution) =>
+          $emit('resolveInboundEvent', id, source, resolution)
+      "
+    />
+
     <article
       class="summary-card card"
       :class="{
@@ -77,7 +94,7 @@ const overallDescription = computed(() => {
       </div>
       <dl class="summary-facts">
         <div>
-          <dt>Работает без перезапуска</dt>
+          <dt>Работает</dt>
           <dd>{{ formatUptime(status.uptimeSeconds) }}</dd>
         </div>
         <div>
@@ -102,24 +119,11 @@ const overallDescription = computed(() => {
         :deliveries="status.deliveries"
         :delivery-control-pending="deliveryControlPending"
         :outbound="status.outbound"
-        :operator-relays="status.operatorRelays"
-        :pending-delivery-id="pendingDeliveryId"
-        :pending-operator-action-id="pendingOperatorActionId"
         @change-delivery-mode="$emit('changeDeliveryMode', $event)"
-        @resolve="(id, resolution) => $emit('resolveDelivery', id, resolution)"
-        @retry="$emit('retryDelivery', $event)"
-        @resolve-operator-action="
-          (id, resolution) => $emit('resolveOperatorAction', id, resolution)
-        "
       />
-      <InboundEventStatusCard
-        :inbound-events="status.inboundEvents"
-        :pending-event-id="pendingInboundEventId"
-        @resolve="
-          (id, source, resolution) =>
-            $emit('resolveInboundEvent', id, source, resolution)
-        "
-      />
+      <InboundEventStatusCard :inbound-events="status.inboundEvents" />
     </div>
   </section>
 </template>
+
+<style scoped src="../styles/operations-overview.css"></style>

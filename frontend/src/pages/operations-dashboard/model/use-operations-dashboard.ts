@@ -1,4 +1,4 @@
-import { onBeforeUnmount, ref, watch } from 'vue';
+import { onBeforeUnmount, watch, type ShallowRef } from 'vue';
 
 import { useAdminSession } from '@frontend/features/admin-auth/model/use-admin-session';
 import { useOutboundDeliveryControl } from '@frontend/features/control-outbound-delivery/model/use-outbound-delivery-control';
@@ -9,11 +9,20 @@ import { useOperatorActionResolution } from '@frontend/features/resolve-operator
 
 const refreshIntervalMs = 30_000;
 
-export function useOperationsDashboard() {
+interface RefreshableComponent {
+  refresh(): Promise<void>;
+}
+
+interface OperationsDashboardRefreshTargets {
+  intakeControl: Readonly<ShallowRef<RefreshableComponent | null>>;
+  operatorInbox: Readonly<ShallowRef<RefreshableComponent | null>>;
+}
+
+export function useOperationsDashboard(
+  refreshTargets: OperationsDashboardRefreshTargets,
+) {
   const session = useAdminSession();
   const operations = useOperationsStatus(session.expireSession);
-  const intakeControl = ref<{ refresh: () => Promise<void> }>();
-  const operatorInbox = ref<{ refresh: () => Promise<void> }>();
   const deliveryRetry = useDeliveryRetry(refreshAll, session.expireSession);
   const inboundEventResolution = useInboundEventResolution(
     refreshAll,
@@ -43,8 +52,8 @@ export function useOperationsDashboard() {
   async function refreshAll(): Promise<void> {
     await Promise.all([
       operations.refresh(),
-      operatorInbox.value?.refresh() ?? Promise.resolve(),
-      intakeControl.value?.refresh() ?? Promise.resolve(),
+      refreshTargets.operatorInbox.value?.refresh() ?? Promise.resolve(),
+      refreshTargets.intakeControl.value?.refresh() ?? Promise.resolve(),
     ]);
   }
 
@@ -59,9 +68,7 @@ export function useOperationsDashboard() {
     deliveryControl,
     deliveryRetry,
     inboundEventResolution,
-    intakeControl,
     operations,
-    operatorInbox,
     operatorResolution,
     refreshAll,
     session,

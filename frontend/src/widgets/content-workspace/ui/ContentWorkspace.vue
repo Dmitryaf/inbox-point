@@ -8,8 +8,11 @@ import AsyncMessage from '@frontend/shared/ui/AsyncMessage.vue';
 import ChangeHistory from '@frontend/widgets/change-history/ui/ChangeHistory.vue';
 import ContentEditor from '@frontend/widgets/content-editor/ui/ContentEditor.vue';
 import ContentPreview from '@frontend/widgets/content-preview/ui/ContentPreview.vue';
-import type { EditorSection, WorkspaceView } from '../model/navigation';
-import { useContentWorkspace } from '../model/use-content-workspace';
+import type {
+  EditorSection,
+  WorkspaceView,
+} from '@frontend/widgets/content-workspace/model/navigation';
+import { useContentWorkspace } from '@frontend/widgets/content-workspace/model/use-content-workspace';
 import WorkspaceNavigation from './WorkspaceNavigation.vue';
 
 const props = defineProps<{ authenticated: boolean }>();
@@ -64,10 +67,10 @@ async function save(): Promise<void> {
 <template>
   <AsyncMessage kind="error" :text="workspace.error.value" />
   <AsyncMessage kind="success" :text="workspace.notice.value" />
-  <p v-if="workspace.loading.value" class="state-card" role="status">
+  <p v-if="workspace.loading.value" class="state-card card" role="status">
     Загружаем информацию…
   </p>
-  <section v-else-if="!workspace.loaded.value" class="state-card">
+  <section v-else-if="!workspace.loaded.value" class="state-card card">
     <p>Редактор не открыт. Повторите загрузку.</p>
     <button class="secondary-button" type="button" @click="workspace.load">
       Повторить
@@ -118,3 +121,5 @@ async function save(): Promise<void> {
     </aside>
   </div>
 </template>
+
+<style scoped src="../styles/content-workspace.css"></style>

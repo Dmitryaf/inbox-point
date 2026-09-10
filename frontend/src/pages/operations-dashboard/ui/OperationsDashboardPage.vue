@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import AdminLoginForm from '@frontend/features/admin-auth/ui/AdminLoginForm.vue';
+import { useTemplateRef, watch } from 'vue';
+
+import { openAdminLogin } from '@frontend/features/admin-auth/lib/auth-navigation';
 import ClientIntakeControl from '@frontend/features/control-client-intake/ui/ClientIntakeControl.vue';
 import { useOperationsDashboard } from '@frontend/pages/operations-dashboard/model/use-operations-dashboard';
 import AdminPageHeader from '@frontend/widgets/admin-shell/ui/AdminPageHeader.vue';
@@ -7,68 +9,68 @@ import OperationsOverview from '@frontend/widgets/operations-overview/ui/Operati
 import OperatorInbox from '@frontend/widgets/operator-inbox/ui/OperatorInbox.vue';
 import AsyncMessage from '@frontend/shared/ui/AsyncMessage.vue';
 
+const intakeControl = useTemplateRef<{ refresh: () => Promise<void> }>(
+  'intakeControl',
+);
+const operatorInbox = useTemplateRef<{ refresh: () => Promise<void> }>(
+  'operatorInbox',
+);
+
 const {
   deliveryControl,
   deliveryRetry,
   inboundEventResolution,
-  intakeControl,
   operations,
-  operatorInbox,
   operatorResolution,
   refreshAll,
   session,
-} = useOperationsDashboard();
+} = useOperationsDashboard({ intakeControl, operatorInbox });
+
+watch(
+  [session.booting, session.authenticated],
+  ([booting, authenticated]) => {
+    if (!booting && !authenticated) {
+      openAdminLogin('/ops');
+    }
+  },
+  { immediate: true },
+);
+
+async function logOut(): Promise<void> {
+  await session.endSession();
+}
 </script>
 
 <template>
   <main class="ops-shell">
     <AdminPageHeader
+      v-if="session.authenticated.value"
       :authenticated="session.authenticated.value"
       current="status"
       intro="Проверьте, работают ли каналы и доходят ли ответы."
       title="Состояние"
-      @logout="session.endSession"
+      @logout="logOut"
     />
 
-    <section v-if="session.booting.value" class="card loading-card">
+    <section
+      v-if="session.booting.value"
+      class="card loading-card"
+      role="status"
+    >
       <p>Проверяем доступ…</p>
     </section>
 
-    <section v-else-if="!session.authenticated.value" class="auth-panel">
-      <div class="auth-stack">
-        <p
-          v-if="session.error.value"
-          class="message message--error"
-          role="alert"
-        >
-          {{ session.error.value }}
-        </p>
-        <AdminLoginForm
-          :pending="session.pending.value"
-          @submit="session.authenticate"
-        />
-      </div>
-    </section>
-
-    <section v-else class="ops-workspace">
-      <p v-if="session.error.value" class="message message--error" role="alert">
+    <section v-else-if="session.authenticated.value" class="ops-workspace">
+      <p
+        v-if="session.error.value"
+        class="message message--error card"
+        role="alert"
+      >
         {{ session.error.value }}
       </p>
-      <div class="toolbar">
-        <p>Состояние обновляется автоматически каждые 30 секунд.</p>
-        <button
-          class="secondary-button"
-          :disabled="operations.loading.value"
-          type="button"
-          @click="refreshAll"
-        >
-          {{ operations.loading.value ? 'Обновляем…' : 'Обновить' }}
-        </button>
-      </div>
-
       <p
         v-if="operations.error.value"
-        class="message message--error"
+        class="message message--error card"
         role="alert"
       >
         {{ operations.error.value }}
@@ -93,9 +95,21 @@ const {
         @resolve-operator-action="operatorResolution.resolve"
         @resolve-inbound-event="inboundEventResolution.resolve"
       />
-      <section v-else class="card loading-card">
-        <p>Получаем состояние сервиса…</p>
+      <section v-else class="card loading-card" role="status">
+        <p>Проверяем работу каналов…</p>
       </section>
+
+      <div class="toolbar">
+        <p>Данные обновляются автоматически каждые 30 секунд.</p>
+        <button
+          class="secondary-button"
+          :disabled="operations.loading.value"
+          type="button"
+          @click="refreshAll"
+        >
+          {{ operations.loading.value ? 'Обновляем…' : 'Обновить' }}
+        </button>
+      </div>
 
       <ClientIntakeControl
         ref="intakeControl"
@@ -122,3 +136,5 @@ const {
     </section>
   </main>
 </template>
+
+<style scoped src="../styles/operations-dashboard-page.css"></style>

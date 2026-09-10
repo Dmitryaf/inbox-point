@@ -11,13 +11,11 @@ defineEmits<{ change: [mode: 'pause' | 'resume'] }>();
 <template>
   <section class="outbound-emergency-control">
     <div>
-      <strong>Аварийная остановка</strong>
+      <strong>Остановка отправки</strong>
       <p v-if="outbound.mode === 'paused'">
-        Доставка ответов остановлена. Новые ответы сохраняются в очереди.
+        Ответы не отправляются. Новые ответы сохраняются до возобновления.
       </p>
-      <p v-else>
-        Исходящая доставка включена; очередь обрабатывается автоматически.
-      </p>
+      <p v-else>Ответы отправляются автоматически.</p>
     </div>
     <button
       v-if="outbound.mode === 'active'"
@@ -38,3 +36,5 @@ defineEmits<{ change: [mode: 'pause' | 'resume'] }>();
     </button>
   </section>
 </template>
+
+<style scoped src="../styles/outbound-delivery-control.css"></style>

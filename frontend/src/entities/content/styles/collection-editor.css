@@ -1,0 +1,81 @@
+.section-heading {
+  align-items: flex-start;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.section-heading h2 {
+  margin-bottom: 0;
+}
+
+.counter {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  text-align: right;
+}
+
+.counter--error {
+  color: var(--color-danger);
+  font-weight: 700;
+}
+
+.empty {
+  background: var(--color-surface-muted);
+  border-radius: 0.75rem;
+  color: var(--color-text-muted);
+  padding: 0.8rem;
+}
+
+.item-card {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: 1rem;
+  margin: 1rem 0;
+  min-width: 0;
+  padding: 1rem;
+}
+
+.item-card legend {
+  font-weight: 800;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  padding: 0 0.5rem;
+}
+
+.item-card > label {
+  margin: 0.85rem 0 0.4rem;
+}
+
+.item-card > legend + label {
+  margin-top: 0.4rem;
+}
+
+.item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 0.9rem;
+}
+
+@media (min-width: 900px) {
+  .item-card {
+    padding: 1.1rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .item-card {
+    margin: 0.8rem 0;
+    padding: 0.75rem;
+  }
+
+  .section-heading {
+    gap: 0.65rem;
+  }
+
+  .section-heading h2 {
+    font-size: 1.25rem;
+  }
+}

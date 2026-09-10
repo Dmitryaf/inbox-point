@@ -70,15 +70,11 @@ describe('operator inbox routes', () => {
       secureCookies: true,
     });
     registerAdminSessionRoutes(app, access, routeAccess, true);
-    registerOperationsRoutes(
-      app,
-      createMonitoringService(),
-      routeAccess,
-      { assets: { html: '', script: '', styles: '' } },
-      undefined,
-      undefined,
-      new OperatorInboxService(repository, handoff),
-    );
+    registerOperationsRoutes(app, routeAccess, {
+      assets: { html: '', icon: '', script: '', styles: '' },
+      monitoring: createMonitoringService(),
+      operatorInbox: new OperatorInboxService(repository, handoff),
+    });
 
     const unauthorized = await app.inject({
       method: 'GET',

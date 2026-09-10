@@ -26,8 +26,7 @@ onMounted(() => void inbox.refresh());
         <p class="eyebrow">РЕЗЕРВНЫЙ РЕЖИМ</p>
         <h2 id="operator-inbox-title">Входящие обращения</h2>
         <p>
-          Здесь можно продолжить обращения, если основной Telegram-интерфейс
-          недоступен.
+          Здесь можно отвечать, если группа операторов в Telegram недоступна.
         </p>
       </div>
       <span class="status-pill status-pill--neutral">
@@ -55,3 +54,5 @@ onMounted(() => void inbox.refresh());
     </div>
   </section>
 </template>
+
+<style scoped src="../styles/operator-inbox.css"></style>

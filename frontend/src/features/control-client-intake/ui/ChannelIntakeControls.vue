@@ -71,4 +71,4 @@ function pauseExplanation(channel: ClientChannel): string {
   </div>
 </template>
 
-<style scoped src="./channel-intake-controls.css"></style>
+<style scoped src="../styles/channel-intake-controls.css"></style>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { DeliveryIncident } from '@frontend/entities/operations/model/types';
+import { formatShortDateTime } from '@frontend/shared/lib/format-date-time';
 
 defineProps<{
   incidents: readonly DeliveryIncident[];
@@ -9,13 +10,6 @@ defineEmits<{
   resolve: [deliveryId: string, resolution: 'not_received' | 'received'];
   retry: [deliveryId: string];
 }>();
-
-function formatCreatedAt(value: string): string {
-  return new Intl.DateTimeFormat('ru-RU', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-  }).format(new Date(value));
-}
 </script>
 
 <template>
@@ -24,16 +18,29 @@ function formatCreatedAt(value: string): string {
     class="delivery-incidents"
     aria-labelledby="delivery-incidents-title"
   >
-    <h4 id="delivery-incidents-title">Недоставленные ответы</h4>
+    <h3 id="delivery-incidents-title">Ответы клиентам</h3>
+    <p>Эти ответы не дошли или требуют ручной проверки.</p>
     <ol>
       <li v-for="incident in incidents" :key="incident.id">
         <div class="delivery-incident-heading">
-          <strong>{{ incident.channel }}</strong>
+          <strong>
+            {{
+              incident.retryAllowed
+                ? `Ответ в ${incident.channel} не доставлен`
+                : `Доставку в ${incident.channel} нужно проверить`
+            }}
+          </strong>
           <time :datetime="incident.createdAt">
-            {{ formatCreatedAt(incident.createdAt) }}
+            {{ formatShortDateTime(incident.createdAt) }}
           </time>
         </div>
-        <p>{{ incident.reason }}</p>
+        <p v-if="incident.retryAllowed">
+          Ответ не дошёл до клиента. Попробуйте отправить его ещё раз.
+        </p>
+        <p v-else>
+          Не удалось узнать, получил ли клиент ответ. Сначала проверьте
+          переписку, затем выберите подходящее действие.
+        </p>
         <details class="technical-details">
           <summary>Технические данные</summary>
           <dl class="delivery-incident-context">
@@ -49,19 +56,22 @@ function formatCreatedAt(value: string): string {
               <dt>ID сообщения</dt>
               <dd>{{ incident.operatorMessageId }}</dd>
             </div>
+            <div>
+              <dt>Причина</dt>
+              <dd>{{ incident.reason }}</dd>
+            </div>
           </dl>
         </details>
         <button
           v-if="incident.retryAllowed"
-          class="secondary-button"
           type="button"
           :disabled="Boolean(pendingDeliveryId)"
           @click="$emit('retry', incident.id)"
         >
           {{
             pendingDeliveryId === incident.id
-              ? 'Ставим в очередь…'
-              : 'Повторить доставку'
+              ? 'Начинаем отправку…'
+              : 'Повторить отправку'
           }}
         </button>
         <div v-else class="delivery-resolution-actions">
@@ -94,3 +104,5 @@ function formatCreatedAt(value: string): string {
     </ol>
   </section>
 </template>
+
+<style scoped src="../styles/incident-list.css"></style>

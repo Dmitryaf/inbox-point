@@ -107,3 +107,5 @@ function changeSection(event: Event): void {
     </nav>
   </aside>
 </template>
+
+<style scoped src="../styles/workspace-navigation.css"></style>

@@ -48,3 +48,8 @@
     сохраняйте в заметках с общим доступом.
   </p>
 </template>
+
+<style
+  scoped
+  src="../../../entities/setup/styles/setup-instructions.css"
+></style>

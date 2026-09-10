@@ -8,7 +8,7 @@ import { InboundEventIncidentService } from '@/core/application/inbound-event-in
 import { OperatorActionIncidentService } from '@/core/application/operator-action-incident-service.js';
 import { createAdminRouteAccess } from '@/infrastructure/http/admin-route-access.js';
 import { registerAdminSessionRoutes } from '@/infrastructure/http/admin-session-routes.js';
-import { createApp, registerSetupRoutes } from '@/infrastructure/http/app.js';
+import { createApp } from '@/infrastructure/http/app.js';
 import { PasswordSessionAccess } from '@/infrastructure/security/password-session-access.js';
 import { ContentManagementService } from '@/modules/content-management/application/content-management-service.js';
 import { FileContentSettingsStore } from '@/modules/content-management/infrastructure/file-store/file-content-settings-store.js';
@@ -30,6 +30,7 @@ import { TelegramRuntime } from '@/infrastructure/telegram/telegram-runtime.js';
 import { TelegramSetupController } from '@/infrastructure/telegram/telegram-setup-controller.js';
 import { VkRuntime } from '@/infrastructure/vk/vk-runtime.js';
 import { VkSetupController } from '@/infrastructure/vk/vk-setup-controller.js';
+import { registerSetupRoutes } from '@/modules/channel-setup/presentation/http/routes.js';
 
 async function start(): Promise<void> {
   const startedAt = new Date();
@@ -190,18 +191,15 @@ async function start(): Promise<void> {
       repository,
     );
     const inboundEventIncidents = new InboundEventIncidentService(repository);
-    registerOperationsRoutes(
-      app,
-      operationsMonitoring,
-      adminRouteAccess,
-      {},
-      serviceControl,
-      repository,
+    registerOperationsRoutes(app, adminRouteAccess, {
+      deliveries: repository,
+      inboundEvents: inboundEventIncidents,
+      monitoring: operationsMonitoring,
+      operatorActions: operatorActionIncidents,
       operatorInbox,
-      repository,
-      operatorActionIncidents,
-      inboundEventIncidents,
-    );
+      serviceControl,
+      usageMetrics: repository,
+    });
     await app.listen({ host: config.host, port: config.port });
     const runtimeLogger = {
       error: (error: unknown, message: string) =>
@@ -221,23 +219,20 @@ async function start(): Promise<void> {
         runtime: vkRuntime,
       }),
     ]);
-    if (config.adminPassword || config.nodeEnv !== 'production') {
+    const adminUiAvailable =
+      Boolean(config.adminPassword) || config.nodeEnv !== 'production';
+    if (adminUiAvailable) {
       app.log.info(
         `Open http://${config.host}:${config.port}/setup to configure the service`,
       );
-    }
-    if (config.adminPassword || config.nodeEnv !== 'production') {
       app.log.info(
         `Open http://${config.host}:${config.port}/manage to edit client information`,
       );
-    } else {
-      app.log.warn('Remote content management is disabled');
-    }
-    if (config.adminPassword || config.nodeEnv !== 'production') {
       app.log.info(
         `Operational status API is available at http://${config.host}:${config.port}/api/ops/status`,
       );
     } else {
+      app.log.warn('Remote content management is disabled');
       app.log.warn('Remote operational monitoring is disabled');
     }
   } catch (error: unknown) {

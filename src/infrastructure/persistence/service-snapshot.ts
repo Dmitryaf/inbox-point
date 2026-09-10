@@ -16,6 +16,7 @@ import { DatabaseSync } from 'node:sqlite';
 
 import { z } from 'zod';
 
+import { isFileSystemError } from '@/infrastructure/file-system/local-state-file.js';
 import {
   SqliteBackupService,
   verifySqliteBackup,
@@ -136,7 +137,7 @@ export class ServiceSnapshotService {
         await copyFile(join(dataDirectory, fileName), target);
         await chmod(target, 0o600);
       } catch (error: unknown) {
-        if (!isNodeError(error) || error.code !== 'ENOENT') {
+        if (!isFileSystemError(error) || error.code !== 'ENOENT') {
           throw error;
         }
       }
@@ -267,7 +268,7 @@ async function createManifest(
       const fileStat = await stat(path);
       files.push({ name, sha256: await sha256(path), size: fileStat.size });
     } catch (error: unknown) {
-      if (!isNodeError(error) || error.code !== 'ENOENT') {
+      if (!isFileSystemError(error) || error.code !== 'ENOENT') {
         throw error;
       }
     }
@@ -437,12 +438,8 @@ async function assertTargetDoesNotExist(path: string): Promise<void> {
     await stat(path);
     throw new Error('Snapshot restore target already exists');
   } catch (error: unknown) {
-    if (!isNodeError(error) || error.code !== 'ENOENT') {
+    if (!isFileSystemError(error) || error.code !== 'ENOENT') {
       throw error;
     }
   }
-}
-
-function isNodeError(error: unknown): error is NodeJS.ErrnoException {
-  return error instanceof Error && 'code' in error;
 }

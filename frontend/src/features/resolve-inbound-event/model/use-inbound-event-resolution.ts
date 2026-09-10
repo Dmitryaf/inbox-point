@@ -1,8 +1,7 @@
 import { ref } from 'vue';
 
 import { resolveInboundEvent } from '@frontend/entities/operations/api/operations-api';
-import { HttpError } from '@frontend/shared/api/http-client';
-import { errorMessage } from '@frontend/shared/lib/error-message';
+import { requestErrorMessage } from '@frontend/shared/lib/request-error-message';
 
 export function useInboundEventResolution(
   refresh: () => Promise<void>,
@@ -19,9 +18,7 @@ export function useInboundEventResolution(
   ): Promise<void> {
     if (
       resolution === 'skip' &&
-      !window.confirm(
-        'Пропустить событие без обработки? Оно будет удалено из quarantine.',
-      )
+      !window.confirm('Пропустить это событие? Оно больше не будет обработано.')
     ) {
       return;
     }
@@ -32,15 +29,11 @@ export function useInboundEventResolution(
       await resolveInboundEvent(eventId, source, resolution);
       notice.value =
         resolution === 'retry'
-          ? 'Событие возвращено в очередь.'
+          ? 'Повторная обработка началась.'
           : 'Событие пропущено.';
       await refresh();
     } catch (cause: unknown) {
-      if (cause instanceof HttpError && cause.status === 401) {
-        onUnauthorized();
-        return;
-      }
-      error.value = errorMessage(cause);
+      error.value = requestErrorMessage(cause, onUnauthorized);
     } finally {
       pendingEventId.value = '';
     }

@@ -11,18 +11,34 @@ const responses = computed(() => buildClientResponsePreviews(props.content));
 <template>
   <section class="card preview" aria-labelledby="preview-title">
     <p class="step">Предпросмотр</p>
-    <h2 id="preview-title">Что появится в каналах</h2>
+    <h2 id="preview-title">Так клиент увидит ваши ответы</h2>
+    <p class="preview-intro">
+      Это пример. В Telegram и VK оформление немного различается, но кнопки и
+      тексты будут такими же.
+    </p>
     <p v-if="responses.length === 0" class="empty">
       Заполните разделы — здесь появится будущий ответ.
     </p>
-    <article
-      v-for="response in responses"
-      v-else
-      :key="response.label"
-      class="preview-response"
-    >
-      <p class="preview-response-label">Кнопка «{{ response.label }}»</p>
-      <p class="preserve">{{ response.text }}</p>
-    </article>
+    <div v-else class="message-preview" aria-label="Пример переписки">
+      <div class="message-preview-menu">
+        <p>Здравствуйте! Чем помочь?</p>
+        <div class="message-preview-buttons" aria-label="Кнопки меню">
+          <span v-for="response in responses" :key="response.label">
+            {{ response.label }}
+          </span>
+          <span>Задать вопрос</span>
+        </div>
+      </div>
+      <article
+        v-for="response in responses"
+        :key="response.label"
+        class="preview-response"
+      >
+        <p class="preview-client-message">{{ response.label }}</p>
+        <p class="preview-service-message">{{ response.text }}</p>
+      </article>
+    </div>
   </section>
 </template>
+
+<style scoped src="../styles/content-preview.css"></style>

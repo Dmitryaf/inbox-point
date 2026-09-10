@@ -1,0 +1,112 @@
+.mobile-workspace-navigation,
+.dashboard-sidebar {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.95rem;
+  box-shadow: var(--shadow-card);
+  min-width: 0;
+}
+
+.mobile-workspace-navigation {
+  display: grid;
+  gap: 0.85rem;
+  padding: 0.9rem;
+}
+
+.mobile-navigation-field label {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  margin: 0 0 0.4rem;
+}
+
+.desktop-workspace-navigation,
+.dashboard-sidebar {
+  display: none;
+}
+
+.navigation-button,
+.section-button {
+  align-items: center;
+  background: transparent;
+  border-color: transparent;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  min-width: 0;
+  overflow-wrap: normal;
+  padding-inline: 0.5rem;
+  text-align: left;
+  width: 100%;
+}
+
+.navigation-button .app-icon,
+.section-button .app-icon {
+  flex: 0 0 auto;
+  opacity: 0.68;
+}
+
+.navigation-button:hover,
+.section-button:hover {
+  background: var(--color-surface-muted);
+  border-color: var(--color-border);
+}
+
+.navigation-button.active,
+.section-button.active {
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
+  box-shadow: none;
+  color: var(--color-primary-hover);
+}
+
+.sidebar-group {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.sidebar-group + .sidebar-group {
+  border-top: 1px solid var(--color-border);
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+}
+
+.sidebar-group > p {
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  margin: 0 0 0.35rem 0.65rem;
+  text-transform: uppercase;
+}
+
+@media (min-width: 900px) {
+  .mobile-workspace-navigation {
+    display: none;
+  }
+
+  .desktop-workspace-navigation {
+    display: grid;
+  }
+
+  .dashboard-sidebar {
+    align-content: start;
+    align-self: start;
+    grid-column: 1;
+    padding: 0.85rem 0.65rem;
+    position: sticky;
+    top: 1.25rem;
+  }
+
+  .navigation-button,
+  .section-button {
+    display: flex;
+    gap: 0.65rem;
+    min-height: 2.4rem;
+    padding: 0.5rem 0.65rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .mobile-workspace-navigation {
+    padding: 0.75rem;
+  }
+}

@@ -1,5 +1,7 @@
+import { HttpError } from '@frontend/shared/api/http-client';
+
 export function errorMessage(cause: unknown): string {
-  return cause instanceof Error
+  return cause instanceof HttpError
     ? cause.message
-    : 'Что-то пошло не так. Попробуйте ещё раз.';
+    : 'Не удалось выполнить действие. Проверьте подключение и попробуйте ещё раз.';
 }

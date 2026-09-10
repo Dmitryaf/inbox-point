@@ -8,6 +8,7 @@ import {
   normalizeContentDraft,
   snapshotContent,
 } from '@frontend/entities/content/model/content-draft';
+import { takeContentDraftRecovery } from './content-draft-recovery';
 import { createContentWorkspaceState } from './content-workspace-state';
 import { useContentHistory } from './use-content-history';
 import { useUnsavedExitGuard } from './use-unsaved-exit-guard';
@@ -27,9 +28,15 @@ export function useContentWorkspace(options: ContentWorkspaceOptions) {
     state.notice.value = '';
     try {
       const snapshot = await loadContent();
-      Object.assign(state.draft, normalizeContentDraft(snapshot.content));
-      state.savedSnapshot.value = snapshotContent(state.draft);
-      state.version.value = snapshot.version;
+      const savedContent = normalizeContentDraft(snapshot.content);
+      const recovery = takeContentDraftRecovery();
+      Object.assign(state.draft, recovery?.draft ?? savedContent);
+      state.savedSnapshot.value =
+        recovery?.savedSnapshot ?? snapshotContent(savedContent);
+      state.version.value = recovery?.version ?? snapshot.version;
+      if (recovery) {
+        state.notice.value = 'Несохранённый черновик восстановлен.';
+      }
       state.loaded.value = true;
     } catch (cause: unknown) {
       state.reportFailure(cause);
@@ -38,7 +45,7 @@ export function useContentWorkspace(options: ContentWorkspaceOptions) {
       state.loading.value = false;
     }
     await refreshHistory(
-      'Информация загружена, но историю изменений обновить не удалось.',
+      'Информация загружена, но историю изменений сейчас открыть нельзя. Попробуйте обновить страницу позже.',
     );
   };
 
@@ -69,7 +76,7 @@ export function useContentWorkspace(options: ContentWorkspaceOptions) {
     }
     if (saved) {
       await refreshHistory(
-        'Информация сохранена, но историю изменений обновить не удалось.',
+        'Информация сохранена, но историю изменений сейчас открыть нельзя. Попробуйте обновить страницу позже.',
       );
     }
   };
@@ -101,7 +108,7 @@ export function useContentWorkspace(options: ContentWorkspaceOptions) {
     }
     if (restored) {
       await refreshHistory(
-        'Версия восстановлена, но историю изменений обновить не удалось.',
+        'Версия восстановлена, но историю изменений сейчас открыть нельзя. Попробуйте обновить страницу позже.',
       );
     }
   };
@@ -112,14 +119,16 @@ export function useContentWorkspace(options: ContentWorkspaceOptions) {
       return;
     }
     if (!historyState.historyLoaded.value) {
-      await refreshHistory('Историю изменений обновить не удалось.');
+      await refreshHistory(
+        'Историю изменений сейчас открыть нельзя. Попробуйте обновить страницу позже.',
+      );
     }
   };
 
-  async function refreshHistory(failurePrefix: string): Promise<void> {
+  async function refreshHistory(failureMessage: string): Promise<void> {
     const message = await historyState.refreshHistory();
     if (message) {
-      state.error.value = `${failurePrefix} ${message}`;
+      state.error.value = failureMessage;
     }
   }
 

@@ -36,3 +36,5 @@ const confirming = ref(false);
     Восстановить
   </button>
 </template>
+
+<style scoped src="../styles/restore-action.css"></style>

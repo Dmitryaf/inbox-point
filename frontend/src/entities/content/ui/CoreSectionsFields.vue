@@ -143,3 +143,5 @@ const responseLengths = computed(() => getCoreResponseLengths(draft.value));
     </details>
   </section>
 </template>
+
+<style scoped src="../styles/core-sections-fields.css"></style>

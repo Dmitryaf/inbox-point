@@ -38,9 +38,9 @@
 }
 
 .intake-summary-status {
-  background: #dff3e8;
+  background: var(--color-success-soft);
   border-radius: 999px;
-  color: #17563d;
+  color: var(--color-success);
   font-size: 0.78rem;
   font-weight: 800;
   padding: 0.35rem 0.65rem;

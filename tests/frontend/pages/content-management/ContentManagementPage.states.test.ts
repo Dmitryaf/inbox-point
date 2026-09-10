@@ -128,6 +128,8 @@ describe('ContentManagementPage states', () => {
   });
 
   it('returns to login when the management session expires', async () => {
+    window.history.replaceState(null, '', '/manage');
+    window.sessionStorage.clear();
     vi.stubGlobal(
       'fetch',
       vi.fn((input: RequestInfo | URL) => {
@@ -144,8 +146,12 @@ describe('ContentManagementPage states', () => {
     const wrapper = mount(ContentManagementPage);
     await flushPromises();
 
-    expect(wrapper.text()).toContain('Сессия завершилась. Войдите снова.');
-    expect(wrapper.find('input[type="password"]').exists()).toBe(true);
-    expect(wrapper.find('.auth-panel .auth-card').exists()).toBe(true);
+    expect(window.location.pathname).toBe('/login');
+    expect(wrapper.text()).not.toContain('Содержание');
+    expect(wrapper.find('input[type="password"]').exists()).toBe(false);
+
+    wrapper.unmount();
+    window.history.replaceState(null, '', '/');
+    window.sessionStorage.clear();
   });
 });

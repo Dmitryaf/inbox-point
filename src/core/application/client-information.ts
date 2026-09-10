@@ -60,11 +60,11 @@ export class ClientInformationCatalog implements ClientInformationResolver {
   private content: ClientInformationContent;
 
   public constructor(content: ClientInformationContent = {}) {
-    this.content = copyContent(content);
+    this.content = copyClientInformationContent(content);
   }
 
   public getContent(): ClientInformationContent {
-    return copyContent(this.content);
+    return copyClientInformationContent(this.content);
   }
 
   public getCustomSections(): readonly CustomInformationSection[] {
@@ -103,7 +103,7 @@ export class ClientInformationCatalog implements ClientInformationResolver {
   }
 
   public replace(content: ClientInformationContent): void {
-    this.content = copyContent(content);
+    this.content = copyClientInformationContent(content);
   }
 
   public resolve(text: string): string | undefined {
@@ -207,7 +207,7 @@ function formatListResponse(label: string, text: string): string {
   return `${label}\n\n${items.map((item) => `• ${item}`).join('\n')}`;
 }
 
-function copyContent(
+export function copyClientInformationContent(
   content: ClientInformationContent,
 ): ClientInformationContent {
   if (!hasValidCustomSections(content.customSections ?? [])) {

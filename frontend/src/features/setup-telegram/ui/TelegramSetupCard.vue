@@ -18,6 +18,7 @@ const botToken = ref('');
 const chats = ref<TelegramOperatorChat[]>([]);
 const selectedChatId = ref<number | null>(null);
 const message = ref('Выполните шаги ниже и найдите операторскую группу.');
+const messageKind = ref<'error' | 'info' | 'success'>('info');
 const pending = ref<'connect' | 'discover' | null>(null);
 
 function chatLabel(chat: TelegramOperatorChat): string {
@@ -29,6 +30,7 @@ function chatLabel(chat: TelegramOperatorChat): string {
 
 async function discover(): Promise<void> {
   pending.value = 'discover';
+  messageKind.value = 'info';
   try {
     const result = await discoverTelegramChats(botToken.value.trim());
     chats.value = result.chats;
@@ -38,6 +40,7 @@ async function discover(): Promise<void> {
       : 'Напишите в группе сообщение и повторите поиск.';
   } catch (cause: unknown) {
     message.value = errorMessage(cause);
+    messageKind.value = 'error';
   } finally {
     pending.value = null;
   }
@@ -46,17 +49,21 @@ async function discover(): Promise<void> {
 async function connect(): Promise<void> {
   if (selectedChatId.value === null) {
     message.value = 'Выберите операторскую группу.';
+    messageKind.value = 'error';
     return;
   }
   pending.value = 'connect';
+  messageKind.value = 'info';
   try {
     await connectTelegram(botToken.value.trim(), selectedChatId.value);
     botToken.value = '';
     chats.value = [];
     message.value = 'Telegram подключён. Настройка сохранена.';
+    messageKind.value = 'success';
     emit('connected');
   } catch (cause: unknown) {
     message.value = errorMessage(cause);
+    messageKind.value = 'error';
   } finally {
     pending.value = null;
   }
@@ -67,14 +74,18 @@ async function connect(): Promise<void> {
   <section class="setup-card card" aria-labelledby="telegram-setup-title">
     <p class="step">Шаг 1</p>
     <h2 id="telegram-setup-title">Telegram</h2>
-    <p v-if="status.connected" class="setup-status setup-status--success">
-      Telegram подключён. После перезапуска сервис восстановит подключение
-      автоматически.
+    <p
+      v-if="status.connected"
+      class="setup-status setup-status--success setup-connected-status"
+      role="status"
+    >
+      <strong>Telegram подключён</strong>
+      <span>Сообщения клиентов будут передаваться операторам.</span>
     </p>
     <template v-else>
       <TelegramSetupInstructions />
-      <p v-if="status.locked" class="setup-status">
-        Telegram настроен на сервере. Если он не работает, откройте раздел
+      <p v-if="status.locked" class="setup-status setup-status--info">
+        Telegram подключён при установке. Если он не работает, откройте раздел
         «Состояние».
       </p>
       <template v-else>
@@ -107,8 +118,16 @@ async function connect(): Promise<void> {
         >
           {{ pending === 'connect' ? 'Подключаем…' : 'Подключить Telegram' }}
         </button>
-        <p class="setup-status" role="status">{{ message }}</p>
+        <p
+          class="setup-status"
+          :class="`setup-status--${messageKind}`"
+          :role="messageKind === 'error' ? 'alert' : 'status'"
+        >
+          {{ message }}
+        </p>
       </template>
     </template>
   </section>
 </template>
+
+<style scoped src="../../../entities/setup/styles/setup-card.css"></style>

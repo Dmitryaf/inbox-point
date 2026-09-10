@@ -89,6 +89,7 @@ export function createAdminRouteAccess(
 function isAdminUrl(url: string): boolean {
   const path = url.split('?', 1)[0] ?? url;
   return (
+    path === '/login' ||
     path === '/manage' ||
     path.startsWith('/manage/') ||
     path === '/ops' ||

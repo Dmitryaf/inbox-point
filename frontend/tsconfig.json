@@ -11,6 +11,8 @@
     "exactOptionalPropertyTypes": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "skipLibCheck": true,
     "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "types": ["vite/client", "vitest/globals"]

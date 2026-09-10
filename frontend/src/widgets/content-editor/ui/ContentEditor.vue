@@ -31,3 +31,5 @@ defineProps<{
     />
   </div>
 </template>
+
+<style scoped src="../styles/content-editor.css"></style>

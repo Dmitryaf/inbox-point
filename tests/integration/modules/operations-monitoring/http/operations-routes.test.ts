@@ -23,6 +23,7 @@ const config: RuntimeConfig = {
 const apps = new Set<ReturnType<typeof createApp>>();
 const operationsAssets = {
   html: '<!doctype html><title>Состояние — Messenger Handoff</title>',
+  icon: '<svg>operations icon</svg>',
   script: 'globalThis.operationsApp = true;',
   styles: ':root { color: black; }',
 };
@@ -48,13 +49,9 @@ describe('operations monitoring routes', () => {
       secureCookies: true,
     });
     registerAdminSessionRoutes(app, access, routeAccess, true);
-    registerOperationsRoutes(
-      app,
-      createMonitoringService(),
-      routeAccess,
-      { assets: operationsAssets },
-      createServiceControl(),
-      {
+    registerOperationsRoutes(app, routeAccess, {
+      assets: operationsAssets,
+      deliveries: {
         confirmUnknownDeliveryNotReceived: (deliveryId) => {
           resolvedDeliveries.push(`not_received:${deliveryId}`);
           return true;
@@ -68,8 +65,21 @@ describe('operations monitoring routes', () => {
           return true;
         },
       },
-      undefined,
-      {
+      inboundEvents: {
+        resolve: (source, eventId, resolution) => {
+          resolvedInboundEvents.push(`${resolution}:${source}:${eventId}`);
+          return true;
+        },
+      },
+      monitoring: createMonitoringService(),
+      operatorActions: {
+        resolve: (actionId, resolution) => {
+          resolvedOperatorActions.push(`${resolution}:${actionId}`);
+          return true;
+        },
+      },
+      serviceControl: createServiceControl(),
+      usageMetrics: {
         getUsageEventCounts: () => ({
           delivery_failure: 2,
           first_reply: 7,
@@ -78,19 +88,7 @@ describe('operations monitoring routes', () => {
           web_takeover: 1,
         }),
       },
-      {
-        resolve: (actionId, resolution) => {
-          resolvedOperatorActions.push(`${resolution}:${actionId}`);
-          return true;
-        },
-      },
-      {
-        resolve: (source, eventId, resolution) => {
-          resolvedInboundEvents.push(`${resolution}:${source}:${eventId}`);
-          return true;
-        },
-      },
-    );
+    });
 
     const unauthorized = await app.inject({
       method: 'GET',
@@ -106,6 +104,11 @@ describe('operations monitoring routes', () => {
       method: 'GET',
       remoteAddress: '192.0.2.10',
       url: '/ops?test=1',
+    });
+    const icon = await app.inject({
+      method: 'GET',
+      remoteAddress: '192.0.2.10',
+      url: '/ops/favicon.svg',
     });
     const crossOrigin = await app.inject({
       headers: {
@@ -239,6 +242,10 @@ describe('operations monitoring routes', () => {
     expect(page.headers['content-security-policy']).toContain(
       "default-src 'none'",
     );
+    expect(page.headers['content-security-policy']).toContain("img-src 'self'");
+    expect(icon.statusCode).toBe(200);
+    expect(icon.headers['content-type']).toContain('image/svg+xml');
+    expect(icon.body).toBe(operationsAssets.icon);
     expect(pageWithQuery.headers['cache-control']).toBe('no-store');
     expect(pageWithQuery.headers['x-frame-options']).toBe('DENY');
     expect(crossOrigin.statusCode).toBe(403);
@@ -305,8 +312,9 @@ describe('operations monitoring routes', () => {
       secureCookies: true,
     });
     registerAdminSessionRoutes(app, access, routeAccess, true);
-    registerOperationsRoutes(app, createMonitoringService(), routeAccess, {
+    registerOperationsRoutes(app, routeAccess, {
       assets: operationsAssets,
+      monitoring: createMonitoringService(),
     });
 
     const response = await app.inject({
@@ -327,8 +335,9 @@ describe('operations monitoring routes', () => {
       secureCookies: false,
     });
     registerAdminSessionRoutes(app, access, routeAccess, false);
-    registerOperationsRoutes(app, createMonitoringService(), routeAccess, {
+    registerOperationsRoutes(app, routeAccess, {
       assets: operationsAssets,
+      monitoring: createMonitoringService(),
     });
 
     const response = await app.inject({

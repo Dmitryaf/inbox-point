@@ -1,18 +1,12 @@
 <script setup lang="ts">
 import type { OperatorInboxRequest } from '@frontend/entities/operations/model/types';
+import { formatShortDateTime } from '@frontend/shared/lib/format-date-time';
 
 defineProps<{
   requests: readonly OperatorInboxRequest[];
   selectedRequestId: string;
 }>();
 defineEmits<{ select: [requestId: string] }>();
-
-function formatDate(value: string): string {
-  return new Intl.DateTimeFormat('ru-RU', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-  }).format(new Date(value));
-}
 
 function channelName(channel: 'telegram' | 'vk'): string {
   return channel === 'telegram' ? 'Telegram' : 'VK';
@@ -33,10 +27,12 @@ function channelName(channel: 'telegram' | 'vk'): string {
       @click="$emit('select', request.id)"
     >
       <strong>{{ request.displayName || 'Без имени' }}</strong>
-      <span>{{ channelName(request.channel) }}</span>
+      <span class="channel-badge">{{ channelName(request.channel) }}</span>
       <time :datetime="request.latestMessageAt || request.createdAt">
-        {{ formatDate(request.latestMessageAt || request.createdAt) }}
+        {{ formatShortDateTime(request.latestMessageAt || request.createdAt) }}
       </time>
     </button>
   </nav>
 </template>
+
+<style scoped src="../styles/operator-request-list.css"></style>

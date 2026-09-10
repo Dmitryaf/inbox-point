@@ -7,18 +7,33 @@ import { createEmptyContent } from '@frontend/entities/content/model/content-dra
 import FaqEditor from '@frontend/entities/content/ui/FaqEditor.vue';
 
 describe('FaqEditor', () => {
-  it('keeps only relevant actions for each question', () => {
+  it('moves questions with accessible boundary controls', async () => {
     const content = createEmptyContent();
-    content.faq.push({
-      answer: 'Напишите нам.',
-      question: 'Как записаться?',
-    });
+    content.faq.push(
+      { answer: 'Напишите нам.', question: 'Как записаться?' },
+      { answer: 'По будням.', question: 'Когда вы работаете?' },
+    );
 
     const wrapper = mount(FaqEditor, {
       props: { modelValue: content },
     });
-    const labels = wrapper.findAll('button').map((button) => button.text());
+    const moveFirstUp = wrapper.get('[aria-label="Переместить вопрос 1 выше"]');
+    const moveFirstDown = wrapper.get(
+      '[aria-label="Переместить вопрос 1 ниже"]',
+    );
 
-    expect(labels).toEqual(['Удалить', 'Добавить вопрос']);
+    expect(moveFirstUp.attributes('disabled')).toBeDefined();
+    expect(
+      wrapper
+        .get('[aria-label="Переместить вопрос 2 ниже"]')
+        .attributes('disabled'),
+    ).toBeDefined();
+
+    await moveFirstDown.trigger('click');
+
+    expect(content.faq.map((item) => item.question)).toEqual([
+      'Когда вы работаете?',
+      'Как записаться?',
+    ]);
   });
 });

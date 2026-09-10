@@ -1,7 +1,12 @@
 import { onMounted, ref } from 'vue';
 
 import { errorMessage } from '@frontend/shared/lib/error-message';
-import { login, logout, readSession } from '../api/session-api';
+import {
+  login,
+  logout,
+  readSession,
+} from '@frontend/features/admin-auth/api/session-api';
+import { openAdminLogin } from '@frontend/features/admin-auth/lib/auth-navigation';
 
 export function useAdminSession() {
   const authenticated = ref(false);
@@ -47,6 +52,7 @@ export function useAdminSession() {
   const expireSession = (): void => {
     authenticated.value = false;
     error.value = 'Сессия завершилась. Войдите снова.';
+    openAdminLogin(window.location.pathname, error.value);
   };
 
   return {

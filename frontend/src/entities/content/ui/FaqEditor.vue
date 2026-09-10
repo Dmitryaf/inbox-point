@@ -25,6 +25,17 @@ function add(): void {
     draft.value.faq.push({ answer: '', question: '' });
   }
 }
+
+function move(index: number, offset: -1 | 1): void {
+  const target = index + offset;
+  if (target < 0 || target >= draft.value.faq.length) {
+    return;
+  }
+  const [item] = draft.value.faq.splice(index, 1);
+  if (item) {
+    draft.value.faq.splice(target, 0, item);
+  }
+}
 </script>
 
 <template>
@@ -93,6 +104,24 @@ function add(): void {
       <p class="counter">{{ item.answer.length }} / 3000</p>
       <div class="item-actions">
         <button
+          class="quiet"
+          type="button"
+          :disabled="index === 0"
+          :aria-label="`Переместить вопрос ${index + 1} выше`"
+          @click="move(index, -1)"
+        >
+          Выше
+        </button>
+        <button
+          class="quiet"
+          type="button"
+          :disabled="index === draft.faq.length - 1"
+          :aria-label="`Переместить вопрос ${index + 1} ниже`"
+          @click="move(index, 1)"
+        >
+          Ниже
+        </button>
+        <button
           class="danger"
           type="button"
           @click="draft.faq.splice(index, 1)"
@@ -106,3 +135,5 @@ function add(): void {
     </button>
   </section>
 </template>
+
+<style scoped src="../styles/collection-editor.css"></style>

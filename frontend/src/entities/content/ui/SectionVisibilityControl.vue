@@ -37,3 +37,5 @@ function updateVisibility(event: Event): void {
     </span>
   </label>
 </template>
+
+<style scoped src="../styles/section-visibility-control.css"></style>

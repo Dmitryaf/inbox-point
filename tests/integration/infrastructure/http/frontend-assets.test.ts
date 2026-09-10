@@ -25,8 +25,9 @@ describe('loadFrontendAssets', () => {
       await Promise.all([
         writeFile(
           join(directory, 'index.html'),
-          '<script src="./app.js"></script><link href="./style.css">',
+          '<script src="./app.js"></script><link href="./style.css"><link rel="icon" href="./favicon.svg">',
         ),
+        writeFile(join(directory, 'favicon.svg'), '<svg>icon</svg>'),
         writeFile(join(directory, 'app.js'), 'globalThis.app = true;'),
         writeFile(join(directory, 'style.css'), ':root { color: black; }'),
       ]);
@@ -35,6 +36,8 @@ describe('loadFrontendAssets', () => {
 
       expect(assets.html).toContain(`src="${routeBase}/app.js"`);
       expect(assets.html).toContain(`href="${routeBase}/style.css"`);
+      expect(assets.html).toContain(`href="${routeBase}/favicon.svg"`);
+      expect(assets.icon).toBe('<svg>icon</svg>');
     },
   );
 });

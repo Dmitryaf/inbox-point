@@ -1,0 +1,27 @@
+.outbound-emergency-control {
+  align-items: center;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 0.85rem;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  margin-top: 1rem;
+  padding: 0.85rem;
+}
+
+.outbound-emergency-control > div {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.outbound-emergency-control button {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 520px) {
+  .outbound-emergency-control {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

@@ -56,3 +56,5 @@ const totalCount = computed(
     </p>
   </section>
 </template>
+
+<style scoped src="../styles/content-summary.css"></style>

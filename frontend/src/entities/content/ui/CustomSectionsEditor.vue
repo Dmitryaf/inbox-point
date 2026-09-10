@@ -13,6 +13,17 @@ function add(): void {
     sections.value.push({ label: '', text: '' });
   }
 }
+
+function move(index: number, offset: -1 | 1): void {
+  const target = index + offset;
+  if (target < 0 || target >= sections.value.length) {
+    return;
+  }
+  const [section] = sections.value.splice(index, 1);
+  if (section) {
+    sections.value.splice(target, 0, section);
+  }
+}
 </script>
 
 <template>
@@ -71,6 +82,24 @@ function add(): void {
       />
       <p class="counter">{{ section.text.length }} / 4000</p>
       <div class="item-actions">
+        <button
+          class="quiet"
+          type="button"
+          :disabled="index === 0"
+          :aria-label="`Переместить раздел ${index + 1} выше`"
+          @click="move(index, -1)"
+        >
+          Выше
+        </button>
+        <button
+          class="quiet"
+          type="button"
+          :disabled="index === sections.length - 1"
+          :aria-label="`Переместить раздел ${index + 1} ниже`"
+          @click="move(index, 1)"
+        >
+          Ниже
+        </button>
         <button class="danger" type="button" @click="sections.splice(index, 1)">
           Удалить раздел
         </button>
@@ -81,3 +110,5 @@ function add(): void {
     </button>
   </section>
 </template>
+
+<style scoped src="../styles/collection-editor.css"></style>

@@ -1,0 +1,41 @@
+.save-bar {
+  align-items: center;
+  bottom: max(0.5rem, env(safe-area-inset-bottom));
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  position: sticky;
+  z-index: 2;
+}
+
+.save-bar-label {
+  color: var(--color-text-muted);
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+}
+
+.save-bar p {
+  color: var(--color-text-muted);
+  margin: 0;
+  min-width: 0;
+}
+
+.save-bar p.changed {
+  color: var(--color-attention);
+  font-weight: 700;
+}
+
+@media (min-width: 900px) {
+  .save-bar {
+    grid-template-columns: 1fr;
+    position: static;
+  }
+
+  .save-bar button {
+    width: 100%;
+  }
+}

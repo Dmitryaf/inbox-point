@@ -16,7 +16,7 @@ function submit(): void {
 
 <template>
   <form class="auth-card card" @submit.prevent="submit">
-    <h2>Вход</h2>
+    <h1>Вход в управление</h1>
     <p>Введите пароль администратора.</p>
     <label for="admin-password">Пароль</label>
     <input
@@ -31,3 +31,5 @@ function submit(): void {
     </button>
   </form>
 </template>
+
+<style scoped src="../styles/admin-login-form.css"></style>

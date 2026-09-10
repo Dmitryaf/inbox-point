@@ -41,3 +41,5 @@ defineEmits<{ restore: [revision: number] }>();
     </ol>
   </section>
 </template>
+
+<style scoped src="../styles/change-history.css"></style>

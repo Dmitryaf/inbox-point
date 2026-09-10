@@ -1,0 +1,44 @@
+.setup-shell {
+  margin: 0 auto;
+  max-width: 1120px;
+  min-width: 0;
+  overflow-x: clip;
+  padding: 1rem 1.25rem 4rem;
+  width: 100%;
+}
+
+.setup-workspace {
+  background: var(--color-workspace);
+  border: 1px solid var(--color-border);
+  border-radius: 1.25rem;
+  box-shadow: var(--shadow-card);
+  display: grid;
+  gap: 1rem;
+  margin-inline: auto;
+  max-width: 52rem;
+  padding: 1rem;
+}
+
+.setup-channel-grid {
+  align-items: start;
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+@media (min-width: 900px) {
+  .setup-shell {
+    padding: 1.5rem 2.5rem 5rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .setup-shell {
+    padding-inline: 0.75rem;
+  }
+
+  .setup-workspace {
+    gap: 0.7rem;
+    padding: 0.6rem;
+  }
+}

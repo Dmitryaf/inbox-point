@@ -27,12 +27,12 @@ const state = computed(() => {
     return { label: 'Нет свежих данных', tone: 'attention' };
   }
   if (props.channel.state === 'running') {
-    return { label: 'Запущен', tone: 'healthy' };
+    return { label: 'Работает', tone: 'healthy' };
   }
   if (props.channel.state === 'starting') {
     return { label: 'Запускается', tone: 'neutral' };
   }
-  return { label: 'Остановлен', tone: 'attention' };
+  return { label: 'Не работает', tone: 'attention' };
 });
 </script>
 
@@ -48,15 +48,24 @@ const state = computed(() => {
     <p v-if="intake.mode === 'paused'" class="channel-maintenance-note">
       Новые обращения приостановлены вручную.
     </p>
-    <dl v-if="channel.configured" class="channel-activity">
-      <div>
-        <dt>Последняя успешная проверка</dt>
-        <dd>{{ formatStatusTime(channel.lastSuccessfulPollAt) }}</dd>
-      </div>
-      <div v-if="channel.lastFailedPollAt">
-        <dt>Последняя ошибка связи</dt>
-        <dd>{{ formatStatusTime(channel.lastFailedPollAt) }}</dd>
-      </div>
-    </dl>
+    <details
+      v-if="channel.configured"
+      class="technical-details channel-details"
+    >
+      <summary>Подробности</summary>
+      <dl class="channel-activity">
+        <div>
+          <dt>Последняя успешная проверка</dt>
+          <dd>{{ formatStatusTime(channel.lastSuccessfulPollAt) }}</dd>
+        </div>
+        <div v-if="channel.lastFailedPollAt">
+          <dt>Последняя ошибка связи</dt>
+          <dd>{{ formatStatusTime(channel.lastFailedPollAt) }}</dd>
+        </div>
+      </dl>
+    </details>
   </article>
 </template>
+
+<style scoped src="../styles/status-card.css"></style>
+<style scoped src="../styles/channel-status-card.css"></style>

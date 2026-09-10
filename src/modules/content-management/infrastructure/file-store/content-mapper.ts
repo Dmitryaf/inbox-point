@@ -38,22 +38,3 @@ export function pickContent(value: ContentPayload): ClientInformationContent {
       : {}),
   };
 }
-
-export function copyContent(
-  content: ClientInformationContent,
-): ClientInformationContent {
-  return {
-    ...content,
-    ...(content.customSections
-      ? {
-          customSections: content.customSections.map((section) => ({
-            ...section,
-          })),
-        }
-      : {}),
-    ...(content.faq ? { faq: content.faq.map((item) => ({ ...item })) } : {}),
-    ...(content.visibleSections
-      ? { visibleSections: [...content.visibleSections] }
-      : {}),
-  };
-}

@@ -39,20 +39,6 @@ export function copyContentDraft(content: ContentDraft): ContentDraft {
   return normalizeContentDraft(content);
 }
 
-export function hasContent(content: ContentDraft): boolean {
-  return (
-    (isSectionVisible(content, 'schedule') &&
-      Boolean(content.schedule.trim())) ||
-    (isSectionVisible(content, 'prices') && Boolean(content.prices.trim())) ||
-    (isSectionVisible(content, 'address') && Boolean(content.address.trim())) ||
-    (isSectionVisible(content, 'faq') &&
-      content.faq.some((item) => item.question.trim() && item.answer.trim())) ||
-    content.customSections.some(
-      (section) => section.label.trim() && section.text.trim(),
-    )
-  );
-}
-
 export function isSectionVisible(
   content: ContentDraft,
   section: InformationSectionId,

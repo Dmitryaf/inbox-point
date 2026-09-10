@@ -36,3 +36,8 @@
     на этой странице.
   </p>
 </template>
+
+<style
+  scoped
+  src="../../../entities/setup/styles/setup-instructions.css"
+></style>

@@ -10,8 +10,7 @@ import type {
   OperatorInboxMessage,
   OperatorInboxRequest,
 } from '@frontend/entities/operations/model/types';
-import { HttpError } from '@frontend/shared/api/http-client';
-import { errorMessage } from '@frontend/shared/lib/error-message';
+import { requestErrorMessage } from '@frontend/shared/lib/request-error-message';
 
 interface ReplyAttempt {
   idempotencyKey: string;
@@ -85,7 +84,7 @@ export function useOperatorInbox(onUnauthorized: () => void) {
       });
       failedReply = undefined;
       notice.value =
-        'Ответ добавлен в очередь. Итог доставки появится рядом с сообщением.';
+        'Ответ сохранён для отправки. Результат появится рядом с сообщением.';
       await refresh();
       return true;
     } catch (cause: unknown) {
@@ -126,11 +125,7 @@ export function useOperatorInbox(onUnauthorized: () => void) {
   }
 
   function handleError(cause: unknown): void {
-    if (cause instanceof HttpError && cause.status === 401) {
-      onUnauthorized();
-      return;
-    }
-    error.value = errorMessage(cause);
+    error.value = requestErrorMessage(cause, onUnauthorized);
   }
 
   return {

@@ -50,10 +50,17 @@ describe('OperationsDashboardPage inbound event quarantine', () => {
     const wrapper = mount(OperationsDashboardPage);
     await flushPromises();
 
-    expect(wrapper.text()).toContain('Quarantine VK');
+    expect(wrapper.text()).toContain('Необработанные сообщения VK');
+    expect(wrapper.text()).not.toContain('Quarantine VK');
+    expect(
+      wrapper
+        .findAll('button')
+        .find((button) => button.text() === 'Пропустить событие')
+        ?.classes(),
+    ).toContain('quiet-danger');
     await wrapper
       .findAll('button')
-      .find((button) => button.text() === 'Повторить')
+      .find((button) => button.text() === 'Повторить обработку')
       ?.trigger('click');
     await flushPromises();
 
@@ -67,7 +74,7 @@ describe('OperationsDashboardPage inbound event quarantine', () => {
         method: 'POST',
       }),
     );
-    expect(wrapper.text()).toContain('Событие возвращено в очередь.');
+    expect(wrapper.text()).toContain('Повторная обработка началась.');
     wrapper.unmount();
   });
 });

@@ -21,7 +21,7 @@ const statusMessage = computed(() => {
 </script>
 
 <template>
-  <div class="save-bar">
+  <div class="save-bar card">
     <div>
       <span class="save-bar-label">Публикация</span>
       <p :class="{ changed: dirty }" role="status">
@@ -35,3 +35,5 @@ const statusMessage = computed(() => {
     </button>
   </div>
 </template>
+
+<style scoped src="../styles/save-bar.css"></style>

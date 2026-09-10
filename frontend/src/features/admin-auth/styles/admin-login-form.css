@@ -1,0 +1,23 @@
+.auth-card {
+  display: grid;
+  gap: 0.85rem;
+  max-width: 30rem;
+  width: 100%;
+}
+
+.auth-card h1,
+.auth-card p {
+  margin-bottom: 0;
+}
+
+.auth-card h1 {
+  font-size: clamp(1.75rem, 5vw, 2.25rem);
+}
+
+.auth-card label {
+  margin-top: 0.35rem;
+}
+
+.auth-card button {
+  margin-top: 0.25rem;
+}

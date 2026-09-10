@@ -66,4 +66,4 @@ defineExpose({ refresh: control.load });
   </details>
 </template>
 
-<style scoped src="./client-intake-control.css"></style>
+<style scoped src="../styles/client-intake-control.css"></style>

@@ -3,6 +3,7 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 
+import App from '@frontend/app/App.vue';
 import ContentManagementPage from '@frontend/pages/content-management/ui/ContentManagementPage.vue';
 import { requestUrl, response } from '@test/frontend/support/fake-response';
 import { contentResponse, findButton } from './content-management-test-helpers';
@@ -56,21 +57,26 @@ describe('ContentManagementPage save recovery', () => {
   });
 
   it('preserves an unsaved draft across session renewal', async () => {
+    window.sessionStorage.clear();
+    window.history.replaceState(null, '', '/manage');
+    let authenticated = true;
     let contentLoads = 0;
     vi.stubGlobal(
       'fetch',
       vi.fn((input: RequestInfo | URL, options?: RequestInit) => {
         const url = requestUrl(input);
         if (url.endsWith('/session')) {
-          return Promise.resolve(response({ authenticated: true }));
+          return Promise.resolve(response({ authenticated }));
         }
         if (url.endsWith('/login') && options?.method === 'POST') {
+          authenticated = true;
           return Promise.resolve(response({ authenticated: true }));
         }
         if (url.endsWith('/history')) {
           return Promise.resolve(response({ history: [] }));
         }
         if (options?.method === 'POST') {
+          authenticated = false;
           return Promise.resolve(
             response({ message: 'Сессия завершилась.' }, 401),
           );
@@ -80,13 +86,14 @@ describe('ContentManagementPage save recovery', () => {
       }),
     );
 
-    const wrapper = mount(ContentManagementPage);
+    const wrapper = mount(App);
     await flushPromises();
     await wrapper.get('#schedule').setValue('Несохранённый черновик');
     await findButton(wrapper.findAll('button'), 'Сохранить').trigger('click');
     await flushPromises();
 
-    expect(wrapper.find('input[type="password"]').exists()).toBe(true);
+    expect(window.location.pathname).toBe('/login');
+    expect(wrapper.get('h1').text()).toBe('Вход в управление');
     await wrapper.get('input[type="password"]').setValue('owner-password');
     await wrapper.get('form').trigger('submit');
     await flushPromises();
@@ -95,6 +102,11 @@ describe('ContentManagementPage save recovery', () => {
       'Несохранённый черновик',
     );
     expect(wrapper.text()).toContain('Есть несохранённые изменения');
-    expect(contentLoads).toBe(1);
+    expect(wrapper.text()).toContain('Несохранённый черновик восстановлен.');
+    expect(contentLoads).toBe(2);
+
+    wrapper.unmount();
+    window.history.replaceState(null, '', '/');
+    window.sessionStorage.clear();
   });
 });

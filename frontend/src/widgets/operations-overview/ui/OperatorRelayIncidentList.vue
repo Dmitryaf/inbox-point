@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { OperatorRelayIncident } from '@frontend/entities/operations/model/types';
+import { formatShortDateTime } from '@frontend/shared/lib/format-date-time';
 
 defineProps<{
   incidents: readonly OperatorRelayIncident[];
@@ -8,13 +9,6 @@ defineProps<{
 defineEmits<{
   resolve: [actionId: string, resolution: 'received' | 'use_web'];
 }>();
-
-function formatCreatedAt(value: string): string {
-  return new Intl.DateTimeFormat('ru-RU', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-  }).format(new Date(value));
-}
 </script>
 
 <template>
@@ -23,24 +17,27 @@ function formatCreatedAt(value: string): string {
     class="delivery-incidents"
     aria-labelledby="operator-relay-incidents-title"
   >
-    <h4 id="operator-relay-incidents-title">
-      Передача обращений требует проверки
-    </h4>
+    <h3 id="operator-relay-incidents-title">Новые обращения</h3>
+    <p>Проверьте, появилось ли обращение у операторов в Telegram.</p>
     <ol>
       <li v-for="incident in incidents" :key="incident.id">
         <div class="delivery-incident-heading">
-          <strong>{{ incident.channel }}</strong>
+          <strong>Обращение из {{ incident.channel }} требует решения</strong>
           <time :datetime="incident.createdAt">
-            {{ formatCreatedAt(incident.createdAt) }}
+            {{ formatShortDateTime(incident.createdAt) }}
           </time>
         </div>
-        <p>{{ incident.reason }}</p>
+        <p>Не удалось точно определить, появилось ли сообщение у операторов.</p>
         <details class="technical-details">
           <summary>Технические данные</summary>
           <dl class="delivery-incident-context">
             <div>
               <dt>ID обращения</dt>
               <dd>{{ incident.requestId }}</dd>
+            </div>
+            <div>
+              <dt>Причина</dt>
+              <dd>{{ incident.reason }}</dd>
             </div>
             <div>
               <dt>ID сообщения клиента</dt>
@@ -69,7 +66,7 @@ function formatCreatedAt(value: string): string {
           <p
             v-if="incident.action === 'relay_message' && !incident.confirmable"
           >
-            Передача остальных частей не подтверждена. Используйте web inbox.
+            Не все сообщения появились в Telegram. Откройте обращение здесь.
           </p>
           <button
             v-if="incident.action === 'relay_message' && incident.confirmable"
@@ -81,7 +78,7 @@ function formatCreatedAt(value: string): string {
             {{
               pendingActionId === incident.id
                 ? 'Сохраняем…'
-                : 'Сообщение видно в Telegram'
+                : 'Сообщение есть в Telegram'
             }}
           </button>
           <button
@@ -92,7 +89,7 @@ function formatCreatedAt(value: string): string {
             {{
               pendingActionId === incident.id
                 ? 'Сохраняем…'
-                : 'Работать в web inbox'
+                : 'Открыть обращение здесь'
             }}
           </button>
         </div>
@@ -100,3 +97,5 @@ function formatCreatedAt(value: string): string {
     </ol>
   </section>
 </template>
+
+<style scoped src="../styles/incident-list.css"></style>

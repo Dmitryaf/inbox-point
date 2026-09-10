@@ -1,8 +1,7 @@
 import { ref } from 'vue';
 
 import { resolveOperatorAction } from '@frontend/entities/operations/api/operations-api';
-import { HttpError } from '@frontend/shared/api/http-client';
-import { errorMessage } from '@frontend/shared/lib/error-message';
+import { requestErrorMessage } from '@frontend/shared/lib/request-error-message';
 
 export function useOperatorActionResolution(
   refresh: () => Promise<void>,
@@ -26,15 +25,11 @@ export function useOperatorActionResolution(
       await resolveOperatorAction(actionId, resolution);
       notice.value =
         resolution === 'received'
-          ? 'Получение сообщения оператором подтверждено.'
-          : 'Обращение переведено в web inbox.';
+          ? 'Подтверждено: сообщение есть в Telegram.'
+          : 'Обращение открыто на этой странице.';
       await refresh();
     } catch (cause: unknown) {
-      if (cause instanceof HttpError && cause.status === 401) {
-        onUnauthorized();
-        return;
-      }
-      error.value = errorMessage(cause);
+      error.value = requestErrorMessage(cause, onUnauthorized);
     } finally {
       pendingActionId.value = '';
     }
@@ -49,6 +44,6 @@ function confirmResolution(resolution: 'received' | 'use_web'): boolean {
         'Подтвердить, что всё сообщение видно в Telegram? Автоматического повтора не будет.',
       )
     : window.confirm(
-        'Перевести обращение в web inbox? Ответы из прежней Telegram-темы больше не будут маршрутизироваться.',
+        'Открыть обращение на этой странице? Ответы из прежней темы Telegram больше не будут приниматься.',
       );
 }

@@ -60,3 +60,5 @@ defineProps<{ name: AppIconName }>();
     </template>
   </svg>
 </template>
+
+<style scoped src="../styles/app-icon.css"></style>

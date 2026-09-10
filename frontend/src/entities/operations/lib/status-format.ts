@@ -1,4 +1,5 @@
 import type { ConnectionSource } from '@frontend/entities/operations/model/types';
+import { formatShortDateTimeWithSeconds } from '@frontend/shared/lib/format-date-time';
 
 export function formatUptime(totalSeconds: number): string {
   const days = Math.floor(totalSeconds / 86_400);
@@ -16,10 +17,10 @@ export function formatUptime(totalSeconds: number): string {
 
 export function connectionSourceLabel(source: ConnectionSource): string {
   if (source === 'environment') {
-    return 'Настроен на сервере';
+    return 'Подключён при установке';
   }
   if (source === 'local') {
-    return 'Подключён через настройку';
+    return 'Подключён здесь';
   }
   return 'Не настроен';
 }
@@ -28,8 +29,5 @@ export function formatStatusTime(value: string | undefined): string {
   if (!value) {
     return 'Ещё не было';
   }
-  return new Intl.DateTimeFormat('ru-RU', {
-    dateStyle: 'short',
-    timeStyle: 'medium',
-  }).format(new Date(value));
+  return formatShortDateTimeWithSeconds(value);
 }
