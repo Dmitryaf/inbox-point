@@ -6,7 +6,9 @@ import { telegramSetupErrorMessage } from '@/modules/channel-setup/presentation/
 
 export interface TelegramSetupRouteController {
   connect(botToken: string, operatorChatId: number): Promise<void>;
+  disconnect(): Promise<void>;
   discover(botToken: string): Promise<readonly unknown[]>;
+  status(): { source: string };
 }
 
 const tokenSchema = z.object({ botToken: z.string().min(20).max(200) });
@@ -18,6 +20,7 @@ export function registerTelegramSetupRoutes(
   app: FastifyInstance,
   setup: TelegramSetupRouteController,
   routeAccess: AdminRouteAccess,
+  isVkConfigured: () => boolean,
 ): void {
   app.post('/api/setup/telegram/discover', {
     preHandler: [
@@ -57,6 +60,28 @@ export function registerTelegramSetupRoutes(
         return reply
           .code(400)
           .send({ message: telegramSetupErrorMessage(error) });
+      }
+    },
+  });
+  app.delete('/api/setup/telegram', {
+    preHandler: [
+      routeAccess.requireAuthorization,
+      routeAccess.requireSameOrigin,
+    ],
+    handler: async (_request, reply) => {
+      if (setup.status().source === 'environment') {
+        return reply.code(409).send({ message: 'Управляется на сервере.' });
+      }
+      if (isVkConfigured()) {
+        return reply.code(409).send({ message: 'Сначала отключите VK.' });
+      }
+      try {
+        await setup.disconnect();
+        return { connected: false };
+      } catch {
+        return reply
+          .code(500)
+          .send({ message: 'Не удалось отключить Telegram.' });
       }
     },
   });

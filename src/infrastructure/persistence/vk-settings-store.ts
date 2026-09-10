@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { VkRuntimeConfig } from '@/config/runtime-config.js';
 import {
   readOptionalJsonFile,
+  removeOptionalFile,
   writePrivateJsonFile,
 } from '@/infrastructure/file-system/local-state-file.js';
 
@@ -15,12 +16,17 @@ const storedVkSettingsSchema = z
   .strict();
 
 export interface VkSettingsStore {
+  clear(): Promise<void>;
   load(): Promise<VkRuntimeConfig | undefined>;
   save(settings: VkRuntimeConfig): Promise<void>;
 }
 
 export class FileVkSettingsStore implements VkSettingsStore {
   public constructor(private readonly path: string) {}
+
+  public async clear(): Promise<void> {
+    await removeOptionalFile(this.path);
+  }
 
   public async load(): Promise<VkRuntimeConfig | undefined> {
     return readOptionalJsonFile(this.path, storedVkSettingsSchema, {

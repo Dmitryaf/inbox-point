@@ -9,6 +9,57 @@ import {
 } from '@/infrastructure/vk/vk-setup-controller.js';
 
 describe('VkSetupController', () => {
+  it('clears local settings and stops VK on disconnect', async () => {
+    let running = true;
+    const clear = vi.fn(() => Promise.resolve());
+    const stop = vi.fn(() => {
+      running = false;
+      return Promise.resolve();
+    });
+    const controller = new VkSetupController(
+      {
+        get running() {
+          return running;
+        },
+        start: vi.fn(() => Promise.resolve()),
+        stop,
+      },
+      {
+        clear,
+        load: vi.fn(() => Promise.resolve(undefined)),
+        save: vi.fn(() => Promise.resolve()),
+      },
+      'local',
+    );
+
+    await controller.disconnect();
+
+    expect(clear).toHaveBeenCalledOnce();
+    expect(stop).toHaveBeenCalledOnce();
+    expect(controller.status()).toEqual({
+      connected: false,
+      locked: false,
+      source: 'none',
+    });
+  });
+
+  it('keeps VK running when local settings cannot be cleared', async () => {
+    const stop = vi.fn(() => Promise.resolve());
+    const controller = new VkSetupController(
+      { running: true, start: vi.fn(() => Promise.resolve()), stop },
+      {
+        clear: vi.fn(() => Promise.reject(new Error('disk failure'))),
+        load: vi.fn(() => Promise.resolve(undefined)),
+        save: vi.fn(() => Promise.resolve()),
+      },
+      'local',
+    );
+
+    await expect(controller.disconnect()).rejects.toThrow('disk failure');
+    expect(stop).not.toHaveBeenCalled();
+    expect(controller.status().source).toBe('local');
+  });
+
   it('validates Long Poll before starting and saving the connection', async () => {
     const events: string[] = [];
     const start = vi.fn(() => {
@@ -30,6 +81,7 @@ describe('VkSetupController', () => {
       stop: vi.fn(() => Promise.resolve()),
     };
     const settingsStore: VkSettingsStore = {
+      clear: vi.fn(() => Promise.resolve()),
       load: vi.fn(() => Promise.resolve(undefined)),
       save,
     };
@@ -63,6 +115,7 @@ describe('VkSetupController', () => {
       stop: vi.fn(() => Promise.resolve()),
     };
     const settingsStore: VkSettingsStore = {
+      clear: vi.fn(() => Promise.resolve()),
       load: vi.fn(() => Promise.resolve(undefined)),
       save,
     };

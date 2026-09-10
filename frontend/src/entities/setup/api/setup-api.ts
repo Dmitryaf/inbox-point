@@ -36,3 +36,11 @@ export function connectVk(
     method: 'POST',
   });
 }
+
+export function disconnectTelegram(): Promise<{ connected: boolean }> {
+  return request('/api/setup/telegram', { method: 'DELETE' });
+}
+
+export function disconnectVk(): Promise<{ connected: boolean }> {
+  return request('/api/setup/vk', { method: 'DELETE' });
+}

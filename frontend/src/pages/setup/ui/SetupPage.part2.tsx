@@ -9,7 +9,12 @@ import type { createComponentModel } from './SetupPage.model';
 export function renderSetupPagePart2(
   $state: ReturnType<typeof createComponentModel>,
 ) {
-  const { markTelegramConnected, markVkConnected } = $state;
+  const {
+    markTelegramConnected,
+    markTelegramDisconnected,
+    markVkConnected,
+    markVkDisconnected,
+  } = $state;
   const session = $unref($state.session);
   const status = $state.status.value;
   if (!session.authenticated.value) {
@@ -32,13 +37,16 @@ export function renderSetupPagePart2(
           >
             <TelegramSetupCard
               status={status}
+              vkConfigured={status.vk.source !== 'none'}
               onConnected={$callback(markTelegramConnected)}
+              onDisconnected={$callback(markTelegramDisconnected)}
               data-r-ad468c1b=""
             />
             <VkSetupCard
               status={status.vk}
               telegramConnected={status.connected}
               onConnected={$callback(markVkConnected)}
+              onDisconnected={$callback(markVkDisconnected)}
               data-r-ad468c1b=""
             />
           </div>

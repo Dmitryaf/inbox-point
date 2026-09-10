@@ -33,5 +33,9 @@ describe('FileVkSettingsStore', () => {
       settings,
     );
     expect(JSON.parse(await readFile(path, 'utf8'))).toEqual(settings);
+
+    await store.clear();
+    await expect(store.load()).resolves.toBeUndefined();
+    await expect(store.clear()).resolves.toBeUndefined();
   });
 });

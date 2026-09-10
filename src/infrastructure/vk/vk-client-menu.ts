@@ -8,7 +8,6 @@ import {
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
 import {
   acceptingClientIntakePolicy,
-  pausedClientIntakeMessage,
   type ClientIntakePolicy,
 } from '@/core/contracts/client-intake-policy.js';
 
@@ -43,17 +42,17 @@ export class VkClientMenu implements VkClientMenuHandler {
       String(message.peerId),
     );
     const paused = this.intakePolicy.isPaused('vk') && !activeRequest;
-    const response =
-      paused && !isAvailableInformationRequest(this.information, message.text)
-        ? pausedClientIntakeMessage
-        : resolveMenuResponse(
-            message.text,
-            Boolean(activeRequest),
-            this.information,
-          );
     const informationRequested = isAvailableInformationRequest(
       this.information,
       message.text,
+    );
+    if (paused && !informationRequested) {
+      return this.completeWithoutResponse(message.externalEventId);
+    }
+    const response = resolveMenuResponse(
+      message.text,
+      Boolean(activeRequest),
+      this.information,
     );
     if (!response) {
       return false;
@@ -94,6 +93,18 @@ export class VkClientMenu implements VkClientMenuHandler {
       this.repository.releaseEvent('vk:menu', message.externalEventId);
       throw error;
     }
+  }
+
+  private completeWithoutResponse(externalEventId: string): boolean {
+    const claimed = this.repository.claimEvent(
+      'vk:menu',
+      externalEventId,
+      new Date(),
+    );
+    if (claimed) {
+      this.repository.completeEvent('vk:menu', externalEventId, new Date());
+    }
+    return true;
   }
 }
 

@@ -24,7 +24,11 @@ export default function OperatorInbox($incomingProps: ComponentProps) {
   const inbox = $unref($state.inbox);
   return (
     <ModelScopeProvider scope={$scope}>
-      <AsyncMessage kind="error" text={inbox.error.value} data-r-ae8be5db="" />
+      <AsyncMessage
+        kind="error"
+        text={inbox.actionError.value}
+        data-r-ae8be5db=""
+      />
       {renderOperatorInboxPart1($state)}
     </ModelScopeProvider>
   );

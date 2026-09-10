@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { TelegramRuntimeConfig } from '@/config/runtime-config.js';
 import {
   readOptionalJsonFile,
+  removeOptionalFile,
   writePrivateJsonFile,
 } from '@/infrastructure/file-system/local-state-file.js';
 
@@ -15,12 +16,17 @@ const storedTelegramSettingsSchema = z
   .strict();
 
 export interface TelegramSettingsStore {
+  clear(): Promise<void>;
   load(): Promise<TelegramRuntimeConfig | undefined>;
   save(settings: TelegramRuntimeConfig): Promise<void>;
 }
 
 export class FileTelegramSettingsStore implements TelegramSettingsStore {
   public constructor(private readonly path: string) {}
+
+  public async clear(): Promise<void> {
+    await removeOptionalFile(this.path);
+  }
 
   public async load(): Promise<TelegramRuntimeConfig | undefined> {
     return readOptionalJsonFile(this.path, storedTelegramSettingsSchema, {

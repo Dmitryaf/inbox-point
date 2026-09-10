@@ -61,6 +61,18 @@ export class VkSetupController {
     }
   }
 
+  public async disconnect(): Promise<void> {
+    if (this.source === 'environment') {
+      throw new Error('VK is managed by server configuration');
+    }
+    if (this.source === 'none') {
+      return;
+    }
+    await this.settingsStore.clear();
+    await this.runtime.stop();
+    this.source = 'none';
+  }
+
   private assertMutable(): void {
     if (this.source === 'environment') {
       throw new Error('VK is managed by server configuration');

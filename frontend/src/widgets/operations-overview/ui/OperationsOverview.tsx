@@ -37,7 +37,7 @@ export default function OperationsOverview($incomingProps: ComponentProps) {
       >
         {renderOperationsOverviewPart1($state, $props)}
         {renderOperationsOverviewPart2($state, $props)}
-        {renderOperationsOverviewPart3($state, $props)}
+        {renderOperationsOverviewPart3($props)}
       </section>
     </ModelScopeProvider>
   );

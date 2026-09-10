@@ -16,6 +16,15 @@ export function renderVkSetupCardPart2(
     <>
       {expanded ? (
         <div className="setup-details" data-r-712bbad4="">
+          {$props.status.connected ? (
+            <p
+              role="status"
+              className="setup-status setup-status--success"
+              data-r-712bbad4=""
+            >
+              {' Подключение активно. '}
+            </p>
+          ) : null}
           {renderVkSetupCardPart3($state, $props)}
         </div>
       ) : null}

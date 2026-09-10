@@ -18,22 +18,20 @@ export function renderOutboundDeliveryControlPart1(
           disabled={Boolean($props.pending)}
           onClick={() => void $emit('change', 'pause')}
           className="danger"
-          data-r-858ac0fd=""
+          data-r-add5063d=""
         >
           {$props.pending === 'pause'
-            ? 'Останавливаем…'
-            : 'Остановить доставку'}
+            ? 'Приостанавливаем…'
+            : 'Приостановить ответы'}
         </button>
       ) : (
         <button
           type="button"
           disabled={Boolean($props.pending)}
           onClick={() => void $emit('change', 'resume')}
-          data-r-858ac0fd=""
+          data-r-add5063d=""
         >
-          {$props.pending === 'resume'
-            ? 'Возобновляем…'
-            : 'Возобновить доставку'}
+          {$props.pending === 'resume' ? 'Возобновляем…' : 'Возобновить ответы'}
         </button>
       )}
     </>

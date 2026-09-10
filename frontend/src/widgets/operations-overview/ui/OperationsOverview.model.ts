@@ -10,13 +10,12 @@ import type { OperationsStatus } from '@frontend/entities/operations/model/types
 import { formatShortDateTimeWithSeconds } from '@frontend/shared/lib/format-date-time';
 
 export type ComponentProps = {
-  deliveryControlPending: 'pause' | 'resume' | undefined;
   pendingDeliveryId: string | undefined;
   pendingOperatorActionId: string | undefined;
   pendingInboundEventId: string | undefined;
   status: OperationsStatus;
+  statusUnavailable?: boolean;
 } & EventProps<{
-  changeDeliveryMode: [mode: 'pause' | 'resume'];
   resolveDelivery: [
     deliveryId: string,
     resolution: 'not_received' | 'received',
@@ -41,6 +40,9 @@ export function createComponentModel(
     formatShortDateTimeWithSeconds(props.status.observedAt),
   );
   const overallLabel = computed(() => {
+    if (props.statusUnavailable) {
+      return 'Состояние неизвестно';
+    }
     if (props.status.state === 'healthy') {
       return 'Всё работает';
     }
@@ -48,10 +50,13 @@ export function createComponentModel(
       return 'Нужно проверить';
     }
     return props.status.outbound.mode === 'paused'
-      ? 'Отправка ответов остановлена'
+      ? 'Ответы клиентам приостановлены'
       : 'Приём обращений приостановлен';
   });
   const overallDescription = computed(() => {
+    if (props.statusUnavailable) {
+      return `Не удалось обновить состояние. Показаны последние данные от ${observedAt.value}.`;
+    }
     if (props.status.state === 'healthy') {
       return 'Всё работает: каналы принимают сообщения, ответы отправляются.';
     }

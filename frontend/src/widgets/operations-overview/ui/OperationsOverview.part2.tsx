@@ -1,6 +1,7 @@
 import { classNames as $class } from '@frontend/shared/lib/component-view';
 
 import { unref as $unref } from '@frontend/shared/lib/model-state';
+import { logicalOr as $or } from '@frontend/shared/lib/component-bindings';
 
 import { formatUptime } from '@frontend/entities/operations/lib/status-format';
 
@@ -22,7 +23,10 @@ export function renderOperationsOverviewPart2(
     <>
       <article
         className={$class('service-summary', {
-          'summary-card--attention': $props.status.state === 'attention',
+          'summary-card--attention': $or(
+            $props.statusUnavailable,
+            () => $props.status.state === 'attention',
+          ),
           'summary-card--maintenance': $props.status.state === 'maintenance',
         })}
         data-r-2dc401be=""

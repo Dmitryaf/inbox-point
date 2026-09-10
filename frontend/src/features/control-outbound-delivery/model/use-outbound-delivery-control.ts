@@ -29,8 +29,8 @@ export function useOutboundDeliveryControl(
       }
       notice.value =
         mode === 'pause'
-          ? 'Отправка ответов остановлена. Сохранённые ответы не потеряны.'
-          : 'Отправка ответов возобновлена.';
+          ? 'Ответы клиентам приостановлены. Сохранённые ответы не потеряны.'
+          : 'Ответы клиентам возобновлены.';
       await refresh();
     } catch (cause: unknown) {
       error.value = requestErrorMessage(cause, onUnauthorized);
@@ -44,6 +44,6 @@ export function useOutboundDeliveryControl(
 
 function confirmPause(): boolean {
   return window.confirm(
-    'Остановить отправку ответов? Новые и ещё не отправленные ответы сохранятся до возобновления.',
+    'Приостановить ответы клиентам? Новые и ещё не отправленные ответы сохранятся до возобновления.',
   );
 }

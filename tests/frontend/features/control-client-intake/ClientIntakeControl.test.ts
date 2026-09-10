@@ -31,6 +31,7 @@ describe('ClientIntakeControl', () => {
     const confirmMock = vi.spyOn(window, 'confirm').mockReturnValue(true);
 
     const wrapper = mount(ClientIntakeControl);
+    await refresh(wrapper.vm);
     await flushPromises();
     const pauseButtons = wrapper
       .findAll('button')
@@ -45,7 +46,7 @@ describe('ClientIntakeControl', () => {
     await flushPromises();
 
     expect(confirmMock).toHaveBeenCalledWith(
-      'Приостановить новые обращения в Telegram? В боте появится сообщение о временной паузе.',
+      'Приостановить новые обращения в Telegram? Бот сообщит о паузе и предложит связаться по контакту из описания.',
     );
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/ops/service-control/telegram/pause',
@@ -56,7 +57,7 @@ describe('ClientIntakeControl', () => {
       'Новые обращения из Telegram приостановлены',
     );
     expect(wrapper.text()).toContain(
-      'В канале появится сообщение, что новые обращения временно не принимаются.',
+      'Бот не передаёт новые обращения оператору',
     );
     expect(wrapper.findAll('input')).toHaveLength(0);
   });
@@ -65,7 +66,8 @@ describe('ClientIntakeControl', () => {
     const fetchMock = vi.fn(() => Promise.resolve(response(activeState())));
     vi.stubGlobal('fetch', fetchMock);
 
-    mount(ClientIntakeControl);
+    const wrapper = mount(ClientIntakeControl);
+    await refresh(wrapper.vm);
     await flushPromises();
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -74,31 +76,26 @@ describe('ClientIntakeControl', () => {
     );
   });
 
-  it('lets the owner retry after the initial state request fails', async () => {
+  it('reports an initial state failure to the dashboard', async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
         response({ message: 'Не удалось прочитать состояние.' }, 500),
-      )
-      .mockResolvedValueOnce(response(activeState()));
+      );
     vi.stubGlobal('fetch', fetchMock);
 
     const wrapper = mount(ClientIntakeControl);
-    await flushPromises();
 
-    expect(wrapper.text()).toContain('Не удалось проверить');
-    const retry = wrapper
-      .findAll('button')
-      .find((button) => button.text() === 'Повторить проверку');
-    expect(retry).toBeDefined();
-
-    await retry?.trigger('click');
-    await flushPromises();
-
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(wrapper.text()).toContain('Приём включён');
+    await expect(refresh(wrapper.vm)).resolves.toBe(
+      'Не удалось прочитать состояние.',
+    );
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
   });
 });
+
+function refresh(component: unknown): Promise<string> {
+  return (component as { refresh(): Promise<string> }).refresh();
+}
 
 function activeState() {
   return {
