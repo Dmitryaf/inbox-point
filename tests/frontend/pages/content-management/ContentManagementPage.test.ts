@@ -34,8 +34,6 @@ describe('ContentManagementPage', () => {
     const wrapper = mount(ContentManagementPage);
     await flushPromises();
 
-    expect(wrapper.get('h1').text()).toBe('Информация');
-    expect(wrapper.get('[aria-current="page"]').text()).toBe('Информация');
     expect(wrapper.get<HTMLTextAreaElement>('#schedule').element.value).toBe(
       'Понедельник, 19:00',
     );

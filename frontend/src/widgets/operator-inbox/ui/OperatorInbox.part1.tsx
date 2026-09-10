@@ -22,8 +22,13 @@ export function renderOperatorInboxPart1(
         >
           <header className="operator-inbox-heading" data-r-ae8be5db="">
             <div data-r-ae8be5db="">
-              <p className="eyebrow" data-r-ae8be5db="">
-                {'РЕЗЕРВНЫЙ РЕЖИМ'}
+              <p data-r-ae8be5db="">
+                <span
+                  className="status-pill status-pill--attention"
+                  data-r-ae8be5db=""
+                >
+                  {' Резервный интерфейс '}
+                </span>
               </p>
               <h2 id="operator-inbox-title" data-r-ae8be5db="">
                 {'Входящие обращения'}

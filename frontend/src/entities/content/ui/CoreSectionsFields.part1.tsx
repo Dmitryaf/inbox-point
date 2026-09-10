@@ -25,18 +25,6 @@ export function renderCoreSectionsFieldsPart1(
         <summary data-r-54db50dd="">
           <span className="summary-copy" data-r-54db50dd="">
             <strong data-r-54db50dd="">{'Расписание'}</strong>
-            <span
-              className="summary-action summary-action--open"
-              data-r-54db50dd=""
-            >
-              {' Открыть настройки раздела '}
-            </span>
-            <span
-              className="summary-action summary-action--close"
-              data-r-54db50dd=""
-            >
-              {' Скрыть настройки раздела '}
-            </span>
           </span>
           <span className="summary-meta" data-r-54db50dd="">
             <small data-r-54db50dd="">

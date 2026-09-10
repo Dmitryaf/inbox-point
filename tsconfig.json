@@ -24,6 +24,7 @@
     "src/**/*.ts",
     "tests/unit/**/*.ts",
     "tests/integration/**/*.ts",
+    "tests/e2e/**/*.ts",
     "eslint.config.js",
     "vitest.config.ts"
   ]

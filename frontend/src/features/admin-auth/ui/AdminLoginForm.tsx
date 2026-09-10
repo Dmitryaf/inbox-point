@@ -33,7 +33,7 @@ export default function AdminLoginForm($incomingProps: ComponentProps) {
       <form
         {...$attributes}
         onSubmit={$nativeHandler(submit, { prevent: true })}
-        className={$class('auth-card card', $attributes.className)}
+        className={$class('auth-card', $attributes.className)}
         data-r-2e9199db=""
       >
         <h1 data-r-2e9199db="">{'Вход в управление'}</h1>

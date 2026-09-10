@@ -1,0 +1,22 @@
+.admin-shell[data-r-2be24c3c] {
+  min-height: 100vh;
+}
+.admin-shell-state[data-r-2be24c3c] {
+  color: var(--color-text-muted);
+  margin: 25vh auto 0;
+  max-width: var(--shell-width);
+  padding: 1.5rem;
+  text-align: center;
+}
+.admin-shell-content[data-r-2be24c3c] {
+  margin-inline: auto;
+  max-width: var(--shell-width);
+  min-width: 0;
+  padding: 0 1.5rem 4rem;
+  width: 100%;
+}
+@media (max-width: 600px) {
+  .admin-shell-content[data-r-2be24c3c] {
+    padding-inline: 0.9rem;
+  }
+}

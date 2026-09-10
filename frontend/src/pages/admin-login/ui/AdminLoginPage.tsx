@@ -32,9 +32,6 @@ export default function AdminLoginPage($incomingProps: ComponentProps) {
         className={$class('login-page', $attributes.className)}
         data-r-3fb97507=""
       >
-        <p className="eyebrow" data-r-3fb97507="">
-          {'Messenger Handoff'}
-        </p>
         {renderAdminLoginPagePart1($state)}
       </main>
     </ModelScopeProvider>

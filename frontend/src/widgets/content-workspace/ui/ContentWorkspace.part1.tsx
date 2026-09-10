@@ -58,14 +58,15 @@ export function renderContentWorkspacePart1(
             onViewChange={$setter($state, 'activeView')}
             data-r-09629bd3=""
           />
-          <section
-            aria-label="Рабочая область"
-            className="workspace-panel"
-            data-r-09629bd3=""
-          >
-            {renderContentWorkspacePart2($state)}
-          </section>
-          <aside className="workspace-rail" data-r-09629bd3="">
+          <div className="workspace-main" data-r-09629bd3="">
+            <ContentSummary content={workspace.draft} data-r-09629bd3="" />
+            <section
+              aria-label="Рабочая область"
+              className="workspace-panel"
+              data-r-09629bd3=""
+            >
+              {renderContentWorkspacePart2($state)}
+            </section>
             <SaveBar
               dirty={workspace.dirty.value}
               saving={workspace.saving.value}
@@ -74,8 +75,7 @@ export function renderContentWorkspacePart1(
               onSave={$callback(save)}
               data-r-09629bd3=""
             />
-            <ContentSummary content={workspace.draft} data-r-09629bd3="" />
-          </aside>
+          </div>
         </div>
       )}
     </>

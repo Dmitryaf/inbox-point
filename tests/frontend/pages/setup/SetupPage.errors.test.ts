@@ -37,10 +37,14 @@ describe('SetupPage errors', () => {
 
     const wrapper = mount(SetupPage);
     await flushPromises();
+    await wrapper.get('.setup-toggle').trigger('click');
     await wrapper
       .get('#telegram-token')
       .setValue('123456789:synthetic-telegram-token');
-    await wrapper.get('.setup-card button').trigger('click');
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Найти группы')
+      ?.trigger('click');
     await flushPromises();
 
     expect(wrapper.get('[role="alert"]').text()).toBe(

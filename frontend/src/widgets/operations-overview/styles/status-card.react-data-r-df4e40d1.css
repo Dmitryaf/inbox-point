@@ -1,34 +1,34 @@
 .status-card[data-r-df4e40d1] {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 1.25rem;
-  box-shadow: var(--shadow-card);
+  border-radius: var(--radius-panel);
   min-width: 0;
-  padding: 1rem;
+  padding: 0.9rem;
   width: 100%;
 }
 .status-card-heading[data-r-df4e40d1] {
-  align-items: start;
+  align-items: flex-start;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
+  gap: 0.6rem;
   justify-content: space-between;
-  min-width: 0;
 }
 .status-card h3[data-r-df4e40d1] {
-  margin-bottom: 0.8rem;
+  font-size: 1rem;
+  margin-bottom: 0.55rem;
 }
 .status-card p[data-r-df4e40d1] {
   color: var(--color-text-muted);
+  font-size: 0.88rem;
+  line-height: 1.5;
   margin-bottom: 0;
 }
 .status-pill[data-r-df4e40d1] {
   border-radius: 999px;
-  font-size: 0.78rem;
-  font-weight: 800;
+  font-size: 0.75rem;
+  font-weight: 600;
   max-width: 100%;
-  overflow-wrap: anywhere;
-  padding: 0.35rem 0.65rem;
+  padding: 0.3rem 0.55rem;
 }
 .status-pill--healthy[data-r-df4e40d1] {
   background: var(--color-success-soft);
@@ -48,21 +48,10 @@
 .technical-details summary[data-r-df4e40d1] {
   color: var(--color-text-muted);
   cursor: pointer;
-  font-size: 0.85rem;
-  font-weight: 700;
+  font-size: 0.82rem;
+  font-weight: 600;
 }
 .technical-details summary[data-r-df4e40d1]:focus-visible {
   outline: 3px solid var(--color-focus);
   outline-offset: 2px;
-}
-@media (min-width: 900px) {
-  .status-card[data-r-df4e40d1] {
-    padding: 1.35rem;
-  }
-}
-@media (max-width: 520px) {
-  .status-card[data-r-df4e40d1] {
-    border-radius: 1rem;
-    padding: 0.85rem;
-  }
 }

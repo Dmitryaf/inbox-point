@@ -1,3 +1,9 @@
+import { renderList as $renderList } from '@frontend/shared/lib/component-view';
+
+import { unref as $unref } from '@frontend/shared/lib/model-state';
+
+import { RouterLink } from '@frontend/shared/lib/router';
+
 import type { WithDefaults } from '@frontend/shared/lib/component-model';
 import type {
   createComponentModel,
@@ -9,21 +15,35 @@ export function renderAdminPageHeaderPart1(
   $props: WithDefaults<ComponentProps, typeof componentDefaults>,
 ) {
   const { $emit } = $state;
+  const sections = $unref($state.sections);
 
   return (
     <>
-      <div className="admin-header-row" data-r-e15afcb7="">
-        <div className="admin-title-block" data-r-e15afcb7="">
-          <p className="eyebrow" data-r-e15afcb7="">
-            {'Messenger Handoff'}
-          </p>
-          <h1 data-r-e15afcb7="">{$props.title}</h1>
-        </div>
-        {$props.authenticated ? (
+      <div className="admin-topbar" data-r-e15afcb7="">
+        <RouterLink to="/manage" className="admin-brand" data-r-e15afcb7="">
+          {' Messenger Handoff '}
+        </RouterLink>
+        <nav
+          aria-label="Разделы администратора"
+          className="admin-navigation"
+          data-r-e15afcb7=""
+        >
+          {$renderList(sections, (section) => (
+            <RouterLink
+              key={section.id}
+              aria-current={$props.current === section.id ? 'page' : undefined}
+              to={section.href}
+              data-r-e15afcb7=""
+            >
+              {section.label}
+            </RouterLink>
+          ))}
+        </nav>
+        {$props.showLogout ? (
           <button
             type="button"
             onClick={() => void $emit('logout')}
-            className="secondary-button"
+            className="quiet admin-logout"
             data-r-e15afcb7=""
           >
             {' Выйти '}

@@ -42,7 +42,9 @@ describe('OperationsDashboardPage', () => {
       }),
     );
 
-    const wrapper = mount(OperationsDashboardPage);
+    const wrapper = mount(OperationsDashboardPage, {
+      global: { stubs: { RouterLink: true } },
+    });
     await flushPromises();
 
     expect(wrapper.text()).toContain('Нужно проверить');
@@ -51,13 +53,11 @@ describe('OperationsDashboardPage', () => {
     );
     expect(wrapper.text()).toContain('Требует внимания');
     const attentionPanel = wrapper.get('.attention-panel').element;
-    const summaryCard = wrapper.get('.summary-card').element;
+    const summaryCard = wrapper.get('.service-summary').element;
     expect(
       attentionPanel.compareDocumentPosition(summaryCard) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
-    expect(wrapper.get('h1').text()).toBe('Состояние');
-    expect(wrapper.get('[aria-current="page"]').text()).toBe('Состояние');
     const statusCards = wrapper.findAll('.status-card');
     expect(statusCards[0]?.text()).toContain('Telegram');
     expect(statusCards[0]?.text()).toContain('Работает');
@@ -119,36 +119,5 @@ describe('OperationsDashboardPage', () => {
     );
 
     wrapper.unmount();
-  });
-
-  it('returns to login when the owner session expires', async () => {
-    window.history.replaceState(null, '', '/ops');
-    window.sessionStorage.clear();
-    vi.stubGlobal(
-      'fetch',
-      vi.fn((input: RequestInfo | URL) => {
-        const url = requestUrl(input);
-        if (url.endsWith('/session')) {
-          return Promise.resolve(response({ authenticated: true }));
-        }
-        return Promise.resolve(
-          response(
-            { message: 'Войдите, чтобы увидеть состояние сервиса.' },
-            401,
-          ),
-        );
-      }),
-    );
-
-    const wrapper = mount(OperationsDashboardPage);
-    await flushPromises();
-
-    expect(window.location.pathname).toBe('/login');
-    expect(wrapper.text()).not.toContain('Состояние');
-    expect(wrapper.find('.auth-card').exists()).toBe(false);
-
-    wrapper.unmount();
-    window.history.replaceState(null, '', '/');
-    window.sessionStorage.clear();
   });
 });

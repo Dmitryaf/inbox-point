@@ -12,9 +12,6 @@ export function renderSetupPagePart2(
   const { markTelegramConnected, markVkConnected } = $state;
   const session = $unref($state.session);
   const status = $state.status.value;
-  if (!!session.booting.value) {
-    return null;
-  }
   if (!session.authenticated.value) {
     return null;
   }

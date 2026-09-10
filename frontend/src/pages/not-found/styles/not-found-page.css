@@ -1,0 +1,29 @@
+.not-found-page {
+  align-items: center;
+  display: grid;
+  min-height: 100vh;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.not-found-page section {
+  margin: auto;
+  max-width: 28rem;
+}
+
+.not-found-page p:not(.brand) {
+  color: var(--color-text-muted);
+  line-height: 1.6;
+}
+
+.button-link {
+  align-items: center;
+  background: var(--color-primary);
+  border-radius: var(--radius-control);
+  color: white;
+  display: inline-flex;
+  font-weight: 600;
+  min-height: 2.5rem;
+  padding: 0.6rem 0.9rem;
+  text-decoration: none;
+}

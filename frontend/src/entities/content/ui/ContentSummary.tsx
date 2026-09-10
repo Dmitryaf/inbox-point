@@ -10,7 +10,6 @@ import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 import AppIcon from '@frontend/shared/ui/AppIcon';
 
 import { renderContentSummaryPart1 } from './ContentSummary.part1';
-import { renderContentSummaryPart2 } from './ContentSummary.part2';
 import {
   createComponentModel,
   componentDefaults,
@@ -27,6 +26,7 @@ export default function ContentSummary($incomingProps: ComponentProps) {
     componentDefaults,
     createComponentModel,
   );
+  const totalCount = $state.totalCount.value;
   const $attributes = inheritedAttributes($props);
   return (
     <ModelScopeProvider scope={$scope}>
@@ -36,8 +36,15 @@ export default function ContentSummary($incomingProps: ComponentProps) {
         className={$class('content-summary', $attributes.className)}
         data-r-109c0780=""
       >
-        {renderContentSummaryPart1($state)}
-        {renderContentSummaryPart2($state, $props)}
+        <div className="summary-heading" data-r-109c0780="">
+          <div data-r-109c0780="">
+            <p data-r-109c0780="">{'Готовность ответов'}</p>
+            <h3 id="content-summary-title" data-r-109c0780="">
+              {totalCount ? 'Готово к показу' : 'Пока не заполнено'}
+            </h3>
+          </div>
+        </div>
+        {renderContentSummaryPart1($state, $props)}
         <p className="channel-note" data-r-109c0780="">
           <AppIcon name="check" data-r-109c0780="" />
           {' После сохранения изменения появятся в Telegram и VK. '}

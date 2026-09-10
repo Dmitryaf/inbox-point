@@ -6,6 +6,7 @@ import {
 
 import { renderWorkspaceNavigationPart1 } from './WorkspaceNavigation.part1';
 import { renderWorkspaceNavigationPart3 } from './WorkspaceNavigation.part3';
+import { renderWorkspaceNavigationPart4 } from './WorkspaceNavigation.part4';
 import {
   createComponentModel,
   componentDefaults,
@@ -27,6 +28,7 @@ export default function WorkspaceNavigation($incomingProps: ComponentProps) {
     <ModelScopeProvider scope={$scope}>
       {renderWorkspaceNavigationPart1($state, $props)}
       {renderWorkspaceNavigationPart3($state, $props)}
+      {renderWorkspaceNavigationPart4($state, $props)}
     </ModelScopeProvider>
   );
 }

@@ -4,11 +4,11 @@ import {
   type WithDefaults,
 } from '@frontend/shared/lib/component-model';
 
-export type AdminSection = 'channels' | 'information' | 'status';
+export type AdminSection = 'answers' | 'channels' | 'monitoring';
 export type ComponentProps = {
-  authenticated: boolean;
   current: AdminSection;
   intro: string;
+  showLogout: boolean;
   title: string;
 } & EventProps<{
   logout: [];
@@ -25,9 +25,9 @@ export function createComponentModel(
     id: AdminSection;
     label: string;
   }[] = [
-    { href: '/manage', id: 'information', label: 'Информация' },
+    { href: '/manage', id: 'answers', label: 'Ответы' },
     { href: '/setup', id: 'channels', label: 'Каналы' },
-    { href: '/ops', id: 'status', label: 'Состояние' },
+    { href: '/ops', id: 'monitoring', label: 'Мониторинг' },
   ];
   return { $emit, sections };
 }

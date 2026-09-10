@@ -5,18 +5,23 @@ import {
   login,
   logout,
   readSession,
+  type AdminSessionMode,
 } from '@frontend/features/admin-auth/api/session-api';
-import { openAdminLogin } from '@frontend/features/admin-auth/lib/auth-navigation';
+
+export type AdminSession = ReturnType<typeof useAdminSession>;
 
 export function useAdminSession() {
   const authenticated = ref(false);
   const booting = ref(true);
   const pending = ref(false);
   const error = ref('');
+  const mode = ref<AdminSessionMode>();
 
   onMounted(async () => {
     try {
-      authenticated.value = await readSession();
+      const session = await readSession();
+      authenticated.value = session.authenticated;
+      mode.value = session.mode;
     } catch (cause: unknown) {
       error.value = errorMessage(cause);
     } finally {
@@ -28,8 +33,9 @@ export function useAdminSession() {
     pending.value = true;
     error.value = '';
     try {
-      await login(password);
-      authenticated.value = true;
+      const session = await login(password);
+      authenticated.value = session.authenticated;
+      mode.value = session.mode;
       return true;
     } catch (cause: unknown) {
       error.value = errorMessage(cause);
@@ -42,8 +48,9 @@ export function useAdminSession() {
   const endSession = async (): Promise<void> => {
     error.value = '';
     try {
-      await logout();
-      authenticated.value = false;
+      const session = await logout();
+      authenticated.value = session.authenticated;
+      mode.value = session.mode;
     } catch (cause: unknown) {
       error.value = errorMessage(cause);
     }
@@ -52,7 +59,6 @@ export function useAdminSession() {
   const expireSession = (): void => {
     authenticated.value = false;
     error.value = 'Сессия завершилась. Войдите снова.';
-    openAdminLogin(window.location.pathname, error.value);
   };
 
   return {
@@ -62,6 +68,7 @@ export function useAdminSession() {
     endSession,
     error,
     expireSession,
+    mode,
     pending,
   };
 }

@@ -71,7 +71,6 @@ describe('operator inbox routes', () => {
     });
     registerAdminSessionRoutes(app, access, routeAccess, true);
     registerOperationsRoutes(app, routeAccess, {
-      assets: { html: '', icon: '', script: '', styles: '' },
       monitoring: createMonitoringService(),
       operatorInbox: new OperatorInboxService(repository, handoff),
     });

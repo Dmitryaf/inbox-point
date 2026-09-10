@@ -23,6 +23,76 @@ afterEach(async () => {
 });
 
 describe('admin session routes', () => {
+  it('reports local passwordless access as bypass without a fake logout', async () => {
+    const app = createApp(config);
+    apps.add(app);
+    const access = new PasswordSessionAccess(undefined);
+    const routeAccess = createAdminRouteAccess(app, access, {
+      allowLocalBypass: true,
+      secureCookies: false,
+    });
+    registerAdminSessionRoutes(app, access, routeAccess, false);
+
+    const session = await app.inject({
+      method: 'GET',
+      url: '/api/admin/session',
+    });
+    const logout = await app.inject({
+      method: 'POST',
+      payload: {},
+      url: '/api/admin/logout',
+    });
+
+    expect(session.json()).toEqual({ authenticated: true, mode: 'bypass' });
+    expect(logout.json()).toEqual({ authenticated: true, mode: 'bypass' });
+  });
+
+  it('requires a real session in development when a password is configured', async () => {
+    const app = createApp(config);
+    apps.add(app);
+    const access = new PasswordSessionAccess('correct-admin-password', {
+      createToken: () => 'development-session',
+    });
+    const routeAccess = createAdminRouteAccess(app, access, {
+      allowLocalBypass: true,
+      secureCookies: false,
+    });
+    registerAdminSessionRoutes(app, access, routeAccess, false);
+
+    const beforeLogin = await app.inject({
+      method: 'GET',
+      url: '/api/admin/session',
+    });
+    const login = await app.inject({
+      method: 'POST',
+      payload: { password: 'correct-admin-password' },
+      url: '/api/admin/login',
+    });
+    const cookie = readSessionCookie(login.headers['set-cookie']);
+    const authenticated = await app.inject({
+      headers: { cookie },
+      method: 'GET',
+      url: '/api/admin/session',
+    });
+    const logout = await app.inject({
+      headers: { cookie },
+      method: 'POST',
+      payload: {},
+      url: '/api/admin/logout',
+    });
+
+    expect(beforeLogin.json()).toEqual({
+      authenticated: false,
+      mode: 'password',
+    });
+    expect(login.json()).toEqual({ authenticated: true, mode: 'password' });
+    expect(authenticated.json()).toEqual({
+      authenticated: true,
+      mode: 'password',
+    });
+    expect(logout.json()).toEqual({ authenticated: false, mode: 'password' });
+  });
+
   it('shares login, expiry and logout across management and operations', async () => {
     const app = createApp(config);
     apps.add(app);

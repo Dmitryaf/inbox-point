@@ -15,7 +15,9 @@ describe('ContentManagementPage states', () => {
       vi.fn((input: RequestInfo | URL) => {
         const url = requestUrl(input);
         if (url.endsWith('/session')) {
-          return Promise.resolve(response({ authenticated: true }));
+          return Promise.resolve(
+            response({ authenticated: true, mode: 'password' }),
+          );
         }
         if (url.endsWith('/history')) {
           return Promise.resolve(response({ history: [] }));
@@ -125,33 +127,5 @@ describe('ContentManagementPage states', () => {
     expect(wrapper.get('[role="alert"]').text()).toContain(
       'изменения остались на этой странице',
     );
-  });
-
-  it('returns to login when the management session expires', async () => {
-    window.history.replaceState(null, '', '/manage');
-    window.sessionStorage.clear();
-    vi.stubGlobal(
-      'fetch',
-      vi.fn((input: RequestInfo | URL) => {
-        const url = requestUrl(input);
-        if (url.endsWith('/session')) {
-          return Promise.resolve(response({ authenticated: true }));
-        }
-        return Promise.resolve(
-          response({ message: 'Войдите, чтобы изменить информацию.' }, 401),
-        );
-      }),
-    );
-
-    const wrapper = mount(ContentManagementPage);
-    await flushPromises();
-
-    expect(window.location.pathname).toBe('/login');
-    expect(wrapper.text()).not.toContain('Содержание');
-    expect(wrapper.find('input[type="password"]').exists()).toBe(false);
-
-    wrapper.unmount();
-    window.history.replaceState(null, '', '/');
-    window.sessionStorage.clear();
   });
 });

@@ -17,27 +17,24 @@ afterEach(async () => {
 });
 
 describe('loadFrontendAssets', () => {
-  it.each(['/manage', '/ops', '/setup'] as const)(
-    'scopes the shared bundle to %s',
-    async (routeBase) => {
-      const directory = await mkdtemp(join(tmpdir(), 'mh-frontend-assets-'));
-      directories.push(directory);
-      await Promise.all([
-        writeFile(
-          join(directory, 'index.html'),
-          '<script src="./app.js"></script><link href="./style.css"><link rel="icon" href="./favicon.svg">',
-        ),
-        writeFile(join(directory, 'favicon.svg'), '<svg>icon</svg>'),
-        writeFile(join(directory, 'app.js'), 'globalThis.app = true;'),
-        writeFile(join(directory, 'style.css'), ':root { color: black; }'),
-      ]);
+  it('loads the shared frontend bundle without route-specific rewriting', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'mh-frontend-assets-'));
+    directories.push(directory);
+    await Promise.all([
+      writeFile(
+        join(directory, 'index.html'),
+        '<script src="./app.js"></script><link href="./style.css"><link rel="icon" href="./favicon.svg">',
+      ),
+      writeFile(join(directory, 'favicon.svg'), '<svg>icon</svg>'),
+      writeFile(join(directory, 'app.js'), 'globalThis.app = true;'),
+      writeFile(join(directory, 'style.css'), ':root { color: black; }'),
+    ]);
 
-      const assets = loadFrontendAssets(routeBase, directory);
+    const assets = loadFrontendAssets(directory);
 
-      expect(assets.html).toContain(`src="${routeBase}/app.js"`);
-      expect(assets.html).toContain(`href="${routeBase}/style.css"`);
-      expect(assets.html).toContain(`href="${routeBase}/favicon.svg"`);
-      expect(assets.icon).toBe('<svg>icon</svg>');
-    },
-  );
+    expect(assets.html).toContain('src="./app.js"');
+    expect(assets.html).toContain('href="./style.css"');
+    expect(assets.html).toContain('href="./favicon.svg"');
+    expect(assets.icon).toBe('<svg>icon</svg>');
+  });
 });
