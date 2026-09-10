@@ -85,6 +85,27 @@ describe('HTTP service status', () => {
     expect(response.json()).toEqual({ status: 'not_ready' });
   });
 
+  it('fails readiness when the delivery worker stopped with an empty queue', async () => {
+    const app = createApp(config);
+    apps.add(app);
+    registerReadinessRoute(
+      app,
+      new OperationsMonitoringService({
+        channelActivity: () => ({}),
+        deliveryActivity: () => ({ running: false }),
+        deliverySummary: () => ({ failed: 0, pending: 0 }),
+        startedAt: new Date('2026-09-04T12:00:00.000Z'),
+        telegramStatus: () => ({ connected: false, source: 'none' }),
+        vkStatus: () => ({ connected: false, source: 'none' }),
+      }),
+    );
+
+    const response = await app.inject({ method: 'GET', url: '/ready' });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toEqual({ status: 'not_ready' });
+  });
+
   it('fails readiness without exposing which configured channel is stale', async () => {
     const app = createApp(config);
     apps.add(app);

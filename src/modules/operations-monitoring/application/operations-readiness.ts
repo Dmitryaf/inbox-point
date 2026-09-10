@@ -3,6 +3,7 @@ import { channelIsReady } from '@/modules/operations-monitoring/application/chan
 
 export function operationsAreReady(status: OperationsStatus): boolean {
   return (
+    status.deliveries.worker.state === 'running' &&
     status.deliveries.state !== 'backlog' &&
     status.deliveries.state !== 'stalled' &&
     status.inboundEvents.state === 'healthy' &&
