@@ -17,12 +17,13 @@ describe('CoreSectionsFields', () => {
     }
 
     expect(prices.element.open).toBe(false);
-    expect(prices.get('summary').text()).toContain('Открыть настройки раздела');
+    expect(prices.get('summary').text()).toContain('Не заполнено');
+    expect(prices.get('summary').text()).not.toContain('настройки раздела');
     expect(prices.find('.disclosure-chevron').exists()).toBe(true);
 
     await prices.get('summary').trigger('click');
 
     expect(prices.element.open).toBe(true);
-    expect(prices.get('summary').text()).toContain('Скрыть настройки раздела');
+    expect(prices.get('summary').text()).toContain('Не заполнено');
   });
 });

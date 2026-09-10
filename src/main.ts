@@ -8,6 +8,8 @@ import { InboundEventIncidentService } from '@/core/application/inbound-event-in
 import { OperatorActionIncidentService } from '@/core/application/operator-action-incident-service.js';
 import { createAdminRouteAccess } from '@/infrastructure/http/admin-route-access.js';
 import { registerAdminSessionRoutes } from '@/infrastructure/http/admin-session-routes.js';
+import { registerFrontendRoutes } from '@/infrastructure/http/frontend-asset-routes.js';
+import { loadFrontendAssets } from '@/infrastructure/http/frontend-assets.js';
 import { createApp } from '@/infrastructure/http/app.js';
 import { PasswordSessionAccess } from '@/infrastructure/security/password-session-access.js';
 import { ContentManagementService } from '@/modules/content-management/application/content-management-service.js';
@@ -200,6 +202,7 @@ async function start(): Promise<void> {
       serviceControl,
       usageMetrics: repository,
     });
+    registerFrontendRoutes(app, adminRouteAccess, loadFrontendAssets());
     await app.listen({ host: config.host, port: config.port });
     const runtimeLogger = {
       error: (error: unknown, message: string) =>

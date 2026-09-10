@@ -1,11 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 
 import type { AdminRouteAccess } from '@/infrastructure/http/admin-route-access.js';
-import { registerFrontendAssetRoutes } from '@/infrastructure/http/frontend-asset-routes.js';
-import {
-  loadFrontendAssets,
-  type FrontendAssets,
-} from '@/infrastructure/http/frontend-assets.js';
 import {
   registerTelegramSetupRoutes,
   type TelegramSetupRouteController,
@@ -34,15 +29,7 @@ export function registerSetupRoutes(
   telegramSetup: TelegramSetup,
   vkSetup: VkSetup | undefined,
   routeAccess: AdminRouteAccess,
-  options: { assets?: FrontendAssets } = {},
 ): void {
-  const assets = options.assets ?? loadFrontendAssets('/setup');
-
-  registerFrontendAssetRoutes(app, routeAccess, {
-    assets,
-    basePath: '/setup',
-    pagePaths: ['/setup'],
-  });
   registerSetupStatusRoute(app, telegramSetup, vkSetup, routeAccess);
   registerTelegramSetupRoutes(app, telegramSetup, routeAccess);
   registerVkSetupRoute(app, vkSetup, routeAccess);

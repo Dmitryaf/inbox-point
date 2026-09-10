@@ -15,7 +15,7 @@ function submit(): void {
 </script>
 
 <template>
-  <form class="auth-card card" @submit.prevent="submit">
+  <form class="auth-card" @submit.prevent="submit">
     <h1>Вход в управление</h1>
     <p>Введите пароль администратора.</p>
     <label for="admin-password">Пароль</label>

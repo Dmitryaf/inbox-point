@@ -88,28 +88,28 @@ async function save(): Promise<void> {
       @view-change="activeView = $event"
     />
 
-    <section class="workspace-panel" aria-label="Рабочая область">
-      <ContentEditor
-        v-if="activeView === 'edit'"
-        v-model="workspace.draft"
-        :active-section="activeSection"
-        :errors="fieldErrors"
-      />
-      <ContentPreview
-        v-else-if="activeView === 'preview'"
-        :content="workspace.draft"
-      />
-      <ChangeHistory
-        v-else
-        :changes="workspace.history.value"
-        :has-unsaved-changes="workspace.dirty.value"
-        :loading="workspace.historyLoading.value"
-        :restoring="workspace.restoring.value"
-        @restore="workspace.restore"
-      />
-    </section>
-
-    <aside class="workspace-rail">
+    <div class="workspace-main">
+      <ContentSummary :content="workspace.draft" />
+      <section class="workspace-panel" aria-label="Рабочая область">
+        <ContentEditor
+          v-if="activeView === 'edit'"
+          v-model="workspace.draft"
+          :active-section="activeSection"
+          :errors="fieldErrors"
+        />
+        <ContentPreview
+          v-else-if="activeView === 'preview'"
+          :content="workspace.draft"
+        />
+        <ChangeHistory
+          v-else
+          :changes="workspace.history.value"
+          :has-unsaved-changes="workspace.dirty.value"
+          :loading="workspace.historyLoading.value"
+          :restoring="workspace.restoring.value"
+          @restore="workspace.restore"
+        />
+      </section>
       <SaveBar
         :dirty="workspace.dirty.value"
         :saving="workspace.saving.value"
@@ -117,8 +117,7 @@ async function save(): Promise<void> {
         :validation-message="validation.message"
         @save="save"
       />
-      <ContentSummary :content="workspace.draft" />
-    </aside>
+    </div>
   </div>
 </template>
 

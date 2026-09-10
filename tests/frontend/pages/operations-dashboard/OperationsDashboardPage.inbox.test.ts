@@ -53,7 +53,9 @@ describe('OperationsDashboardPage operator inbox', () => {
       }),
     );
 
-    const wrapper = mount(OperationsDashboardPage);
+    const wrapper = mount(OperationsDashboardPage, {
+      global: { stubs: { RouterLink: true } },
+    });
     await flushPromises();
 
     expect(wrapper.text()).toContain('Входящие обращения');

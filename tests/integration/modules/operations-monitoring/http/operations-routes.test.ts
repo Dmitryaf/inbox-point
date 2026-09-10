@@ -21,13 +21,6 @@ const config: RuntimeConfig = {
 };
 
 const apps = new Set<ReturnType<typeof createApp>>();
-const operationsAssets = {
-  html: '<!doctype html><title>Состояние — Messenger Handoff</title>',
-  icon: '<svg>operations icon</svg>',
-  script: 'globalThis.operationsApp = true;',
-  styles: ':root { color: black; }',
-};
-
 afterEach(async () => {
   await Promise.all([...apps].map(async (app) => app.close()));
   apps.clear();
@@ -50,7 +43,6 @@ describe('operations monitoring routes', () => {
     });
     registerAdminSessionRoutes(app, access, routeAccess, true);
     registerOperationsRoutes(app, routeAccess, {
-      assets: operationsAssets,
       deliveries: {
         confirmUnknownDeliveryNotReceived: (deliveryId) => {
           resolvedDeliveries.push(`not_received:${deliveryId}`);
@@ -94,21 +86,6 @@ describe('operations monitoring routes', () => {
       method: 'GET',
       remoteAddress: '192.0.2.10',
       url: '/api/ops/status',
-    });
-    const page = await app.inject({
-      method: 'GET',
-      remoteAddress: '192.0.2.10',
-      url: '/ops',
-    });
-    const pageWithQuery = await app.inject({
-      method: 'GET',
-      remoteAddress: '192.0.2.10',
-      url: '/ops?test=1',
-    });
-    const icon = await app.inject({
-      method: 'GET',
-      remoteAddress: '192.0.2.10',
-      url: '/ops/favicon.svg',
     });
     const crossOrigin = await app.inject({
       headers: {
@@ -238,16 +215,6 @@ describe('operations monitoring routes', () => {
     });
 
     expect(unauthorized.statusCode).toBe(401);
-    expect(page.statusCode).toBe(200);
-    expect(page.headers['content-security-policy']).toContain(
-      "default-src 'none'",
-    );
-    expect(page.headers['content-security-policy']).toContain("img-src 'self'");
-    expect(icon.statusCode).toBe(200);
-    expect(icon.headers['content-type']).toContain('image/svg+xml');
-    expect(icon.body).toBe(operationsAssets.icon);
-    expect(pageWithQuery.headers['cache-control']).toBe('no-store');
-    expect(pageWithQuery.headers['x-frame-options']).toBe('DENY');
     expect(crossOrigin.statusCode).toBe(403);
     expect(login.statusCode).toBe(200);
     expect(login.headers['set-cookie']).toContain(
@@ -313,7 +280,6 @@ describe('operations monitoring routes', () => {
     });
     registerAdminSessionRoutes(app, access, routeAccess, true);
     registerOperationsRoutes(app, routeAccess, {
-      assets: operationsAssets,
       monitoring: createMonitoringService(),
     });
 
@@ -336,7 +302,6 @@ describe('operations monitoring routes', () => {
     });
     registerAdminSessionRoutes(app, access, routeAccess, false);
     registerOperationsRoutes(app, routeAccess, {
-      assets: operationsAssets,
       monitoring: createMonitoringService(),
     });
 

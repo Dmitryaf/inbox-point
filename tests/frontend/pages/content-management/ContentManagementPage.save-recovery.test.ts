@@ -3,9 +3,9 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 
-import App from '@frontend/app/App.vue';
 import ContentManagementPage from '@frontend/pages/content-management/ui/ContentManagementPage.vue';
 import { requestUrl, response } from '@test/frontend/support/fake-response';
+import { mountAppAt } from '@test/frontend/support/mount-app';
 import { contentResponse, findButton } from './content-management-test-helpers';
 
 describe('ContentManagementPage save recovery', () => {
@@ -66,11 +66,13 @@ describe('ContentManagementPage save recovery', () => {
       vi.fn((input: RequestInfo | URL, options?: RequestInit) => {
         const url = requestUrl(input);
         if (url.endsWith('/session')) {
-          return Promise.resolve(response({ authenticated }));
+          return Promise.resolve(response({ authenticated, mode: 'password' }));
         }
         if (url.endsWith('/login') && options?.method === 'POST') {
           authenticated = true;
-          return Promise.resolve(response({ authenticated: true }));
+          return Promise.resolve(
+            response({ authenticated: true, mode: 'password' }),
+          );
         }
         if (url.endsWith('/history')) {
           return Promise.resolve(response({ history: [] }));
@@ -86,13 +88,13 @@ describe('ContentManagementPage save recovery', () => {
       }),
     );
 
-    const wrapper = mount(App);
+    const { router, wrapper } = await mountAppAt('/manage');
     await flushPromises();
     await wrapper.get('#schedule').setValue('Несохранённый черновик');
     await findButton(wrapper.findAll('button'), 'Сохранить').trigger('click');
     await flushPromises();
 
-    expect(window.location.pathname).toBe('/login');
+    expect(router.currentRoute.value.path).toBe('/login');
     expect(wrapper.get('h1').text()).toBe('Вход в управление');
     await wrapper.get('input[type="password"]').setValue('owner-password');
     await wrapper.get('form').trigger('submit');

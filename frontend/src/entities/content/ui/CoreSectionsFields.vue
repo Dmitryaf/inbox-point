@@ -23,12 +23,6 @@ const responseLengths = computed(() => getCoreResponseLengths(draft.value));
       <summary>
         <span class="summary-copy">
           <strong>Расписание</strong>
-          <span class="summary-action summary-action--open">
-            Открыть настройки раздела
-          </span>
-          <span class="summary-action summary-action--close">
-            Скрыть настройки раздела
-          </span>
         </span>
         <span class="summary-meta">
           <small>{{
@@ -64,12 +58,6 @@ const responseLengths = computed(() => getCoreResponseLengths(draft.value));
       <summary>
         <span class="summary-copy">
           <strong>Цены</strong>
-          <span class="summary-action summary-action--open">
-            Открыть настройки раздела
-          </span>
-          <span class="summary-action summary-action--close">
-            Скрыть настройки раздела
-          </span>
         </span>
         <span class="summary-meta">
           <small>{{
@@ -105,12 +93,6 @@ const responseLengths = computed(() => getCoreResponseLengths(draft.value));
       <summary>
         <span class="summary-copy">
           <strong>Адрес</strong>
-          <span class="summary-action summary-action--open">
-            Открыть настройки раздела
-          </span>
-          <span class="summary-action summary-action--close">
-            Скрыть настройки раздела
-          </span>
         </span>
         <span class="summary-meta">
           <small>{{

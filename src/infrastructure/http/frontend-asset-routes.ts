@@ -1,10 +1,7 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply } from 'fastify';
 
 import type { AdminRouteAccess } from '@/infrastructure/http/admin-route-access.js';
-import type {
-  FrontendAssets,
-  FrontendRouteBase,
-} from '@/infrastructure/http/frontend-assets.js';
+import type { FrontendAssets } from '@/infrastructure/http/frontend-assets.js';
 
 const frontendContentSecurityPolicy = [
   `default-src 'none'`,
@@ -16,52 +13,66 @@ const frontendContentSecurityPolicy = [
   `form-action 'self'`,
 ].join('; ');
 
-interface FrontendAssetRouteOptions {
-  assets: FrontendAssets;
-  basePath: FrontendRouteBase;
-  pagePaths: readonly string[];
-}
+const frontendPagePaths = ['/login', '/manage', '/setup', '/ops'] as const;
 
-export function registerFrontendAssetRoutes(
+export function registerFrontendRoutes(
   app: FastifyInstance,
   access: AdminRouteAccess,
-  options: FrontendAssetRouteOptions,
+  assets: FrontendAssets,
 ): void {
-  for (const path of options.pagePaths) {
+  for (const path of frontendPagePaths) {
     app.get(
       path,
       { preHandler: access.requireAvailable },
-      async (_request, reply) => {
-        void reply.header(
-          'content-security-policy',
-          frontendContentSecurityPolicy,
-        );
-        return reply.type('text/html; charset=utf-8').send(options.assets.html);
-      },
+      async (_request, reply) => sendFrontendPage(reply, assets),
     );
   }
 
   registerAsset(
     app,
     access,
-    `${options.basePath}/favicon.svg`,
+    '/favicon.svg',
     'image/svg+xml; charset=utf-8',
-    options.assets.icon,
+    assets.icon,
   );
   registerAsset(
     app,
     access,
-    `${options.basePath}/app.js`,
+    '/app.js',
     'application/javascript; charset=utf-8',
-    options.assets.script,
+    assets.script,
   );
   registerAsset(
     app,
     access,
-    `${options.basePath}/style.css`,
+    '/style.css',
     'text/css; charset=utf-8',
-    options.assets.styles,
+    assets.styles,
   );
+
+  app.get(
+    '/*',
+    { preHandler: access.requireAvailable },
+    async (request, reply) => {
+      const path = request.url.split('?', 1)[0] ?? request.url;
+      if (path === '/api' || path.startsWith('/api/')) {
+        return reply.code(404).send({ message: 'Not found' });
+      }
+      return sendFrontendPage(reply, assets);
+    },
+  );
+}
+
+function sendFrontendPage(
+  reply: FastifyReply,
+  assets: FrontendAssets,
+): unknown {
+  void reply.header('cache-control', 'no-store');
+  void reply.header('content-security-policy', frontendContentSecurityPolicy);
+  void reply.header('referrer-policy', 'no-referrer');
+  void reply.header('x-content-type-options', 'nosniff');
+  void reply.header('x-frame-options', 'DENY');
+  return reply.type('text/html; charset=utf-8').send(assets.html);
 }
 
 function registerAsset(

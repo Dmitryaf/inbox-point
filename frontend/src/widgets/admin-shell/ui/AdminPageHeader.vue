@@ -1,10 +1,10 @@
 <script setup lang="ts">
-export type AdminSection = 'channels' | 'information' | 'status';
+export type AdminSection = 'answers' | 'channels' | 'monitoring';
 
 defineProps<{
-  authenticated: boolean;
   current: AdminSection;
   intro: string;
+  showLogout: boolean;
   title: string;
 }>();
 defineEmits<{ logout: [] }>();
@@ -14,44 +14,41 @@ const sections: readonly {
   id: AdminSection;
   label: string;
 }[] = [
-  { href: '/manage', id: 'information', label: 'Информация' },
+  { href: '/manage', id: 'answers', label: 'Ответы' },
   { href: '/setup', id: 'channels', label: 'Каналы' },
-  { href: '/ops', id: 'status', label: 'Состояние' },
+  { href: '/ops', id: 'monitoring', label: 'Мониторинг' },
 ];
 </script>
 
 <template>
   <header class="admin-header">
-    <div class="admin-header-row">
-      <div class="admin-title-block">
-        <p class="eyebrow">Messenger Handoff</p>
-        <h1>{{ title }}</h1>
-      </div>
+    <div class="admin-topbar">
+      <RouterLink class="admin-brand" to="/manage">
+        Messenger Handoff
+      </RouterLink>
+      <nav class="admin-navigation" aria-label="Разделы администратора">
+        <RouterLink
+          v-for="section in sections"
+          :key="section.id"
+          :aria-current="current === section.id ? 'page' : undefined"
+          :to="section.href"
+        >
+          {{ section.label }}
+        </RouterLink>
+      </nav>
       <button
-        v-if="authenticated"
-        class="secondary-button"
+        v-if="showLogout"
+        class="quiet admin-logout"
         type="button"
         @click="$emit('logout')"
       >
         Выйти
       </button>
     </div>
-    <p class="page-intro">{{ intro }}</p>
-
-    <nav
-      v-if="authenticated"
-      class="admin-navigation"
-      aria-label="Разделы администратора"
-    >
-      <a
-        v-for="section in sections"
-        :key="section.id"
-        :aria-current="current === section.id ? 'page' : undefined"
-        :href="section.href"
-      >
-        {{ section.label }}
-      </a>
-    </nav>
+    <div class="admin-page-heading">
+      <h1>{{ title }}</h1>
+      <p v-if="intro" class="page-intro">{{ intro }}</p>
+    </div>
   </header>
 </template>
 

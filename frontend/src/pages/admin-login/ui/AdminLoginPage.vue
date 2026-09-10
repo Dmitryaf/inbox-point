@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
 
 import {
   leaveAdminLogin,
@@ -11,12 +12,13 @@ import AsyncMessage from '@frontend/shared/ui/AsyncMessage.vue';
 
 const session = useAdminSession();
 const loginMessage = ref(takeAdminLoginMessage());
+const router = useRouter();
 
 watch(
   [session.booting, session.authenticated],
   ([booting, authenticated]) => {
     if (!booting && authenticated) {
-      leaveAdminLogin();
+      leaveAdminLogin(router);
     }
   },
   { immediate: true },
@@ -29,23 +31,18 @@ async function authenticate(password: string): Promise<void> {
 
 <template>
   <main class="login-page">
-    <p class="eyebrow">Messenger Handoff</p>
-    <section class="login-panel" aria-label="Вход в управление">
-      <div class="login-stack">
-        <AsyncMessage
-          kind="error"
-          :text="session.error.value || loginMessage"
-        />
-        <p v-if="session.booting.value" class="login-state card" role="status">
-          Проверяем доступ…
-        </p>
-        <AdminLoginForm
-          v-else
-          :pending="session.pending.value"
-          @submit="authenticate"
-        />
-      </div>
-    </section>
+    <div class="login-stack">
+      <p class="login-brand">Messenger Handoff</p>
+      <AsyncMessage kind="error" :text="session.error.value || loginMessage" />
+      <p v-if="session.booting.value" class="login-state" role="status">
+        Проверяем доступ…
+      </p>
+      <AdminLoginForm
+        v-else
+        :pending="session.pending.value"
+        @submit="authenticate"
+      />
+    </div>
   </main>
 </template>
 

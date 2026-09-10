@@ -47,7 +47,9 @@ describe('OperationsDashboardPage inbound event quarantine', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    const wrapper = mount(OperationsDashboardPage);
+    const wrapper = mount(OperationsDashboardPage, {
+      global: { stubs: { RouterLink: true } },
+    });
     await flushPromises();
 
     expect(wrapper.text()).toContain('Необработанные сообщения VK');

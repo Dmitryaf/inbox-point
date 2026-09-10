@@ -3,39 +3,27 @@ import { ref, watch } from 'vue';
 
 import { readSetupStatus } from '@frontend/entities/setup/api/setup-api';
 import type { SetupStatus } from '@frontend/entities/setup/model/types';
-import { openAdminLogin } from '@frontend/features/admin-auth/lib/auth-navigation';
-import { useAdminSession } from '@frontend/features/admin-auth/model/use-admin-session';
+import { useAdminShellSession } from '@frontend/features/admin-auth/model/admin-session-context';
 import TelegramSetupCard from '@frontend/features/setup-telegram/ui/TelegramSetupCard.vue';
 import VkSetupCard from '@frontend/features/setup-vk/ui/VkSetupCard.vue';
 import { requestErrorMessage } from '@frontend/shared/lib/request-error-message';
 import AsyncMessage from '@frontend/shared/ui/AsyncMessage.vue';
-import AdminPageHeader from '@frontend/widgets/admin-shell/ui/AdminPageHeader.vue';
 
-const session = useAdminSession();
+const session = useAdminShellSession();
 const status = ref<SetupStatus>();
 const error = ref('');
 
-watch(session.authenticated, (authenticated) => {
-  status.value = undefined;
-  error.value = '';
-  if (authenticated) {
-    void loadStatus();
-  }
-});
-
 watch(
-  [session.booting, session.authenticated],
-  ([booting, authenticated]) => {
-    if (!booting && !authenticated) {
-      openAdminLogin('/setup');
+  session.authenticated,
+  (authenticated) => {
+    status.value = undefined;
+    error.value = '';
+    if (authenticated) {
+      void loadStatus();
     }
   },
   { immediate: true },
 );
-
-async function logOut(): Promise<void> {
-  await session.endSession();
-}
 
 async function loadStatus(): Promise<void> {
   try {
@@ -63,20 +51,8 @@ function markVkConnected(): void {
 </script>
 
 <template>
-  <main class="setup-shell">
-    <AdminPageHeader
-      v-if="session.authenticated.value"
-      :authenticated="session.authenticated.value"
-      current="channels"
-      intro="Сначала подключите Telegram для операторов, затем VK для сообщений клиентов."
-      title="Каналы"
-      @logout="logOut"
-    />
-
-    <p v-if="session.booting.value" class="state-card card" role="status">
-      Проверяем доступ…
-    </p>
-    <template v-else-if="session.authenticated.value">
+  <section class="setup-page">
+    <template v-if="session.authenticated.value">
       <AsyncMessage kind="error" :text="session.error.value || error" />
       <p v-if="!status" class="state-card card" role="status">
         Проверяем подключения…
@@ -101,7 +77,7 @@ function markVkConnected(): void {
         </div>
       </div>
     </template>
-  </main>
+  </section>
 </template>
 
 <style scoped src="../styles/setup-page.css"></style>

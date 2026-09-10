@@ -15,6 +15,7 @@
     "build:server": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json -f -fe .js",
     "backup:create": "node --env-file-if-exists=.env dist/create-external-backup.js",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run build",
+    "check:e2e": "npm run build:frontend && playwright test",
     "dev": "npm run build:frontend && tsx watch --env-file-if-exists=.env src/main.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -25,6 +26,7 @@
     "start": "node --env-file-if-exists=.env dist/main.js",
     "start:availability-monitor": "node --env-file-if-exists=.env.monitor dist/availability-monitor.js",
     "test": "vitest run",
+    "test:e2e:server": "tsx tests/e2e/support/server.ts",
     "typecheck": "npm run typecheck:server && npm run typecheck:frontend && npm run typecheck:frontend-tests",
     "typecheck:frontend": "vue-tsc --noEmit -p frontend/tsconfig.json",
     "typecheck:frontend-tests": "vue-tsc --noEmit -p tests/frontend/tsconfig.json",
@@ -33,11 +35,13 @@
   "dependencies": {
     "fastify": "^5.12.3",
     "vue": "^3.5.42",
+    "vue-router": "^4.6.4",
     "zod": "^4.5.4"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.2",
     "@commitlint/config-conventional": "^21.2.2",
+    "@playwright/test": "^1.63.0",
     "@types/node": "^24.13.3",
     "@vitejs/plugin-vue": "^6.0.8",
     "@vue/test-utils": "^2.5.0",

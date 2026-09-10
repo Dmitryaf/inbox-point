@@ -79,14 +79,13 @@ const overallDescription = computed(() => {
     />
 
     <article
-      class="summary-card card"
+      class="service-summary"
       :class="{
         'summary-card--attention': status.state === 'attention',
         'summary-card--maintenance': status.state === 'maintenance',
       }"
     >
       <div>
-        <p class="eyebrow">Общее состояние</p>
         <h2 id="overview-title">
           {{ overallLabel }}
         </h2>

@@ -96,7 +96,7 @@ function channelProblem(
         <h3>{{ problem.name }}</h3>
         <p>{{ problem.summary }}</p>
         <p>{{ problem.action }}</p>
-        <a href="/setup">Открыть «Каналы»</a>
+        <RouterLink to="/setup">Открыть «Каналы»</RouterLink>
       </article>
     </div>
 

@@ -3,6 +3,7 @@ const loginMessageKey = 'messenger-handoff:login-message';
 const adminPaths = new Set(['/manage', '/ops', '/setup']);
 
 export function openAdminLogin(
+  router: Router,
   returnPath = window.location.pathname,
   message?: string,
 ): void {
@@ -12,7 +13,7 @@ export function openAdminLogin(
   if (message) {
     window.sessionStorage.setItem(loginMessageKey, message);
   }
-  replacePath('/login');
+  void router.replace('/login');
 }
 
 export function takeAdminLoginMessage(): string {
@@ -21,13 +22,11 @@ export function takeAdminLoginMessage(): string {
   return message;
 }
 
-export function leaveAdminLogin(): void {
+export function leaveAdminLogin(router: Router): void {
   const savedPath = window.sessionStorage.getItem(returnPathKey);
   window.sessionStorage.removeItem(returnPathKey);
-  replacePath(savedPath && adminPaths.has(savedPath) ? savedPath : '/manage');
+  void router.replace(
+    savedPath && adminPaths.has(savedPath) ? savedPath : '/manage',
+  );
 }
-
-function replacePath(path: string): void {
-  window.history.replaceState(null, '', path);
-  window.dispatchEvent(new Event('popstate'));
-}
+import type { Router } from 'vue-router';

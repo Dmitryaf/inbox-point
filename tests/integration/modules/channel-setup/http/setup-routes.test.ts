@@ -19,13 +19,6 @@ const config: RuntimeConfig = {
 };
 
 const apps = new Set<ReturnType<typeof createApp>>();
-const setupAssets = {
-  html: '<div id="app">Telegram VK</div>',
-  icon: '<svg>setup icon</svg>',
-  script: 'globalThis.setup = true;',
-  styles: ':root { color: black; }',
-};
-
 afterEach(async () => {
   await Promise.all([...apps].map(async (app) => app.close()));
   apps.clear();
@@ -37,39 +30,18 @@ describe('setup routes', () => {
     apps.add(app);
     registerTestSetup(app, { allowLocalBypass: true });
 
-    const localPage = await app.inject({ method: 'GET', url: '/setup' });
     const localStatus = await app.inject({
       method: 'GET',
       url: '/api/setup/status',
     });
-    const styles = await app.inject({
-      method: 'GET',
-      url: '/setup/style.css',
-    });
-    const icon = await app.inject({
-      method: 'GET',
-      url: '/setup/favicon.svg',
-    });
-    const remotePage = await app.inject({
+    const remoteStatus = await app.inject({
       method: 'GET',
       remoteAddress: '192.0.2.10',
-      url: '/setup',
+      url: '/api/setup/status',
     });
 
-    expect(localPage.statusCode).toBe(200);
-    expect(localPage.body).toContain('Telegram');
-    expect(localPage.headers['content-security-policy']).toContain('style-src');
-    expect(localPage.headers['content-security-policy']).toContain(
-      "img-src 'self'",
-    );
-    expect(localPage.headers['cache-control']).toBe('no-store');
     expect(localStatus.statusCode).toBe(200);
-    expect(styles.statusCode).toBe(200);
-    expect(styles.headers['content-type']).toContain('text/css');
-    expect(icon.statusCode).toBe(200);
-    expect(icon.headers['content-type']).toContain('image/svg+xml');
-    expect(icon.body).toBe(setupAssets.icon);
-    expect(remotePage.statusCode).toBe(404);
+    expect(remoteStatus.statusCode).toBe(404);
   });
 
   it('hides production setup when the admin password is not configured', async () => {
@@ -77,11 +49,6 @@ describe('setup routes', () => {
     apps.add(app);
     registerTestSetup(app, { allowLocalBypass: false });
 
-    const page = await app.inject({
-      method: 'GET',
-      remoteAddress: '192.0.2.10',
-      url: '/setup',
-    });
     const session = await app.inject({
       method: 'GET',
       remoteAddress: '192.0.2.10',
@@ -93,7 +60,6 @@ describe('setup routes', () => {
       url: '/api/setup/status',
     });
 
-    expect(page.statusCode).toBe(404);
     expect(session.statusCode).toBe(404);
     expect(status.statusCode).toBe(404);
   });
@@ -109,11 +75,6 @@ describe('setup routes', () => {
       vkSource: 'environment',
     });
 
-    const page = await app.inject({
-      method: 'GET',
-      remoteAddress: '192.0.2.10',
-      url: '/setup',
-    });
     const unauthorizedStatus = await app.inject({
       method: 'GET',
       remoteAddress: '192.0.2.10',
@@ -179,7 +140,6 @@ describe('setup routes', () => {
       url: '/api/setup/backups',
     });
 
-    expect(page.statusCode).toBe(200);
     expect(unauthorizedStatus.statusCode).toBe(401);
     expect(unauthorizedMutation.statusCode).toBe(401);
     expect(login.statusCode).toBe(200);
@@ -241,7 +201,7 @@ function registerTestSetup(
     options.vkSource ?? 'none',
   );
   registerAdminSessionRoutes(app, access, routeAccess, true);
-  registerSetupRoutes(app, telegram, vk, routeAccess, { assets: setupAssets });
+  registerSetupRoutes(app, telegram, vk, routeAccess);
 }
 
 function readSessionCookie(setCookie: unknown): string {

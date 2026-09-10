@@ -69,28 +69,25 @@ function changeSection(event: Event): void {
     </div>
   </div>
 
-  <aside class="dashboard-sidebar desktop-workspace-navigation">
-    <nav class="sidebar-group" aria-label="Разделы управления">
-      <p>Работа с информацией</p>
-      <button
-        v-for="view in workspaceViews"
-        :key="view.id"
-        :aria-pressed="activeView === view.id"
-        :class="{ active: activeView === view.id }"
-        class="navigation-button"
-        type="button"
-        @click="$emit('viewChange', view.id)"
-      >
-        <AppIcon :name="view.id" />
-        {{ view.label }}
-      </button>
-    </nav>
-
-    <nav
-      v-if="activeView === 'edit'"
-      class="sidebar-group"
-      aria-label="Разделы информации"
+  <nav
+    class="workspace-tabs desktop-workspace-navigation"
+    aria-label="Режим работы"
+  >
+    <button
+      v-for="view in workspaceViews"
+      :key="view.id"
+      :aria-pressed="activeView === view.id"
+      :class="{ active: activeView === view.id }"
+      class="navigation-button"
+      type="button"
+      @click="$emit('viewChange', view.id)"
     >
+      {{ view.label }}
+    </button>
+  </nav>
+
+  <aside v-if="activeView === 'edit'" class="dashboard-sidebar">
+    <nav class="sidebar-group" aria-label="Разделы информации">
       <p>Разделы</p>
       <button
         v-for="section in editorSections"

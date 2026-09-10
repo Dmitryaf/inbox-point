@@ -45,7 +45,6 @@ describe('managed content read errors', () => {
       app,
       new ContentManagementService(new ClientInformationCatalog(), store),
       routeAccess,
-      { assets: { html: '', icon: '', script: '', styles: '' } },
     );
 
     const history = await app.inject({

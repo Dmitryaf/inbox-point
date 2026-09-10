@@ -10,6 +10,7 @@ export interface AdminRouteAccessOptions {
 
 export interface AdminRouteAccess {
   cookieName: string;
+  isBypassActive: (request: FastifyRequest) => boolean;
   isAuthorized: (request: FastifyRequest) => boolean;
   requireAuthorization: (
     request: FastifyRequest,
@@ -33,11 +34,14 @@ export function createAdminRouteAccess(
   const cookieName = options.secureCookies
     ? '__Host-mh-admin-session'
     : 'mh-admin-session';
+  const isBypassActive = (request: FastifyRequest): boolean =>
+    !access.isConfigured() &&
+    options.allowLocalBypass &&
+    isLoopback(request.ip);
   const isAvailable = (request: FastifyRequest): boolean =>
-    access.isConfigured() ||
-    (options.allowLocalBypass && isLoopback(request.ip));
+    access.isConfigured() || isBypassActive(request);
   const isAuthorized = (request: FastifyRequest): boolean =>
-    (options.allowLocalBypass && isLoopback(request.ip)) ||
+    isBypassActive(request) ||
     access.authenticate(readCookie(request.headers.cookie, cookieName));
 
   app.addHook('onSend', async (request, reply, payload) => {
@@ -52,6 +56,7 @@ export function createAdminRouteAccess(
 
   return {
     cookieName,
+    isBypassActive,
     isAuthorized,
     requireAuthorization: async (request, reply) => {
       if (!isAvailable(request)) {

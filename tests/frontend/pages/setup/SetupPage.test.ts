@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { SetupStatus } from '@frontend/entities/setup/model/types';
 import SetupPage from '@frontend/pages/setup/ui/SetupPage.vue';
 import { requestUrl, response } from '@test/frontend/support/fake-response';
+import { mountAppAt } from '@test/frontend/support/mount-app';
 
 const disconnectedStatus: SetupStatus = {
   connected: false,
@@ -21,17 +22,13 @@ describe('SetupPage', () => {
     const wrapper = mount(SetupPage);
     await flushPromises();
 
-    expect(wrapper.get('h1').text()).toBe('Каналы');
     expect(wrapper.get('#telegram-setup-title').text()).toBe('Telegram');
     expect(wrapper.get('#vk-setup-title').text()).toBe('VK');
-    expect(wrapper.get('[aria-current="page"]').text()).toBe('Каналы');
     expect(wrapper.text()).not.toContain('Настройте Long Poll API');
-    expect(wrapper.text()).toContain(
-      'Сначала подключите Telegram. После этого здесь откроется следующий шаг.',
-    );
+    expect(wrapper.text()).toContain('Сначала Telegram');
     expect(wrapper.text()).not.toContain('Доставка ответов');
     expect(wrapper.text()).not.toContain('Резервная копия');
-    expect(wrapper.find('#telegram-token').exists()).toBe(true);
+    expect(wrapper.find('#telegram-token').exists()).toBe(false);
     expect(wrapper.find('#vk-token').exists()).toBe(false);
 
     wrapper.unmount();
@@ -57,10 +54,14 @@ describe('SetupPage', () => {
 
     const wrapper = mount(SetupPage);
     await flushPromises();
+    await wrapper.get('.setup-toggle').trigger('click');
     await wrapper
       .get('#telegram-token')
       .setValue('123456789:synthetic-telegram-token');
-    await wrapper.get('.setup-card button').trigger('click');
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Найти группы')
+      ?.trigger('click');
     await flushPromises();
 
     expect(wrapper.text()).toContain('Тест');
@@ -88,11 +89,11 @@ describe('SetupPage', () => {
       }),
     );
 
-    const wrapper = mount(SetupPage);
+    const { router, wrapper } = await mountAppAt('/setup');
     await flushPromises();
 
-    expect(window.location.pathname).toBe('/login');
-    expect(wrapper.find('h1').exists()).toBe(false);
+    expect(router.currentRoute.value.path).toBe('/login');
+    expect(wrapper.get('h1').text()).toBe('Вход в управление');
     expect(wrapper.find('#telegram-setup-title').exists()).toBe(false);
     expect(requestedUrls).not.toContain('/api/setup/status');
 
@@ -118,7 +119,11 @@ describe('SetupPage', () => {
     expect(wrapper.get('.setup-channel-grid').classes()).toContain(
       'setup-channel-grid--mixed',
     );
-    expect(wrapper.text()).toContain('Telegram подключён');
+    expect(wrapper.text()).toContain('Подключён');
+    await wrapper
+      .findAll('.setup-toggle')
+      .find((button) => button.text() === 'Подключить VK')
+      ?.trigger('click');
     expect(wrapper.text()).toContain('Настройте Long Poll API');
     expect(wrapper.find('#vk-token').exists()).toBe(true);
 
@@ -130,7 +135,9 @@ function createAuthenticatedFetch(status: SetupStatus) {
   return vi.fn((input: RequestInfo | URL) => {
     const url = requestUrl(input);
     if (url.endsWith('/admin/session')) {
-      return Promise.resolve(response({ authenticated: true }));
+      return Promise.resolve(
+        response({ authenticated: true, mode: 'password' }),
+      );
     }
     if (url.endsWith('/setup/status')) {
       return Promise.resolve(response(status));

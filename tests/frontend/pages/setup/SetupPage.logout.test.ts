@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 
-import { flushPromises, mount } from '@vue/test-utils';
+import { flushPromises } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 
-import App from '@frontend/app/App.vue';
 import type { SetupStatus } from '@frontend/entities/setup/model/types';
 import { requestUrl, response } from '@test/frontend/support/fake-response';
+import { mountAppAt } from '@test/frontend/support/mount-app';
 
 const disconnectedStatus: SetupStatus = {
   connected: false,
@@ -24,20 +24,22 @@ describe('SetupPage logout', () => {
       vi.fn((input: RequestInfo | URL, options?: RequestInit) => {
         const url = requestUrl(input);
         if (url.endsWith('/admin/session')) {
-          return Promise.resolve(response({ authenticated }));
+          return Promise.resolve(response({ authenticated, mode: 'password' }));
         }
         if (url.endsWith('/setup/status')) {
           return Promise.resolve(response(disconnectedStatus));
         }
         if (url.endsWith('/admin/logout') && options?.method === 'POST') {
           authenticated = false;
-          return Promise.resolve(response({ authenticated: false }));
+          return Promise.resolve(
+            response({ authenticated: false, mode: 'password' }),
+          );
         }
         return Promise.reject(new Error(`Unexpected request: ${url}`));
       }),
     );
 
-    const wrapper = mount(App);
+    const { router, wrapper } = await mountAppAt('/setup');
     await flushPromises();
     expect(wrapper.get('h1').text()).toBe('Каналы');
 
@@ -48,7 +50,7 @@ describe('SetupPage logout', () => {
     await logoutButton?.trigger('click');
     await flushPromises();
 
-    expect(window.location.pathname).toBe('/login');
+    expect(router.currentRoute.value.path).toBe('/login');
     expect(document.title).toBe('Вход в управление — Messenger Handoff');
     expect(wrapper.get('h1').text()).toBe('Вход в управление');
     expect(wrapper.text()).not.toContain('Каналы');

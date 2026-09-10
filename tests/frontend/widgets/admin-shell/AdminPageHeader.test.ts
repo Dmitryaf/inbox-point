@@ -2,26 +2,31 @@
 
 import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
+import { createMemoryHistory } from 'vue-router';
 
+import { createAdminRouter } from '@frontend/app/router';
 import AdminPageHeader from '@frontend/widgets/admin-shell/ui/AdminPageHeader.vue';
 
 describe('AdminPageHeader', () => {
   it('provides keyboard-accessible navigation between all admin sections', async () => {
+    const router = createAdminRouter(createMemoryHistory());
+    await router.push('/setup');
     const wrapper = mount(AdminPageHeader, {
       attachTo: document.body,
+      global: { plugins: [router] },
       props: {
-        authenticated: true,
         current: 'channels',
         intro: 'Пояснение страницы.',
+        showLogout: true,
         title: 'Каналы',
       },
     });
 
     const links = wrapper.get('nav').findAll('a');
     expect(links.map((link) => link.text())).toEqual([
-      'Информация',
+      'Ответы',
       'Каналы',
-      'Состояние',
+      'Мониторинг',
     ]);
     expect(links.map((link) => link.attributes('href'))).toEqual([
       '/manage',
@@ -38,17 +43,19 @@ describe('AdminPageHeader', () => {
     wrapper.unmount();
   });
 
-  it('hides navigation and logout before authentication', () => {
+  it('hides logout in local bypass mode', () => {
+    const router = createAdminRouter(createMemoryHistory());
     const wrapper = mount(AdminPageHeader, {
+      global: { plugins: [router] },
       props: {
-        authenticated: false,
-        current: 'information',
+        current: 'answers',
         intro: 'Пояснение страницы.',
-        title: 'Информация',
+        showLogout: false,
+        title: 'Ответы клиентам',
       },
     });
 
-    expect(wrapper.find('nav').exists()).toBe(false);
+    expect(wrapper.find('nav').exists()).toBe(true);
     expect(wrapper.find('button').exists()).toBe(false);
   });
 });

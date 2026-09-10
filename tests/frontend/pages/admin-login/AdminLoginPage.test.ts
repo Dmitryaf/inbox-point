@@ -2,7 +2,9 @@
 
 import { flushPromises, mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
+import { createMemoryHistory } from 'vue-router';
 
+import { createAdminRouter } from '@frontend/app/router';
 import { openAdminLogin } from '@frontend/features/admin-auth/lib/auth-navigation';
 import AdminLoginPage from '@frontend/pages/admin-login/ui/AdminLoginPage.vue';
 import { requestUrl, response } from '@test/frontend/support/fake-response';
@@ -10,8 +12,9 @@ import { requestUrl, response } from '@test/frontend/support/fake-response';
 describe('AdminLoginPage', () => {
   it('shows a dedicated login page and returns to the requested page', async () => {
     window.sessionStorage.clear();
-    window.history.replaceState(null, '', '/ops');
-    openAdminLogin('/ops', 'Сессия завершилась. Войдите снова.');
+    const router = createAdminRouter(createMemoryHistory());
+    await router.push('/ops');
+    openAdminLogin(router, '/ops', 'Сессия завершилась. Войдите снова.');
 
     vi.stubGlobal(
       'fetch',
@@ -27,10 +30,10 @@ describe('AdminLoginPage', () => {
       }),
     );
 
-    const wrapper = mount(AdminLoginPage);
+    const wrapper = mount(AdminLoginPage, { global: { plugins: [router] } });
     await flushPromises();
 
-    expect(window.location.pathname).toBe('/login');
+    expect(router.currentRoute.value.path).toBe('/login');
     expect(wrapper.get('h1').text()).toBe('Вход в управление');
     expect(wrapper.text()).toContain('Сессия завершилась. Войдите снова.');
     expect(wrapper.text()).not.toContain('Состояние');
@@ -39,7 +42,7 @@ describe('AdminLoginPage', () => {
     await wrapper.get('.auth-card').trigger('submit');
     await flushPromises();
 
-    expect(window.location.pathname).toBe('/ops');
+    expect(router.currentRoute.value.path).toBe('/ops');
     expect(wrapper.text()).not.toContain('synthetic-admin-password');
 
     wrapper.unmount();

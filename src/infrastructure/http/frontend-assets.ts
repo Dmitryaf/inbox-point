@@ -8,17 +8,12 @@ export interface FrontendAssets {
   styles: string;
 }
 
-export type FrontendRouteBase = '/manage' | '/ops' | '/setup';
-
 export function loadFrontendAssets(
-  routeBase: FrontendRouteBase,
   root = resolve(process.cwd(), 'dist', 'frontend'),
 ): FrontendAssets {
   try {
-    const html = readFileSync(resolve(root, 'index.html'), 'utf8');
-
     return {
-      html: scopeAssetPaths(html, routeBase),
+      html: readFileSync(resolve(root, 'index.html'), 'utf8'),
       icon: readFileSync(resolve(root, 'favicon.svg'), 'utf8'),
       script: readFileSync(resolve(root, 'app.js'), 'utf8'),
       styles: readFileSync(resolve(root, 'style.css'), 'utf8'),
@@ -29,8 +24,4 @@ export function loadFrontendAssets(
       { cause: error },
     );
   }
-}
-
-function scopeAssetPaths(html: string, routeBase: FrontendRouteBase): string {
-  return html.replaceAll('="./', `="${routeBase}/`);
 }

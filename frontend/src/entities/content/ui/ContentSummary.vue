@@ -26,9 +26,8 @@ const totalCount = computed(
 <template>
   <section class="content-summary" aria-labelledby="content-summary-title">
     <div class="summary-heading">
-      <span class="summary-icon"><AppIcon name="channel" /></span>
       <div>
-        <p>Меню в каналах</p>
+        <p>Готовность ответов</p>
         <h3 id="content-summary-title">
           {{ totalCount ? 'Готово к показу' : 'Пока не заполнено' }}
         </h3>
@@ -51,8 +50,8 @@ const totalCount = computed(
     </dl>
 
     <p class="channel-note">
-      <AppIcon name="check" />
-      После сохранения изменения появятся в Telegram и VK.
+      <AppIcon name="check" /> После сохранения изменения появятся в Telegram и
+      VK.
     </p>
   </section>
 </template>

@@ -22,7 +22,10 @@ export function registerAdminSessionRoutes(
   app.get(
     '/api/admin/session',
     { preHandler: routeAccess.requireAvailable },
-    (request) => ({ authenticated: routeAccess.isAuthorized(request) }),
+    (request) => ({
+      authenticated: routeAccess.isAuthorized(request),
+      mode: routeAccess.isBypassActive(request) ? 'bypass' : 'password',
+    }),
   );
   app.post(
     '/api/admin/login',
@@ -31,7 +34,10 @@ export function registerAdminSessionRoutes(
     },
     async (request, reply) => {
       if (routeAccess.isAuthorized(request)) {
-        return { authenticated: true };
+        return {
+          authenticated: true,
+          mode: routeAccess.isBypassActive(request) ? 'bypass' : 'password',
+        };
       }
       const parsed = passwordSchema.safeParse(request.body);
       if (!parsed.success) {
@@ -56,7 +62,7 @@ export function registerAdminSessionRoutes(
           secureCookies,
         ),
       );
-      return { authenticated: true };
+      return { authenticated: true, mode: 'password' };
     },
   );
   app.post(
@@ -70,7 +76,11 @@ export function registerAdminSessionRoutes(
         'set-cookie',
         createSessionCookie(routeAccess.cookieName, '', 0, secureCookies),
       );
-      return { authenticated: false };
+      const bypassActive = routeAccess.isBypassActive(request);
+      return {
+        authenticated: bypassActive,
+        mode: bypassActive ? 'bypass' : 'password',
+      };
     },
   );
 }
