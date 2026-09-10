@@ -60,6 +60,10 @@ class OperationsControllerTest {
             var authorizedSetup = client.send(HttpRequest.newBuilder(settings).header("Cookie", cookie).GET().build(),
                     HttpResponse.BodyHandlers.ofString());
             assertThat(authorizedSetup.statusCode()).isEqualTo(200);
+            var vkWithoutTelegram = client.send(HttpRequest.newBuilder(URI.create(setup + "/vk/connect"))
+                    .header("Cookie", cookie).header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString("{}")).build(), HttpResponse.BodyHandlers.ofString());
+            assertThat(vkWithoutTelegram.statusCode()).isEqualTo(409);
             var deniedWrite = client.send(HttpRequest.newBuilder(URI.create(setup + "/telegram/discover"))
                     .header("Cookie", cookie).header("Origin", "https://foreign.example").header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString("{}")).build(), HttpResponse.BodyHandlers.ofString());

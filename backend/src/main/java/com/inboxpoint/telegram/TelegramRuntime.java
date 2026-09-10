@@ -200,8 +200,8 @@ public final class TelegramRuntime {
         if (NONE.equals(source)) {
             return;
         }
-        Files.deleteIfExists(settingsFile);
         stopTelegramPoller();
+        Files.deleteIfExists(settingsFile);
         source = NONE;
     }
 

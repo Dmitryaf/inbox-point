@@ -124,8 +124,8 @@ final class VkSetup {
         if ("none".equals(source)) {
             return;
         }
-        Files.deleteIfExists(path);
         stop();
+        Files.deleteIfExists(path);
         source = "none";
     }
 

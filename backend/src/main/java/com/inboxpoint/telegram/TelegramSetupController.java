@@ -84,6 +84,9 @@ final class TelegramSetupController {
         if (denied != null) {
             return denied;
         }
+        if (!runtime.status().connected()) {
+            return error(409, "Сначала подключите Telegram.");
+        }
         try {
             runtime.connectVk(input.path("accessToken").asString(""), input.path("community").asString(""));
             return ResponseEntity.ok(Map.of("connected", true));
