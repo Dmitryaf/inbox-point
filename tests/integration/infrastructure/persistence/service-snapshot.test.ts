@@ -2,6 +2,7 @@ import {
   existsSync,
   mkdtempSync,
   mkdirSync,
+  readFileSync,
   readdirSync,
   rmSync,
   utimesSync,
@@ -95,6 +96,7 @@ describe('ServiceSnapshotService', () => {
       closedRequestRetentionDays: 7,
       expiresAt: '2026-09-13T12:05:00.000Z',
       formatVersion: 1,
+      instanceId: 'default',
       secretsIncluded: false,
       sqliteSchemaVersion: 5,
     });
@@ -179,6 +181,31 @@ describe('ServiceSnapshotService', () => {
     repository.close();
   });
 
+  it('keeps snapshots created before instance metadata restore-compatible', async () => {
+    const directory = createTemporaryDirectory();
+    const databasePath = join(directory, 'data', 'handoff.sqlite');
+    const repository = new SqliteSupportRepository(databasePath);
+    const snapshot = await new ServiceSnapshotService(databasePath, {
+      snapshotDirectory: join(directory, 'snapshots'),
+    }).createSnapshot();
+    const manifestPath = join(snapshot.path, 'manifest.json');
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as {
+      instanceId?: string;
+    };
+    delete manifest.instanceId;
+    writeFileSync(manifestPath, JSON.stringify(manifest));
+
+    await expect(verifyServiceSnapshot(snapshot.path)).resolves.toMatchObject({
+      instanceId: 'default',
+    });
+    await expect(
+      restoreServiceSnapshot(snapshot.path, join(directory, 'restored')),
+    ).resolves.toMatchObject({
+      databasePath: join(directory, 'restored', 'messenger-handoff.sqlite'),
+    });
+    repository.close();
+  });
+
   it('deletes expired service snapshots but leaves unrelated directories', async () => {
     const directory = createTemporaryDirectory();
     const databasePath = join(directory, 'data', 'handoff.sqlite');
@@ -207,6 +234,44 @@ describe('ServiceSnapshotService', () => {
 
     expect(existsSync(oldSnapshot.path)).toBe(false);
     expect(existsSync(unrelatedDirectory)).toBe(true);
+    repository.close();
+  });
+
+  it('names and prunes snapshots only within the current instance', async () => {
+    const directory = createTemporaryDirectory();
+    const databasePath = join(directory, 'data', 'handoff.sqlite');
+    const snapshotDirectory = join(directory, 'snapshots');
+    const repository = new SqliteSupportRepository(databasePath);
+    const instanceB = await new ServiceSnapshotService(databasePath, {
+      clock: () => new Date('2026-08-20T12:00:00.000Z'),
+      createId: () => 'old-b',
+      instanceId: 'instance-b',
+      retentionDays: 7,
+      snapshotDirectory,
+    }).createSnapshot();
+    const instanceA = await new ServiceSnapshotService(databasePath, {
+      clock: () => new Date('2026-08-20T12:00:00.000Z'),
+      createId: () => 'old-a',
+      instanceId: 'instance-a',
+      retentionDays: 7,
+      snapshotDirectory,
+    }).createSnapshot();
+
+    await new ServiceSnapshotService(databasePath, {
+      clock: () => new Date('2026-09-01T12:00:00.000Z'),
+      createId: () => 'current-a',
+      instanceId: 'instance-a',
+      retentionDays: 7,
+      snapshotDirectory,
+    }).createSnapshot();
+
+    expect(instanceA.path).toContain('messenger-handoff.instance-a.snapshot-');
+    expect(instanceB.path).toContain('messenger-handoff.instance-b.snapshot-');
+    expect(existsSync(instanceA.path)).toBe(false);
+    expect(existsSync(instanceB.path)).toBe(true);
+    expect((await verifyServiceSnapshot(instanceB.path)).instanceId).toBe(
+      'instance-b',
+    );
     repository.close();
   });
 });

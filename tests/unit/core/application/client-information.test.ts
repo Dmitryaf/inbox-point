@@ -16,7 +16,7 @@ describe('client information', () => {
       address: 'Main street, 1',
       faq: [
         {
-          answer: 'Напишите преподавателю.',
+          answer: 'Напишите оператору.',
           question: 'Как записаться?',
         },
       ],
@@ -88,7 +88,7 @@ describe('client information', () => {
     const catalog = new ClientInformationCatalog({
       faq: [
         {
-          answer: 'Напишите преподавателю.',
+          answer: 'Напишите оператору.',
           question: 'Как записаться?',
         },
         {
@@ -99,13 +99,13 @@ describe('client information', () => {
     });
 
     expect(catalog.resolve(faqButton)).toBe(
-      'Частые вопросы\n\n❓ Как записаться?\nНапишите преподавателю.\n\n────────\n\n❓ Что взять?\nСменную обувь.',
+      'Частые вопросы\n\n❓ Как записаться?\nНапишите оператору.\n\n────────\n\n❓ Что взять?\nСменную обувь.',
     );
   });
 
   it('accepts only the current FAQ label', () => {
     const catalog = new ClientInformationCatalog({
-      faq: [{ answer: 'Напишите преподавателю.', question: 'Как записаться?' }],
+      faq: [{ answer: 'Напишите оператору.', question: 'Как записаться?' }],
     });
 
     expect(catalog.resolve('FAQ')).toBeUndefined();
@@ -115,7 +115,7 @@ describe('client information', () => {
     expect(isHandoffRequest(handoffButton)).toBe(true);
     expect(isHandoffRequest('Написать оператору')).toBe(false);
     expect(isHandoffRequest('Передать сообщение человеку')).toBe(false);
-    expect(isHandoffRequest('Задать вопрос преподавателю')).toBe(false);
+    expect(isHandoffRequest('Задать вопрос оператору')).toBe(false);
   });
 
   it('rejects an FAQ question without an answer', () => {

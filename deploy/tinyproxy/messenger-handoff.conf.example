@@ -1,0 +1,26 @@
+User tinyproxy
+Group tinyproxy
+Port 8888
+Listen 10.77.0.2
+Timeout 600
+
+# Adding an Allow rule changes the default to deny. Only the RU WireGuard peer
+# may open proxy connections.
+Allow 10.77.0.1
+
+# Telegram Bot API is HTTPS. Do not permit CONNECT to arbitrary ports.
+ConnectPort 443
+
+# With FilterURLs disabled, filtering is performed against the destination
+# host. The allowlist file contains only api.telegram.org.
+Filter "/etc/tinyproxy/messenger-handoff-telegram-domains"
+FilterURLs Off
+FilterExtended Off
+FilterCaseSensitive Off
+FilterDefaultDeny Yes
+FilterType fnmatch
+
+DisableViaHeader Yes
+Syslog On
+LogLevel Notice
+MaxClients 50

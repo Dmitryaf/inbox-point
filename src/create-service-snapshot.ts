@@ -4,6 +4,7 @@ import { ServiceSnapshotService } from '@/infrastructure/persistence/service-sna
 async function main(): Promise<void> {
   const config = loadRuntimeConfig(process.env);
   const service = new ServiceSnapshotService(config.databasePath, {
+    instanceId: config.instanceId,
     retentionDays: config.closedRequestRetentionDays,
   });
   const snapshot = await service.createSnapshot();

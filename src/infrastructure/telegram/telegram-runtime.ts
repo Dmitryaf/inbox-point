@@ -15,7 +15,10 @@ import {
   type ClientIntakePolicy,
 } from '@/core/contracts/client-intake-policy.js';
 import type { OperatorInbox } from '@/core/contracts/operator-inbox.js';
-import { TelegramApiClient } from '@/infrastructure/telegram/telegram-api-client.js';
+import {
+  TelegramApiClient,
+  type TelegramFetch,
+} from '@/infrastructure/telegram/telegram-api-client.js';
 import { TelegramClientChannel } from '@/infrastructure/telegram/telegram-client-channel.js';
 import { TelegramClientMenu } from '@/infrastructure/telegram/telegram-client-menu.js';
 import { TelegramPoller } from '@/infrastructure/telegram/telegram-poller.js';
@@ -55,6 +58,7 @@ export class TelegramRuntime implements TelegramRuntimeControl {
     private readonly information: ClientInformationResolver = new ClientInformationCatalog(),
     private readonly activity: ChannelActivityReporter = silentChannelActivityReporter,
     private readonly intakePolicy: ClientIntakePolicy = acceptingClientIntakePolicy,
+    private readonly fetchImplementation: TelegramFetch = fetch,
   ) {}
 
   public get running(): boolean {
@@ -66,7 +70,10 @@ export class TelegramRuntime implements TelegramRuntimeControl {
       throw new Error('Telegram is already connected');
     }
 
-    const gateway = new TelegramApiClient(config.botToken);
+    const gateway = new TelegramApiClient(
+      config.botToken,
+      this.fetchImplementation,
+    );
     await gateway.verifySetup(config.operatorChatId);
     const clientChannel = new TelegramClientChannel(gateway);
     const operatorInbox = new TelegramTopicsInbox(

@@ -4,6 +4,7 @@ export class WebhookAvailabilityAlert implements AvailabilityAlert {
   public constructor(
     private readonly url: URL,
     private readonly timeoutMs: number,
+    private readonly instanceId: string,
     private readonly bearerToken?: string,
     private readonly fetchImplementation: typeof fetch = fetch,
   ) {}
@@ -12,7 +13,11 @@ export class WebhookAvailabilityAlert implements AvailabilityAlert {
     let response: Response;
     try {
       response = await this.fetchImplementation(this.url, {
-        body: JSON.stringify({ message, service: 'messenger-handoff' }),
+        body: JSON.stringify({
+          instanceId: this.instanceId,
+          message,
+          service: 'messenger-handoff',
+        }),
         headers: {
           ...(this.bearerToken
             ? { authorization: `Bearer ${this.bearerToken}` }

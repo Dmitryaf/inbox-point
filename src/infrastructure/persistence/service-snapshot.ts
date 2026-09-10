@@ -16,6 +16,7 @@ import { DatabaseSync } from 'node:sqlite';
 
 import { z } from 'zod';
 
+import { defaultInstanceId, instanceIdSchema } from '@/config/instance-id.js';
 import { isFileSystemError } from '@/infrastructure/file-system/local-state-file.js';
 import {
   SqliteBackupService,
@@ -24,7 +25,6 @@ import {
 import { sqliteSchemaVersion } from '@/infrastructure/persistence/sqlite-schema.js';
 
 const millisecondsPerDay = 24 * 60 * 60 * 1_000;
-const snapshotDirectoryPattern = /^messenger-handoff-snapshot-.*$/;
 const snapshotFileNames = [
   'database.sqlite',
   'content-settings.json',
@@ -43,6 +43,7 @@ const snapshotManifestSchema = z.object({
     }),
   ),
   formatVersion: z.literal(1),
+  instanceId: instanceIdSchema.optional(),
   secretsIncluded: z.literal(false),
   sqliteSchemaVersion: z.literal(sqliteSchemaVersion),
 });
@@ -58,6 +59,7 @@ export interface ServiceSnapshot {
 export interface ServiceSnapshotServiceOptions {
   clock?: () => Date;
   createId?: () => string;
+  instanceId?: string;
   retentionDays?: number;
   snapshotDirectory?: string;
 }
@@ -71,7 +73,9 @@ export interface RestoredServiceSnapshot {
 export class ServiceSnapshotService {
   private readonly clock: () => Date;
   private readonly createId: () => string;
+  private readonly instanceId: string;
   private readonly retentionDays: number;
+  private readonly snapshotNamePrefix: string;
   private readonly snapshotDirectory: string;
 
   public constructor(
@@ -83,6 +87,13 @@ export class ServiceSnapshotService {
     }
     this.clock = options.clock ?? (() => new Date());
     this.createId = options.createId ?? randomUUID;
+    this.instanceId = instanceIdSchema.parse(
+      options.instanceId ?? defaultInstanceId,
+    );
+    this.snapshotNamePrefix =
+      this.instanceId === defaultInstanceId
+        ? 'messenger-handoff-snapshot-'
+        : `messenger-handoff.${this.instanceId}.snapshot-`;
     this.retentionDays = options.retentionDays ?? 7;
     if (!Number.isInteger(this.retentionDays) || this.retentionDays < 1) {
       throw new Error('Snapshot retention days must be a positive integer');
@@ -94,7 +105,7 @@ export class ServiceSnapshotService {
   public async createSnapshot(): Promise<ServiceSnapshot> {
     const createdAt = this.clock();
     const timestamp = createdAt.toISOString().replaceAll(':', '-');
-    const directoryName = `messenger-handoff-snapshot-${timestamp}-${this.createId()}`;
+    const directoryName = `${this.snapshotNamePrefix}${timestamp}-${this.createId()}`;
     const finalPath = join(this.snapshotDirectory, directoryName);
     const temporaryPath = finalPath + '.tmp';
     await mkdir(this.snapshotDirectory, { recursive: true, mode: 0o700 });
@@ -112,6 +123,7 @@ export class ServiceSnapshotService {
       const manifest = await createManifest(
         temporaryPath,
         createdAt,
+        this.instanceId,
         this.retentionDays,
       );
       await writeFile(
@@ -152,7 +164,10 @@ export class ServiceSnapshotService {
       withFileTypes: true,
     });
     for (const entry of entries) {
-      if (!entry.isDirectory() || !snapshotDirectoryPattern.test(entry.name)) {
+      if (
+        !entry.isDirectory() ||
+        !entry.name.startsWith(this.snapshotNamePrefix)
+      ) {
         continue;
       }
       const path = join(this.snapshotDirectory, entry.name);
@@ -259,6 +274,7 @@ export async function restoreServiceSnapshot(
 async function createManifest(
   directory: string,
   createdAt: Date,
+  instanceId: string,
   retentionDays: number,
 ): Promise<ServiceSnapshotManifest> {
   const files: ServiceSnapshotManifest['files'] = [];
@@ -283,6 +299,7 @@ async function createManifest(
     ).toISOString(),
     files,
     formatVersion: 1,
+    instanceId,
     secretsIncluded: false,
     sqliteSchemaVersion,
   };

@@ -2,6 +2,8 @@ import { dirname, isAbsolute, relative, resolve } from 'node:path';
 
 import { z } from 'zod';
 
+import { instanceIdSchema } from '@/config/instance-id.js';
+
 const schema = z.object({
   BACKUP_ALERT_BEARER_TOKEN: z.preprocess(
     (value) => (value === '' ? undefined : value),
@@ -17,6 +19,7 @@ const schema = z.object({
     .max(365)
     .default(7),
   DATABASE_PATH: z.string().min(1),
+  INSTANCE_ID: instanceIdSchema,
 });
 
 export interface ExternalBackupConfig {
@@ -24,6 +27,7 @@ export interface ExternalBackupConfig {
   alertWebhookUrl: URL;
   databasePath: string;
   exportPath: string;
+  instanceId: string;
   retentionDays: number;
   timeoutMs: number;
 }
@@ -47,6 +51,7 @@ export function loadExternalBackupConfig(
     alertWebhookUrl: new URL(result.data.BACKUP_ALERT_WEBHOOK_URL),
     databasePath,
     exportPath,
+    instanceId: result.data.INSTANCE_ID,
     retentionDays: result.data.CLOSED_REQUEST_RETENTION_DAYS,
     timeoutMs: result.data.BACKUP_TIMEOUT_SECONDS * 1_000,
   };

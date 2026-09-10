@@ -10,6 +10,7 @@ describe('WebhookAvailabilityAlert', () => {
     const alert = new WebhookAvailabilityAlert(
       new URL('https://alerts.example.test/hook'),
       5_000,
+      'instance-a',
       'synthetic-token',
       fetchMock,
     );
@@ -20,6 +21,7 @@ describe('WebhookAvailabilityAlert', () => {
       new URL('https://alerts.example.test/hook'),
       expect.objectContaining({
         body: JSON.stringify({
+          instanceId: 'instance-a',
           message: 'Service is not ready',
           service: 'messenger-handoff',
         }),

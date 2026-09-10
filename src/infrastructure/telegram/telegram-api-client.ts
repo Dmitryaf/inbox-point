@@ -65,6 +65,11 @@ export interface TelegramOperatorChat {
   type: 'group' | 'supergroup';
 }
 
+export type TelegramFetch = (
+  input: string,
+  init?: RequestInit,
+) => Promise<Response>;
+
 export interface GetUpdatesOptions {
   offset?: number;
   signal?: AbortSignal;
@@ -103,9 +108,12 @@ export interface TelegramGateway {
 
 export class TelegramApiClient implements TelegramGateway {
   private readonly baseUrl: string;
-  private readonly fetchImplementation: typeof fetch;
+  private readonly fetchImplementation: TelegramFetch;
 
-  public constructor(token: string, fetchImplementation: typeof fetch = fetch) {
+  public constructor(
+    token: string,
+    fetchImplementation: TelegramFetch = fetch,
+  ) {
     this.baseUrl = `https://api.telegram.org/bot${token}`;
     this.fetchImplementation = fetchImplementation;
   }

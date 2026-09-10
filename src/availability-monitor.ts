@@ -10,10 +10,12 @@ const monitor = new AvailabilityMonitor(
   new WebhookAvailabilityAlert(
     config.alertWebhookUrl,
     config.timeoutMs,
+    config.instanceId,
     config.alertBearerToken,
   ),
   console,
   config.intervalMs,
+  config.instanceId,
 );
 
 process.once('SIGINT', () => abortController.abort());

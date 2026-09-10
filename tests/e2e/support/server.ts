@@ -11,6 +11,7 @@ const app = createApp({
   closedRequestRetentionDays: 7,
   databasePath: './data/e2e-unused.sqlite',
   host: '127.0.0.1',
+  instanceId: 'default',
   logLevel: 'silent',
   nodeEnv: 'test',
   port,

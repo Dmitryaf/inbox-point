@@ -15,6 +15,7 @@ describe('AvailabilityMonitor', () => {
       { send },
       { error: vi.fn(), info: vi.fn() },
       60_000,
+      'instance-a',
     );
 
     await monitor.checkOnce();
@@ -24,11 +25,11 @@ describe('AvailabilityMonitor', () => {
     expect(send).toHaveBeenCalledTimes(2);
     expect(send).toHaveBeenNthCalledWith(
       1,
-      'Messenger Handoff недоступен. Проверьте сервер и контейнер приложения.',
+      'Messenger Handoff [instance-a] недоступен. Проверьте сервер и контейнер приложения.',
     );
     expect(send).toHaveBeenNthCalledWith(
       2,
-      'Messenger Handoff снова доступен.',
+      'Messenger Handoff [instance-a] снова доступен.',
     );
   });
 
@@ -42,6 +43,7 @@ describe('AvailabilityMonitor', () => {
       { send },
       logger,
       60_000,
+      'instance-a',
     );
 
     await expect(monitor.checkOnce()).resolves.toBeUndefined();

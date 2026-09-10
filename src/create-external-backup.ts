@@ -10,10 +10,12 @@ async function main(): Promise<void> {
   const alert = new WebhookAvailabilityAlert(
     config.alertWebhookUrl,
     config.timeoutMs,
+    config.instanceId,
     config.alertBearerToken,
   );
   try {
     const snapshot = await new ServiceSnapshotService(config.databasePath, {
+      instanceId: config.instanceId,
       retentionDays: config.retentionDays,
       snapshotDirectory: config.exportPath,
     }).createSnapshot();
@@ -21,7 +23,9 @@ async function main(): Promise<void> {
     console.log(snapshot.path);
   } catch (error: unknown) {
     try {
-      await alert.send('Не удалось создать или проверить внешний backup.');
+      await alert.send(
+        `Messenger Handoff [${config.instanceId}]: не удалось создать или проверить внешний backup.`,
+      );
     } catch (alertError: unknown) {
       console.error('Failed to send external backup alert', alertError);
     }

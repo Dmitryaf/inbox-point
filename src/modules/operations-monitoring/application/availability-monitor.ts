@@ -22,24 +22,30 @@ export class AvailabilityMonitor {
     private readonly alert: AvailabilityAlert,
     private readonly logger: AvailabilityMonitorLogger,
     private readonly intervalMs: number,
+    private readonly instanceId: string,
   ) {}
 
   public async checkOnce(): Promise<void> {
     try {
       await this.checker.check();
       if (this.state === 'unavailable' && this.outageAlertSent) {
-        await this.sendAlert('Messenger Handoff снова доступен.');
+        await this.sendAlert(
+          `Messenger Handoff [${this.instanceId}] снова доступен.`,
+        );
       }
       this.state = 'available';
       this.outageAlertSent = false;
     } catch (error: unknown) {
-      this.logger.error(error, 'Messenger Handoff availability check failed');
+      this.logger.error(
+        error,
+        `Messenger Handoff [${this.instanceId}] availability check failed`,
+      );
       if (this.state !== 'unavailable') {
         this.outageAlertSent = false;
       }
       if (!this.outageAlertSent) {
         this.outageAlertSent = await this.sendAlert(
-          'Messenger Handoff недоступен. Проверьте сервер и контейнер приложения.',
+          `Messenger Handoff [${this.instanceId}] недоступен. Проверьте сервер и контейнер приложения.`,
         );
       }
       this.state = 'unavailable';
@@ -47,7 +53,9 @@ export class AvailabilityMonitor {
   }
 
   public async run(signal: AbortSignal): Promise<void> {
-    this.logger.info('Messenger Handoff external availability monitor started');
+    this.logger.info(
+      `Messenger Handoff [${this.instanceId}] external availability monitor started`,
+    );
     while (!signal.aborted) {
       await this.checkOnce();
       await waitForDelay(this.intervalMs, signal);
@@ -59,7 +67,10 @@ export class AvailabilityMonitor {
       await this.alert.send(message);
       return true;
     } catch (error: unknown) {
-      this.logger.error(error, 'Availability alert delivery failed');
+      this.logger.error(
+        error,
+        `Messenger Handoff [${this.instanceId}] availability alert delivery failed`,
+      );
       return false;
     }
   }

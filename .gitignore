@@ -8,6 +8,8 @@ PROJECT_PLAN.md
 .env.*
 !.env.example
 !.env.monitor.example
+deploy/wireguard/*.conf
+!deploy/wireguard/*.conf.example
 
 node_modules/
 dist/

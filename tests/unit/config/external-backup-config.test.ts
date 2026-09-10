@@ -29,8 +29,20 @@ describe('loadExternalBackupConfig', () => {
       alertBearerToken: 'synthetic-token',
       databasePath: resolve('./data/messenger-handoff.sqlite'),
       exportPath: resolve('../external-backups'),
+      instanceId: 'default',
       retentionDays: 14,
       timeoutMs: 5_000,
     });
+  });
+
+  it('maps an explicit operational instance label', () => {
+    expect(
+      loadExternalBackupConfig({
+        BACKUP_ALERT_WEBHOOK_URL: 'https://alerts.example.test/backup',
+        BACKUP_EXPORT_PATH: '../external-backups',
+        DATABASE_PATH: './data/messenger-handoff.sqlite',
+        INSTANCE_ID: 'instance-a',
+      }),
+    ).toMatchObject({ instanceId: 'instance-a' });
   });
 });

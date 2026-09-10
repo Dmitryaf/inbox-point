@@ -30,6 +30,7 @@ import { FileVkSettingsStore } from '@/infrastructure/persistence/vk-settings-st
 import { startChannelRuntime } from '@/infrastructure/runtime/start-channel-runtime.js';
 import { TelegramRuntime } from '@/infrastructure/telegram/telegram-runtime.js';
 import { TelegramSetupController } from '@/infrastructure/telegram/telegram-setup-controller.js';
+import { createTelegramHttpTransport } from '@/infrastructure/telegram/telegram-http-transport.js';
 import { VkRuntime } from '@/infrastructure/vk/vk-runtime.js';
 import { VkSetupController } from '@/infrastructure/vk/vk-setup-controller.js';
 import { registerSetupRoutes } from '@/modules/channel-setup/presentation/http/routes.js';
@@ -37,6 +38,9 @@ import { registerSetupRoutes } from '@/modules/channel-setup/presentation/http/r
 async function start(): Promise<void> {
   const startedAt = new Date();
   const config = loadRuntimeConfig(process.env);
+  const telegramTransport = createTelegramHttpTransport(
+    config.telegramProxyUrl,
+  );
   const serviceControlStore = new FileServiceControlStore(
     resolve(dirname(config.databasePath), 'service-control.json'),
   );
@@ -86,6 +90,7 @@ async function start(): Promise<void> {
     informationCatalog,
     channelActivity,
     serviceControl,
+    telegramTransport.fetch,
   );
   const vkRuntime = new VkRuntime(
     handoffRuntime,
@@ -108,6 +113,7 @@ async function start(): Promise<void> {
     await app.close();
     await vkRuntime.stop();
     await telegramRuntime.stop();
+    await telegramTransport.close();
     await handoffRuntime.stop();
     retention.stop();
     repository.close();
@@ -144,6 +150,7 @@ async function start(): Promise<void> {
       telegramRuntime,
       settingsStore,
       source,
+      telegramTransport.fetch,
     );
     let storedVk;
     if (!config.vk) {
@@ -242,6 +249,7 @@ async function start(): Promise<void> {
     await app.close();
     await vkRuntime.stop();
     await telegramRuntime.stop();
+    await telegramTransport.close();
     await handoffRuntime.stop();
     retention.stop();
     repository.close();

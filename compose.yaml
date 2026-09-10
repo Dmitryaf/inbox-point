@@ -9,6 +9,7 @@ services:
       CLOSED_REQUEST_RETENTION_DAYS: '${CLOSED_REQUEST_RETENTION_DAYS:-7}'
       DATABASE_PATH: /app/data/messenger-handoff.sqlite
       HOST: 0.0.0.0
+      INSTANCE_ID: '${INSTANCE_ID:-default}'
       LOG_LEVEL: info
       NODE_ENV: production
       PORT: 3000
@@ -16,6 +17,7 @@ services:
       TELEGRAM_ENABLED: '${TELEGRAM_ENABLED:-false}'
       TELEGRAM_OPERATOR_CHAT_ID: '${TELEGRAM_OPERATOR_CHAT_ID:-}'
       TELEGRAM_POLL_TIMEOUT_SECONDS: '${TELEGRAM_POLL_TIMEOUT_SECONDS:-30}'
+      TELEGRAM_PROXY_URL: '${TELEGRAM_PROXY_URL:-}'
       VK_ACCESS_TOKEN: '${VK_ACCESS_TOKEN:-}'
       VK_ENABLED: '${VK_ENABLED:-false}'
       VK_GROUP_ID: '${VK_GROUP_ID:-}'
@@ -43,6 +45,7 @@ services:
       BACKUP_TIMEOUT_SECONDS: '${BACKUP_TIMEOUT_SECONDS:-10}'
       CLOSED_REQUEST_RETENTION_DAYS: '${CLOSED_REQUEST_RETENTION_DAYS:-7}'
       DATABASE_PATH: /app/data/messenger-handoff.sqlite
+      INSTANCE_ID: '${INSTANCE_ID:-default}'
     restart: 'no'
     volumes:
       - messenger-handoff-data:/app/data:ro

@@ -142,48 +142,33 @@ preferably, off the application VPS. The job verifies the result, rotates old
 generations, returns a non-zero exit code on failure, and sends an independent
 webhook alert. Daily systemd service and timer templates are in `deploy/systemd`.
 
-## Production deployment checklist
+## Production deployment
 
-The included Docker image runs as `node`, listens on internal port 3000, and
-stores state in the `messenger-handoff-data` volume. Compose publishes it only
-as `127.0.0.1:${HOST_PORT:-3101}` and uses `restart: unless-stopped`.
+The supported topology is one isolated instance per organization. The RU server
+runs the application, data, administration UI, VK integration, Caddy, and
+backups. A small foreign VPS provides only a WireGuard-restricted HTTP CONNECT
+path for Telegram; bot credentials remain on the application server and other
+traffic is not proxied.
 
-Before enabling real conversations:
+See the [production deployment guide](deploy/README.md) for WireGuard,
+Tinyproxy, firewall, Caddy, instance-aware Compose, backup/restore, independent
+monitoring, scaling, and acceptance procedures. The guide and templates use
+`INSTANCE_ID` only as an operational label; the application remains
+single-organization and has no multi-tenant data model.
 
-1. Install Docker and Compose; pin the commit/image used for the deployment.
-2. Copy `.env.example` to an untracked `.env`, set `ADMIN_PASSWORD`, storage and
-   alert settings, and either provide channel settings there or connect channels
-   later through the protected UI.
-3. Start Compose, confirm the persistent volume is writable, and put an HTTPS
-   reverse proxy in front of the loopback port. Do not publish the app directly.
-4. Check `/health`, `/ready`, the password login/logout flow, and all three admin
-   pages through the public HTTPS origin.
-5. Configure the independent readiness monitor and confirm both failure and
-   recovery alerts arrive.
-6. Run the external backup manually, inspect the created generation, and restore
-   it into a new data directory. Keep channel credentials separately.
-7. In test channels, verify Telegram and VK intake, handoff to the operator,
-   operator reply, client delivery, close/new request, web-inbox fallback, and
-   container restart with an active request and pending delivery.
-8. Exercise temporary Telegram/VK API failures, delivery retry and uncertain
-   outcomes, and confirm critical failures make `/ready` return 503.
-9. Restart the container and host; confirm SQLite, local channel settings,
-   service-control state, reconnect, and pending deliveries survive.
-10. Record the rollback artifact and snapshot. The supported rollback is to stop
-    the current container, restore a verified compatible snapshot into a new
-    data directory, restore channel credentials separately, point the deployment
-    at that directory and the pinned previous image, then repeat smoke checks.
-
-Do not restore over a live data directory or replace an open SQLite database.
+Additional organizations are deployed as additional isolated instances. If
+manual deployment later becomes the limiting factor, provisioning and aggregate
+health reporting can be automated around those instances without sharing their
+conversation data. A shared multi-tenant runtime is a separate future product
+decision, not the default scaling path.
 
 ## Status
 
 The release-blocking dependency, operator-relay, VK quarantine, readiness
-monitoring, and external-backup mechanisms are implemented and covered by
-automated checks. Production deployment is not yet verified: the Docker image,
-persistent volume, reverse proxy, external monitor host, offsite storage, real
-test channels, host restart, rollback, and operator acceptance must be completed
-in the target environment before real conversations are enabled.
+monitoring, external-backup, instance labeling, and Telegram-only proxy
+mechanisms are implemented and covered by automated checks. Production remains
+unaccepted until the target servers, real channels, restart/failure drills,
+restore, rollback, and operator workflow pass the deployment guide.
 
 ## License
 

@@ -9,6 +9,7 @@ const config: RuntimeConfig = {
   closedRequestRetentionDays: 7,
   databasePath: './data/test.sqlite',
   host: '127.0.0.1',
+  instanceId: 'default',
   logLevel: 'silent',
   nodeEnv: 'test',
   port: 3000,
@@ -22,6 +23,16 @@ afterEach(async () => {
 });
 
 describe('HTTP service status', () => {
+  it('includes the operational instance label in application logs', () => {
+    const app = createApp({ ...config, instanceId: 'instance-a' });
+    apps.add(app);
+
+    const logger = app.log as typeof app.log & {
+      bindings(): Record<string, unknown>;
+    };
+    expect(logger.bindings()).toMatchObject({ instanceId: 'instance-a' });
+  });
+
   it('returns liveness status', async () => {
     const app = createApp(config);
     apps.add(app);

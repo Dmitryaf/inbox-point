@@ -13,6 +13,7 @@ const config: RuntimeConfig = {
   closedRequestRetentionDays: 7,
   databasePath: './data/test.sqlite',
   host: '127.0.0.1',
+  instanceId: 'default',
   logLevel: 'silent',
   nodeEnv: 'test',
   port: 3000,
