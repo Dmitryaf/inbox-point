@@ -51,13 +51,14 @@ function changeSection(event: Event): void {
         </option>
       </select>
     </div>
-    <div v-if="activeView === 'edit'" class="mobile-navigation-field">
+    <div class="mobile-navigation-field">
       <label for="editor-section">Раздел</label>
       <select
         id="editor-section"
-        :value="activeSection"
+        :value="activeView === 'edit' ? activeSection : ''"
         @change="changeSection"
       >
+        <option disabled value="">Перейти к разделу</option>
         <option
           v-for="section in editorSections"
           :key="section.id"
@@ -86,14 +87,16 @@ function changeSection(event: Event): void {
     </button>
   </nav>
 
-  <aside v-if="activeView === 'edit'" class="dashboard-sidebar">
+  <aside class="dashboard-sidebar">
     <nav class="sidebar-group" aria-label="Разделы информации">
       <p>Разделы</p>
       <button
         v-for="section in editorSections"
         :key="section.id"
-        :aria-pressed="activeSection === section.id"
-        :class="{ active: activeSection === section.id }"
+        :aria-pressed="activeView === 'edit' && activeSection === section.id"
+        :class="{
+          active: activeView === 'edit' && activeSection === section.id,
+        }"
         class="section-button"
         type="button"
         @click="$emit('sectionChange', section.id)"
