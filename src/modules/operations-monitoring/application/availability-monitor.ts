@@ -30,7 +30,7 @@ export class AvailabilityMonitor {
       await this.checker.check();
       if (this.state === 'unavailable' && this.outageAlertSent) {
         await this.sendAlert(
-          `Messenger Handoff [${this.instanceId}] снова доступен.`,
+          `Inbox Point [${this.instanceId}] снова доступен.`,
         );
       }
       this.state = 'available';
@@ -38,14 +38,14 @@ export class AvailabilityMonitor {
     } catch (error: unknown) {
       this.logger.error(
         error,
-        `Messenger Handoff [${this.instanceId}] availability check failed`,
+        `Inbox Point [${this.instanceId}] availability check failed`,
       );
       if (this.state !== 'unavailable') {
         this.outageAlertSent = false;
       }
       if (!this.outageAlertSent) {
         this.outageAlertSent = await this.sendAlert(
-          `Messenger Handoff [${this.instanceId}] недоступен. Проверьте сервер и контейнер приложения.`,
+          `Inbox Point [${this.instanceId}] недоступен. Проверьте сервер и контейнер приложения.`,
         );
       }
       this.state = 'unavailable';
@@ -54,7 +54,7 @@ export class AvailabilityMonitor {
 
   public async run(signal: AbortSignal): Promise<void> {
     this.logger.info(
-      `Messenger Handoff [${this.instanceId}] external availability monitor started`,
+      `Inbox Point [${this.instanceId}] external availability monitor started`,
     );
     while (!signal.aborted) {
       await this.checkOnce();
@@ -69,7 +69,7 @@ export class AvailabilityMonitor {
     } catch (error: unknown) {
       this.logger.error(
         error,
-        `Messenger Handoff [${this.instanceId}] availability alert delivery failed`,
+        `Inbox Point [${this.instanceId}] availability alert delivery failed`,
       );
       return false;
     }

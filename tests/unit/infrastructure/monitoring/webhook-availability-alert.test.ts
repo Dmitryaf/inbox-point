@@ -23,7 +23,7 @@ describe('WebhookAvailabilityAlert', () => {
         body: JSON.stringify({
           instanceId: 'instance-a',
           message: 'Service is not ready',
-          service: 'messenger-handoff',
+          service: 'inbox-point',
         }),
         headers: {
           authorization: 'Bearer synthetic-token',

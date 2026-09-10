@@ -40,7 +40,7 @@ describe('ServiceSnapshotService', () => {
   it('restores retained data, content, and pause state without channel secrets', async () => {
     const directory = createTemporaryDirectory();
     const dataDirectory = join(directory, 'data');
-    const databasePath = join(dataDirectory, 'messenger-handoff.sqlite');
+    const databasePath = join(dataDirectory, 'inbox-point.sqlite');
     const repository = new SqliteSupportRepository(databasePath);
     repository.createRequest({
       channel: 'telegram',
@@ -201,7 +201,7 @@ describe('ServiceSnapshotService', () => {
     await expect(
       restoreServiceSnapshot(snapshot.path, join(directory, 'restored')),
     ).resolves.toMatchObject({
-      databasePath: join(directory, 'restored', 'messenger-handoff.sqlite'),
+      databasePath: join(directory, 'restored', 'inbox-point.sqlite'),
     });
     repository.close();
   });
@@ -265,8 +265,8 @@ describe('ServiceSnapshotService', () => {
       snapshotDirectory,
     }).createSnapshot();
 
-    expect(instanceA.path).toContain('messenger-handoff.instance-a.snapshot-');
-    expect(instanceB.path).toContain('messenger-handoff.instance-b.snapshot-');
+    expect(instanceA.path).toContain('inbox-point.instance-a.snapshot-');
+    expect(instanceB.path).toContain('inbox-point.instance-b.snapshot-');
     expect(existsSync(instanceA.path)).toBe(false);
     expect(existsSync(instanceB.path)).toBe(true);
     expect((await verifyServiceSnapshot(instanceB.path)).instanceId).toBe(

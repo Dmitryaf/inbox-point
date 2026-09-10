@@ -18,7 +18,9 @@ afterEach(async () => {
 
 describe('loadFrontendAssets', () => {
   it('loads the shared frontend bundle without route-specific rewriting', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'mh-frontend-assets-'));
+    const directory = await mkdtemp(
+      join(tmpdir(), 'inbox-point-frontend-assets-'),
+    );
     directories.push(directory);
     await Promise.all([
       writeFile(

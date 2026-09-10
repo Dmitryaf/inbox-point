@@ -1,6 +1,6 @@
-# Messenger Handoff
+# Inbox Point
 
-Messenger Handoff is a small self-hosted service that connects customer
+Inbox Point is a small self-hosted service that connects customer
 conversations from Telegram and VK with an operator workspace in Telegram.
 It is intended for organizations that want to keep people in their original
 messaging channel without adopting a full helpdesk platform.

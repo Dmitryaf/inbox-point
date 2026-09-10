@@ -10,7 +10,7 @@ describe('loadExternalBackupConfig', () => {
       loadExternalBackupConfig({
         BACKUP_ALERT_WEBHOOK_URL: 'https://alerts.example.test/backup',
         BACKUP_EXPORT_PATH: './data/backups',
-        DATABASE_PATH: './data/messenger-handoff.sqlite',
+        DATABASE_PATH: './data/inbox-point.sqlite',
       }),
     ).toThrow('outside the application data');
   });
@@ -22,12 +22,12 @@ describe('loadExternalBackupConfig', () => {
       BACKUP_EXPORT_PATH: '../external-backups',
       BACKUP_TIMEOUT_SECONDS: '5',
       CLOSED_REQUEST_RETENTION_DAYS: '14',
-      DATABASE_PATH: './data/messenger-handoff.sqlite',
+      DATABASE_PATH: './data/inbox-point.sqlite',
     });
 
     expect(config).toMatchObject({
       alertBearerToken: 'synthetic-token',
-      databasePath: resolve('./data/messenger-handoff.sqlite'),
+      databasePath: resolve('./data/inbox-point.sqlite'),
       exportPath: resolve('../external-backups'),
       instanceId: 'default',
       retentionDays: 14,
@@ -40,7 +40,7 @@ describe('loadExternalBackupConfig', () => {
       loadExternalBackupConfig({
         BACKUP_ALERT_WEBHOOK_URL: 'https://alerts.example.test/backup',
         BACKUP_EXPORT_PATH: '../external-backups',
-        DATABASE_PATH: './data/messenger-handoff.sqlite',
+        DATABASE_PATH: './data/inbox-point.sqlite',
         INSTANCE_ID: 'instance-a',
       }),
     ).toMatchObject({ instanceId: 'instance-a' });

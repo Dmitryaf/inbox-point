@@ -16,7 +16,7 @@ afterEach(async () => {
 
 describe('FileContentSettingsStore', () => {
   it('persists content and records restorable revisions', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'messenger-content-'));
+    const directory = await mkdtemp(join(tmpdir(), 'inbox-point-content-'));
     directories.push(directory);
     const moments = [
       new Date('2026-09-01T12:00:00.000Z'),
@@ -94,7 +94,7 @@ describe('FileContentSettingsStore', () => {
   });
 
   it('rejects an outdated local content format', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'messenger-content-'));
+    const directory = await mkdtemp(join(tmpdir(), 'inbox-point-content-'));
     directories.push(directory);
     const path = join(directory, 'content-settings.json');
     await writeFile(
@@ -118,7 +118,7 @@ describe('FileContentSettingsStore', () => {
   });
 
   it('restores an earlier revision and records the restoration as a new change', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'messenger-content-'));
+    const directory = await mkdtemp(join(tmpdir(), 'inbox-point-content-'));
     directories.push(directory);
     const moments = [
       new Date('2026-09-01T12:00:00.000Z'),
@@ -159,7 +159,7 @@ describe('FileContentSettingsStore', () => {
   });
 
   it('does not add history when content did not change', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'messenger-content-'));
+    const directory = await mkdtemp(join(tmpdir(), 'inbox-point-content-'));
     directories.push(directory);
     const store = new FileContentSettingsStore(
       join(directory, 'content-settings.json'),
@@ -173,7 +173,7 @@ describe('FileContentSettingsStore', () => {
   });
 
   it('persists menu visibility independently from section content', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'messenger-content-'));
+    const directory = await mkdtemp(join(tmpdir(), 'inbox-point-content-'));
     directories.push(directory);
     const moments = [
       new Date('2026-09-01T12:00:00.000Z'),
@@ -212,7 +212,7 @@ describe('FileContentSettingsStore', () => {
   });
 
   it('rejects content that exceeds the supported message size', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'messenger-content-'));
+    const directory = await mkdtemp(join(tmpdir(), 'inbox-point-content-'));
     directories.push(directory);
     const store = new FileContentSettingsStore(
       join(directory, 'content-settings.json'),

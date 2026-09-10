@@ -17,7 +17,7 @@ export function renderAdminLoginPagePart1(
     <>
       <div className="login-stack" data-r-3fb97507="">
         <p className="login-brand" data-r-3fb97507="">
-          {'Messenger Handoff'}
+          {'Inbox Point'}
         </p>
         <AsyncMessage
           kind="error"

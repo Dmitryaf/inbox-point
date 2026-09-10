@@ -16,7 +16,7 @@ afterEach(async () => {
 
 describe('FileTelegramSettingsStore', () => {
   it('persists and restores local Telegram settings', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'messenger-handoff-'));
+    const directory = await mkdtemp(join(tmpdir(), 'inbox-point-'));
     directories.push(directory);
     const path = join(directory, 'private', 'telegram-settings.json');
     const store = new FileTelegramSettingsStore(path);

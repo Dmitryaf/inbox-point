@@ -17,7 +17,7 @@ import {
 } from '@/infrastructure/persistence/sqlite-schema.js';
 
 const millisecondsPerDay = 24 * 60 * 60 * 1_000;
-const backupFilePattern = /^messenger-handoff-.*\.sqlite$/;
+const backupFilePattern = /^inbox-point-.*\.sqlite$/;
 
 export interface SqliteBackup {
   createdAt: Date;
@@ -58,7 +58,7 @@ export class SqliteBackupService {
   public async createBackup(): Promise<SqliteBackup> {
     const createdAt = this.clock();
     const timestamp = createdAt.toISOString().replaceAll(':', '-');
-    const fileName = `messenger-handoff-${timestamp}-${this.createId()}.sqlite`;
+    const fileName = `inbox-point-${timestamp}-${this.createId()}.sqlite`;
     const finalPath = join(this.backupDirectory, fileName);
     const temporaryPath = finalPath + '.tmp';
     assertPathInsideDirectory(temporaryPath, this.backupDirectory);

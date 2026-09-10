@@ -148,7 +148,7 @@ describe('admin session routes', () => {
     expect(wrongScheme.statusCode).toBe(403);
     expect(login.statusCode).toBe(200);
     expect(login.headers['set-cookie']).toContain(
-      '__Host-mh-admin-session=admin-session-1',
+      '__Host-inbox-point-admin-session=admin-session-1',
     );
     await expectSurfaceAccess(app, firstCookie, 200);
 
@@ -184,7 +184,7 @@ describe('admin session routes', () => {
 
     expect(logout.statusCode).toBe(200);
     expect(logout.headers['set-cookie']).toContain(
-      '__Host-mh-admin-session=; Path=/; Max-Age=0',
+      '__Host-inbox-point-admin-session=; Path=/; Max-Age=0',
     );
     await expectSurfaceAccess(app, secondCookie, 401);
     await expect(
@@ -213,9 +213,9 @@ describe('admin session routes', () => {
     const login = await app.inject({
       headers: {
         host: 'app:3000',
-        origin: 'https://messenger.example.com',
+        origin: 'https://inboxpoint.ru',
         'x-forwarded-for': '192.0.2.10',
-        'x-forwarded-host': 'messenger.example.com',
+        'x-forwarded-host': 'inboxpoint.ru',
         'x-forwarded-proto': 'https',
       },
       method: 'POST',
@@ -226,7 +226,7 @@ describe('admin session routes', () => {
 
     expect(login.statusCode).toBe(200);
     expect(login.headers['set-cookie']).toContain(
-      '__Host-mh-admin-session=production-session',
+      '__Host-inbox-point-admin-session=production-session',
     );
   });
 });

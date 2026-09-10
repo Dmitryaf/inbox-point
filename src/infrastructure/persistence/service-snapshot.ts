@@ -92,8 +92,8 @@ export class ServiceSnapshotService {
     );
     this.snapshotNamePrefix =
       this.instanceId === defaultInstanceId
-        ? 'messenger-handoff-snapshot-'
-        : `messenger-handoff.${this.instanceId}.snapshot-`;
+        ? 'inbox-point-snapshot-'
+        : `inbox-point.${this.instanceId}.snapshot-`;
     this.retentionDays = options.retentionDays ?? 7;
     if (!Number.isInteger(this.retentionDays) || this.retentionDays < 1) {
       throw new Error('Snapshot retention days must be a positive integer');
@@ -247,7 +247,7 @@ export async function restoreServiceSnapshot(
 
   try {
     const restored: RestoredServiceSnapshot = {
-      databasePath: join(resolvedTarget, 'messenger-handoff.sqlite'),
+      databasePath: join(resolvedTarget, 'inbox-point.sqlite'),
     };
     for (const file of manifest.files) {
       const targetName =

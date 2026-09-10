@@ -24,7 +24,7 @@ async function main(): Promise<void> {
   } catch (error: unknown) {
     try {
       await alert.send(
-        `Messenger Handoff [${config.instanceId}]: не удалось создать или проверить внешний backup.`,
+        `Inbox Point [${config.instanceId}]: не удалось создать или проверить внешний backup.`,
       );
     } catch (alertError: unknown) {
       console.error('Failed to send external backup alert', alertError);

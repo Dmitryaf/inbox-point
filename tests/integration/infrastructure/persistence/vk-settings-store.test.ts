@@ -16,7 +16,7 @@ afterEach(async () => {
 
 describe('FileVkSettingsStore', () => {
   it('persists and restores local VK settings', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'messenger-handoff-vk-'));
+    const directory = await mkdtemp(join(tmpdir(), 'inbox-point-vk-'));
     directories.push(directory);
     const path = join(directory, 'private', 'vk-settings.json');
     const store = new FileVkSettingsStore(path);

@@ -25,11 +25,11 @@ describe('AvailabilityMonitor', () => {
     expect(send).toHaveBeenCalledTimes(2);
     expect(send).toHaveBeenNthCalledWith(
       1,
-      'Messenger Handoff [instance-a] недоступен. Проверьте сервер и контейнер приложения.',
+      'Inbox Point [instance-a] недоступен. Проверьте сервер и контейнер приложения.',
     );
     expect(send).toHaveBeenNthCalledWith(
       2,
-      'Messenger Handoff [instance-a] снова доступен.',
+      'Inbox Point [instance-a] снова доступен.',
     );
   });
 
