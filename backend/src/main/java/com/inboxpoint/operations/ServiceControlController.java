@@ -5,7 +5,6 @@ import java.time.Instant;
 import java.util.Map;
 
 import com.inboxpoint.admin.AdminSessions;
-import com.inboxpoint.admin.PasswordSessions;
 import com.inboxpoint.telegram.TelegramRuntime;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -40,7 +39,7 @@ final class ServiceControlController {
         if (error != null) {
             return error;
         }
-        if (!PasswordSessions.sameOrigin(request)) {
+        if (!operations.sameOrigin(request)) {
             return error(403, "Запрос отклонён.");
         }
         try {

@@ -7,7 +7,6 @@ import java.time.Instant;
 import java.util.Map;
 
 import com.inboxpoint.admin.AdminSessions;
-import com.inboxpoint.admin.PasswordSessions;
 import com.inboxpoint.telegram.TelegramRuntime;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -174,7 +173,7 @@ final class OperationsController {
         if (!admin.authorized(request, response)) {
             return message(401, "Войдите, чтобы продолжить.");
         }
-        return PasswordSessions.sameOrigin(request) ? null : message(403, "Запрос отклонён.");
+        return admin.sameOrigin(request) ? null : message(403, "Запрос отклонён.");
     }
 
     boolean isReady() throws IOException, SQLException {

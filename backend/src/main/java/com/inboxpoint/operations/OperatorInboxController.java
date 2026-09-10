@@ -5,7 +5,6 @@ import java.sql.SQLException;
 import java.util.Map;
 
 import com.inboxpoint.admin.AdminSessions;
-import com.inboxpoint.admin.PasswordSessions;
 import com.inboxpoint.telegram.TelegramRuntime;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -92,7 +91,7 @@ final class OperatorInboxController {
         if (!admin.authorized(request, response)) {
             return message(401, "Введите пароль мониторинга.");
         }
-        return write && !PasswordSessions.sameOrigin(request) ? message(403, "Запрос отклонён.") : null;
+        return write && !admin.sameOrigin(request) ? message(403, "Запрос отклонён.") : null;
     }
 
     private static ResponseEntity<?> missing() {

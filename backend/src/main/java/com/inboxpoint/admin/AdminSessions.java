@@ -10,11 +10,12 @@ import org.springframework.stereotype.Component;
 public final class AdminSessions extends PasswordSessions {
     @Autowired
     public AdminSessions(@Value("${ADMIN_PASSWORD:}") String password,
-            @Value("${INBOXPOINT_ENV:development}") String environment) {
-        this(password, "production".equals(environment), Clock.systemUTC());
+            @Value("${INBOXPOINT_ENV:development}") String environment,
+            @Value("${HTTP_TRUSTED_PROXIES:}") String proxies) {
+        super(password, "production".equals(environment), "mh-admin-session", Clock.systemUTC(), proxies);
     }
 
     AdminSessions(String password, boolean secure, Clock clock) {
-        super(password, secure, "mh-admin-session", clock);
+        super(password, secure, "mh-admin-session", clock, "");
     }
 }

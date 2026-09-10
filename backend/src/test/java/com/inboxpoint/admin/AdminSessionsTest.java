@@ -11,6 +11,22 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class AdminSessionsTest {
     @Test
+    void acceptsForwardedClientAndSchemeOnlyFromTheConfiguredImmediateProxy() {
+        var origins = new AdminRequestOrigin("172.30.1.1/32,2001:db8::/32");
+        var request = new org.springframework.mock.web.MockHttpServletRequest();
+        request.addHeader("Host", "service.example.invalid");
+        request.addHeader("Origin", "https://service.example.invalid");
+        request.addHeader("X-Forwarded-Proto", "https");
+        request.addHeader("X-Forwarded-For", "198.51.100.10");
+        request.setRemoteAddr("172.30.1.1");
+        assertThat(origins.inspect(request).client()).isEqualTo("198.51.100.10");
+        assertThat(AdminRequestOrigin.sameOrigin(request, origins.inspect(request))).isTrue();
+        request.setRemoteAddr("172.30.1.2");
+        assertThat(origins.inspect(request).client()).isEqualTo("172.30.1.2");
+        assertThat(AdminRequestOrigin.sameOrigin(request, origins.inspect(request))).isFalse();
+    }
+
+    @Test
     void protectsContentWithAnExpiringAndRevocableCookie() {
         var admin = new AdminSessions("synthetic-editor-password", true, Clock.systemUTC());
         var request = new MockHttpServletRequest();
@@ -36,6 +52,6 @@ class AdminSessionsTest {
         var request = new MockHttpServletRequest();
         request.addHeader("Host", "127.0.0.1:3000");
         request.addHeader("Origin", "https://foreign.example.invalid");
-        assertThat(AdminSessions.sameOrigin(request)).isFalse();
+        assertThat(admin.sameOrigin(request)).isFalse();
     }
 }

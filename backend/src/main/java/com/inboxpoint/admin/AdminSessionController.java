@@ -34,7 +34,7 @@ final class AdminSessionController {
         if (!admin.available(request, response)) {
             return error(404, "Not found");
         }
-        if (!PasswordSessions.sameOrigin(request)) {
+        if (!admin.sameOrigin(request)) {
             return error(403, "Запрос отклонён.");
         }
         if (admin.authorized(request, response)) {
@@ -44,7 +44,7 @@ final class AdminSessionController {
         if (password.isEmpty() || password.length() > 200) {
             return error(401, "Неверный пароль.");
         }
-        var result = admin.login(password, request.getRemoteAddr());
+        var result = admin.login(password, admin.clientAddress(request));
         if (result.retryAfter() > 0) {
             return ResponseEntity.status(429).header(HttpHeaders.RETRY_AFTER, Long.toString(result.retryAfter()))
                     .body(Map.of("message", "Слишком много попыток. Попробуйте позже."));
@@ -61,7 +61,7 @@ final class AdminSessionController {
         if (!admin.available(request, response)) {
             return error(404, "Not found");
         }
-        if (!PasswordSessions.sameOrigin(request)) {
+        if (!admin.sameOrigin(request)) {
             return error(403, "Запрос отклонён.");
         }
         admin.logout(request);

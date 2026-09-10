@@ -5,7 +5,6 @@ import java.sql.SQLException;
 import java.util.Map;
 
 import com.inboxpoint.admin.AdminSessions;
-import com.inboxpoint.admin.PasswordSessions;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.ResponseEntity;
@@ -129,7 +128,7 @@ final class TelegramSetupController {
         if (!admin.authorized(request, response)) {
             return error(401, "Войдите, чтобы продолжить.");
         }
-        return write && !PasswordSessions.sameOrigin(request) ? error(403, "Запрос отклонён.") : null;
+        return write && !admin.sameOrigin(request) ? error(403, "Запрос отклонён.") : null;
     }
 
     private static ResponseEntity<Map<String, String>> error(int status, String message) {

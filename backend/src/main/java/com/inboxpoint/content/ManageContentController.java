@@ -51,7 +51,7 @@ final class ManageContentController {
         if (!admin.authorized(request, response)) {
             return unauthorized();
         }
-        if (!AdminSessions.sameOrigin(request)) {
+        if (!admin.sameOrigin(request)) {
             return error(403, "Запрос отклонён.");
         }
         var version = input.path("version").asString("");
@@ -77,7 +77,7 @@ final class ManageContentController {
         if (!admin.authorized(request, response)) {
             return unauthorized();
         }
-        if (!AdminSessions.sameOrigin(request)) {
+        if (!admin.sameOrigin(request)) {
             return error(403, "Запрос отклонён.");
         }
         var revision = input.path("revision");

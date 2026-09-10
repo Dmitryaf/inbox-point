@@ -10,7 +10,6 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.HashMap;
 
-import com.inboxpoint.operations.LocalSetupAccess;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.ResponseCookie;
@@ -22,11 +21,13 @@ public class PasswordSessions {
     private final byte[] secret;
     private final boolean secure;
     private final Clock clock;
+    private final AdminRequestOrigin origin;
     private final String cookieLabel;
     private final HashMap<String, Instant> sessions = new HashMap<>();
     private final HashMap<String, Attempts> attempts = new HashMap<>();
 
-    public PasswordSessions(String password, boolean secure, String cookieLabel, Clock clock) {
+    PasswordSessions(String password, boolean secure, String cookieLabel, Clock clock, String trustedProxies) {
+        origin = new AdminRequestOrigin(trustedProxies);
         if (!password.isEmpty() && (password.length() < 12 || password.length() > 200)) {
             throw new IllegalArgumentException("Invalid administration password length");
         }
@@ -49,16 +50,15 @@ public class PasswordSessions {
     }
 
     final boolean local(HttpServletRequest request, HttpServletResponse response) {
-        return secret == null && !secure && LocalSetupAccess.allow(request, response);
+        return secret == null && !secure && origin.inspect(request).loopback();
     }
 
-    public static boolean sameOrigin(HttpServletRequest request) {
-        var origin = request.getHeader("Origin");
-        if (origin == null) {
-            return true;
-        }
-        var host = request.getHeader("Host");
-        return origin.equals(request.getScheme() + "://" + host);
+    public boolean sameOrigin(HttpServletRequest request) {
+        return AdminRequestOrigin.sameOrigin(request, origin.inspect(request));
+    }
+
+    String clientAddress(HttpServletRequest request) {
+        return origin.inspect(request).client();
     }
 
     public synchronized Login login(String password, String client) {
