@@ -41,8 +41,8 @@ public final class ServiceCommands {
                 var target = WebhookAlert.https(environment.get("MONITOR_ALERT_WEBHOOK_URL"));
                 var interval = Duration.ofSeconds(number(environment, "MONITOR_INTERVAL_SECONDS", 60, 10, Integer.MAX_VALUE));
                 var timeout = Duration.ofSeconds(number(environment, "MONITOR_TIMEOUT_SECONDS", 10, 1, 30));
-                var alert = new WebhookAlert(http, target, timeout, environment.get("MONITOR_ALERT_BEARER_TOKEN"));
-                new AvailabilityMonitor(() -> check(http, readiness, timeout), alert::send).run(interval);
+                var alert = new WebhookAlert(http, target, timeout, environment.get("MONITOR_ALERT_BEARER_TOKEN"), instance(environment));
+                new AvailabilityMonitor(() -> check(http, readiness, timeout), alert::send, instance(environment)).run(interval);
             }
             return 0;
         } catch (InterruptedException stopping) {
@@ -61,9 +61,9 @@ public final class ServiceCommands {
             requireExternalTarget(database, target);
             var timeout = Duration.ofSeconds(number(environment, "BACKUP_TIMEOUT_SECONDS", 10, 1, 30));
             var notifier = new WebhookAlert(http, WebhookAlert.https(environment.get("BACKUP_ALERT_WEBHOOK_URL")),
-                    timeout, environment.get("BACKUP_ALERT_BEARER_TOKEN"));
+                    timeout, environment.get("BACKUP_ALERT_BEARER_TOKEN"), instance(environment));
             try {
-                var snapshot = new ServiceSnapshot(database, target, number(environment, "CLOSED_REQUEST_RETENTION_DAYS", 7, 1, 365))
+                var snapshot = new ServiceSnapshot(database, target, instance(environment), number(environment, "CLOSED_REQUEST_RETENTION_DAYS", 7, 1, 365))
                         .create(Instant.now());
                 ServiceSnapshot.verify(snapshot);
                 System.out.println(snapshot);
@@ -92,6 +92,10 @@ public final class ServiceCommands {
         }
     }
 
+    private static String instance(Map<String, String> environment) {
+        return InstanceId.validate(environment.getOrDefault("INSTANCE_ID", "default"));
+    }
+
     private static String required(Map<String, String> environment, String key) {
         var value = environment.get(key);
         if (value == null || value.isBlank()) {
@@ -105,7 +109,8 @@ public final class ServiceCommands {
             if ("snapshot-create".equals(args[0])) {
                 var database = Path.of(environment.getOrDefault("DATABASE_PATH", "./data/messenger-handoff.sqlite"));
                 var days = number(environment, "CLOSED_REQUEST_RETENTION_DAYS", 7, 1, 365);
-                System.out.println(new ServiceSnapshot(database, days).create(Instant.now()));
+                System.out.println(new ServiceSnapshot(database, database.toAbsolutePath().normalize().getParent().resolve("snapshots"),
+                        instance(environment), days).create(Instant.now()));
             } else {
                 if (args.length != 3) {
                     throw new IllegalArgumentException("Snapshot directory and new restore directory are required");

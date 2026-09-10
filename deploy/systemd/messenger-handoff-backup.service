@@ -6,4 +6,4 @@ After=docker.service
 [Service]
 Type=oneshot
 WorkingDirectory=/opt/messenger-handoff
-ExecStart=/usr/bin/docker compose --env-file .env --profile operations run --rm backup
+ExecStart=/usr/bin/docker compose -p messenger-handoff --env-file .env --profile operations run --rm backup

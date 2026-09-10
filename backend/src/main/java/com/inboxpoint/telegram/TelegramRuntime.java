@@ -39,6 +39,7 @@ public final class TelegramRuntime {
     private final Path database;
     private final Path settingsFile;
     private final URI origin;
+    private final String proxy;
     private Thread poller;
     private Thread retention;
     private final int retentionDays;
@@ -50,6 +51,13 @@ public final class TelegramRuntime {
     TelegramRuntime(Environment environment, ClientInformation information) {
         this.information = information;
         this.environment = environment;
+        com.inboxpoint.operations.InstanceId.validate(environment.getProperty("INSTANCE_ID", "default"));
+        proxy = environment.getProperty("TELEGRAM_PROXY_URL", "").strip();
+        if (!proxy.isEmpty()) {
+            try (var validated = TelegramHttpTransport.open(proxy, API_TIMEOUT)) {
+                // Opening the client validates the configured endpoint before a worker starts.
+            }
+        }
         retentionDays = environment.getProperty("CLOSED_REQUEST_RETENTION_DAYS", Integer.class, 7);
         if (retentionDays < 1 || retentionDays > 365) {
             throw new IllegalArgumentException("Invalid closed request retention days");
@@ -179,7 +187,7 @@ public final class TelegramRuntime {
             throws IOException, InterruptedException {
         assertMutable();
         validateToken(token);
-        try (var transport = TelegramHttpTransport.open("", API_TIMEOUT)) {
+        try (var transport = TelegramHttpTransport.open(proxy, API_TIMEOUT)) {
             return new TelegramBotApi(transport, origin, token, API_TIMEOUT).discoverChats();
         }
     }
@@ -230,7 +238,7 @@ public final class TelegramRuntime {
                 || settings.timeout() > 50) {
             throw new IllegalArgumentException("Invalid Telegram runtime settings");
         }
-        verifyConnection(origin, settings.token(), settings.group());
+        verifyConnection(origin, settings.token(), settings.group(), proxy);
         try (var store = new TelegramStore(database)) {
             if (save) {
                 LocalJsonFile.write(settingsFile, JsonMapper.shared().createObjectNode()
@@ -402,7 +410,11 @@ public final class TelegramRuntime {
     }
 
     static void verifyConnection(URI origin, String token, long group) throws IOException, InterruptedException {
-        try (var transport = TelegramHttpTransport.open("", API_TIMEOUT)) {
+        verifyConnection(origin, token, group, "");
+    }
+
+    private static void verifyConnection(URI origin, String token, long group, String proxy) throws IOException, InterruptedException {
+        try (var transport = TelegramHttpTransport.open(proxy, API_TIMEOUT)) {
             new TelegramBotApi(transport, origin, token, API_TIMEOUT).verifySetup(group);
         }
     }
@@ -429,7 +441,7 @@ public final class TelegramRuntime {
     }
 
     private void poll(Path database, URI origin, String token, long group, int timeout) {
-        try (var store = new TelegramStore(database); var transport = TelegramHttpTransport.open("", API_TIMEOUT)) {
+        try (var store = new TelegramStore(database); var transport = TelegramHttpTransport.open(proxy, API_TIMEOUT)) {
             var api = new TelegramBotApi(transport, origin, token, API_TIMEOUT);
             var unregisterClient = handoff.registerTelegram(api);
             var unregisterInbox = handoff.registerOperatorInbox(new DurableTelegramInbox(new TelegramTopicsInbox(api, group), database, Clock.systemUTC()));

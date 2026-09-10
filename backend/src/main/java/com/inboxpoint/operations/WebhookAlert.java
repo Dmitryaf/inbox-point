@@ -10,7 +10,7 @@ import java.util.Map;
 
 import tools.jackson.databind.json.JsonMapper;
 
-record WebhookAlert(HttpClient client, URI target, Duration timeout, String bearer) {
+record WebhookAlert(HttpClient client, URI target, Duration timeout, String bearer, String instance) {
     WebhookAlert {
         if (bearer != null && (bearer.length() > 500 || bearer.chars().anyMatch(Character::isISOControl))) {
             throw new IllegalArgumentException("Invalid alert credential");
@@ -27,7 +27,7 @@ record WebhookAlert(HttpClient client, URI target, Duration timeout, String bear
     }
 
     HttpRequest request(String text) {
-        var payload = JsonMapper.shared().writeValueAsString(Map.of("message", text, "service", "messenger-handoff"));
+        var payload = JsonMapper.shared().writeValueAsString(Map.of("message", text, "service", "messenger-handoff", "instanceId", instance));
         var request = HttpRequest.newBuilder(target).timeout(timeout).header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(payload));
         if (bearer != null && !bearer.isEmpty()) {

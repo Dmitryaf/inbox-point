@@ -8,12 +8,18 @@ import org.slf4j.LoggerFactory;
 final class AvailabilityMonitor {
     private final Check probe;
     private final Alert alert;
+    private final String instance;
     private boolean outage;
     private boolean notified;
 
     AvailabilityMonitor(Check probe, Alert alert) {
+        this(probe, alert, "default");
+    }
+
+    AvailabilityMonitor(Check probe, Alert alert, String instance) {
         this.probe = probe;
         this.alert = alert;
+        this.instance = InstanceId.validate(instance);
     }
 
     void run(Duration interval) throws InterruptedException {
@@ -29,12 +35,12 @@ final class AvailabilityMonitor {
         } catch (IOException unavailable) {
             outage = true;
             if (!notified) {
-                notified = send("Messenger Handoff недоступен. Проверьте сервер и контейнер приложения.");
+                notified = send("Messenger Handoff [" + instance + "] недоступен. Проверьте сервер и контейнер приложения.");
             }
             return;
         }
         if (outage && notified) {
-            send("Messenger Handoff снова доступен.");
+            send("Messenger Handoff [" + instance + "] снова доступен.");
         }
         outage = false;
         notified = false;

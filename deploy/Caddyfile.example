@@ -1,0 +1,17 @@
+messenger.example.com {
+	encode zstd gzip
+
+	# Requires Caddy 2.10+. Keep ordinary administration requests small.
+	request_body {
+		max_size 1MB
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "same-origin"
+		-Server
+	}
+
+	reverse_proxy 127.0.0.1:3101
+}

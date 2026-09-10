@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import com.inboxpoint.operations.InstanceId;
 import org.sqlite.SQLiteConfig;
 import org.sqlite.SQLiteConnection;
 import org.sqlite.SQLiteOpenMode;
@@ -37,22 +38,25 @@ public final class ServiceSnapshot {
     private final Path database;
     private final Path directory;
     private final int days;
+    private final String instance;
 
     public ServiceSnapshot(Path database, int days) {
-        this(database, database.toAbsolutePath().normalize().getParent().resolve("snapshots"), days);
+        this(database, database.toAbsolutePath().normalize().getParent().resolve("snapshots"), "default", days);
     }
 
-    public ServiceSnapshot(Path database, Path directory, int days) {
+    public ServiceSnapshot(Path database, Path directory, String instance, int days) {
         if (database.toString().equals(":memory:") || days < 1 || days > 365) {
             throw new IllegalArgumentException("Invalid snapshot configuration");
         }
         this.database = database.toAbsolutePath().normalize();
         this.directory = directory.toAbsolutePath().normalize();
         this.days = days;
+        this.instance = InstanceId.validate(instance);
     }
 
     public Path create(Instant created) throws IOException, SQLException {
-        var prefix = "messenger-handoff-snapshot-";
+        var prefix = "default".equals(instance) ? "messenger-handoff-snapshot-"
+                : "messenger-handoff." + instance + ".snapshot-";
         var name = prefix + created.toString().replace(':', '-') + "-" + UUID.randomUUID();
         Files.createDirectories(directory);
         var staging = directory.resolve(name + ".tmp");
@@ -83,7 +87,7 @@ public final class ServiceSnapshot {
                 }
             }
             var manifest = new Manifest(days, created.toString(), expires.toString(),
-                    entries, 1, false, 5);
+                    entries, 1, instance, false, 5);
             var path = staging.resolve(MANIFEST);
             Files.writeString(path, JSON.writerWithDefaultPrettyPrinter().writeValueAsString(manifest) + "\n");
             privateFile(path);
@@ -116,6 +120,9 @@ public final class ServiceSnapshot {
                 || manifest.files().isEmpty() || manifest.files().getFirst() == null
                 || !DATABASE.equals(manifest.files().getFirst().name())) {
             throw new IOException("Service snapshot manifest is invalid");
+        }
+        if (manifest.instanceId() != null) {
+            InstanceId.validate(manifest.instanceId());
         }
         var created = Instant.parse(manifest.createdAt());
         Instant.parse(manifest.expiresAt());
@@ -215,7 +222,8 @@ public final class ServiceSnapshot {
                 } catch (IOException | SQLException | RuntimeException invalid) {
                     continue;
                 }
-                if (!Instant.parse(manifest.expiresAt()).isAfter(now)) {
+                if ((instance.equals(manifest.instanceId()) || manifest.instanceId() == null && "default".equals(instance))
+                        && !Instant.parse(manifest.expiresAt()).isAfter(now)) {
                     for (var entry : manifest.files()) {
                         Files.delete(candidate.resolve(entry.name()));
                     }
@@ -277,5 +285,5 @@ public final class ServiceSnapshot {
     public record FileEntry(String name, String sha256, long size) { }
 
     public record Manifest(int closedRequestRetentionDays, String createdAt, String expiresAt, List<FileEntry> files,
-            int formatVersion, boolean secretsIncluded, int sqliteSchemaVersion) { }
+            int formatVersion, String instanceId, boolean secretsIncluded, int sqliteSchemaVersion) { }
 }

@@ -15,7 +15,7 @@ class WebhookAlertTest {
                 .isInstanceOf(IllegalArgumentException.class);
         var target = WebhookAlert.https("https://alerts.example.invalid/receive");
         try (var client = HttpClient.newHttpClient()) {
-            var request = new WebhookAlert(client, target, Duration.ofSeconds(3), "synthetic-token").request("Synthetic alert");
+            var request = new WebhookAlert(client, target, Duration.ofSeconds(3), "synthetic-token", "instance-a").request("Synthetic alert");
             assertThat(request.uri()).isEqualTo(target);
             assertThat(request.method()).isEqualTo("POST");
             assertThat(request.timeout()).contains(Duration.ofSeconds(3));

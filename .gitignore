@@ -21,6 +21,8 @@ data/
 *.sqlite
 *.sqlite3
 
+.env.production
+.env.staging
 logs/
 *.log
 
