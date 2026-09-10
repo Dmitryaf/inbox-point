@@ -92,6 +92,7 @@ export class OperationsMonitoringService {
     );
     const needsAttention =
       (deliveries.state !== 'healthy' && deliveries.state !== 'paused') ||
+      deliveries.worker.state === 'stalled' ||
       channelNeedsAttention(telegram) ||
       channelNeedsAttention(vk);
     const intake = this.dependencies.intakeStatus?.() ?? {
@@ -140,7 +141,5 @@ export class OperationsMonitoringService {
     };
   }
 
-  public isReady(): boolean {
-    return operationsAreReady(this.getStatus());
-  }
+  public isReady = (): boolean => operationsAreReady(this.getStatus());
 }

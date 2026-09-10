@@ -295,7 +295,10 @@ describe('OperationsMonitoringService', () => {
       channelActivity: () => ({}),
       clock: () => new Date('2026-09-04T12:01:00.000Z'),
       deliverySummary: () => ({ failed: 0, pending: 0 }),
-      deliveryActivity: () => ({ running: false }),
+      deliveryActivity: () => ({
+        lastStartedAt: new Date('2026-09-04T12:00:59.000Z'),
+        running: true,
+      }),
       pollStaleAfterMs: 120_000,
       startedAt: new Date('2026-09-04T12:00:00.000Z'),
       telegramStatus: () => ({ connected: true, source: 'environment' }),

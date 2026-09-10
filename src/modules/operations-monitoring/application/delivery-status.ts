@@ -11,11 +11,11 @@ export function mapDeliveryStatus(
   const oldestPendingAgeMs = summary.oldestPendingAt
     ? Math.max(0, observedAt.getTime() - summary.oldestPendingAt.getTime())
     : undefined;
-  const cycleStale = activity.lastCycleAt
-    ? observedAt.getTime() - activity.lastCycleAt.getTime() > staleAfterMs
-    : true;
-  const workerStalled =
-    summary.pending > 0 && (!activity.running || cycleStale);
+  const lastWorkerActivityAt = activity.lastCycleAt ?? activity.lastStartedAt;
+  const cycleStale = lastWorkerActivityAt
+    ? observedAt.getTime() - lastWorkerActivityAt.getTime() > staleAfterMs
+    : false;
+  const workerStalled = !activity.running || cycleStale;
   const backlog =
     summary.pending > 0 &&
     oldestPendingAgeMs !== undefined &&
