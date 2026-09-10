@@ -1,4 +1,11 @@
-import { chmod, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import {
+  chmod,
+  mkdir,
+  readFile,
+  rename,
+  unlink,
+  writeFile,
+} from 'node:fs/promises';
 import { dirname } from 'node:path';
 
 import type { ZodType } from 'zod';
@@ -54,6 +61,17 @@ export function writePrivateJsonFile(
   value: unknown,
 ): Promise<void> {
   return writePrivateTextFile(path, JSON.stringify(value, undefined, 2) + '\n');
+}
+
+export async function removeOptionalFile(path: string): Promise<void> {
+  try {
+    await unlink(path);
+  } catch (error: unknown) {
+    if (isFileSystemError(error) && error.code === 'ENOENT') {
+      return;
+    }
+    throw error;
+  }
 }
 
 export async function writePrivateTextFile(

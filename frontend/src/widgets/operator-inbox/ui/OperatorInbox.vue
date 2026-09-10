@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { onMounted } from 'vue';
-
 import { useOperatorInbox } from '@frontend/features/manage-operator-inbox/model/use-operator-inbox';
 import AsyncMessage from '@frontend/shared/ui/AsyncMessage.vue';
 import OperatorConversation from './OperatorConversation.vue';
@@ -10,11 +8,10 @@ const props = defineProps<{ onUnauthorized: () => void }>();
 const inbox = useOperatorInbox(props.onUnauthorized);
 
 defineExpose({ refresh: inbox.refresh });
-onMounted(() => void inbox.refresh());
 </script>
 
 <template>
-  <AsyncMessage kind="error" :text="inbox.error.value" />
+  <AsyncMessage kind="error" :text="inbox.actionError.value" />
 
   <section
     v-if="inbox.requests.value.length > 0"

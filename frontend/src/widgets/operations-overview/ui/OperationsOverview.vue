@@ -10,14 +10,13 @@ import InboundEventStatusCard from './InboundEventStatusCard.vue';
 import OperationsAttentionPanel from './OperationsAttentionPanel.vue';
 
 const props = defineProps<{
-  deliveryControlPending: 'pause' | 'resume' | undefined;
   pendingDeliveryId: string | undefined;
   pendingOperatorActionId: string | undefined;
   pendingInboundEventId: string | undefined;
   status: OperationsStatus;
+  statusUnavailable?: boolean;
 }>();
 defineEmits<{
-  changeDeliveryMode: [mode: 'pause' | 'resume'];
   resolveDelivery: [
     deliveryId: string,
     resolution: 'not_received' | 'received',
@@ -35,6 +34,9 @@ const observedAt = computed(() =>
   formatShortDateTimeWithSeconds(props.status.observedAt),
 );
 const overallLabel = computed(() => {
+  if (props.statusUnavailable) {
+    return 'Состояние неизвестно';
+  }
   if (props.status.state === 'healthy') {
     return 'Всё работает';
   }
@@ -42,10 +44,13 @@ const overallLabel = computed(() => {
     return 'Нужно проверить';
   }
   return props.status.outbound.mode === 'paused'
-    ? 'Отправка ответов остановлена'
+    ? 'Ответы клиентам приостановлены'
     : 'Приём обращений приостановлен';
 });
 const overallDescription = computed(() => {
+  if (props.statusUnavailable) {
+    return `Не удалось обновить состояние. Показаны последние данные от ${observedAt.value}.`;
+  }
   if (props.status.state === 'healthy') {
     return 'Всё работает: каналы принимают сообщения, ответы отправляются.';
   }
@@ -81,7 +86,8 @@ const overallDescription = computed(() => {
     <article
       class="service-summary"
       :class="{
-        'summary-card--attention': status.state === 'attention',
+        'summary-card--attention':
+          statusUnavailable || status.state === 'attention',
         'summary-card--maintenance': status.state === 'maintenance',
       }"
     >
@@ -114,12 +120,7 @@ const overallDescription = computed(() => {
         :channel="status.channels.vk"
         :intake="status.intake.vk"
       />
-      <DeliveryStatusCard
-        :deliveries="status.deliveries"
-        :delivery-control-pending="deliveryControlPending"
-        :outbound="status.outbound"
-        @change-delivery-mode="$emit('changeDeliveryMode', $event)"
-      />
+      <DeliveryStatusCard :deliveries="status.deliveries" />
       <InboundEventStatusCard :inbound-events="status.inboundEvents" />
     </div>
   </section>

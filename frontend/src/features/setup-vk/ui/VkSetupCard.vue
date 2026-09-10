@@ -1,22 +1,29 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 
-import { connectVk } from '@frontend/entities/setup/api/setup-api';
 import type { ChannelSetupStatus } from '@frontend/entities/setup/model/types';
-import { errorMessage } from '@frontend/shared/lib/error-message';
+import { useVkSetup } from '@frontend/features/setup-vk/model/use-vk-setup';
 import VkSetupInstructions from './VkSetupInstructions.vue';
 
 const props = defineProps<{
   status: ChannelSetupStatus;
   telegramConnected: boolean;
 }>();
-const emit = defineEmits<{ connected: [] }>();
-const community = ref('');
-const accessToken = ref('');
-const message = ref('Выполните шаги и подключите сообщество.');
-const messageKind = ref<'error' | 'info' | 'success'>('info');
-const pending = ref(false);
+const emit = defineEmits<{ connected: []; disconnected: [] }>();
 const expanded = ref(false);
+const {
+  accessToken,
+  community,
+  connect,
+  disconnect,
+  disconnecting,
+  message,
+  messageKind,
+  pending,
+} = useVkSetup(
+  () => emit('connected'),
+  () => emit('disconnected'),
+);
 const toggleLabel = computed(() => {
   if (!props.telegramConnected && !props.status.connected) {
     return 'Сначала Telegram';
@@ -24,25 +31,8 @@ const toggleLabel = computed(() => {
   if (expanded.value) {
     return 'Скрыть';
   }
-  return props.status.connected ? 'Сведения' : 'Подключить VK';
+  return props.status.source !== 'none' ? 'Сведения' : 'Подключить VK';
 });
-
-async function connect(): Promise<void> {
-  pending.value = true;
-  messageKind.value = 'info';
-  try {
-    await connectVk(accessToken.value.trim(), community.value.trim());
-    accessToken.value = '';
-    message.value = 'VK подключён. Настройка сохранена.';
-    messageKind.value = 'success';
-    emit('connected');
-  } catch (cause: unknown) {
-    message.value = errorMessage(cause);
-    messageKind.value = 'error';
-  } finally {
-    pending.value = false;
-  }
-}
 </script>
 
 <template>
@@ -79,9 +69,33 @@ async function connect(): Promise<void> {
         class="setup-status setup-status--success"
         role="status"
       >
-        Подключение активно. Изменить секреты можно через конфигурацию
-        установки.
+        Подключение активно.
       </p>
+      <template v-if="status.source !== 'none'">
+        <p
+          v-if="status.source === 'environment'"
+          class="setup-status setup-status--info"
+        >
+          Управляется на сервере.
+        </p>
+        <template v-else>
+          <button
+            class="danger"
+            type="button"
+            :disabled="disconnecting"
+            @click="disconnect"
+          >
+            {{ disconnecting ? 'Отключаем…' : 'Отключить VK' }}
+          </button>
+          <p
+            v-if="messageKind === 'error'"
+            class="setup-status setup-status--error"
+            role="alert"
+          >
+            {{ message }}
+          </p>
+        </template>
+      </template>
       <template v-else>
         <VkSetupInstructions />
         <p v-if="status.locked" class="setup-status setup-status--info">

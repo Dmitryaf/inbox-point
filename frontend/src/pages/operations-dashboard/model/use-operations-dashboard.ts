@@ -1,4 +1,11 @@
-import { onBeforeUnmount, watch, type ShallowRef } from 'vue';
+import {
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  watch,
+  type ShallowRef,
+} from 'vue';
 
 import type { AdminSession } from '@frontend/features/admin-auth/model/use-admin-session';
 import { useOutboundDeliveryControl } from '@frontend/features/control-outbound-delivery/model/use-outbound-delivery-control';
@@ -10,7 +17,7 @@ import { useOperatorActionResolution } from '@frontend/features/resolve-operator
 const refreshIntervalMs = 30_000;
 
 interface RefreshableComponent {
-  refresh(): Promise<void>;
+  refresh(): Promise<string>;
 }
 
 interface OperationsDashboardRefreshTargets {
@@ -37,29 +44,50 @@ export function useOperationsDashboard(
     refreshAll,
     session.expireSession,
   );
+  const refreshError = ref('');
   let refreshTimer: ReturnType<typeof setInterval> | undefined;
+  let mounted = false;
 
-  watch(
-    session.authenticated,
-    (authenticated) => {
-      stopAutomaticRefresh();
-      if (!authenticated) {
-        operations.clear();
-        return;
-      }
-      void refreshAll();
-      refreshTimer = setInterval(() => void refreshAll(), refreshIntervalMs);
-    },
-    { immediate: true },
-  );
+  watch(session.authenticated, (authenticated) => {
+    if (!mounted) {
+      return;
+    }
+    stopAutomaticRefresh();
+    if (!authenticated) {
+      operations.clear();
+      refreshError.value = '';
+      return;
+    }
+    startAutomaticRefresh();
+  });
+  onMounted(() => {
+    mounted = true;
+    if (session.authenticated.value) {
+      startAutomaticRefresh();
+    }
+  });
   onBeforeUnmount(stopAutomaticRefresh);
 
   async function refreshAll(): Promise<void> {
-    await Promise.all([
+    await nextTick();
+    const intakeControl = refreshTargets.intakeControl.value;
+    const failures = await Promise.all([
       operations.refresh(),
-      refreshTargets.operatorInbox.value?.refresh() ?? Promise.resolve(),
-      refreshTargets.intakeControl.value?.refresh() ?? Promise.resolve(),
+      refreshTargets.operatorInbox.value?.refresh() ?? Promise.resolve(''),
+      intakeControl?.refresh() ?? Promise.resolve(''),
     ]);
+    if (!intakeControl && operations.status.value) {
+      await nextTick();
+      failures.push(
+        (await refreshTargets.intakeControl.value?.refresh()) ?? '',
+      );
+    }
+    refreshError.value = failures.find(Boolean) ?? '';
+  }
+
+  function startAutomaticRefresh(): void {
+    void refreshAll();
+    refreshTimer = setInterval(() => void refreshAll(), refreshIntervalMs);
   }
 
   function stopAutomaticRefresh(): void {
@@ -75,6 +103,7 @@ export function useOperationsDashboard(
     inboundEventResolution,
     operations,
     operatorResolution,
+    refreshError,
     refreshAll,
     session,
   };

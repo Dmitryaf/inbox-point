@@ -19,7 +19,9 @@ function channelName(channel: ClientChannel): string {
 function pauseExplanation(channel: ClientChannel): string {
   const channelIsPaused = props.state.channels[channel].mode === 'paused';
   if (channelIsPaused) {
-    return 'В канале появится сообщение, что новые обращения временно не принимаются.';
+    return channel === 'telegram'
+      ? 'Бот не передаёт новые обращения оператору и сообщает клиенту о паузе.'
+      : 'Новые сообщения остаются в VK, но не появляются у оператора.';
   }
   if (channel === 'telegram') {
     return 'Новый вопрос можно задать через бота.';

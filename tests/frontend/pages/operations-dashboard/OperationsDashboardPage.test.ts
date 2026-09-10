@@ -106,7 +106,7 @@ describe('OperationsDashboardPage', () => {
 
     await wrapper
       .findAll('button')
-      .find((button) => button.text() === 'Остановить доставку')
+      .find((button) => button.text() === 'Приостановить ответы')
       ?.trigger('click');
     await flushPromises();
 
@@ -115,7 +115,7 @@ describe('OperationsDashboardPage', () => {
       expect.objectContaining({ method: 'POST' }),
     );
     expect(wrapper.text()).toContain(
-      'Отправка ответов остановлена. Сохранённые ответы не потеряны.',
+      'Ответы клиентам приостановлены. Сохранённые ответы не потеряны.',
     );
 
     wrapper.unmount();

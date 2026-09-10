@@ -17,6 +17,21 @@
   padding: 0.75rem;
 }
 
+.ops-refresh-error {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.ops-refresh-error p {
+  margin: 0;
+}
+
+.ops-refresh-error button {
+  flex: 0 0 auto;
+}
+
 .ops-toolbar {
   align-items: center;
   display: flex;
@@ -31,6 +46,11 @@
 }
 
 @media (max-width: 520px) {
+  .ops-refresh-error {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
   .ops-toolbar {
     justify-content: space-between;
   }

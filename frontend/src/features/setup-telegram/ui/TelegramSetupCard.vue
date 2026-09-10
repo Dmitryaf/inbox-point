@@ -1,12 +1,40 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 
+import { disconnectTelegram } from '@frontend/entities/setup/api/setup-api';
 import type { ChannelSetupStatus } from '@frontend/entities/setup/model/types';
+import { errorMessage } from '@frontend/shared/lib/error-message';
 import TelegramConnectionForm from './TelegramConnectionForm.vue';
 
-defineProps<{ status: ChannelSetupStatus }>();
-defineEmits<{ connected: [] }>();
+const props = defineProps<{
+  status: ChannelSetupStatus;
+  vkConfigured: boolean;
+}>();
+const emit = defineEmits<{ connected: []; disconnected: [] }>();
 const expanded = ref(false);
+const disconnectError = ref('');
+const disconnecting = ref(false);
+
+async function disconnect(): Promise<void> {
+  if (
+    props.vkConfigured ||
+    !window.confirm(
+      'Отключить Telegram? Приложение перестанет получать сообщения из бота и передавать обращения в группу операторов. История обращений сохранится.',
+    )
+  ) {
+    return;
+  }
+  disconnecting.value = true;
+  disconnectError.value = '';
+  try {
+    await disconnectTelegram();
+    emit('disconnected');
+  } catch (cause: unknown) {
+    disconnectError.value = errorMessage(cause);
+  } finally {
+    disconnecting.value = false;
+  }
+}
 </script>
 
 <template>
@@ -33,7 +61,7 @@ const expanded = ref(false);
       {{
         expanded
           ? 'Скрыть'
-          : status.connected
+          : status.source !== 'none'
             ? 'Сведения'
             : 'Подключить Telegram'
       }}
@@ -44,9 +72,36 @@ const expanded = ref(false);
         class="setup-status setup-status--success"
         role="status"
       >
-        Подключение активно. Изменить секреты можно через конфигурацию
-        установки.
+        Подключение активно.
       </p>
+      <template v-if="status.source !== 'none'">
+        <p
+          v-if="status.source === 'environment'"
+          class="setup-status setup-status--info"
+        >
+          Управляется на сервере.
+        </p>
+        <template v-else>
+          <p v-if="vkConfigured" class="setup-status setup-status--info">
+            Чтобы отключить Telegram, сначала отключите VK.
+          </p>
+          <button
+            class="danger"
+            type="button"
+            :disabled="disconnecting || vkConfigured"
+            @click="disconnect"
+          >
+            {{ disconnecting ? 'Отключаем…' : 'Отключить Telegram' }}
+          </button>
+          <p
+            v-if="disconnectError"
+            class="setup-status setup-status--error"
+            role="alert"
+          >
+            {{ disconnectError }}
+          </p>
+        </template>
+      </template>
       <TelegramConnectionForm
         v-else
         :locked="status.locked"

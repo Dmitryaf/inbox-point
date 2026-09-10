@@ -157,6 +157,71 @@ describe('setup routes', () => {
     expect(removedDeliveries.statusCode).toBe(404);
     expect(removedBackup.statusCode).toBe(404);
   });
+
+  it('disconnects local channels through protected same-origin routes', async () => {
+    const app = createApp(config);
+    apps.add(app);
+    registerTestSetup(app, {
+      allowLocalBypass: true,
+      telegramRunning: true,
+      telegramSource: 'local',
+      vkSource: 'local',
+    });
+
+    const vk = await app.inject({
+      headers: { host: 'localhost', origin: 'http://localhost' },
+      method: 'DELETE',
+      url: '/api/setup/vk',
+    });
+    const telegram = await app.inject({
+      headers: { host: 'localhost', origin: 'http://localhost' },
+      method: 'DELETE',
+      url: '/api/setup/telegram',
+    });
+
+    expect(vk.statusCode).toBe(200);
+    expect(vk.json()).toEqual({ connected: false });
+    expect(telegram.statusCode).toBe(200);
+    expect(telegram.json()).toEqual({ connected: false });
+  });
+
+  it('requires VK to be disconnected before Telegram', async () => {
+    const app = createApp(config);
+    apps.add(app);
+    registerTestSetup(app, {
+      allowLocalBypass: true,
+      telegramRunning: true,
+      telegramSource: 'local',
+      vkSource: 'local',
+    });
+
+    const result = await app.inject({
+      headers: { host: 'localhost', origin: 'http://localhost' },
+      method: 'DELETE',
+      url: '/api/setup/telegram',
+    });
+
+    expect(result.statusCode).toBe(409);
+    expect(result.json()).toEqual({ message: 'Сначала отключите VK.' });
+  });
+
+  it('rejects cross-origin disconnect requests', async () => {
+    const app = createApp(config);
+    apps.add(app);
+    registerTestSetup(app, {
+      allowLocalBypass: true,
+      telegramRunning: true,
+      telegramSource: 'local',
+    });
+
+    const result = await app.inject({
+      headers: { host: 'localhost', origin: 'http://attacker.test' },
+      method: 'DELETE',
+      url: '/api/setup/telegram',
+    });
+
+    expect(result.statusCode).toBe(403);
+  });
 });
 
 function registerTestSetup(
@@ -183,6 +248,7 @@ function registerTestSetup(
       stop: () => Promise.resolve(),
     },
     {
+      clear: () => Promise.resolve(),
       load: () => Promise.resolve(undefined),
       save: () => Promise.resolve(),
     },
@@ -195,6 +261,7 @@ function registerTestSetup(
       stop: () => Promise.resolve(),
     },
     {
+      clear: () => Promise.resolve(),
       load: () => Promise.resolve(undefined),
       save: () => Promise.resolve(),
     },

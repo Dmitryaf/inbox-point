@@ -2,16 +2,16 @@
 import { useTemplateRef } from 'vue';
 
 import { useAdminShellSession } from '@frontend/features/admin-auth/model/admin-session-context';
-import ClientIntakeControl from '@frontend/features/control-client-intake/ui/ClientIntakeControl.vue';
 import { useOperationsDashboard } from '@frontend/pages/operations-dashboard/model/use-operations-dashboard';
+import MessageFlowControl from '@frontend/widgets/message-flow-control/ui/MessageFlowControl.vue';
 import OperationsOverview from '@frontend/widgets/operations-overview/ui/OperationsOverview.vue';
 import OperatorInbox from '@frontend/widgets/operator-inbox/ui/OperatorInbox.vue';
 import AsyncMessage from '@frontend/shared/ui/AsyncMessage.vue';
 
-const intakeControl = useTemplateRef<{ refresh: () => Promise<void> }>(
+const intakeControl = useTemplateRef<{ refresh: () => Promise<string> }>(
   'intakeControl',
 );
-const operatorInbox = useTemplateRef<{ refresh: () => Promise<void> }>(
+const operatorInbox = useTemplateRef<{ refresh: () => Promise<string> }>(
   'operatorInbox',
 );
 const session = useAdminShellSession();
@@ -22,19 +22,28 @@ const {
   inboundEventResolution,
   operations,
   operatorResolution,
+  refreshError,
   refreshAll,
 } = useOperationsDashboard({ intakeControl, operatorInbox, session });
 </script>
 
 <template>
   <section v-if="session.authenticated.value" class="ops-workspace">
-    <p
-      v-if="operations.error.value"
-      class="message message--error card"
+    <section
+      v-if="refreshError"
+      class="message message--error card ops-refresh-error"
       role="alert"
     >
-      {{ operations.error.value }}
-    </p>
+      <p>{{ refreshError }}</p>
+      <button
+        class="quiet"
+        type="button"
+        :disabled="operations.loading.value"
+        @click="refreshAll"
+      >
+        Повторить проверку
+      </button>
+    </section>
 
     <div class="ops-toolbar">
       <p>Автообновление каждые 30 секунд</p>
@@ -55,7 +64,6 @@ const {
 
     <OperationsOverview
       v-if="operations.status.value"
-      :delivery-control-pending="deliveryControl.pendingMode.value"
       :pending-delivery-id="deliveryRetry.pendingDeliveryId.value || undefined"
       :pending-operator-action-id="
         operatorResolution.pendingActionId.value || undefined
@@ -64,7 +72,7 @@ const {
         inboundEventResolution.pendingEventId.value || undefined
       "
       :status="operations.status.value"
-      @change-delivery-mode="deliveryControl.change"
+      :status-unavailable="Boolean(operations.error.value)"
       @resolve-delivery="deliveryRetry.resolve"
       @retry-delivery="deliveryRetry.retry"
       @resolve-operator-action="operatorResolution.resolve"
@@ -74,9 +82,13 @@ const {
       <p>Проверяем работу каналов…</p>
     </section>
 
-    <ClientIntakeControl
+    <MessageFlowControl
+      v-if="operations.status.value"
       ref="intakeControl"
+      :outbound="operations.status.value.outbound"
+      :outbound-pending="deliveryControl.pendingMode.value"
       @changed="refreshAll"
+      @change-delivery-mode="deliveryControl.change"
       @unauthorized="session.expireSession"
     />
 

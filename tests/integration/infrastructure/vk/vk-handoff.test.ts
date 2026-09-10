@@ -7,10 +7,7 @@ import {
   faqButton,
   handoffButton,
 } from '@/core/application/client-information.js';
-import {
-  pausedClientIntakeMessage,
-  type ClientIntakePolicy,
-} from '@/core/contracts/client-intake-policy.js';
+import { type ClientIntakePolicy } from '@/core/contracts/client-intake-policy.js';
 import type {
   OpenOperatorRequest,
   OperatorInbox,
@@ -224,9 +221,7 @@ describe('VK handoff integration', () => {
     await router.route(createMessageEvent());
 
     expect(inbox.opened).toHaveLength(0);
-    expect(gateway.sent).toHaveLength(1);
-    expect(gateway.sent[0]?.text).toBe(pausedClientIntakeMessage);
-    expect(gateway.sent[0]?.keyboard).toBeUndefined();
+    expect(gateway.sent).toHaveLength(0);
   });
 
   it('keeps configured VK information available while intake is paused', async () => {

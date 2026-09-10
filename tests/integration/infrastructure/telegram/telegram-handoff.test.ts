@@ -9,10 +9,7 @@ import {
   handoffButton,
   newQuestionButton,
 } from '@/core/application/client-information.js';
-import {
-  pausedClientIntakeMessage,
-  type ClientIntakePolicy,
-} from '@/core/contracts/client-intake-policy.js';
+import { type ClientIntakePolicy } from '@/core/contracts/client-intake-policy.js';
 import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-support-repository.js';
 
 import type {
@@ -437,7 +434,9 @@ describe('Telegram handoff integration', () => {
     expect(repository.findActiveRequest('telegram', '101')).toBeUndefined();
     expect(gateway.sent).toHaveLength(1);
     expect(gateway.sent[0]?.chatId).toBe(101);
-    expect(gateway.sent[0]?.text).toBe(pausedClientIntakeMessage);
+    expect(gateway.sent[0]?.text).toBe(
+      'Сейчас бот временно не принимает новые обращения. Попробуйте немного позже или свяжитесь по контакту, указанному в описании бота.',
+    );
     expect(gateway.sent[0]?.replyMarkup).toEqual({ remove_keyboard: true });
   });
 

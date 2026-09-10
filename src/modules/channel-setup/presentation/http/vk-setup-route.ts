@@ -6,6 +6,8 @@ import { vkSetupErrorMessage } from '@/modules/channel-setup/presentation/http/s
 
 export interface VkSetupRouteController {
   connect(accessToken: string, community: string): Promise<void>;
+  disconnect(): Promise<void>;
+  status(): { source: string };
 }
 
 const vkConnectSchema = z.object({
@@ -40,6 +42,28 @@ export function registerVkSetupRoute(
         return { connected: true };
       } catch (error: unknown) {
         return reply.code(400).send({ message: vkSetupErrorMessage(error) });
+      }
+    },
+  });
+  app.delete('/api/setup/vk', {
+    preHandler: [
+      routeAccess.requireAuthorization,
+      routeAccess.requireSameOrigin,
+    ],
+    handler: async (_request, reply) => {
+      if (!vkSetup) {
+        return reply
+          .code(503)
+          .send({ message: 'Подключение VK пока недоступно.' });
+      }
+      if (vkSetup.status().source === 'environment') {
+        return reply.code(409).send({ message: 'Управляется на сервере.' });
+      }
+      try {
+        await vkSetup.disconnect();
+        return { connected: false };
+      } catch {
+        return reply.code(500).send({ message: 'Не удалось отключить VK.' });
       }
     },
   });

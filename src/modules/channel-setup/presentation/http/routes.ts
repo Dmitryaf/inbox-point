@@ -31,7 +31,12 @@ export function registerSetupRoutes(
   routeAccess: AdminRouteAccess,
 ): void {
   registerSetupStatusRoute(app, telegramSetup, vkSetup, routeAccess);
-  registerTelegramSetupRoutes(app, telegramSetup, routeAccess);
+  registerTelegramSetupRoutes(
+    app,
+    telegramSetup,
+    routeAccess,
+    () => vkSetup?.status().source !== 'none',
+  );
   registerVkSetupRoute(app, vkSetup, routeAccess);
 }
 

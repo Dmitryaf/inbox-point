@@ -48,6 +48,22 @@ function markVkConnected(): void {
     status.value.vk.source = 'local';
   }
 }
+
+function markTelegramDisconnected(): void {
+  if (status.value) {
+    status.value.connected = false;
+    status.value.locked = false;
+    status.value.source = 'none';
+  }
+}
+
+function markVkDisconnected(): void {
+  if (status.value) {
+    status.value.vk.connected = false;
+    status.value.vk.locked = false;
+    status.value.vk.source = 'none';
+  }
+}
 </script>
 
 <template>
@@ -67,12 +83,15 @@ function markVkConnected(): void {
         >
           <TelegramSetupCard
             :status="status"
+            :vk-configured="status.vk.source !== 'none'"
             @connected="markTelegramConnected"
+            @disconnected="markTelegramDisconnected"
           />
           <VkSetupCard
             :status="status.vk"
             :telegram-connected="status.connected"
             @connected="markVkConnected"
+            @disconnected="markVkDisconnected"
           />
         </div>
       </div>

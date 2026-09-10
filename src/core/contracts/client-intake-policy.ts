@@ -5,7 +5,7 @@ export interface ClientIntakePolicy {
 }
 
 export const pausedClientIntakeMessage =
-  'Сейчас новые обращения временно не принимаются. Попробуйте немного позже.';
+  'Сейчас бот временно не принимает новые обращения. Попробуйте немного позже или свяжитесь по контакту, указанному в описании бота.';
 
 export const acceptingClientIntakePolicy: ClientIntakePolicy = {
   isPaused: () => false,

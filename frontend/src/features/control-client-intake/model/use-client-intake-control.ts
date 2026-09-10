@@ -1,4 +1,4 @@
-import { computed, onMounted, ref } from 'vue';
+import { ref } from 'vue';
 
 import {
   loadServiceControl,
@@ -20,38 +20,16 @@ export function useClientIntakeControl(options: ClientIntakeControlOptions) {
   const state = ref<ServiceControlState>();
   const loading = ref(true);
   const pendingChannel = ref<ClientChannel>();
-  const error = ref('');
+  const actionError = ref('');
   const notice = ref('');
-  const pausedChannels = computed(() => {
-    if (!state.value) {
-      return 0;
-    }
-    return Object.values(state.value.channels).filter(
-      (channel) => channel.mode === 'paused',
-    ).length;
-  });
-  const summaryStatus = computed(() => {
-    if (loading.value) {
-      return { label: 'Проверяем…', tone: 'neutral' };
-    }
-    if (!state.value || error.value) {
-      return { label: 'Не удалось проверить', tone: 'error' };
-    }
-    if (pausedChannels.value > 0) {
-      return { label: `На паузе: ${pausedChannels.value}`, tone: 'paused' };
-    }
-    return { label: 'Приём включён', tone: 'active' };
-  });
 
-  onMounted(() => void load());
-
-  async function load(): Promise<void> {
+  async function load(): Promise<string> {
     loading.value = true;
-    error.value = '';
     try {
       state.value = await loadServiceControl();
+      return '';
     } catch (cause: unknown) {
-      reportFailure(cause);
+      return requestErrorMessage(cause, options.onUnauthorized);
     } finally {
       loading.value = false;
     }
@@ -65,7 +43,7 @@ export function useClientIntakeControl(options: ClientIntakeControlOptions) {
       return;
     }
     pendingChannel.value = channel;
-    error.value = '';
+    actionError.value = '';
     notice.value = '';
     try {
       if (mode === 'paused') {
@@ -76,36 +54,31 @@ export function useClientIntakeControl(options: ClientIntakeControlOptions) {
       notice.value = modeNotice(channel, mode);
       options.onChanged();
     } catch (cause: unknown) {
-      reportFailure(cause);
+      actionError.value = requestErrorMessage(cause, options.onUnauthorized);
     } finally {
       pendingChannel.value = undefined;
     }
   }
 
-  function reportFailure(cause: unknown): void {
-    error.value = requestErrorMessage(cause, options.onUnauthorized);
-  }
-
   return {
+    actionError,
     changeMode,
-    error,
     load,
     loading,
     notice,
     pendingChannel,
     state,
-    summaryStatus,
   };
 }
 
 function confirmPause(channel: ClientChannel): boolean {
   if (channel === 'telegram') {
     return window.confirm(
-      'Приостановить новые обращения в Telegram? В боте появится сообщение о временной паузе.',
+      'Приостановить новые обращения в Telegram? Бот сообщит о паузе и предложит связаться по контакту из описания.',
     );
   }
   return window.confirm(
-    'Приостановить новые обращения из VK? В сообществе появится сообщение о временной паузе.',
+    'Приостановить новые обращения из VK? Новые сообщения останутся в сообществе, но не появятся у оператора.',
   );
 }
 

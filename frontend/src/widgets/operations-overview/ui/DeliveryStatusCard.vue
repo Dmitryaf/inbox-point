@@ -3,26 +3,20 @@ import { computed } from 'vue';
 
 import { formatUptime } from '@frontend/entities/operations/lib/status-format';
 import type { OperationsStatus } from '@frontend/entities/operations/model/types';
-import OutboundDeliveryControl from './OutboundDeliveryControl.vue';
 
 const props = defineProps<{
   deliveries: OperationsStatus['deliveries'];
-  deliveryControlPending: 'pause' | 'resume' | undefined;
-  outbound: OperationsStatus['outbound'];
-}>();
-defineEmits<{
-  changeDeliveryMode: [mode: 'pause' | 'resume'];
 }>();
 
 const state = computed(() => {
   if (props.deliveries.state === 'paused') {
-    return { label: 'Отправка остановлена', tone: 'neutral' };
+    return { label: 'Отправка приостановлена', tone: 'neutral' };
   }
   if (props.deliveries.state === 'failed') {
     return { label: 'Есть ошибки', tone: 'attention' };
   }
   if (props.deliveries.state === 'stalled') {
-    return { label: 'Отправка остановлена', tone: 'attention' };
+    return { label: 'Отправка приостановлена', tone: 'attention' };
   }
   if (props.deliveries.state === 'backlog') {
     return { label: 'Ответы задерживаются', tone: 'attention' };
@@ -66,11 +60,6 @@ const state = computed(() => {
         </div>
       </dl>
     </details>
-    <OutboundDeliveryControl
-      :outbound="outbound"
-      :pending="deliveryControlPending"
-      @change="$emit('changeDeliveryMode', $event)"
-    />
   </article>
 </template>
 

@@ -9,9 +9,8 @@ defineEmits<{ change: [mode: 'pause' | 'resume'] }>();
 </script>
 
 <template>
-  <section class="outbound-emergency-control">
+  <section class="outbound-delivery-control">
     <div>
-      <strong>Остановка отправки</strong>
       <p v-if="outbound.mode === 'paused'">
         Ответы не отправляются. Новые ответы сохраняются до возобновления.
       </p>
@@ -24,7 +23,7 @@ defineEmits<{ change: [mode: 'pause' | 'resume'] }>();
       :disabled="Boolean(pending)"
       @click="$emit('change', 'pause')"
     >
-      {{ pending === 'pause' ? 'Останавливаем…' : 'Остановить доставку' }}
+      {{ pending === 'pause' ? 'Приостанавливаем…' : 'Приостановить ответы' }}
     </button>
     <button
       v-else
@@ -32,7 +31,7 @@ defineEmits<{ change: [mode: 'pause' | 'resume'] }>();
       :disabled="Boolean(pending)"
       @click="$emit('change', 'resume')"
     >
-      {{ pending === 'resume' ? 'Возобновляем…' : 'Возобновить доставку' }}
+      {{ pending === 'resume' ? 'Возобновляем…' : 'Возобновить ответы' }}
     </button>
   </section>
 </template>
