@@ -25,7 +25,7 @@ final class AdminSessionController {
     @GetMapping("/session")
     ResponseEntity<?> session(HttpServletRequest request, HttpServletResponse response) {
         return admin.available(request, response)
-                ? ResponseEntity.ok(Map.of("authenticated", admin.authorized(request, response)))
+                ? ResponseEntity.ok(Map.of("authenticated", admin.authorized(request, response), "mode", mode(request, response)))
                 : error(404, "Not found");
     }
 
@@ -38,7 +38,7 @@ final class AdminSessionController {
             return error(403, "Запрос отклонён.");
         }
         if (admin.authorized(request, response)) {
-            return ResponseEntity.ok(Map.of("authenticated", true));
+            return ResponseEntity.ok(Map.of("authenticated", true, "mode", mode(request, response)));
         }
         var password = input == null ? "" : input.path("password").asString("");
         if (password.isEmpty() || password.length() > 200) {
@@ -53,7 +53,7 @@ final class AdminSessionController {
             return error(401, "Неверный пароль.");
         }
         return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, admin.cookie(result.token(), true))
-                .body(Map.of("authenticated", true));
+                .body(Map.of("authenticated", true, "mode", "password"));
     }
 
     @PostMapping("/logout")
@@ -66,7 +66,11 @@ final class AdminSessionController {
         }
         admin.logout(request);
         return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, admin.cookie("", false))
-                .body(Map.of("authenticated", false));
+                .body(Map.of("authenticated", admin.local(request, response), "mode", mode(request, response)));
+    }
+
+    private String mode(HttpServletRequest request, HttpServletResponse response) {
+        return admin.local(request, response) ? "bypass" : "password";
     }
 
     private static ResponseEntity<Map<String, String>> error(int status, String text) {

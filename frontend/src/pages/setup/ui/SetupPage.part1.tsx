@@ -14,11 +14,7 @@ export function renderSetupPagePart1(
 
   return (
     <>
-      {session.booting.value ? (
-        <p role="status" className="state-card card" data-r-ad468c1b="">
-          {' Проверяем доступ… '}
-        </p>
-      ) : session.authenticated.value ? (
+      {session.authenticated.value ? (
         <>
           <AsyncMessage
             kind="error"

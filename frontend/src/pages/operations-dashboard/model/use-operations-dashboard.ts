@@ -4,7 +4,7 @@ import {
   type ShallowRef,
 } from '@frontend/shared/lib/model-state';
 
-import { useAdminSession } from '@frontend/features/admin-auth/model/use-admin-session';
+import type { AdminSession } from '@frontend/features/admin-auth/model/use-admin-session';
 import { useOutboundDeliveryControl } from '@frontend/features/control-outbound-delivery/model/use-outbound-delivery-control';
 import { useOperationsStatus } from '@frontend/features/refresh-status/model/use-operations-status';
 import { useDeliveryRetry } from '@frontend/features/retry-delivery/model/use-delivery-retry';
@@ -20,12 +20,13 @@ interface RefreshableComponent {
 interface OperationsDashboardRefreshTargets {
   intakeControl: Readonly<ShallowRef<RefreshableComponent | null>>;
   operatorInbox: Readonly<ShallowRef<RefreshableComponent | null>>;
+  session: AdminSession;
 }
 
 export function useOperationsDashboard(
   refreshTargets: OperationsDashboardRefreshTargets,
 ) {
-  const session = useAdminSession();
+  const session = refreshTargets.session;
   const operations = useOperationsStatus(session.expireSession);
   const deliveryRetry = useDeliveryRetry(refreshAll, session.expireSession);
   const inboundEventResolution = useInboundEventResolution(
@@ -42,15 +43,19 @@ export function useOperationsDashboard(
   );
   let refreshTimer: ReturnType<typeof setInterval> | undefined;
 
-  watch(session.authenticated, (authenticated) => {
-    stopAutomaticRefresh();
-    if (!authenticated) {
-      operations.clear();
-      return;
-    }
-    void refreshAll();
-    refreshTimer = setInterval(() => void refreshAll(), refreshIntervalMs);
-  });
+  watch(
+    session.authenticated,
+    (authenticated) => {
+      stopAutomaticRefresh();
+      if (!authenticated) {
+        operations.clear();
+        return;
+      }
+      void refreshAll();
+      refreshTimer = setInterval(() => void refreshAll(), refreshIntervalMs);
+    },
+    { immediate: true },
+  );
   onBeforeUnmount(stopAutomaticRefresh);
 
   async function refreshAll(): Promise<void> {

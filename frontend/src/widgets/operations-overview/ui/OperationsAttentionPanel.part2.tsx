@@ -1,5 +1,7 @@
 import { renderList as $renderList } from '@frontend/shared/lib/component-view';
 
+import { RouterLink } from '@frontend/shared/lib/router';
+
 import type { createComponentModel } from './OperationsAttentionPanel.model';
 export function renderOperationsAttentionPanelPart2(
   $state: ReturnType<typeof createComponentModel>,
@@ -18,9 +20,9 @@ export function renderOperationsAttentionPanelPart2(
               <h3 data-r-a910a991="">{problem.name}</h3>
               <p data-r-a910a991="">{problem.summary}</p>
               <p data-r-a910a991="">{problem.action}</p>
-              <a href="/setup" data-r-a910a991="">
+              <RouterLink to="/setup" data-r-a910a991="">
                 {'Открыть «Каналы»'}
-              </a>
+              </RouterLink>
             </article>
           ))}
         </div>

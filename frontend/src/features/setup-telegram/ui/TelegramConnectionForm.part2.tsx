@@ -7,35 +7,32 @@ import type {
   createComponentModel,
   ComponentProps,
   componentDefaults,
-} from './TelegramSetupCard.model';
-export function renderTelegramSetupCardPart3(
+} from './TelegramConnectionForm.model';
+export function renderTelegramConnectionFormPart2(
   $state: ReturnType<typeof createComponentModel>,
   $props: WithDefaults<ComponentProps, typeof componentDefaults>,
 ) {
   const { chatLabel } = $state;
   const selectedChatId = $state.selectedChatId.value;
   const chats = $state.chats.value;
-  if (!!$props.status.connected) {
-    return null;
-  }
-  if (!!$props.status.locked) {
+  if (!!$props.locked) {
     return null;
   }
   return (
     <>
       {chats.length ? (
-        <fieldset className="setup-options" data-r-44d690ea="">
-          <legend data-r-44d690ea="">{'Операторская группа'}</legend>
+        <fieldset className="setup-options" data-r-4c039fa9="">
+          <legend data-r-4c039fa9="">{'Операторская группа'}</legend>
           {$renderList(chats, (chat) => (
-            <label key={chat.id} data-r-44d690ea="">
+            <label key={chat.id} data-r-4c039fa9="">
               <input
                 value={chat.id}
                 type="radio"
                 checked={selectedChatId === chat.id}
                 onChange={$radioModel($state, 'selectedChatId', chat.id)}
-                data-r-44d690ea=""
+                data-r-4c039fa9=""
               />
-              <span data-r-44d690ea="">{chatLabel(chat)}</span>
+              <span data-r-4c039fa9="">{chatLabel(chat)}</span>
             </label>
           ))}
         </fieldset>

@@ -5,7 +5,8 @@
     "moduleResolution": "NodeNext",
     "paths": {
       "@/*": ["./src/*"],
-      "@test/*": ["./tests/*"]
+      "@test/*": ["./tests/*"],
+      "@frontend/*": ["./frontend/src/*"]
     },
     "strict": true,
     "noUncheckedIndexedAccess": true,
@@ -23,6 +24,8 @@
     "tests/unit/**/*.ts",
     "tests/integration/**/*.ts",
     "eslint.config.js",
-    "vitest.config.ts"
+    "vitest.config.ts",
+    "tests/e2e/**/*.ts",
+    "playwright.config.ts"
   ]
 }

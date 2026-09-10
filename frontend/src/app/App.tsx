@@ -2,7 +2,9 @@ import {
   useComponentModel,
   ModelScopeProvider,
 } from '@frontend/shared/lib/component-model';
-import { dynamicComponent as $dynamic } from '@frontend/shared/lib/component-view';
+
+import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
+import { RouterView } from '@frontend/shared/lib/router';
 
 import {
   createComponentModel,
@@ -11,15 +13,15 @@ import {
 } from './App.model';
 
 export default function App($incomingProps: ComponentProps) {
-  const { state: $state, scope: $scope } = useComponentModel(
+  const { props: $props, scope: $scope } = useComponentModel(
     $incomingProps,
     componentDefaults,
     createComponentModel,
   );
-  const currentPage = $state.currentPage.value;
+  const $attributes = inheritedAttributes($props);
   return (
     <ModelScopeProvider scope={$scope}>
-      {$dynamic(currentPage, {}, <></>)}
+      <RouterView {...$attributes} />
     </ModelScopeProvider>
   );
 }

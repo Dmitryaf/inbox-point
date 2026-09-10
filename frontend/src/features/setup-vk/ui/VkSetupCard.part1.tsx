@@ -1,44 +1,33 @@
-import VkSetupInstructions from './VkSetupInstructions';
-
-import { renderVkSetupCardPart2 } from './VkSetupCard.part2';
+import { classNames as $class } from '@frontend/shared/lib/component-view';
 
 import type { WithDefaults } from '@frontend/shared/lib/component-model';
-import type {
-  createComponentModel,
-  ComponentProps,
-  componentDefaults,
-} from './VkSetupCard.model';
+import type { ComponentProps, componentDefaults } from './VkSetupCard.model';
 export function renderVkSetupCardPart1(
-  $state: ReturnType<typeof createComponentModel>,
   $props: WithDefaults<ComponentProps, typeof componentDefaults>,
 ) {
   return (
     <>
-      {$props.status.connected ? (
-        <p
-          role="status"
-          className="setup-status setup-status--success setup-connected-status"
+      <header className="setup-card-heading" data-r-712bbad4="">
+        <div data-r-712bbad4="">
+          <h2 id="vk-setup-title" data-r-712bbad4="">
+            {'VK'}
+          </h2>
+          <p data-r-712bbad4="">
+            {'Сообщество, из которого приходят сообщения клиентов.'}
+          </p>
+        </div>
+        <span
+          className={$class(
+            'status-pill',
+            $props.status.connected
+              ? 'status-pill--healthy'
+              : 'status-pill--neutral',
+          )}
           data-r-712bbad4=""
         >
-          <strong data-r-712bbad4="">{'VK подключён'}</strong>
-          <span data-r-712bbad4="">
-            {'Новые сообщения сообщества будут передаваться операторам.'}
-          </span>
-        </p>
-      ) : !$props.telegramConnected ? (
-        <>
-          <p className="setup-status setup-status--info" data-r-712bbad4="">
-            {
-              ' Сначала подключите Telegram. После этого здесь откроется следующий шаг. '
-            }
-          </p>
-        </>
-      ) : (
-        <>
-          <VkSetupInstructions data-r-712bbad4="" />
-          {renderVkSetupCardPart2($state, $props)}
-        </>
-      )}
+          {$props.status.connected ? 'Подключён' : 'Не подключён'}
+        </span>
+      </header>
     </>
   );
 }

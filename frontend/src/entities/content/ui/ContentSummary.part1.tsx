@@ -1,24 +1,34 @@
-import AppIcon from '@frontend/shared/ui/AppIcon';
-
-import type { createComponentModel } from './ContentSummary.model';
+import type { WithDefaults } from '@frontend/shared/lib/component-model';
+import type {
+  createComponentModel,
+  ComponentProps,
+  componentDefaults,
+} from './ContentSummary.model';
 export function renderContentSummaryPart1(
   $state: ReturnType<typeof createComponentModel>,
+  $props: WithDefaults<ComponentProps, typeof componentDefaults>,
 ) {
-  const totalCount = $state.totalCount.value;
+  const standardCount = $state.standardCount.value;
 
   return (
     <>
-      <div className="summary-heading" data-r-109c0780="">
-        <span className="summary-icon" data-r-109c0780="">
-          <AppIcon name="channel" data-r-109c0780="" />
-        </span>
+      <dl className="content-facts" data-r-109c0780="">
         <div data-r-109c0780="">
-          <p data-r-109c0780="">{'Меню в каналах'}</p>
-          <h3 id="content-summary-title" data-r-109c0780="">
-            {totalCount ? 'Готово к показу' : 'Пока не заполнено'}
-          </h3>
+          <dt data-r-109c0780="">{'Основные кнопки'}</dt>
+          <dd data-r-109c0780="">
+            {standardCount}
+            {' из 4'}
+          </dd>
         </div>
-      </div>
+        <div data-r-109c0780="">
+          <dt data-r-109c0780="">{'Частые вопросы'}</dt>
+          <dd data-r-109c0780="">{$props.content.faq.length}</dd>
+        </div>
+        <div data-r-109c0780="">
+          <dt data-r-109c0780="">{'Свои разделы'}</dt>
+          <dd data-r-109c0780="">{$props.content.customSections.length}</dd>
+        </div>
+      </dl>
     </>
   );
 }

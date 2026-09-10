@@ -1,44 +1,22 @@
-.setup-shell {
-  margin: 0 auto;
-  max-width: 1120px;
-  min-width: 0;
-  overflow-x: clip;
-  padding: 1rem 1.25rem 4rem;
-  width: 100%;
-}
-
-.setup-workspace {
-  background: var(--color-workspace);
-  border: 1px solid var(--color-border);
-  border-radius: 1.25rem;
-  box-shadow: var(--shadow-card);
-  display: grid;
-  gap: 1rem;
+.setup-page {
   margin-inline: auto;
-  max-width: 52rem;
-  padding: 1rem;
-}
-
-.setup-channel-grid {
-  align-items: start;
-  display: grid;
-  gap: 1rem;
+  max-width: 920px;
   min-width: 0;
 }
 
-@media (min-width: 900px) {
-  .setup-shell {
-    padding: 1.5rem 2.5rem 5rem;
-  }
+.setup-workspace,
+.setup-channel-grid {
+  display: grid;
+  gap: 0.9rem;
+  min-width: 0;
 }
 
-@media (max-width: 520px) {
-  .setup-shell {
-    padding-inline: 0.75rem;
+@media (min-width: 760px) {
+  .setup-channel-grid:not(.setup-channel-grid--mixed) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .setup-workspace {
-    gap: 0.7rem;
-    padding: 0.6rem;
+  .setup-channel-grid--mixed .setup-card:not(.setup-card--locked) {
+    max-width: 42rem;
   }
 }

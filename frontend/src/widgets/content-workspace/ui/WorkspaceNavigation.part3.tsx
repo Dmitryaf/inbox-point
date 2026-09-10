@@ -6,9 +6,6 @@ import {
 import { unref as $unref } from '@frontend/shared/lib/model-state';
 
 import { workspaceViews } from '@frontend/widgets/content-workspace/model/navigation';
-import AppIcon from '@frontend/shared/ui/AppIcon';
-
-import { renderWorkspaceNavigationPart4 } from './WorkspaceNavigation.part4';
 
 import type { WithDefaults } from '@frontend/shared/lib/component-model';
 import type {
@@ -24,34 +21,27 @@ export function renderWorkspaceNavigationPart3(
 
   return (
     <>
-      <aside
-        className="dashboard-sidebar desktop-workspace-navigation"
+      <nav
+        aria-label="Режим работы"
+        className="workspace-tabs desktop-workspace-navigation"
         data-r-e6e22060=""
       >
-        <nav
-          aria-label="Разделы управления"
-          className="sidebar-group"
-          data-r-e6e22060=""
-        >
-          <p data-r-e6e22060="">{'Работа с информацией'}</p>
-          {$renderList($unref(workspaceViews), (view) => (
-            <button
-              key={view.id}
-              aria-pressed={$props.activeView === view.id}
-              type="button"
-              onClick={() => void $emit('viewChange', view.id)}
-              className={$class(
-                { active: $props.activeView === view.id },
-                'navigation-button',
-              )}
-              data-r-e6e22060=""
-            >
-              <AppIcon name={view.id} data-r-e6e22060="" /> {view.label}
-            </button>
-          ))}
-        </nav>
-        {renderWorkspaceNavigationPart4($state, $props)}
-      </aside>
+        {$renderList($unref(workspaceViews), (view) => (
+          <button
+            key={view.id}
+            aria-pressed={$props.activeView === view.id}
+            type="button"
+            onClick={() => void $emit('viewChange', view.id)}
+            className={$class(
+              { active: $props.activeView === view.id },
+              'navigation-button',
+            )}
+            data-r-e6e22060=""
+          >
+            {view.label}
+          </button>
+        ))}
+      </nav>
     </>
   );
 }

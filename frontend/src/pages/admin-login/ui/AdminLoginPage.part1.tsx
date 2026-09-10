@@ -15,30 +15,27 @@ export function renderAdminLoginPagePart1(
 
   return (
     <>
-      <section
-        aria-label="Вход в управление"
-        className="login-panel"
-        data-r-3fb97507=""
-      >
-        <div className="login-stack" data-r-3fb97507="">
-          <AsyncMessage
-            kind="error"
-            text={$or(session.error.value, () => loginMessage)}
+      <div className="login-stack" data-r-3fb97507="">
+        <p className="login-brand" data-r-3fb97507="">
+          {'Messenger Handoff'}
+        </p>
+        <AsyncMessage
+          kind="error"
+          text={$or(session.error.value, () => loginMessage)}
+          data-r-3fb97507=""
+        />
+        {session.booting.value ? (
+          <p role="status" className="login-state" data-r-3fb97507="">
+            {' Проверяем доступ… '}
+          </p>
+        ) : (
+          <AdminLoginForm
+            pending={session.pending.value}
+            onSubmit={$callback(authenticate)}
             data-r-3fb97507=""
           />
-          {session.booting.value ? (
-            <p role="status" className="login-state card" data-r-3fb97507="">
-              {' Проверяем доступ… '}
-            </p>
-          ) : (
-            <AdminLoginForm
-              pending={session.pending.value}
-              onSubmit={$callback(authenticate)}
-              data-r-3fb97507=""
-            />
-          )}
-        </div>
-      </section>
+        )}
+      </div>
     </>
   );
 }

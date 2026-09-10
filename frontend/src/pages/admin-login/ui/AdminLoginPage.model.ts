@@ -1,6 +1,7 @@
 import { type ComponentAttributes } from '@frontend/shared/lib/component-model';
 
 import { ref, watch } from '@frontend/shared/lib/model-state';
+import { useRouter } from '@frontend/shared/lib/router';
 import {
   leaveAdminLogin,
   takeAdminLoginMessage,
@@ -13,11 +14,12 @@ export const componentDefaults = {};
 export function createComponentModel() {
   const session = useAdminSession();
   const loginMessage = ref(takeAdminLoginMessage());
+  const router = useRouter();
   watch(
     [session.booting, session.authenticated],
     ([booting, authenticated]) => {
       if (!booting && authenticated) {
-        leaveAdminLogin();
+        leaveAdminLogin(router);
       }
     },
     { immediate: true },

@@ -48,7 +48,9 @@ describe('OperationsDashboardPage delivery resolution', () => {
     vi.stubGlobal('fetch', fetchMock);
     vi.spyOn(window, 'confirm').mockReturnValue(true);
 
-    const wrapper = mount(OperationsDashboardPage);
+    const wrapper = mount(OperationsDashboardPage, {
+      global: { stubs: { RouterLink: true } },
+    });
     await flushPromises();
     expect(wrapper.text()).not.toContain('Повторить доставку');
 

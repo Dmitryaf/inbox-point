@@ -11,15 +11,12 @@ import type { createComponentModel } from './OperationsDashboardPage.model';
 export function renderOperationsDashboardPagePart2(
   $state: ReturnType<typeof createComponentModel>,
 ) {
-  const session = $unref($state.session);
   const operations = $unref($state.operations);
+  const session = $unref($state.session);
   const deliveryControl = $unref($state.deliveryControl);
   const deliveryRetry = $unref($state.deliveryRetry);
   const operatorResolution = $unref($state.operatorResolution);
   const inboundEventResolution = $unref($state.inboundEventResolution);
-  if (!!session.booting.value) {
-    return null;
-  }
   if (!session.authenticated.value) {
     return null;
   }

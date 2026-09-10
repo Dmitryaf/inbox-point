@@ -1,36 +1,36 @@
-import TelegramSetupInstructions from './TelegramSetupInstructions';
-
-import { renderTelegramSetupCardPart2 } from './TelegramSetupCard.part2';
+import { classNames as $class } from '@frontend/shared/lib/component-view';
 
 import type { WithDefaults } from '@frontend/shared/lib/component-model';
 import type {
-  createComponentModel,
   ComponentProps,
   componentDefaults,
 } from './TelegramSetupCard.model';
 export function renderTelegramSetupCardPart1(
-  $state: ReturnType<typeof createComponentModel>,
   $props: WithDefaults<ComponentProps, typeof componentDefaults>,
 ) {
   return (
     <>
-      {$props.status.connected ? (
-        <p
-          role="status"
-          className="setup-status setup-status--success setup-connected-status"
+      <header className="setup-card-heading" data-r-44d690ea="">
+        <div data-r-44d690ea="">
+          <h2 id="telegram-setup-title" data-r-44d690ea="">
+            {'Telegram'}
+          </h2>
+          <p data-r-44d690ea="">
+            {'Операторская группа и бот для передачи обращений.'}
+          </p>
+        </div>
+        <span
+          className={$class(
+            'status-pill',
+            $props.status.connected
+              ? 'status-pill--healthy'
+              : 'status-pill--neutral',
+          )}
           data-r-44d690ea=""
         >
-          <strong data-r-44d690ea="">{'Telegram подключён'}</strong>
-          <span data-r-44d690ea="">
-            {'Сообщения клиентов будут передаваться операторам.'}
-          </span>
-        </p>
-      ) : (
-        <>
-          <TelegramSetupInstructions data-r-44d690ea="" />
-          {renderTelegramSetupCardPart2($state, $props)}
-        </>
-      )}
+          {$props.status.connected ? 'Подключён' : 'Не подключён'}
+        </span>
+      </header>
     </>
   );
 }

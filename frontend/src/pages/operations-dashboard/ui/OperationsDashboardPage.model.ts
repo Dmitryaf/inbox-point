@@ -1,7 +1,7 @@
 import { type ComponentAttributes } from '@frontend/shared/lib/component-model';
 
-import { useTemplateRef, watch } from '@frontend/shared/lib/model-state';
-import { openAdminLogin } from '@frontend/features/admin-auth/lib/auth-navigation';
+import { useTemplateRef } from '@frontend/shared/lib/model-state';
+import { useAdminShellSession } from '@frontend/features/admin-auth/model/admin-session-context';
 
 import { useOperationsDashboard } from '@frontend/pages/operations-dashboard/model/use-operations-dashboard';
 
@@ -15,6 +15,7 @@ export function createComponentModel() {
   const operatorInbox = useTemplateRef<{
     refresh: () => Promise<void>;
   }>('operatorInbox');
+  const session = useAdminShellSession();
   const {
     deliveryControl,
     deliveryRetry,
@@ -22,30 +23,16 @@ export function createComponentModel() {
     operations,
     operatorResolution,
     refreshAll,
-    session,
-  } = useOperationsDashboard({ intakeControl, operatorInbox });
-  watch(
-    [session.booting, session.authenticated],
-    ([booting, authenticated]) => {
-      if (!booting && !authenticated) {
-        openAdminLogin('/ops');
-      }
-    },
-    { immediate: true },
-  );
-  async function logOut(): Promise<void> {
-    await session.endSession();
-  }
+  } = useOperationsDashboard({ intakeControl, operatorInbox, session });
   return {
     intakeControl,
     operatorInbox,
+    session,
     deliveryControl,
     deliveryRetry,
     inboundEventResolution,
     operations,
     operatorResolution,
     refreshAll,
-    session,
-    logOut,
   };
 }

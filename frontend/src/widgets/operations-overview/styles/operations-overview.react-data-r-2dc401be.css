@@ -1,58 +1,60 @@
 .overview[data-r-2dc401be] {
   display: grid;
-  gap: 0.8rem;
+  gap: 0.9rem;
 }
-.summary-card[data-r-2dc401be] {
-  border-left: 0.3rem solid var(--color-primary);
+.service-summary[data-r-2dc401be] {
+  align-items: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-success);
+  border-radius: var(--radius-panel);
   display: grid;
-  gap: 1rem;
+  gap: 0.8rem;
+  padding: 1rem;
 }
-.summary-card--attention[data-r-2dc401be] {
+.service-summary--attention[data-r-2dc401be] {
   border-left-color: var(--color-attention);
 }
-.summary-card--maintenance[data-r-2dc401be] {
+.service-summary--maintenance[data-r-2dc401be] {
   border-left-color: var(--color-primary);
 }
-.summary-card h2[data-r-2dc401be],
-.summary-card .eyebrow[data-r-2dc401be] {
+.service-summary h2[data-r-2dc401be],
+.summary-description[data-r-2dc401be] {
   margin-bottom: 0;
 }
 .summary-description[data-r-2dc401be] {
   color: var(--color-text-muted);
-  margin: 0.6rem 0 0;
-  max-width: 38rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin-top: 0.25rem;
 }
-.summary-facts[data-r-2dc401be] {
+.summary-facts[data-r-2dc401be],
+.status-grid[data-r-2dc401be] {
   display: grid;
   gap: 0.65rem;
+}
+.summary-facts[data-r-2dc401be] {
   margin: 0;
-  min-width: 0;
 }
 .summary-facts div[data-r-2dc401be] {
   display: grid;
-  gap: 0.2rem;
-  min-width: 0;
+  gap: 0.1rem;
 }
 .summary-facts dt[data-r-2dc401be] {
   color: var(--color-text-muted);
-  font-size: 0.82rem;
+  font-size: 0.75rem;
 }
 .summary-facts dd[data-r-2dc401be] {
-  font-size: 1.05rem;
-  font-weight: 750;
+  font-size: 0.9rem;
+  font-weight: 600;
   margin: 0;
 }
-.status-grid[data-r-2dc401be] {
-  display: grid;
-  gap: 0.8rem;
-}
 @media (min-width: 700px) {
-  .summary-card[data-r-2dc401be] {
-    align-items: end;
+  .service-summary[data-r-2dc401be] {
     grid-template-columns: minmax(0, 1fr) auto;
   }
   .summary-facts[data-r-2dc401be] {
-    grid-template-columns: repeat(2, minmax(10rem, 1fr));
+    grid-template-columns: repeat(2, minmax(8rem, 1fr));
   }
   .status-grid[data-r-2dc401be] {
     grid-template-columns: repeat(2, minmax(0, 1fr));

@@ -1,39 +1,22 @@
-import { type ComponentAttributes } from '@frontend/shared/lib/component-model';
+import {
+  type EventProps,
+  type ComponentAttributes,
+  type WithDefaults,
+} from '@frontend/shared/lib/component-model';
 
-import { ref, watch } from '@frontend/shared/lib/model-state';
-import { openAdminLogin } from '@frontend/features/admin-auth/lib/auth-navigation';
-import { useAdminSession } from '@frontend/features/admin-auth/model/use-admin-session';
+import { useAdminShellSession } from '@frontend/features/admin-auth/model/admin-session-context';
 
-export type ComponentProps = ComponentAttributes;
+export type ComponentProps = EventProps<{
+  dirtyChange: [dirty: boolean];
+}> &
+  ComponentAttributes;
 export const componentDefaults = {};
-
-export function createComponentModel() {
-  const session = useAdminSession();
-  const hasUnsavedChanges = ref(false);
-  const workspaceActivated = ref(false);
-  watch(
-    [session.booting, session.authenticated],
-    ([booting, authenticated]) => {
-      if (!booting && !authenticated) {
-        workspaceActivated.value = false;
-        hasUnsavedChanges.value = false;
-        openAdminLogin('/manage');
-        return;
-      }
-      if (authenticated) {
-        workspaceActivated.value = true;
-      }
-    },
-    { immediate: true },
-  );
-  async function logOut(): Promise<void> {
-    if (
-      hasUnsavedChanges.value &&
-      !window.confirm('Выйти без сохранения изменений?')
-    ) {
-      return;
-    }
-    await session.endSession();
-  }
-  return { session, hasUnsavedChanges, workspaceActivated, logOut };
+type ResolvedProps = WithDefaults<ComponentProps, typeof componentDefaults>;
+export function createComponentModel(
+  _props: ResolvedProps,
+  $emit: (event: string, ...args: unknown[]) => void,
+) {
+  const session = useAdminShellSession();
+  const emit = $emit;
+  return { session, emit };
 }

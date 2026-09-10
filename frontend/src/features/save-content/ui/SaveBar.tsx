@@ -30,7 +30,7 @@ export default function SaveBar($incomingProps: ComponentProps) {
     <ModelScopeProvider scope={$scope}>
       <div
         {...$attributes}
-        className={$class('save-bar card', $attributes.className)}
+        className={$class('save-bar', $attributes.className)}
         data-r-80a75b00=""
       >
         <div data-r-80a75b00="">

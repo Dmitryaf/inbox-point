@@ -48,8 +48,8 @@ public class PasswordSessions {
         return local(request, response) || accepted(token(request));
     }
 
-    private boolean local(HttpServletRequest request, HttpServletResponse response) {
-        return !secure && LocalSetupAccess.allow(request, response);
+    final boolean local(HttpServletRequest request, HttpServletResponse response) {
+        return secret == null && !secure && LocalSetupAccess.allow(request, response);
     }
 
     public static boolean sameOrigin(HttpServletRequest request) {

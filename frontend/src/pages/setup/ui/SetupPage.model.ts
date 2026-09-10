@@ -3,8 +3,7 @@ import { type ComponentAttributes } from '@frontend/shared/lib/component-model';
 import { ref, watch } from '@frontend/shared/lib/model-state';
 import { readSetupStatus } from '@frontend/entities/setup/api/setup-api';
 import type { SetupStatus } from '@frontend/entities/setup/model/types';
-import { openAdminLogin } from '@frontend/features/admin-auth/lib/auth-navigation';
-import { useAdminSession } from '@frontend/features/admin-auth/model/use-admin-session';
+import { useAdminShellSession } from '@frontend/features/admin-auth/model/admin-session-context';
 
 import { requestErrorMessage } from '@frontend/shared/lib/request-error-message';
 
@@ -12,28 +11,20 @@ export type ComponentProps = ComponentAttributes;
 export const componentDefaults = {};
 
 export function createComponentModel() {
-  const session = useAdminSession();
+  const session = useAdminShellSession();
   const status = ref<SetupStatus>();
   const error = ref('');
-  watch(session.authenticated, (authenticated) => {
-    status.value = undefined;
-    error.value = '';
-    if (authenticated) {
-      void loadStatus();
-    }
-  });
   watch(
-    [session.booting, session.authenticated],
-    ([booting, authenticated]) => {
-      if (!booting && !authenticated) {
-        openAdminLogin('/setup');
+    session.authenticated,
+    (authenticated) => {
+      status.value = undefined;
+      error.value = '';
+      if (authenticated) {
+        void loadStatus();
       }
     },
     { immediate: true },
   );
-  async function logOut(): Promise<void> {
-    await session.endSession();
-  }
   async function loadStatus(): Promise<void> {
     try {
       status.value = await readSetupStatus();
@@ -55,12 +46,5 @@ export function createComponentModel() {
       status.value.vk.source = 'local';
     }
   }
-  return {
-    session,
-    status,
-    error,
-    logOut,
-    markTelegramConnected,
-    markVkConnected,
-  };
+  return { session, status, error, markTelegramConnected, markVkConnected };
 }

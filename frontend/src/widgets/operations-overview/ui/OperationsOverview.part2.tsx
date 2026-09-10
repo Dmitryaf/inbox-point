@@ -21,16 +21,13 @@ export function renderOperationsOverviewPart2(
   return (
     <>
       <article
-        className={$class('summary-card card', {
+        className={$class('service-summary', {
           'summary-card--attention': $props.status.state === 'attention',
           'summary-card--maintenance': $props.status.state === 'maintenance',
         })}
         data-r-2dc401be=""
       >
         <div data-r-2dc401be="">
-          <p className="eyebrow" data-r-2dc401be="">
-            {'Общее состояние'}
-          </p>
           <h2 id="overview-title" data-r-2dc401be="">
             {overallLabel}
           </h2>
