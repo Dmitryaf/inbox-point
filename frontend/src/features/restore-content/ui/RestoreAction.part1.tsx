@@ -25,10 +25,13 @@ export function renderRestoreActionPart1(
         <div
           {...$attributes}
           className={$class('restore-confirm', $attributes.className)}
+          data-r-b537467e=""
         >
-          <p>{'Заменить текущую информацию этой версией?'}</p>
+          <p data-r-b537467e="">
+            {'Заменить текущую информацию этой версией?'}
+          </p>
           {$props.hasUnsavedChanges ? (
-            <p className="warning-text">
+            <p className="warning-text" data-r-b537467e="">
               {' Несохранённые изменения будут потеряны. '}
             </p>
           ) : null}
@@ -36,6 +39,7 @@ export function renderRestoreActionPart1(
             disabled={$props.pending}
             type="button"
             onClick={() => void $unref($state.emit)('restore', props.revision)}
+            data-r-b537467e=""
           >
             {$props.pending ? 'Восстанавливаем…' : 'Да, восстановить'}
           </button>
@@ -44,6 +48,7 @@ export function renderRestoreActionPart1(
             type="button"
             onClick={() => void $set($state, 'confirming', false)}
             className="quiet"
+            data-r-b537467e=""
           >
             {' Отмена '}
           </button>
@@ -54,6 +59,7 @@ export function renderRestoreActionPart1(
           type="button"
           onClick={() => void $set($state, 'confirming', true)}
           className={$class('quiet', $attributes.className)}
+          data-r-b537467e=""
         >
           {' Восстановить '}
         </button>

@@ -1,3 +1,4 @@
+import '@frontend/pages/content-management/styles/content-management-page.react-data-r-5179b381.css';
 import {
   useComponentModel,
   ModelScopeProvider,
@@ -32,14 +33,21 @@ export default function ContentManagementPage($incomingProps: ComponentProps) {
   const $attributes = inheritedAttributes($props);
   return (
     <ModelScopeProvider scope={$scope}>
-      <div {...$attributes} className={$class('shell', $attributes.className)}>
-        <AdminPageHeader
-          authenticated={session.authenticated.value}
-          current="information"
-          intro="Настройте готовые ответы для Telegram и VK."
-          title="Информация"
-          onLogout={$callback(logOut)}
-        />
+      <div
+        {...$attributes}
+        className={$class('shell', $attributes.className)}
+        data-r-5179b381=""
+      >
+        {session.authenticated.value ? (
+          <AdminPageHeader
+            authenticated={session.authenticated.value}
+            current="information"
+            intro="Настройте готовые ответы для Telegram и VK."
+            title="Информация"
+            onLogout={$callback(logOut)}
+            data-r-5179b381=""
+          />
+        ) : null}
         {renderContentManagementPagePart1($state)}
       </div>
     </ModelScopeProvider>

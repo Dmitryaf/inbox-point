@@ -21,25 +21,37 @@ export function renderCoreSectionsFieldsPart1(
 
   return (
     <>
-      <details open className="field-group">
-        <summary>
-          <span className="summary-copy">
-            <strong>{'Расписание'}</strong>
-            <span className="summary-action summary-action--open">
+      <details open className="field-group" data-r-54db50dd="">
+        <summary data-r-54db50dd="">
+          <span className="summary-copy" data-r-54db50dd="">
+            <strong data-r-54db50dd="">{'Расписание'}</strong>
+            <span
+              className="summary-action summary-action--open"
+              data-r-54db50dd=""
+            >
               {' Открыть настройки раздела '}
             </span>
-            <span className="summary-action summary-action--close">
+            <span
+              className="summary-action summary-action--close"
+              data-r-54db50dd=""
+            >
               {' Скрыть настройки раздела '}
             </span>
           </span>
-          <span className="summary-meta">
-            <small>
+          <span className="summary-meta" data-r-54db50dd="">
+            <small data-r-54db50dd="">
               {draft.schedule.trim() ? 'Заполнено' : 'Не заполнено'}
             </small>
-            <span aria-hidden="true" className="disclosure-chevron" />
+            <span
+              aria-hidden="true"
+              className="disclosure-chevron"
+              data-r-54db50dd=""
+            />
           </span>
         </summary>
-        <label htmlFor="schedule">{'Текст ответа'}</label>
+        <label htmlFor="schedule" data-r-54db50dd="">
+          {'Текст ответа'}
+        </label>
         <textarea
           id="schedule"
           aria-describedby={
@@ -50,12 +62,18 @@ export function renderCoreSectionsFieldsPart1(
           rows={5}
           value={draft.schedule ?? ''}
           onChange={$textProperty(() => $state.draft.value, 'schedule')}
+          data-r-54db50dd=""
         />
-        <FieldError id="schedule-error" text={$props.errors.schedule} />
+        <FieldError
+          id="schedule-error"
+          text={$props.errors.schedule}
+          data-r-54db50dd=""
+        />
         <p
           className={$class('counter', {
             'counter--error': responseLengths.schedule > 4000,
           })}
+          data-r-54db50dd=""
         >
           {' Итоговый ответ: '}
           {responseLengths.schedule}
@@ -69,6 +87,7 @@ export function renderCoreSectionsFieldsPart1(
             () => $state.draft.value,
             'visibleSections',
           )}
+          data-r-54db50dd=""
         />
       </details>
     </>

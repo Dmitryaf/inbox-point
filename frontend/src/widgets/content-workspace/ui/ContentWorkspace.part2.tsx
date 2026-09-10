@@ -34,9 +34,10 @@ export function renderContentWorkspacePart2(
             () => $unref($state.workspace),
             'draft',
           )}
+          data-r-09629bd3=""
         />
       ) : activeView === 'preview' ? (
-        <ContentPreview content={workspace.draft} />
+        <ContentPreview content={workspace.draft} data-r-09629bd3="" />
       ) : (
         <ChangeHistory
           changes={workspace.history.value}
@@ -44,6 +45,7 @@ export function renderContentWorkspacePart2(
           loading={workspace.historyLoading.value}
           restoring={workspace.restoring.value}
           onRestore={$callback($required($unref($state.workspace)).restore)}
+          data-r-09629bd3=""
         />
       )}
     </>

@@ -1,3 +1,4 @@
+import '@frontend/pages/setup/styles/setup-page.react-data-r-ad468c1b.css';
 import {
   useComponentModel,
   ModelScopeProvider,
@@ -5,7 +6,6 @@ import {
 import { classNames as $class } from '@frontend/shared/lib/component-view';
 import { eventCallback as $callback } from '@frontend/shared/lib/component-events';
 import { unref as $unref } from '@frontend/shared/lib/model-state';
-import { requiredValue as $required } from '@frontend/shared/lib/component-bindings';
 
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
@@ -28,6 +28,7 @@ export default function SetupPage($incomingProps: ComponentProps) {
     componentDefaults,
     createComponentModel,
   );
+  const { logOut } = $state;
   const session = $unref($state.session);
   const $attributes = inheritedAttributes($props);
   return (
@@ -35,14 +36,18 @@ export default function SetupPage($incomingProps: ComponentProps) {
       <main
         {...$attributes}
         className={$class('setup-shell', $attributes.className)}
+        data-r-ad468c1b=""
       >
-        <AdminPageHeader
-          authenticated={session.authenticated.value}
-          current="channels"
-          intro="Сначала подключите Telegram для операторов, затем VK для сообщений клиентов."
-          title="Каналы"
-          onLogout={$callback($required($unref($state.session)).endSession)}
-        />
+        {session.authenticated.value ? (
+          <AdminPageHeader
+            authenticated={session.authenticated.value}
+            current="channels"
+            intro="Сначала подключите Telegram для операторов, затем VK для сообщений клиентов."
+            title="Каналы"
+            onLogout={$callback(logOut)}
+            data-r-ad468c1b=""
+          />
+        ) : null}
         {renderSetupPagePart1($state)}
       </main>
     </ModelScopeProvider>

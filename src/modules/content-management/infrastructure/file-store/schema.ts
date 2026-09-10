@@ -46,5 +46,4 @@ export const storedContentSchema = z
   })
   .strict();
 
-export type StoredContentData = z.infer<typeof storedContentSchema>;
 export type ContentPayload = z.infer<typeof contentPayloadSchema>;

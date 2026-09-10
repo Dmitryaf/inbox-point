@@ -57,11 +57,11 @@ describe('OperationsDashboardPage operator relay resolution', () => {
     const wrapper = mount(OperationsDashboardPage);
     await flushPromises();
 
-    expect(wrapper.text()).toContain('Передача обращений требует проверки');
-    expect(wrapper.text()).not.toContain('Повторить доставку');
+    expect(wrapper.text()).toContain('Новые обращения');
+    expect(wrapper.text()).not.toContain('Повторить отправку');
     await wrapper
       .findAll('button')
-      .find((button) => button.text() === 'Сообщение видно в Telegram')
+      .find((button) => button.text() === 'Сообщение есть в Telegram')
       ?.trigger('click');
     await flushPromises();
 
@@ -73,7 +73,7 @@ describe('OperationsDashboardPage operator relay resolution', () => {
       }),
     );
     expect(wrapper.text()).toContain(
-      'Получение сообщения оператором подтверждено.',
+      'Подтверждено: сообщение есть в Telegram.',
     );
     wrapper.unmount();
   });

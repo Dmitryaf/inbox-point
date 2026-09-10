@@ -20,7 +20,7 @@ export function renderOperationsDashboardPagePart2(
   if (!!session.booting.value) {
     return null;
   }
-  if (!!!session.authenticated.value) {
+  if (!session.authenticated.value) {
     return null;
   }
   return (
@@ -56,10 +56,11 @@ export function renderOperationsDashboardPagePart2(
           onResolveInboundEvent={$callback(
             $required($unref($state.inboundEventResolution)).resolve,
           )}
+          data-r-fef838bc=""
         />
       ) : (
-        <section className="card loading-card">
-          <p>{'Получаем состояние сервиса…'}</p>
+        <section role="status" className="card loading-card" data-r-fef838bc="">
+          <p data-r-fef838bc="">{'Проверяем работу каналов…'}</p>
         </section>
       )}
     </>

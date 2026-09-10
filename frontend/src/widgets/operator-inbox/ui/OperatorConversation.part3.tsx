@@ -21,8 +21,11 @@ export function renderOperatorConversationPart3(
       <form
         onSubmit={$nativeHandler(submitReply, { prevent: true })}
         className="operator-reply-form"
+        data-r-e21483db=""
       >
-        <label htmlFor="operator-reply">{'Ответ'}</label>
+        <label htmlFor="operator-reply" data-r-e21483db="">
+          {'Ответ'}
+        </label>
         <textarea
           id="operator-reply"
           maxLength={4000}
@@ -31,17 +34,19 @@ export function renderOperatorConversationPart3(
           disabled={$props.actionPending}
           value={replyText ?? ''}
           onChange={$textModel($state, 'replyText')}
+          data-r-e21483db=""
         />
-        <div className="operator-reply-actions">
-          <span>
+        <div className="operator-reply-actions" data-r-e21483db="">
+          <span data-r-e21483db="">
             {replyText.length}
             {' / 4000'}
           </span>
           <button
             type="submit"
             disabled={$or($props.actionPending, () => !replyText.trim())}
+            data-r-e21483db=""
           >
-            {$props.actionPending ? 'Добавляем в очередь…' : 'Отправить'}
+            {$props.actionPending ? 'Готовим к отправке…' : 'Отправить'}
           </button>
         </div>
       </form>

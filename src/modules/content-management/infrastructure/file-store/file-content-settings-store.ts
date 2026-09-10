@@ -1,13 +1,16 @@
-import { chmod, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
-import { dirname } from 'node:path';
-
-import type { ClientInformationContent } from '@/core/application/client-information.js';
+import {
+  copyClientInformationContent,
+  type ClientInformationContent,
+} from '@/core/application/client-information.js';
+import {
+  readOptionalTextFile,
+  writePrivateTextFile,
+} from '@/infrastructure/file-system/local-state-file.js';
 import type {
   ContentChange,
   ContentSettingsDocument,
   ContentSettingsStore,
 } from '@/modules/content-management/application/ports/content-settings-store.js';
-import { copyContent } from './content-mapper.js';
 import {
   findChangedSections,
   parseContentDocument,
@@ -68,16 +71,16 @@ export class FileContentSettingsStore implements ContentSettingsStore {
       throw new Error('The requested content revision is unavailable');
     }
     await this.save(target.content);
-    return copyContent(target.content);
+    return copyClientInformationContent(target.content);
   }
 
   private async readDocument(): Promise<ContentSettingsDocument | undefined> {
     try {
-      return parseContentDocument(await readFile(this.path, 'utf8'));
+      const contents = await readOptionalTextFile(this.path);
+      return contents === undefined
+        ? undefined
+        : parseContentDocument(contents);
     } catch (error: unknown) {
-      if (isNodeError(error) && error.code === 'ENOENT') {
-        return undefined;
-      }
       if (
         error instanceof Error &&
         error.message === 'The local content settings are invalid'
@@ -93,15 +96,7 @@ export class FileContentSettingsStore implements ContentSettingsStore {
   private async writeDocument(
     document: ContentSettingsDocument,
   ): Promise<void> {
-    const directory = dirname(this.path);
-    const temporaryPath = this.path + '.' + process.pid + '.tmp';
-    await mkdir(directory, { recursive: true });
-    await writeFile(temporaryPath, serializeContentDocument(document), {
-      encoding: 'utf8',
-      mode: 0o600,
-    });
-    await rename(temporaryPath, this.path);
-    await chmod(this.path, 0o600);
+    await writePrivateTextFile(this.path, serializeContentDocument(document));
   }
 }
 
@@ -109,8 +104,4 @@ function nextRevision(document: ContentSettingsDocument | undefined): number {
   return (
     Math.max(0, ...(document?.history.map((entry) => entry.revision) ?? [])) + 1
   );
-}
-
-function isNodeError(error: unknown): error is NodeJS.ErrnoException {
-  return error instanceof Error && 'code' in error;
 }

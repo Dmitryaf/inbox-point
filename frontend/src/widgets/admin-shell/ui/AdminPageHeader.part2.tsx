@@ -17,12 +17,17 @@ export function renderAdminPageHeaderPart2(
   return (
     <>
       {$props.authenticated ? (
-        <nav aria-label="Разделы администратора" className="admin-navigation">
+        <nav
+          aria-label="Разделы администратора"
+          className="admin-navigation"
+          data-r-e15afcb7=""
+        >
           {$renderList(sections, (section) => (
             <a
               key={section.id}
               aria-current={$props.current === section.id ? 'page' : undefined}
               href={section.href}
+              data-r-e15afcb7=""
             >
               {section.label}
             </a>

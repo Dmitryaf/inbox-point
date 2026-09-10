@@ -1,0 +1,19 @@
+.auth-card[data-r-2e9199db] {
+  display: grid;
+  gap: 0.85rem;
+  max-width: 30rem;
+  width: 100%;
+}
+.auth-card h1[data-r-2e9199db],
+.auth-card p[data-r-2e9199db] {
+  margin-bottom: 0;
+}
+.auth-card h1[data-r-2e9199db] {
+  font-size: clamp(1.75rem, 5vw, 2.25rem);
+}
+.auth-card label[data-r-2e9199db] {
+  margin-top: 0.35rem;
+}
+.auth-card button[data-r-2e9199db] {
+  margin-top: 0.25rem;
+}

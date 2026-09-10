@@ -1,3 +1,4 @@
+import { classNames as $class } from '@frontend/shared/lib/component-view';
 import { nativeHandler as $nativeHandler } from '@frontend/shared/lib/component-events';
 
 import { logicalOr as $or } from '@frontend/shared/lib/component-bindings';
@@ -17,28 +18,31 @@ export function renderVkSetupCardPart2(
   const community = $state.community.value;
   const accessToken = $state.accessToken.value;
   const pending = $state.pending.value;
+  const messageKind = $state.messageKind.value;
   const message = $state.message.value;
   if (!!$props.status.connected) {
     return null;
   }
+  if (!!!$props.telegramConnected) {
+    return null;
+  }
   return (
     <>
-      {!$props.telegramConnected ? (
-        <p className="setup-status">
-          {' Сначала подключите Telegram для операторов. '}
-        </p>
-      ) : $props.status.locked ? (
-        <p className="setup-status">
+      {$props.status.locked ? (
+        <p className="setup-status setup-status--info" data-r-712bbad4="">
           {
-            ' VK настроен на сервере. Если он не работает, откройте раздел «Состояние». '
+            ' VK подключён при установке. Если он не работает, откройте раздел «Состояние». '
           }
         </p>
       ) : (
         <form
           onSubmit={$nativeHandler(connect, { prevent: true })}
           className="setup-form"
+          data-r-712bbad4=""
         >
-          <label htmlFor="vk-community">{'Адрес сообщества VK'}</label>
+          <label htmlFor="vk-community" data-r-712bbad4="">
+            {'Адрес сообщества VK'}
+          </label>
           <input
             id="vk-community"
             placeholder="https://vk.com/your_community"
@@ -46,8 +50,9 @@ export function renderVkSetupCardPart2(
             type="text"
             value={community ?? ''}
             onChange={$textModel($state, 'community')}
+            data-r-712bbad4=""
           />
-          <label htmlFor="vk-token">
+          <label htmlFor="vk-token" data-r-712bbad4="">
             {'Ключ доступа с правом работы с сообщениями'}
           </label>
           <input
@@ -57,14 +62,20 @@ export function renderVkSetupCardPart2(
             type="password"
             value={accessToken ?? ''}
             onChange={$textModel($state, 'accessToken')}
+            data-r-712bbad4=""
           />
           <button
             disabled={$or(pending, () => accessToken.trim().length < 20)}
             type="submit"
+            data-r-712bbad4=""
           >
             {pending ? 'Подключаем…' : 'Подключить VK'}
           </button>
-          <p role="status" className="setup-status">
+          <p
+            role={messageKind === 'error' ? 'alert' : 'status'}
+            className={$class('setup-status', `setup-status--${messageKind}`)}
+            data-r-712bbad4=""
+          >
             {message}
           </p>
         </form>

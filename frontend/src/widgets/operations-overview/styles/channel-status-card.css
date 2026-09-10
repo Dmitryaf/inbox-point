@@ -1,0 +1,41 @@
+.channel-activity {
+  border-top: 1px solid var(--color-border);
+  display: grid;
+  gap: 0.7rem;
+  margin: 0.8rem 0 0;
+  min-width: 0;
+  padding-top: 0.75rem;
+}
+
+.channel-activity div {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.channel-activity dt {
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+}
+
+.channel-activity dd {
+  font-size: 1.05rem;
+  font-weight: 750;
+  margin: 0;
+}
+
+.status-card .channel-maintenance-note {
+  background: var(--color-attention-soft);
+  border-radius: 0.75rem;
+  color: var(--color-attention);
+  font-size: 0.82rem;
+  font-weight: 700;
+  margin-top: 0.75rem;
+  padding: 0.65rem 0.75rem;
+}
+
+.channel-details {
+  border-top: 1px solid var(--color-border);
+  margin-top: 0.8rem;
+  padding-top: 0.7rem;
+}

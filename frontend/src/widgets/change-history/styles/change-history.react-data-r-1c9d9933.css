@@ -1,0 +1,28 @@
+.card > .step + h2[data-r-1c9d9933] {
+  margin-bottom: 0;
+}
+.empty[data-r-1c9d9933] {
+  background: var(--color-surface-muted);
+  border-radius: 0.75rem;
+  color: var(--color-text-muted);
+  padding: 0.8rem;
+}
+.history-list[data-r-1c9d9933] {
+  display: grid;
+  gap: 0.75rem;
+  list-style: none;
+  margin: 0;
+  min-width: 0;
+  padding: 0;
+}
+.history-list li[data-r-1c9d9933] {
+  border-top: 1px solid var(--color-border);
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+  padding-top: 0.75rem;
+}
+.history-list span[data-r-1c9d9933],
+.history-list small[data-r-1c9d9933] {
+  color: var(--color-text-muted);
+}

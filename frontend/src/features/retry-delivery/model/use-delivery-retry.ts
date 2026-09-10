@@ -4,8 +4,7 @@ import {
   resolveOperationsDelivery,
   retryOperationsDelivery,
 } from '@frontend/entities/operations/api/operations-api';
-import { HttpError } from '@frontend/shared/api/http-client';
-import { errorMessage } from '@frontend/shared/lib/error-message';
+import { requestErrorMessage } from '@frontend/shared/lib/request-error-message';
 
 export function useDeliveryRetry(
   refresh: () => Promise<void>,
@@ -16,17 +15,13 @@ export function useDeliveryRetry(
   const pendingDeliveryId = ref('');
 
   async function retry(deliveryId: string): Promise<void> {
-    if (
-      !window.confirm(
-        'Повторно отправить этот ответ? Действие поставит сообщение в очередь доставки.',
-      )
-    ) {
+    if (!window.confirm('Отправить этот ответ ещё раз?')) {
       return;
     }
     await execute(
       deliveryId,
       () => retryOperationsDelivery(deliveryId),
-      'Ответ поставлен в очередь повторной доставки.',
+      'Повторная отправка началась.',
     );
   }
 
@@ -42,7 +37,7 @@ export function useDeliveryRetry(
       () => resolveOperationsDelivery(deliveryId, resolution),
       resolution === 'received'
         ? 'Получение сообщения подтверждено.'
-        : 'Неполученный ответ поставлен в очередь повторной доставки.',
+        : 'Повторная отправка началась.',
     );
   }
 
@@ -59,11 +54,7 @@ export function useDeliveryRetry(
       notice.value = successNotice;
       await refresh();
     } catch (cause: unknown) {
-      if (cause instanceof HttpError && cause.status === 401) {
-        onUnauthorized();
-        return;
-      }
-      error.value = errorMessage(cause);
+      error.value = requestErrorMessage(cause, onUnauthorized);
     } finally {
       pendingDeliveryId.value = '';
     }
@@ -75,7 +66,7 @@ export function useDeliveryRetry(
 function confirmResolution(resolution: 'not_received' | 'received'): boolean {
   return resolution === 'received'
     ? window.confirm(
-        'Подтвердить, что сообщение получено? Инцидент будет закрыт без повторной отправки.',
+        'Подтвердить, что клиент получил сообщение? Повторной отправки не будет.',
       )
     : window.confirm(
         'Подтвердить, что сообщение не получено, и отправить его повторно?',

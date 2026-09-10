@@ -1,3 +1,4 @@
+import '@frontend/widgets/content-editor/styles/content-editor.react-data-r-7c201b3b.css';
 import {
   useComponentModel,
   ModelScopeProvider,
@@ -26,7 +27,11 @@ export default function ContentEditor($incomingProps: ComponentProps) {
   const $attributes = inheritedAttributes($props);
   return (
     <ModelScopeProvider scope={$scope}>
-      <div {...$attributes} className={$class('editor', $attributes.className)}>
+      <div
+        {...$attributes}
+        className={$class('editor', $attributes.className)}
+        data-r-7c201b3b=""
+      >
         {renderContentEditorPart1($state, $props)}
       </div>
     </ModelScopeProvider>

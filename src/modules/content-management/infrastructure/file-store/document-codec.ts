@@ -1,8 +1,9 @@
 import {
+  copyClientInformationContent,
   informationSectionIds,
   type ClientInformationContent,
 } from '@/core/application/client-information.js';
-import { copyContent, validateContent } from './content-mapper.js';
+import { validateContent } from './content-mapper.js';
 import { contentPayloadSchema, storedContentSchema } from './schema.js';
 import type {
   ContentSectionKey,
@@ -24,7 +25,7 @@ export function parseContentDocument(
   }
 
   return {
-    content: copyContent(validateContent(result.data.content)),
+    content: copyClientInformationContent(validateContent(result.data.content)),
     history: result.data.history.map((entry) => ({
       changedAt: entry.changedAt,
       content: validateContent(entry.content),

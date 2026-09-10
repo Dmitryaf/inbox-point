@@ -19,15 +19,18 @@ export function renderWorkspaceNavigationPart2(
   return (
     <>
       {$props.activeView === 'edit' ? (
-        <div className="mobile-navigation-field">
-          <label htmlFor="editor-section">{'Раздел'}</label>
+        <div className="mobile-navigation-field" data-r-e6e22060="">
+          <label htmlFor="editor-section" data-r-e6e22060="">
+            {'Раздел'}
+          </label>
           <select
             id="editor-section"
             value={$props.activeSection}
             onChange={$nativeHandler(changeSection)}
+            data-r-e6e22060=""
           >
             {$renderList($unref(editorSections), (section) => (
-              <option key={section.id} value={section.id}>
+              <option key={section.id} value={section.id} data-r-e6e22060="">
                 {section.label}
               </option>
             ))}

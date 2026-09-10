@@ -1,3 +1,4 @@
+import '@frontend/shared/styles/field-error.react-data-r-7695f9a8.css';
 import {
   useComponentModel,
   ModelScopeProvider,
@@ -27,6 +28,7 @@ export default function FieldError($incomingProps: ComponentProps) {
           id={$props.id}
           role="alert"
           className={$class('field-error', $attributes.className)}
+          data-r-7695f9a8=""
         >
           {$props.text}
         </p>

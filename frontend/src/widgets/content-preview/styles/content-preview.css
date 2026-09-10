@@ -1,0 +1,78 @@
+.card > .step + h2 {
+  margin-bottom: 0;
+}
+
+.preview-intro {
+  color: var(--color-text-muted);
+}
+
+.empty {
+  background: var(--color-surface-muted);
+  border-radius: 0.75rem;
+  color: var(--color-text-muted);
+  padding: 0.8rem;
+}
+
+.message-preview {
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 1rem;
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+  min-width: 0;
+  padding: 1rem;
+}
+
+.message-preview-menu,
+.preview-response {
+  display: grid;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.message-preview-menu > p,
+.preview-service-message,
+.preview-client-message {
+  border-radius: 0.9rem;
+  margin: 0;
+  max-width: min(90%, 34rem);
+  padding: 0.75rem 0.85rem;
+}
+
+.message-preview-menu > p,
+.preview-service-message {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  justify-self: start;
+}
+
+.preview-client-message {
+  background: var(--color-primary);
+  color: var(--color-surface-raised);
+  justify-self: end;
+}
+
+.message-preview-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.message-preview-buttons span {
+  background: var(--color-primary-soft);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 999px;
+  color: var(--color-primary-hover);
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 0.45rem 0.7rem;
+}
+
+.preview-service-message {
+  color: var(--color-text);
+  font-size: 0.95rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}

@@ -3,6 +3,7 @@
 AGENTS.md
 coverage/
 dist/
+frontend/public/favicon.svg
 node_modules/
 .tmp/
 package-lock.json

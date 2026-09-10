@@ -74,8 +74,8 @@ describe('OperationsDashboardPage operator inbox', () => {
         method: 'POST',
       }),
     );
-    expect(wrapper.text()).toContain('Ответ добавлен в очередь');
-    expect(wrapper.text()).toContain('В очереди');
+    expect(wrapper.text()).toContain('Ответ сохранён для отправки');
+    expect(wrapper.text()).toContain('Готовится к отправке');
 
     await wrapper
       .findAll('button')

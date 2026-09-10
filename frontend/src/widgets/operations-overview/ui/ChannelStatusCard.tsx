@@ -1,3 +1,5 @@
+import '@frontend/widgets/operations-overview/styles/channel-status-card.react-data-r-0b4df92b.css';
+import '@frontend/widgets/operations-overview/styles/status-card.react-data-r-0b4df92b.css';
 import {
   useComponentModel,
   ModelScopeProvider,
@@ -34,16 +36,22 @@ export default function ChannelStatusCard($incomingProps: ComponentProps) {
       <article
         {...$attributes}
         className={$class('status-card', $attributes.className)}
+        data-r-0b4df92b=""
       >
-        <div className="status-card-heading">
-          <h3>{$props.name}</h3>
-          <span className={$class('status-pill', `status-pill--${state.tone}`)}>
+        <div className="status-card-heading" data-r-0b4df92b="">
+          <h3 data-r-0b4df92b="">{$props.name}</h3>
+          <span
+            className={$class('status-pill', `status-pill--${state.tone}`)}
+            data-r-0b4df92b=""
+          >
             {state.label}
           </span>
         </div>
-        <p>{$unref(connectionSourceLabel)($props.channel.source)}</p>
+        <p data-r-0b4df92b="">
+          {$unref(connectionSourceLabel)($props.channel.source)}
+        </p>
         {$props.intake.mode === 'paused' ? (
-          <p className="channel-maintenance-note">
+          <p className="channel-maintenance-note" data-r-0b4df92b="">
             {' Новые обращения приостановлены вручную. '}
           </p>
         ) : null}

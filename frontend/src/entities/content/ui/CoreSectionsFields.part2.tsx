@@ -21,23 +21,37 @@ export function renderCoreSectionsFieldsPart2(
 
   return (
     <>
-      <details className="field-group">
-        <summary>
-          <span className="summary-copy">
-            <strong>{'Цены'}</strong>
-            <span className="summary-action summary-action--open">
+      <details className="field-group" data-r-54db50dd="">
+        <summary data-r-54db50dd="">
+          <span className="summary-copy" data-r-54db50dd="">
+            <strong data-r-54db50dd="">{'Цены'}</strong>
+            <span
+              className="summary-action summary-action--open"
+              data-r-54db50dd=""
+            >
               {' Открыть настройки раздела '}
             </span>
-            <span className="summary-action summary-action--close">
+            <span
+              className="summary-action summary-action--close"
+              data-r-54db50dd=""
+            >
               {' Скрыть настройки раздела '}
             </span>
           </span>
-          <span className="summary-meta">
-            <small>{draft.prices.trim() ? 'Заполнено' : 'Не заполнено'}</small>
-            <span aria-hidden="true" className="disclosure-chevron" />
+          <span className="summary-meta" data-r-54db50dd="">
+            <small data-r-54db50dd="">
+              {draft.prices.trim() ? 'Заполнено' : 'Не заполнено'}
+            </small>
+            <span
+              aria-hidden="true"
+              className="disclosure-chevron"
+              data-r-54db50dd=""
+            />
           </span>
         </summary>
-        <label htmlFor="prices">{'Текст ответа'}</label>
+        <label htmlFor="prices" data-r-54db50dd="">
+          {'Текст ответа'}
+        </label>
         <textarea
           id="prices"
           aria-describedby={$props.errors.prices ? 'prices-error' : undefined}
@@ -46,12 +60,18 @@ export function renderCoreSectionsFieldsPart2(
           rows={5}
           value={draft.prices ?? ''}
           onChange={$textProperty(() => $state.draft.value, 'prices')}
+          data-r-54db50dd=""
         />
-        <FieldError id="prices-error" text={$props.errors.prices} />
+        <FieldError
+          id="prices-error"
+          text={$props.errors.prices}
+          data-r-54db50dd=""
+        />
         <p
           className={$class('counter', {
             'counter--error': responseLengths.prices > 4000,
           })}
+          data-r-54db50dd=""
         >
           {' Итоговый ответ: '}
           {responseLengths.prices}
@@ -65,6 +85,7 @@ export function renderCoreSectionsFieldsPart2(
             () => $state.draft.value,
             'visibleSections',
           )}
+          data-r-54db50dd=""
         />
       </details>
     </>

@@ -13,22 +13,28 @@ export function renderChannelStatusCardPart1(
   return (
     <>
       {$props.channel.configured ? (
-        <dl className="channel-activity">
-          <div>
-            <dt>{'Последняя успешная проверка'}</dt>
-            <dd>
-              {$unref(formatStatusTime)($props.channel.lastSuccessfulPollAt)}
-            </dd>
-          </div>
-          {$props.channel.lastFailedPollAt ? (
-            <div>
-              <dt>{'Последняя ошибка связи'}</dt>
-              <dd>
-                {$unref(formatStatusTime)($props.channel.lastFailedPollAt)}
+        <details
+          className="technical-details channel-details"
+          data-r-0b4df92b=""
+        >
+          <summary data-r-0b4df92b="">{'Подробности'}</summary>
+          <dl className="channel-activity" data-r-0b4df92b="">
+            <div data-r-0b4df92b="">
+              <dt data-r-0b4df92b="">{'Последняя успешная проверка'}</dt>
+              <dd data-r-0b4df92b="">
+                {$unref(formatStatusTime)($props.channel.lastSuccessfulPollAt)}
               </dd>
             </div>
-          ) : null}
-        </dl>
+            {$props.channel.lastFailedPollAt ? (
+              <div data-r-0b4df92b="">
+                <dt data-r-0b4df92b="">{'Последняя ошибка связи'}</dt>
+                <dd data-r-0b4df92b="">
+                  {$unref(formatStatusTime)($props.channel.lastFailedPollAt)}
+                </dd>
+              </div>
+            ) : null}
+          </dl>
+        </details>
       ) : null}
     </>
   );

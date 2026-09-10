@@ -4,8 +4,7 @@ import {
   pauseOutboundDelivery,
   resumeOutboundDelivery,
 } from '@frontend/entities/service-control/api/service-control-api';
-import { HttpError } from '@frontend/shared/api/http-client';
-import { errorMessage } from '@frontend/shared/lib/error-message';
+import { requestErrorMessage } from '@frontend/shared/lib/request-error-message';
 
 export function useOutboundDeliveryControl(
   refresh: () => Promise<void>,
@@ -30,15 +29,11 @@ export function useOutboundDeliveryControl(
       }
       notice.value =
         mode === 'pause'
-          ? 'Исходящая доставка остановлена. Очередь сохранена.'
-          : 'Исходящая доставка возобновлена.';
+          ? 'Отправка ответов остановлена. Сохранённые ответы не потеряны.'
+          : 'Отправка ответов возобновлена.';
       await refresh();
     } catch (cause: unknown) {
-      if (cause instanceof HttpError && cause.status === 401) {
-        onUnauthorized();
-        return;
-      }
-      error.value = errorMessage(cause);
+      error.value = requestErrorMessage(cause, onUnauthorized);
     } finally {
       pendingMode.value = undefined;
     }
@@ -49,6 +44,6 @@ export function useOutboundDeliveryControl(
 
 function confirmPause(): boolean {
   return window.confirm(
-    'Остановить доставку ответов? Новые и уже поставленные в очередь ответы не будут отправляться до возобновления.',
+    'Остановить отправку ответов? Новые и ещё не отправленные ответы сохранятся до возобновления.',
   );
 }

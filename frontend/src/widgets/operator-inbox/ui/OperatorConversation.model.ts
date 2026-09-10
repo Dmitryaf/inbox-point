@@ -35,18 +35,12 @@ export function createComponentModel($props: ResolvedProps) {
       await props.onClose();
     }
   }
-  function formatDate(value: string): string {
-    return new Intl.DateTimeFormat('ru-RU', {
-      dateStyle: 'short',
-      timeStyle: 'short',
-    }).format(new Date(value));
-  }
   function deliveryLabel(message: OperatorInboxMessage): string | undefined {
     if (message.deliveryStatus === 'sent') {
       return 'Доставлен';
     }
     if (message.deliveryStatus === 'pending') {
-      return 'В очереди';
+      return 'Готовится к отправке';
     }
     if (message.deliveryStatus === 'failed') {
       return message.deliveryOutcomeUnknown
@@ -55,5 +49,5 @@ export function createComponentModel($props: ResolvedProps) {
     }
     return undefined;
   }
-  return { replyText, submitReply, closeRequest, formatDate, deliveryLabel };
+  return { replyText, submitReply, closeRequest, deliveryLabel };
 }

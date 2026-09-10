@@ -1,3 +1,4 @@
+import '@frontend/shared/styles/async-message.react-data-r-c8b71402.css';
 import {
   useComponentModel,
   ModelScopeProvider,
@@ -25,7 +26,8 @@ export default function AsyncMessage($incomingProps: ComponentProps) {
         <p
           {...$attributes}
           role={$props.kind === 'error' ? 'alert' : 'status'}
-          className={$class('message', $props.kind, $attributes.className)}
+          className={$class('message card', $props.kind, $attributes.className)}
+          data-r-c8b71402=""
         >
           {$props.text}
         </p>

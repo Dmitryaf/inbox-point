@@ -1,3 +1,4 @@
+import '@frontend/widgets/operations-overview/styles/outbound-delivery-control.react-data-r-858ac0fd.css';
 import {
   useComponentModel,
   ModelScopeProvider,
@@ -31,21 +32,18 @@ export default function OutboundDeliveryControl(
       <section
         {...$attributes}
         className={$class('outbound-emergency-control', $attributes.className)}
+        data-r-858ac0fd=""
       >
-        <div>
-          <strong>{'Аварийная остановка'}</strong>
+        <div data-r-858ac0fd="">
+          <strong data-r-858ac0fd="">{'Остановка отправки'}</strong>
           {$props.outbound.mode === 'paused' ? (
-            <p>
+            <p data-r-858ac0fd="">
               {
-                ' Доставка ответов остановлена. Новые ответы сохраняются в очереди. '
+                ' Ответы не отправляются. Новые ответы сохраняются до возобновления. '
               }
             </p>
           ) : (
-            <p>
-              {
-                ' Исходящая доставка включена; очередь обрабатывается автоматически. '
-              }
-            </p>
+            <p data-r-858ac0fd="">{'Ответы отправляются автоматически.'}</p>
           )}
         </div>
         {renderOutboundDeliveryControlPart1($state, $props)}

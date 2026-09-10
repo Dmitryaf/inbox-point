@@ -24,7 +24,8 @@ const config: RuntimeConfig = {
 
 const apps = new Set<ReturnType<typeof createApp>>();
 const managementAssets = {
-  html: '<!doctype html><title>Информация — Messenger Handoff</title>',
+  html: '<!doctype html><link rel="icon" href="/manage/favicon.svg"><title>Информация — Messenger Handoff</title>',
+  icon: '<svg>management icon</svg>',
   script: 'globalThis.managementApp = true;',
   styles: ':root { color: black; }',
 };
@@ -91,6 +92,16 @@ describe('managed content routes', () => {
       method: 'GET',
       remoteAddress: '192.0.2.10',
       url: '/manage?test=1',
+    });
+    const loginPage = await app.inject({
+      method: 'GET',
+      remoteAddress: '192.0.2.10',
+      url: '/login',
+    });
+    const icon = await app.inject({
+      method: 'GET',
+      remoteAddress: '192.0.2.10',
+      url: '/manage/favicon.svg',
     });
     const unauthorized = await app.inject({
       method: 'GET',
@@ -210,11 +221,19 @@ describe('managed content routes', () => {
     });
 
     expect(page.statusCode).toBe(200);
+    expect(loginPage.statusCode).toBe(200);
+    expect(loginPage.body).toContain('Информация — Messenger Handoff');
+    expect(loginPage.headers['cache-control']).toBe('no-store');
+    expect(loginPage.headers['x-frame-options']).toBe('DENY');
+    expect(icon.statusCode).toBe(200);
+    expect(icon.headers['content-type']).toContain('image/svg+xml');
+    expect(icon.body).toBe(managementAssets.icon);
     expect(page.body).toContain('Информация — Messenger Handoff');
     expect(page.body).not.toContain('Токен');
     expect(page.headers['content-security-policy']).toContain(
       "default-src 'none'",
     );
+    expect(page.headers['content-security-policy']).toContain("img-src 'self'");
     expect(pageWithQuery.headers['cache-control']).toBe('no-store');
     expect(pageWithQuery.headers['x-frame-options']).toBe('DENY');
     expect(unauthorized.statusCode).toBe(401);

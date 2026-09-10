@@ -1,13 +1,13 @@
+import '@frontend/features/save-content/styles/save-bar.react-data-r-80a75b00.css';
 import {
   useComponentModel,
   ModelScopeProvider,
 } from '@frontend/shared/lib/component-model';
 import { classNames as $class } from '@frontend/shared/lib/component-view';
 
-import { logicalOr as $or } from '@frontend/shared/lib/component-bindings';
-
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
+import { renderSaveBarPart1 } from './SaveBar.part1';
 import {
   createComponentModel,
   componentDefaults,
@@ -24,32 +24,28 @@ export default function SaveBar($incomingProps: ComponentProps) {
     componentDefaults,
     createComponentModel,
   );
-  const { $emit } = $state;
   const statusMessage = $state.statusMessage.value;
   const $attributes = inheritedAttributes($props);
   return (
     <ModelScopeProvider scope={$scope}>
       <div
         {...$attributes}
-        className={$class('save-bar', $attributes.className)}
+        className={$class('save-bar card', $attributes.className)}
+        data-r-80a75b00=""
       >
-        <div>
-          <span className="save-bar-label">{'Публикация'}</span>
-          <p role="status" className={$class({ changed: $props.dirty })}>
+        <div data-r-80a75b00="">
+          <span className="save-bar-label" data-r-80a75b00="">
+            {'Публикация'}
+          </span>
+          <p
+            role="status"
+            className={$class({ changed: $props.dirty })}
+            data-r-80a75b00=""
+          >
             {statusMessage}
           </p>
         </div>
-        <button
-          disabled={$or($props.saving, () => !$props.dirty)}
-          type="button"
-          onClick={() => void $emit('save')}
-        >
-          {$props.saving
-            ? 'Сохраняем…'
-            : !$props.valid && $props.dirty
-              ? 'Исправить поля'
-              : 'Сохранить'}
-        </button>
+        {renderSaveBarPart1($state, $props)}
       </div>
     </ModelScopeProvider>
   );

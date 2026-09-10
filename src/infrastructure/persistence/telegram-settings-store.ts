@@ -1,9 +1,10 @@
-import { chmod, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
-import { dirname } from 'node:path';
-
 import { z } from 'zod';
 
 import type { TelegramRuntimeConfig } from '@/config/runtime-config.js';
+import {
+  readOptionalJsonFile,
+  writePrivateJsonFile,
+} from '@/infrastructure/file-system/local-state-file.js';
 
 const storedTelegramSettingsSchema = z
   .object({
@@ -22,49 +23,13 @@ export class FileTelegramSettingsStore implements TelegramSettingsStore {
   public constructor(private readonly path: string) {}
 
   public async load(): Promise<TelegramRuntimeConfig | undefined> {
-    let contents: string;
-    try {
-      contents = await readFile(this.path, 'utf8');
-    } catch (error: unknown) {
-      if (isNodeError(error) && error.code === 'ENOENT') {
-        return undefined;
-      }
-      throw new Error('Unable to read the local Telegram settings');
-    }
-
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(contents);
-    } catch {
-      throw new Error('The local Telegram settings are invalid');
-    }
-
-    const result = storedTelegramSettingsSchema.safeParse(parsed);
-    if (!result.success) {
-      throw new Error('The local Telegram settings are invalid');
-    }
-
-    return {
-      botToken: result.data.botToken,
-      operatorChatId: result.data.operatorChatId,
-      pollTimeoutSeconds: result.data.pollTimeoutSeconds,
-    };
+    return readOptionalJsonFile(this.path, storedTelegramSettingsSchema, {
+      invalid: 'The local Telegram settings are invalid',
+      read: 'Unable to read the local Telegram settings',
+    });
   }
 
   public async save(settings: TelegramRuntimeConfig): Promise<void> {
-    const directory = dirname(this.path);
-    const temporaryPath = this.path + '.' + process.pid + '.tmp';
-    await mkdir(directory, { recursive: true });
-    await writeFile(
-      temporaryPath,
-      JSON.stringify(settings, undefined, 2) + '\n',
-      { encoding: 'utf8', mode: 0o600 },
-    );
-    await rename(temporaryPath, this.path);
-    await chmod(this.path, 0o600);
+    await writePrivateJsonFile(this.path, settings);
   }
-}
-
-function isNodeError(error: unknown): error is NodeJS.ErrnoException {
-  return error instanceof Error && 'code' in error;
 }

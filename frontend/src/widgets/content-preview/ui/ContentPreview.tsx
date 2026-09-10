@@ -1,3 +1,4 @@
+import '@frontend/widgets/content-preview/styles/content-preview.react-data-r-e038eaba.css';
 import {
   useComponentModel,
   ModelScopeProvider,
@@ -30,9 +31,19 @@ export default function ContentPreview($incomingProps: ComponentProps) {
         {...$attributes}
         aria-labelledby="preview-title"
         className={$class('card preview', $attributes.className)}
+        data-r-e038eaba=""
       >
-        <p className="step">{'Предпросмотр'}</p>
-        <h2 id="preview-title">{'Что появится в каналах'}</h2>
+        <p className="step" data-r-e038eaba="">
+          {'Предпросмотр'}
+        </p>
+        <h2 id="preview-title" data-r-e038eaba="">
+          {'Так клиент увидит ваши ответы'}
+        </h2>
+        <p className="preview-intro" data-r-e038eaba="">
+          {
+            ' Это пример. В Telegram и VK оформление немного различается, но кнопки и тексты будут такими же. '
+          }
+        </p>
         {renderContentPreviewPart1($state)}
       </section>
     </ModelScopeProvider>

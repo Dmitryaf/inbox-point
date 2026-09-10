@@ -23,8 +23,12 @@ export function renderWorkspaceNavigationPart4(
   return (
     <>
       {$props.activeView === 'edit' ? (
-        <nav aria-label="Разделы информации" className="sidebar-group">
-          <p>{'Разделы'}</p>
+        <nav
+          aria-label="Разделы информации"
+          className="sidebar-group"
+          data-r-e6e22060=""
+        >
+          <p data-r-e6e22060="">{'Разделы'}</p>
           {$renderList($unref(editorSections), (section) => (
             <button
               key={section.id}
@@ -35,8 +39,9 @@ export function renderWorkspaceNavigationPart4(
                 { active: $props.activeSection === section.id },
                 'section-button',
               )}
+              data-r-e6e22060=""
             >
-              <AppIcon name={section.id} /> {section.label}
+              <AppIcon name={section.id} data-r-e6e22060="" /> {section.label}
             </button>
           ))}
         </nav>

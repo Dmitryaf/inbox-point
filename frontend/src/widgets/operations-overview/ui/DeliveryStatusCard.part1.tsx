@@ -12,29 +12,25 @@ export function renderDeliveryStatusCardPart1(
 ) {
   return (
     <>
-      <dl className="delivery-facts">
-        <div>
-          <dt>{'Ожидают отправки'}</dt>
-          <dd>{$props.deliveries.pending}</dd>
+      <dl className="delivery-facts" data-r-39c836f9="">
+        <div data-r-39c836f9="">
+          <dt data-r-39c836f9="">{'Ожидают отправки'}</dt>
+          <dd data-r-39c836f9="">{$props.deliveries.pending}</dd>
         </div>
-        <div>
-          <dt>{'Не доставлены'}</dt>
-          <dd>{$props.deliveries.failed}</dd>
+        <div data-r-39c836f9="">
+          <dt data-r-39c836f9="">{'Не доставлены'}</dt>
+          <dd data-r-39c836f9="">{$props.deliveries.failed}</dd>
         </div>
         {$props.deliveries.uncertain > 0 ? (
-          <div>
-            <dt>{'Требуют ручной проверки'}</dt>
-            <dd>{$props.deliveries.uncertain}</dd>
+          <div data-r-39c836f9="">
+            <dt data-r-39c836f9="">{'Требуют ручной проверки'}</dt>
+            <dd data-r-39c836f9="">{$props.deliveries.uncertain}</dd>
           </div>
         ) : null}
-        <div>
-          <dt>{'Обработчик очереди'}</dt>
-          <dd>{$props.deliveries.worker.running ? 'Запущен' : 'Остановлен'}</dd>
-        </div>
         {$props.deliveries.oldestPendingAgeSeconds !== undefined ? (
-          <div>
-            <dt>{'Самое старое ожидание'}</dt>
-            <dd>
+          <div data-r-39c836f9="">
+            <dt data-r-39c836f9="">{'Самое старое ожидание'}</dt>
+            <dd data-r-39c836f9="">
               {$unref(formatUptime)($props.deliveries.oldestPendingAgeSeconds)}
             </dd>
           </div>

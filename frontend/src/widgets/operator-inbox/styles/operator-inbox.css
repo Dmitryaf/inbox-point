@@ -1,0 +1,48 @@
+.operator-inbox {
+  display: grid;
+  gap: 1rem;
+}
+
+.operator-inbox-heading {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  justify-content: space-between;
+}
+
+.operator-inbox-heading h2,
+.operator-inbox-heading p {
+  margin-bottom: 0;
+}
+
+.operator-inbox-heading > div {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.status-pill {
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  padding: 0.35rem 0.65rem;
+}
+
+.status-pill--neutral {
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+}
+
+.operator-inbox-layout {
+  display: grid;
+  gap: 0.8rem;
+  min-width: 0;
+}
+
+@media (min-width: 700px) {
+  .operator-inbox-layout {
+    grid-template-columns: minmax(12rem, 0.75fr) minmax(0, 2fr);
+  }
+}

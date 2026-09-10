@@ -3,12 +3,15 @@ import { resolve } from 'node:path';
 
 export interface FrontendAssets {
   html: string;
+  icon: string;
   script: string;
   styles: string;
 }
 
+export type FrontendRouteBase = '/manage' | '/ops' | '/setup';
+
 export function loadFrontendAssets(
-  routeBase: '/manage' | '/ops' | '/setup',
+  routeBase: FrontendRouteBase,
   root = resolve(process.cwd(), 'dist', 'frontend'),
 ): FrontendAssets {
   try {
@@ -16,6 +19,7 @@ export function loadFrontendAssets(
 
     return {
       html: scopeAssetPaths(html, routeBase),
+      icon: readFileSync(resolve(root, 'favicon.svg'), 'utf8'),
       script: readFileSync(resolve(root, 'app.js'), 'utf8'),
       styles: readFileSync(resolve(root, 'style.css'), 'utf8'),
     };
@@ -27,9 +31,6 @@ export function loadFrontendAssets(
   }
 }
 
-function scopeAssetPaths(
-  html: string,
-  routeBase: '/manage' | '/ops' | '/setup',
-): string {
+function scopeAssetPaths(html: string, routeBase: FrontendRouteBase): string {
   return html.replaceAll('="./', `="${routeBase}/`);
 }

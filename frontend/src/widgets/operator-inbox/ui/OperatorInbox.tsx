@@ -1,3 +1,4 @@
+import '@frontend/widgets/operator-inbox/styles/operator-inbox.react-data-r-ae8be5db.css';
 import {
   useComponentModel,
   ModelScopeProvider,
@@ -23,7 +24,7 @@ export default function OperatorInbox($incomingProps: ComponentProps) {
   const inbox = $unref($state.inbox);
   return (
     <ModelScopeProvider scope={$scope}>
-      <AsyncMessage kind="error" text={inbox.error.value} />
+      <AsyncMessage kind="error" text={inbox.error.value} data-r-ae8be5db="" />
       {renderOperatorInboxPart1($state)}
     </ModelScopeProvider>
   );

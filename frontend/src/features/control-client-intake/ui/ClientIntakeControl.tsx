@@ -1,4 +1,4 @@
-import '@frontend/features/control-client-intake/ui/client-intake-control.react-data-r-77f00789.css';
+import '@frontend/features/control-client-intake/styles/client-intake-control.react-data-r-77f00789.css';
 import {
   useComponentModel,
   ModelScopeProvider,

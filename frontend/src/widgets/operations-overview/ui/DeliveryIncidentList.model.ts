@@ -20,11 +20,5 @@ export function createComponentModel(
   _props: ResolvedProps,
   $emit: (event: string, ...args: unknown[]) => void,
 ) {
-  function formatCreatedAt(value: string): string {
-    return new Intl.DateTimeFormat('ru-RU', {
-      dateStyle: 'short',
-      timeStyle: 'short',
-    }).format(new Date(value));
-  }
-  return { $emit, formatCreatedAt };
+  return { $emit };
 }

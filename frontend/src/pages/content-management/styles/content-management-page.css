@@ -1,0 +1,20 @@
+.shell {
+  margin: 0 auto;
+  max-width: 1440px;
+  min-width: 0;
+  overflow-x: clip;
+  padding: 1rem 1.25rem 4rem;
+  width: 100%;
+}
+
+@media (min-width: 900px) {
+  .shell {
+    padding: 1.5rem 2.5rem 5rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .shell {
+    padding-inline: 0.75rem;
+  }
+}

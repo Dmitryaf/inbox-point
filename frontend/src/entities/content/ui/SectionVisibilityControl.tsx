@@ -1,3 +1,4 @@
+import '@frontend/entities/content/styles/section-visibility-control.react-data-r-73781f5e.css';
 import {
   useComponentModel,
   ModelScopeProvider,
@@ -33,16 +34,20 @@ export default function SectionVisibilityControl(
       <label
         {...$attributes}
         className={$class('visibility-control', $attributes.className)}
+        data-r-73781f5e=""
       >
         <input
           checked={visibleSections.includes($props.section)}
           type="checkbox"
           onChange={$nativeHandler(updateVisibility)}
+          data-r-73781f5e=""
         />
-        <span>
+        <span data-r-73781f5e="">
           {' Показывать кнопку в каналах '}
           {!$props.contentPresent ? (
-            <small>{' Пустой раздел всё равно не появится в меню. '}</small>
+            <small data-r-73781f5e="">
+              {' Пустой раздел всё равно не появится в меню. '}
+            </small>
           ) : null}
         </span>
       </label>

@@ -1,47 +1,51 @@
+import { classNames as $class } from '@frontend/shared/lib/component-view';
 import { eventCallback as $callback } from '@frontend/shared/lib/component-events';
 import { unref as $unref } from '@frontend/shared/lib/model-state';
-import {
-  requiredValue as $required,
-  logicalOr as $or,
-} from '@frontend/shared/lib/component-bindings';
 
-import AdminLoginForm from '@frontend/features/admin-auth/ui/AdminLoginForm';
-
-import AsyncMessage from '@frontend/shared/ui/AsyncMessage';
-
-import { renderSetupPagePart3 } from './SetupPage.part3';
+import TelegramSetupCard from '@frontend/features/setup-telegram/ui/TelegramSetupCard';
+import VkSetupCard from '@frontend/features/setup-vk/ui/VkSetupCard';
 
 import type { createComponentModel } from './SetupPage.model';
 export function renderSetupPagePart2(
   $state: ReturnType<typeof createComponentModel>,
 ) {
+  const { markTelegramConnected, markVkConnected } = $state;
   const session = $unref($state.session);
-  const error = $state.error.value;
+  const status = $state.status.value;
   if (!!session.booting.value) {
+    return null;
+  }
+  if (!session.authenticated.value) {
     return null;
   }
   return (
     <>
-      {!session.authenticated.value ? (
-        <section className="auth-panel">
-          <div className="auth-stack">
-            <AsyncMessage kind="error" text={session.error.value} />
-            <AdminLoginForm
-              pending={session.pending.value}
-              onSubmit={$callback(
-                $required($unref($state.session)).authenticate,
-              )}
+      {!status ? (
+        <p role="status" className="state-card card" data-r-ad468c1b="">
+          {' Проверяем подключения… '}
+        </p>
+      ) : (
+        <div className="setup-workspace" data-r-ad468c1b="">
+          <div
+            className={$class('setup-channel-grid', {
+              'setup-channel-grid--mixed':
+                status.connected !== status.vk.connected,
+            })}
+            data-r-ad468c1b=""
+          >
+            <TelegramSetupCard
+              status={status}
+              onConnected={$callback(markTelegramConnected)}
+              data-r-ad468c1b=""
+            />
+            <VkSetupCard
+              status={status.vk}
+              telegramConnected={status.connected}
+              onConnected={$callback(markVkConnected)}
+              data-r-ad468c1b=""
             />
           </div>
-        </section>
-      ) : (
-        <>
-          <AsyncMessage
-            kind="error"
-            text={$or(session.error.value, () => error)}
-          />
-          {renderSetupPagePart3($state)}
-        </>
+        </div>
       )}
     </>
   );

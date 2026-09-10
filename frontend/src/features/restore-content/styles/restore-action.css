@@ -1,0 +1,14 @@
+.restore-confirm {
+  background: var(--color-attention-soft);
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+}
+
+.restore-confirm p {
+  margin-bottom: 0.5rem;
+}
+
+.warning-text {
+  color: var(--color-attention);
+  font-weight: 700;
+}

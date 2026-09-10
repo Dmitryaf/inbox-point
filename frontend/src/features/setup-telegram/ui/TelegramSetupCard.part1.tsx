@@ -15,14 +15,19 @@ export function renderTelegramSetupCardPart1(
   return (
     <>
       {$props.status.connected ? (
-        <p className="setup-status setup-status--success">
-          {
-            ' Telegram подключён. После перезапуска сервис восстановит подключение автоматически. '
-          }
+        <p
+          role="status"
+          className="setup-status setup-status--success setup-connected-status"
+          data-r-44d690ea=""
+        >
+          <strong data-r-44d690ea="">{'Telegram подключён'}</strong>
+          <span data-r-44d690ea="">
+            {'Сообщения клиентов будут передаваться операторам.'}
+          </span>
         </p>
       ) : (
         <>
-          <TelegramSetupInstructions />
+          <TelegramSetupInstructions data-r-44d690ea="" />
           {renderTelegramSetupCardPart2($state, $props)}
         </>
       )}

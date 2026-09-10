@@ -1,0 +1,68 @@
+.status-card[data-r-0b4df92b] {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 1.25rem;
+  box-shadow: var(--shadow-card);
+  min-width: 0;
+  padding: 1rem;
+  width: 100%;
+}
+.status-card-heading[data-r-0b4df92b] {
+  align-items: start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: space-between;
+  min-width: 0;
+}
+.status-card h3[data-r-0b4df92b] {
+  margin-bottom: 0.8rem;
+}
+.status-card p[data-r-0b4df92b] {
+  color: var(--color-text-muted);
+  margin-bottom: 0;
+}
+.status-pill[data-r-0b4df92b] {
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  padding: 0.35rem 0.65rem;
+}
+.status-pill--healthy[data-r-0b4df92b] {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+.status-pill--attention[data-r-0b4df92b] {
+  background: var(--color-attention-soft);
+  color: var(--color-attention);
+}
+.status-pill--neutral[data-r-0b4df92b] {
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+}
+.delivery-card[data-r-0b4df92b] {
+  grid-column: 1 / -1;
+}
+.technical-details summary[data-r-0b4df92b] {
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.technical-details summary[data-r-0b4df92b]:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+@media (min-width: 900px) {
+  .status-card[data-r-0b4df92b] {
+    padding: 1.35rem;
+  }
+}
+@media (max-width: 520px) {
+  .status-card[data-r-0b4df92b] {
+    border-radius: 1rem;
+    padding: 0.85rem;
+  }
+}

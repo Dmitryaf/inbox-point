@@ -35,7 +35,17 @@ export function registerManagementContentRoutes(
   app.get(
     '/api/manage/content/history',
     { preHandler: access.requireAuthorization },
-    async () => ({ history: await content.getHistory() }),
+    async (_request, reply) => {
+      try {
+        return { history: await content.getHistory() };
+      } catch (error: unknown) {
+        app.log.error({ err: error }, 'Managed content history load failed');
+        return reply.code(500).send({
+          message:
+            'Не удалось загрузить историю изменений. Попробуйте ещё раз.',
+        });
+      }
+    },
   );
   app.post(
     '/api/manage/content',

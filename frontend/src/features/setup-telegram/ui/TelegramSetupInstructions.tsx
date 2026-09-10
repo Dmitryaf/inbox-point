@@ -1,3 +1,4 @@
+import '@frontend/entities/setup/styles/setup-instructions.react-data-r-9c77fc79.css';
 import {
   useComponentModel,
   ModelScopeProvider,
@@ -22,7 +23,7 @@ export default function TelegramSetupInstructions(
   return (
     <ModelScopeProvider scope={$scope}>
       {renderTelegramSetupInstructionsPart1()}
-      <p className="setup-warning">
+      <p className="setup-warning" data-r-9c77fc79="">
         {
           ' Токен позволяет управлять ботом. Никому его не отправляйте и вводите только на этой странице. '
         }
