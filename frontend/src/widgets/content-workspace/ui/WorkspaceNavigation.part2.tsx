@@ -1,8 +1,11 @@
-import { renderList as $renderList } from '@frontend/shared/lib/component-view';
-import { nativeHandler as $nativeHandler } from '@frontend/shared/lib/component-events';
+import {
+  classNames as $class,
+  renderList as $renderList,
+} from '@frontend/shared/lib/component-view';
+
 import { unref as $unref } from '@frontend/shared/lib/model-state';
 
-import { editorSections } from '@frontend/widgets/content-workspace/model/navigation';
+import { workspaceViews } from '@frontend/widgets/content-workspace/model/navigation';
 
 import type { WithDefaults } from '@frontend/shared/lib/component-model';
 import type {
@@ -14,29 +17,31 @@ export function renderWorkspaceNavigationPart2(
   $state: ReturnType<typeof createComponentModel>,
   $props: WithDefaults<ComponentProps, typeof componentDefaults>,
 ) {
-  const { changeSection } = $state;
+  const { $emit } = $state;
 
   return (
     <>
-      {$props.activeView === 'edit' ? (
-        <div className="mobile-navigation-field" data-r-e6e22060="">
-          <label htmlFor="editor-section" data-r-e6e22060="">
-            {'Раздел'}
-          </label>
-          <select
-            id="editor-section"
-            value={$props.activeSection}
-            onChange={$nativeHandler(changeSection)}
+      <nav
+        aria-label="Режим работы"
+        className="workspace-tabs desktop-workspace-navigation"
+        data-r-e6e22060=""
+      >
+        {$renderList($unref(workspaceViews), (view) => (
+          <button
+            key={view.id}
+            aria-pressed={$props.activeView === view.id}
+            type="button"
+            onClick={() => void $emit('viewChange', view.id)}
+            className={$class(
+              { active: $props.activeView === view.id },
+              'navigation-button',
+            )}
             data-r-e6e22060=""
           >
-            {$renderList($unref(editorSections), (section) => (
-              <option key={section.id} value={section.id} data-r-e6e22060="">
-                {section.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      ) : null}
+            {view.label}
+          </button>
+        ))}
+      </nav>
     </>
   );
 }

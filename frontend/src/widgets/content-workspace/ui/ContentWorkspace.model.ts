@@ -73,6 +73,10 @@ export function createComponentModel(
     }
     field?.focus();
   }
+  function openSection(section: EditorSection): void {
+    activeSection.value = section;
+    activeView.value = 'edit';
+  }
   return {
     workspace,
     activeView,
@@ -80,5 +84,6 @@ export function createComponentModel(
     validation,
     fieldErrors,
     save,
+    openSection,
   };
 }

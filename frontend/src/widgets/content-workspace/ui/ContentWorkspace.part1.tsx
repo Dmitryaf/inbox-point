@@ -1,4 +1,3 @@
-import { classNames as $class } from '@frontend/shared/lib/component-view';
 import {
   eventCallback as $callback,
   nativeHandler as $nativeHandler,
@@ -20,10 +19,10 @@ import type { createComponentModel } from './ContentWorkspace.model';
 export function renderContentWorkspacePart1(
   $state: ReturnType<typeof createComponentModel>,
 ) {
-  const { save } = $state;
+  const { openSection, save } = $state;
   const workspace = $unref($state.workspace);
-  const activeView = $state.activeView.value;
   const activeSection = $state.activeSection.value;
+  const activeView = $state.activeView.value;
   const validation = $state.validation.value;
 
   return (
@@ -45,16 +44,11 @@ export function renderContentWorkspacePart1(
           </button>
         </section>
       ) : (
-        <div
-          className={$class('workspace', {
-            'workspace--editing': activeView === 'edit',
-          })}
-          data-r-09629bd3=""
-        >
+        <div className="workspace" data-r-09629bd3="">
           <WorkspaceNavigation
             activeSection={activeSection}
             activeView={activeView}
-            onSectionChange={$setter($state, 'activeSection')}
+            onSectionChange={$callback(openSection)}
             onViewChange={$setter($state, 'activeView')}
             data-r-09629bd3=""
           />
@@ -65,7 +59,13 @@ export function renderContentWorkspacePart1(
               className="workspace-panel"
               data-r-09629bd3=""
             >
-              {renderContentWorkspacePart2($state)}
+              <div
+                key={activeView}
+                className="workspace-view"
+                data-r-09629bd3=""
+              >
+                {renderContentWorkspacePart2($state)}
+              </div>
             </section>
             <SaveBar
               dirty={workspace.dirty.value}
