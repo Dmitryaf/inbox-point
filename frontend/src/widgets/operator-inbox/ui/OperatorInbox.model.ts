@@ -6,7 +6,6 @@ import {
   type ModelOptions,
   type ModelRef,
 } from '@frontend/shared/lib/component-props';
-import { onMounted } from '@frontend/shared/lib/model-state';
 import { useOperatorInbox } from '@frontend/features/manage-operator-inbox/model/use-operator-inbox';
 
 export type ComponentProps = {
@@ -26,6 +25,5 @@ export function createComponentModel(
   const props = $props;
   const inbox = useOperatorInbox(props.onUnauthorized);
   $expose({ refresh: inbox.refresh });
-  onMounted(() => void inbox.refresh());
   return { inbox };
 }

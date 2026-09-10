@@ -46,7 +46,7 @@ export default function TelegramSetupCard($incomingProps: ComponentProps) {
         >
           {expanded
             ? 'Скрыть'
-            : $props.status.connected
+            : $props.status.source !== 'none'
               ? 'Сведения'
               : 'Подключить Telegram'}
         </button>

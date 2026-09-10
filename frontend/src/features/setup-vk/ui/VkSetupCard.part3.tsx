@@ -1,6 +1,7 @@
 import VkSetupInstructions from './VkSetupInstructions';
 
 import { renderVkSetupCardPart4 } from './VkSetupCard.part4';
+import { renderVkSetupCardPart5 } from './VkSetupCard.part5';
 
 import type { WithDefaults } from '@frontend/shared/lib/component-model';
 import type {
@@ -18,20 +19,12 @@ export function renderVkSetupCardPart3(
   }
   return (
     <>
-      {$props.status.connected ? (
-        <p
-          role="status"
-          className="setup-status setup-status--success"
-          data-r-712bbad4=""
-        >
-          {
-            ' Подключение активно. Изменить секреты можно через конфигурацию установки. '
-          }
-        </p>
+      {$props.status.source !== 'none' ? (
+        <>{renderVkSetupCardPart4($state, $props)}</>
       ) : (
         <>
           <VkSetupInstructions data-r-712bbad4="" />
-          {renderVkSetupCardPart4($state, $props)}
+          {renderVkSetupCardPart5($state, $props)}
         </>
       )}
     </>

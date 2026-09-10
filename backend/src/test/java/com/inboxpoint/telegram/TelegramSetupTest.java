@@ -55,6 +55,10 @@ class TelegramSetupTest {
             try {
                 restored.start();
                 assertThat(restored.status()).isEqualTo(new TelegramRuntime.Status(true, true, "local"));
+                restored.disconnectTelegram();
+                restored.disconnectTelegram();
+                assertThat(restored.status()).isEqualTo(new TelegramRuntime.Status(false, false, "none"));
+                assertThat(Files.exists(directory.resolve("telegram-settings.json"))).isFalse();
             } finally {
                 restored.stop();
             }

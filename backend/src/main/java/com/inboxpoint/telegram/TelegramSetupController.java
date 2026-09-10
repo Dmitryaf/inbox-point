@@ -9,7 +9,9 @@ import com.inboxpoint.admin.PasswordSessions;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -92,6 +94,28 @@ final class TelegramSetupController {
         } catch (InterruptedException stopped) {
             Thread.currentThread().interrupt();
             return error(503, "Подключение прервано. Попробуйте снова.");
+        }
+    }
+
+    @DeleteMapping("/{channel:telegram|vk}")
+    ResponseEntity<?> disconnect(@PathVariable String channel, HttpServletRequest request, HttpServletResponse response)
+            throws InterruptedException {
+        var denied = setupAccess(request, response, true);
+        if (denied != null) {
+            return denied;
+        }
+        var telegram = "telegram".equals(channel);
+        try {
+            if (telegram) {
+                runtime.disconnectTelegram();
+            } else {
+                runtime.disconnectVk();
+            }
+            return ResponseEntity.ok(Map.of("connected", false));
+        } catch (IllegalStateException blocked) {
+            return error(409, blocked.getMessage());
+        } catch (IOException failed) {
+            return error(500, "Не удалось отключить " + (telegram ? "Telegram." : "VK."));
         }
     }
 

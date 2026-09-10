@@ -190,6 +190,25 @@ public final class TelegramRuntime {
         source = LOCAL;
     }
 
+    synchronized void disconnectTelegram() throws IOException, InterruptedException {
+        if (ENVIRONMENT.equals(source)) {
+            throw new IllegalStateException("Управляется на сервере.");
+        }
+        if (!NONE.equals(vk.status().source())) {
+            throw new IllegalStateException("Сначала отключите VK.");
+        }
+        if (NONE.equals(source)) {
+            return;
+        }
+        Files.deleteIfExists(settingsFile);
+        stopTelegramPoller();
+        source = NONE;
+    }
+
+    synchronized void disconnectVk() throws IOException, InterruptedException {
+        vk.disconnect();
+    }
+
     private void assertMutable() {
         if (ENVIRONMENT.equals(source)) {
             throw new IllegalStateException("Telegram is managed by server configuration");
@@ -396,9 +415,16 @@ public final class TelegramRuntime {
         }
         handoff.stop();
         vk.stop();
+        stopTelegramPoller();
+    }
+
+    private void stopTelegramPoller() throws InterruptedException {
         if (poller != null) {
             poller.interrupt();
-            poller.join(Duration.ofSeconds(2));
+            if (!poller.join(Duration.ofSeconds(2))) {
+                throw new IllegalStateException("Не удалось остановить Telegram.");
+            }
+            poller = null;
         }
     }
 

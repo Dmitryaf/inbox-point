@@ -117,10 +117,25 @@ final class VkSetup {
         return channel;
     }
 
+    synchronized void disconnect() throws IOException, InterruptedException {
+        if ("environment".equals(source)) {
+            throw new IllegalStateException("Управляется на сервере.");
+        }
+        if ("none".equals(source)) {
+            return;
+        }
+        Files.deleteIfExists(path);
+        stop();
+        source = "none";
+    }
+
     synchronized void stop() throws InterruptedException {
         if (poller != null) {
             poller.interrupt();
-            poller.join(Duration.ofSeconds(2));
+            if (!poller.join(Duration.ofSeconds(2))) {
+                throw new IllegalStateException("Не удалось остановить VK.");
+            }
+            poller = null;
         }
         if (channel != null) {
             channel.close();

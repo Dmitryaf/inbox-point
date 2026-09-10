@@ -20,7 +20,7 @@ interface ReplyAttempt {
 
 export function useOperatorInbox(onUnauthorized: () => void) {
   const actionPending = ref(false);
-  const error = ref('');
+  const actionError = ref('');
   const loading = ref(false);
   const messages = ref<readonly OperatorInboxMessage[]>([]);
   const notice = ref('');
@@ -32,9 +32,8 @@ export function useOperatorInbox(onUnauthorized: () => void) {
     requests.value.find((request) => request.id === selectedRequestId.value),
   );
 
-  async function refresh(): Promise<void> {
+  async function refresh(): Promise<string> {
     loading.value = true;
-    error.value = '';
     try {
       const result = await readOperatorInboxRequests();
       requests.value = Array.isArray(result.requests) ? result.requests : [];
@@ -46,8 +45,9 @@ export function useOperatorInbox(onUnauthorized: () => void) {
         selectedRequestId.value = requests.value[0]?.id ?? '';
       }
       await refreshMessages();
+      return '';
     } catch (cause: unknown) {
-      handleError(cause);
+      return requestErrorMessage(cause, onUnauthorized);
     } finally {
       loading.value = false;
     }
@@ -55,8 +55,12 @@ export function useOperatorInbox(onUnauthorized: () => void) {
 
   async function select(requestId: string): Promise<void> {
     selectedRequestId.value = requestId;
-    error.value = '';
-    await refreshMessages();
+    actionError.value = '';
+    try {
+      await refreshMessages();
+    } catch (cause: unknown) {
+      handleActionError(cause);
+    }
   }
 
   async function reply(text: string): Promise<boolean> {
@@ -75,7 +79,7 @@ export function useOperatorInbox(onUnauthorized: () => void) {
             text: normalizedText,
           };
     actionPending.value = true;
-    error.value = '';
+    actionError.value = '';
     notice.value = '';
     try {
       await sendOperatorInboxReply(requestId, {
@@ -85,11 +89,11 @@ export function useOperatorInbox(onUnauthorized: () => void) {
       failedReply = undefined;
       notice.value =
         'Ответ сохранён для отправки. Результат появится рядом с сообщением.';
-      await refresh();
+      actionError.value = await refresh();
       return true;
     } catch (cause: unknown) {
       failedReply = attempt;
-      handleError(cause);
+      handleActionError(cause);
       return false;
     } finally {
       actionPending.value = false;
@@ -102,14 +106,14 @@ export function useOperatorInbox(onUnauthorized: () => void) {
       return;
     }
     actionPending.value = true;
-    error.value = '';
+    actionError.value = '';
     notice.value = '';
     try {
       await closeOperatorInboxRequest(requestId, crypto.randomUUID());
       notice.value = 'Обращение закрыто.';
-      await refresh();
+      actionError.value = await refresh();
     } catch (cause: unknown) {
-      handleError(cause);
+      handleActionError(cause);
     } finally {
       actionPending.value = false;
     }
@@ -124,14 +128,14 @@ export function useOperatorInbox(onUnauthorized: () => void) {
     messages.value = Array.isArray(result.messages) ? result.messages : [];
   }
 
-  function handleError(cause: unknown): void {
-    error.value = requestErrorMessage(cause, onUnauthorized);
+  function handleActionError(cause: unknown): void {
+    actionError.value = requestErrorMessage(cause, onUnauthorized);
   }
 
   return {
+    actionError,
     actionPending,
     close,
-    error,
     loading,
     messages,
     notice,

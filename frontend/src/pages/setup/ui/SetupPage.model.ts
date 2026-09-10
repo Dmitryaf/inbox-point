@@ -46,5 +46,27 @@ export function createComponentModel() {
       status.value.vk.source = 'local';
     }
   }
-  return { session, status, error, markTelegramConnected, markVkConnected };
+  function markTelegramDisconnected(): void {
+    if (status.value) {
+      status.value.connected = false;
+      status.value.locked = false;
+      status.value.source = 'none';
+    }
+  }
+  function markVkDisconnected(): void {
+    if (status.value) {
+      status.value.vk.connected = false;
+      status.value.vk.locked = false;
+      status.value.vk.source = 'none';
+    }
+  }
+  return {
+    session,
+    status,
+    error,
+    markTelegramConnected,
+    markVkConnected,
+    markTelegramDisconnected,
+    markVkDisconnected,
+  };
 }

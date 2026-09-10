@@ -31,8 +31,14 @@ final class VkClientMenu {
         var active = store.activeRequest("vk", peer);
         var label = text.strip();
         var blocked = active == null && paused.test("vk");
-        var answer = blocked && !information.isPublishedInformation(label)
-                ? ClientInformation.INTAKE_PAUSED : response(label, active != null);
+        if (blocked && !information.isPublishedInformation(label)) {
+            var now = Instant.now();
+            if (store.claim("vk:menu", event, now)) {
+                store.completeEvent("vk:menu", event, now);
+            }
+            return true;
+        }
+        var answer = response(label, active != null);
         if (answer == null) {
             return false;
         }

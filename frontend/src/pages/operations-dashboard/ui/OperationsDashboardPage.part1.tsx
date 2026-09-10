@@ -2,21 +2,16 @@ import {
   classNames as $class,
   templateRef as $templateRef,
 } from '@frontend/shared/lib/component-view';
-import {
-  eventCallback as $callback,
-  nativeHandler as $nativeHandler,
-} from '@frontend/shared/lib/component-events';
+import { nativeHandler as $nativeHandler } from '@frontend/shared/lib/component-events';
 import { unref as $unref } from '@frontend/shared/lib/model-state';
-import { requiredValue as $required } from '@frontend/shared/lib/component-bindings';
 
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
-
-import ClientIntakeControl from '@frontend/features/control-client-intake/ui/ClientIntakeControl';
 
 import OperatorInbox from '@frontend/widgets/operator-inbox/ui/OperatorInbox';
 import AsyncMessage from '@frontend/shared/ui/AsyncMessage';
 
 import { renderOperationsDashboardPagePart2 } from './OperationsDashboardPage.part2';
+import { renderOperationsDashboardPagePart3 } from './OperationsDashboardPage.part3';
 import type { ModelScope } from '@frontend/shared/lib/model-state';
 import type { WithDefaults } from '@frontend/shared/lib/component-model';
 import type {
@@ -29,12 +24,13 @@ export function renderOperationsDashboardPagePart1(
   $props: WithDefaults<ComponentProps, typeof componentDefaults>,
   $scope: ModelScope,
 ) {
+  const refreshError = $unref($state.refreshError);
   const operations = $unref($state.operations);
   const session = $unref($state.session);
-  const deliveryControl = $unref($state.deliveryControl);
   const deliveryRetry = $unref($state.deliveryRetry);
   const operatorResolution = $unref($state.operatorResolution);
   const inboundEventResolution = $unref($state.inboundEventResolution);
+  const deliveryControl = $unref($state.deliveryControl);
   const $attributes = inheritedAttributes($props);
 
   return (
@@ -45,14 +41,23 @@ export function renderOperationsDashboardPagePart1(
           className={$class('ops-workspace', $attributes.className)}
           data-r-fef838bc=""
         >
-          {operations.error.value ? (
-            <p
+          {refreshError ? (
+            <section
               role="alert"
-              className="message message--error card"
+              className="message message--error card ops-refresh-error"
               data-r-fef838bc=""
             >
-              {operations.error.value}
-            </p>
+              <p data-r-fef838bc="">{refreshError}</p>
+              <button
+                type="button"
+                disabled={operations.loading.value}
+                onClick={$nativeHandler($unref($state.refreshAll))}
+                className="quiet"
+                data-r-fef838bc=""
+              >
+                {' Повторить проверку '}
+              </button>
+            </section>
           ) : null}
           <div className="ops-toolbar" data-r-fef838bc="">
             <p data-r-fef838bc="">{'Автообновление каждые 30 секунд'}</p>
@@ -72,14 +77,7 @@ export function renderOperationsDashboardPagePart1(
             data-r-fef838bc=""
           />
           {renderOperationsDashboardPagePart2($state)}
-          <ClientIntakeControl
-            onChanged={$callback($unref($state.refreshAll))}
-            onUnauthorized={$callback(
-              $required($unref($state.session)).expireSession,
-            )}
-            ref={$templateRef($state, 'intakeControl', $scope)}
-            data-r-fef838bc=""
-          />
+          {renderOperationsDashboardPagePart3($state, $scope)}
           <AsyncMessage
             kind="error"
             text={deliveryRetry.error.value}

@@ -8,8 +8,6 @@ import { classNames as $class } from '@frontend/shared/lib/component-view';
 
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
-import OutboundDeliveryControl from './OutboundDeliveryControl';
-
 import { renderDeliveryStatusCardPart1 } from './DeliveryStatusCard.part1';
 import { renderDeliveryStatusCardPart2 } from './DeliveryStatusCard.part2';
 import {
@@ -28,7 +26,6 @@ export default function DeliveryStatusCard($incomingProps: ComponentProps) {
     componentDefaults,
     createComponentModel,
   );
-  const { $emit } = $state;
   const state = $state.state.value;
   const $attributes = inheritedAttributes($props);
   return (
@@ -49,12 +46,6 @@ export default function DeliveryStatusCard($incomingProps: ComponentProps) {
         </div>
         {renderDeliveryStatusCardPart1($props)}
         {renderDeliveryStatusCardPart2($props)}
-        <OutboundDeliveryControl
-          outbound={$props.outbound}
-          pending={$props.deliveryControlPending}
-          onChange={($event) => void $emit('changeDeliveryMode', $event)}
-          data-r-39c836f9=""
-        />
       </article>
     </ModelScopeProvider>
   );

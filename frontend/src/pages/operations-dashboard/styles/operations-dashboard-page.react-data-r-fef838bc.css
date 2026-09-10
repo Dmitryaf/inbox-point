@@ -14,6 +14,18 @@
   color: var(--color-danger);
   padding: 0.75rem;
 }
+.ops-refresh-error[data-r-fef838bc] {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+.ops-refresh-error p[data-r-fef838bc] {
+  margin: 0;
+}
+.ops-refresh-error button[data-r-fef838bc] {
+  flex: 0 0 auto;
+}
 .ops-toolbar[data-r-fef838bc] {
   align-items: center;
   display: flex;
@@ -26,6 +38,10 @@
   margin: 0;
 }
 @media (max-width: 520px) {
+  .ops-refresh-error[data-r-fef838bc] {
+    align-items: stretch;
+    flex-direction: column;
+  }
   .ops-toolbar[data-r-fef838bc] {
     justify-content: space-between;
   }

@@ -13,7 +13,6 @@ export function renderOperationsDashboardPagePart2(
 ) {
   const operations = $unref($state.operations);
   const session = $unref($state.session);
-  const deliveryControl = $unref($state.deliveryControl);
   const deliveryRetry = $unref($state.deliveryRetry);
   const operatorResolution = $unref($state.operatorResolution);
   const inboundEventResolution = $unref($state.inboundEventResolution);
@@ -24,7 +23,6 @@ export function renderOperationsDashboardPagePart2(
     <>
       {operations.status.value ? (
         <OperationsOverview
-          deliveryControlPending={deliveryControl.pendingMode.value}
           pendingDeliveryId={$or(
             deliveryRetry.pendingDeliveryId.value,
             () => undefined,
@@ -38,9 +36,7 @@ export function renderOperationsDashboardPagePart2(
             () => undefined,
           )}
           status={operations.status.value}
-          onChangeDeliveryMode={$callback(
-            $required($unref($state.deliveryControl)).change,
-          )}
+          statusUnavailable={Boolean(operations.error.value)}
           onResolveDelivery={$callback(
             $required($unref($state.deliveryRetry)).resolve,
           )}

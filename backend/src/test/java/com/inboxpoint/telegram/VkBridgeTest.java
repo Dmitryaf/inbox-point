@@ -49,9 +49,8 @@ class VkBridgeTest {
             assertThat(menu.handle(store, "pause", 123, "New question")).isTrue();
             var label = information.informationButtons().getFirst();
             assertThat(menu.handle(store, "information", 123, label)).isTrue();
-            assertThat(calls).hasSize(2);
-            assertThat(calls.getFirst()).contains(ClientInformation.INTAKE_PAUSED).doesNotContain(ClientInformation.ASK);
-            assertThat(calls.getLast()).contains("message=" + information.resolve(label));
+            assertThat(calls).singleElement().satisfies(call -> assertThat(call)
+                    .contains("message=" + information.resolve(label)).doesNotContain(ClientInformation.ASK));
             store.open(new TelegramStore.Request("active", 123, 42, true, "vk"), java.time.Instant.now());
             assertThat(menu.handle(store, "active", 123, "Follow-up")).isFalse();
         } finally {

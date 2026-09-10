@@ -9,13 +9,15 @@ export function useOperationsStatus(onUnauthorized: () => void) {
   const loading = ref(false);
   const status = ref<OperationsStatus>();
 
-  const refresh = async (): Promise<void> => {
+  const refresh = async (): Promise<string> => {
     loading.value = true;
     error.value = '';
     try {
       status.value = await readOperationsStatus();
+      return '';
     } catch (cause: unknown) {
       error.value = requestErrorMessage(cause, onUnauthorized);
+      return error.value;
     } finally {
       loading.value = false;
     }

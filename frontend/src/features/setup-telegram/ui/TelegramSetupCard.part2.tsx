@@ -1,4 +1,4 @@
-import TelegramConnectionForm from './TelegramConnectionForm';
+import { renderTelegramSetupCardPart3 } from './TelegramSetupCard.part3';
 
 import type { WithDefaults } from '@frontend/shared/lib/component-model';
 import type {
@@ -10,7 +10,6 @@ export function renderTelegramSetupCardPart2(
   $state: ReturnType<typeof createComponentModel>,
   $props: WithDefaults<ComponentProps, typeof componentDefaults>,
 ) {
-  const { $emit } = $state;
   const expanded = $state.expanded.value;
 
   return (
@@ -23,17 +22,10 @@ export function renderTelegramSetupCardPart2(
               className="setup-status setup-status--success"
               data-r-44d690ea=""
             >
-              {
-                ' Подключение активно. Изменить секреты можно через конфигурацию установки. '
-              }
+              {' Подключение активно. '}
             </p>
-          ) : (
-            <TelegramConnectionForm
-              locked={$props.status.locked}
-              onConnected={() => void $emit('connected')}
-              data-r-44d690ea=""
-            />
-          )}
+          ) : null}
+          {renderTelegramSetupCardPart3($state, $props)}
         </div>
       ) : null}
     </>
