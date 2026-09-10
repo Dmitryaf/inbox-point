@@ -1,15 +1,7 @@
 import { createRoot } from 'react-dom/client';
 
-import App from '@frontend/App';
+import App from '@frontend/app/App';
 import '@frontend/app/styles/global.css';
-
-if (window.location.pathname.startsWith('/ops')) {
-  document.title = 'Состояние — Messenger Handoff';
-} else if (window.location.pathname.startsWith('/setup')) {
-  document.title = 'Каналы — Messenger Handoff';
-} else {
-  document.title = 'Информация — Messenger Handoff';
-}
 
 const root = document.getElementById('app');
 if (!root) {

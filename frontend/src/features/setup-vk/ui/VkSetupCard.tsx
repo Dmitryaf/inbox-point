@@ -1,3 +1,4 @@
+import '@frontend/entities/setup/styles/setup-card.react-data-r-712bbad4.css';
 import {
   useComponentModel,
   ModelScopeProvider,
@@ -29,10 +30,22 @@ export default function VkSetupCard($incomingProps: ComponentProps) {
       <section
         {...$attributes}
         aria-labelledby="vk-setup-title"
-        className={$class('setup-card card', $attributes.className)}
+        className={$class(
+          'setup-card card',
+          {
+            'setup-card--locked':
+              !$props.telegramConnected && !$props.status.connected,
+          },
+          $attributes.className,
+        )}
+        data-r-712bbad4=""
       >
-        <p className="step">{'Шаг 2'}</p>
-        <h2 id="vk-setup-title">{'VK'}</h2>
+        <p className="step" data-r-712bbad4="">
+          {'Шаг 2'}
+        </p>
+        <h2 id="vk-setup-title" data-r-712bbad4="">
+          {'VK'}
+        </h2>
         {renderVkSetupCardPart1($state, $props)}
       </section>
     </ModelScopeProvider>

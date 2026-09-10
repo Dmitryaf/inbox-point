@@ -30,12 +30,12 @@ export function createComponentModel($props: ResolvedProps) {
       return { label: 'Нет свежих данных', tone: 'attention' };
     }
     if (props.channel.state === 'running') {
-      return { label: 'Запущен', tone: 'healthy' };
+      return { label: 'Работает', tone: 'healthy' };
     }
     if (props.channel.state === 'starting') {
       return { label: 'Запускается', tone: 'neutral' };
     }
-    return { label: 'Остановлен', tone: 'attention' };
+    return { label: 'Не работает', tone: 'attention' };
   });
   return { state };
 }

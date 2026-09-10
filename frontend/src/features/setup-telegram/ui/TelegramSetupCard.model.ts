@@ -32,6 +32,7 @@ export function createComponentModel(
   const chats = ref<TelegramOperatorChat[]>([]);
   const selectedChatId = ref<number | null>(null);
   const message = ref('Выполните шаги ниже и найдите операторскую группу.');
+  const messageKind = ref<'error' | 'info' | 'success'>('info');
   const pending = ref<'connect' | 'discover' | null>(null);
   function chatLabel(chat: TelegramOperatorChat): string {
     if (chat.isForum) {
@@ -41,6 +42,7 @@ export function createComponentModel(
   }
   async function discover(): Promise<void> {
     pending.value = 'discover';
+    messageKind.value = 'info';
     try {
       const result = await discoverTelegramChats(botToken.value.trim());
       chats.value = result.chats;
@@ -50,6 +52,7 @@ export function createComponentModel(
         : 'Напишите в группе сообщение и повторите поиск.';
     } catch (cause: unknown) {
       message.value = errorMessage(cause);
+      messageKind.value = 'error';
     } finally {
       pending.value = null;
     }
@@ -57,17 +60,21 @@ export function createComponentModel(
   async function connect(): Promise<void> {
     if (selectedChatId.value === null) {
       message.value = 'Выберите операторскую группу.';
+      messageKind.value = 'error';
       return;
     }
     pending.value = 'connect';
+    messageKind.value = 'info';
     try {
       await connectTelegram(botToken.value.trim(), selectedChatId.value);
       botToken.value = '';
       chats.value = [];
       message.value = 'Telegram подключён. Настройка сохранена.';
+      messageKind.value = 'success';
       emit('connected');
     } catch (cause: unknown) {
       message.value = errorMessage(cause);
+      messageKind.value = 'error';
     } finally {
       pending.value = null;
     }
@@ -77,6 +84,7 @@ export function createComponentModel(
     chats,
     selectedChatId,
     message,
+    messageKind,
     pending,
     chatLabel,
     discover,

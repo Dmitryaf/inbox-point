@@ -1,3 +1,4 @@
+import '@frontend/widgets/operations-overview/styles/status-card.react-data-r-df4e40d1.css';
 import {
   useComponentModel,
   ModelScopeProvider,
@@ -14,11 +15,7 @@ import {
 } from './InboundEventStatusCard.model';
 
 export default function InboundEventStatusCard($incomingProps: ComponentProps) {
-  const {
-    state: $state,
-    props: $props,
-    scope: $scope,
-  } = useComponentModel(
+  const { props: $props, scope: $scope } = useComponentModel(
     $incomingProps,
     componentDefaults,
     createComponentModel,
@@ -29,23 +26,18 @@ export default function InboundEventStatusCard($incomingProps: ComponentProps) {
       <article
         {...$attributes}
         className={$class('status-card delivery-card', $attributes.className)}
+        data-r-df4e40d1=""
       >
-        <div className="status-card-heading">
-          <h3>{'Входящие события'}</h3>
-          <span
-            className={$class(
-              'status-pill',
-              $props.inboundEvents.state === 'healthy'
-                ? 'status-pill--healthy'
-                : 'status-pill--attention',
-            )}
-          >
-            {$props.inboundEvents.state === 'healthy'
-              ? 'Работает'
-              : 'Есть изолированные события'}
-          </span>
-        </div>
-        {renderInboundEventStatusCardPart1($state, $props)}
+        {renderInboundEventStatusCardPart1($props)}
+        {$props.inboundEvents.state === 'healthy' ? (
+          <p data-r-df4e40d1="">
+            {' Новые сообщения обрабатываются автоматически. '}
+          </p>
+        ) : (
+          <p data-r-df4e40d1="">
+            {'Подробности и доступные действия показаны выше.'}
+          </p>
+        )}
       </article>
     </ModelScopeProvider>
   );

@@ -1,7 +1,6 @@
 package com.inboxpoint.telegram;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -13,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.inboxpoint.persistence.SqliteSchema;
 import com.inboxpoint.vk.VkChannel;
 
 import org.sqlite.SQLiteConfig;
@@ -28,49 +28,8 @@ final class TelegramStore implements AutoCloseable {
         config.setJournalMode(SQLiteConfig.JournalMode.WAL);
         config.setSynchronous(SQLiteConfig.SynchronousMode.FULL);
         connection = config.createConnection("jdbc:sqlite:" + path.toAbsolutePath());
-        try (var schema = TelegramStore.class.getResourceAsStream("/db/sqlite/telegram-handoff.sql");
-                var statement = connection.createStatement()) {
-            if (schema == null) {
-                throw new IOException("Telegram storage schema is missing");
-            }
-            var sql = new String(schema.readAllBytes(), StandardCharsets.UTF_8);
-            for (var command : sql.split(";")) {
-                if (!command.isBlank()) {
-                    statement.execute(command);
-                }
-
-            }
-            ensureColumn("deliveries", "operator_message_id", "TEXT");
-            ensureColumn("deliveries", "next_attempt_at", "TEXT");
-            ensureColumn("deliveries", "outcome_unknown", "INTEGER NOT NULL DEFAULT 0");
-            ensureColumn("deliveries", "manual_resolution",
-                    "TEXT CHECK (manual_resolution IN ('confirmed_received', 'confirmed_not_received'))");
-            ensureColumn("deliveries", "resolved_at", "TEXT");
-            ensureColumn("deliveries", "operator_notified_at", "TEXT");
-            ensureColumn("deliveries", "notification_next_attempt_at", "TEXT");
-            ensureColumn("deliveries", "attempt_started_at", "TEXT");
-            statement.execute("UPDATE deliveries SET outcome_unknown = 1 WHERE last_error = 'Uncertain Telegram result' "
-                    + "AND status = 'failed' AND outcome_unknown = 0");
-            try (var version = statement.executeQuery("PRAGMA user_version")) {
-                if (version.next() && version.getInt(1) > 5) {
-                    throw new SQLException("Unsupported SQLite schema version");
-                }
-            }
-            ensureColumn("support_requests", "client_display_name", "TEXT");
-            ensureColumn("processed_events", "status", "TEXT NOT NULL DEFAULT 'completed'");
-            ensureColumn("processed_events", "completed_at", "TEXT");
-            statement.execute("""
-                    CREATE TABLE IF NOT EXISTS inbound_events (
-                        source TEXT NOT NULL, external_event_id TEXT NOT NULL, payload TEXT NOT NULL,
-                        received_at TEXT NOT NULL, PRIMARY KEY (source, external_event_id)
-                    ) STRICT
-                    """);
-            ensureColumn("inbound_events", "attempts", "INTEGER NOT NULL DEFAULT 0");
-            ensureColumn("inbound_events", "status", "TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'quarantined'))");
-            ensureColumn("inbound_events", "last_error", "TEXT");
-            ensureColumn("inbound_events", "next_attempt_at", "TEXT");
-            statement.execute("CREATE INDEX IF NOT EXISTS inbound_events_by_status ON inbound_events(source, status, received_at)");
-            statement.execute("PRAGMA user_version = 5");
+        try {
+            SqliteSchema.initialize(connection);
         } catch (IOException | SQLException failure) {
             try {
                 connection.close();
@@ -78,18 +37,6 @@ final class TelegramStore implements AutoCloseable {
                 failure.addSuppressed(suppressed);
             }
             throw failure;
-        }
-    }
-
-    private void ensureColumn(String table, String name, String definition) throws SQLException {
-        try (var statement = prepare("SELECT 1 FROM pragma_table_info(?) WHERE name = ?", table, name);
-                var columns = statement.executeQuery()) {
-            if (columns.next()) {
-                return;
-            }
-        }
-        try (var statement = connection.createStatement()) {
-            statement.execute("ALTER TABLE " + table + " ADD COLUMN " + name + " " + definition);
         }
     }
 

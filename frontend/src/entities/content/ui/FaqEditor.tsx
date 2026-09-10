@@ -1,3 +1,4 @@
+import '@frontend/entities/content/styles/collection-editor.react-data-r-0b16243c.css';
 import {
   useComponentModel,
   ModelScopeProvider,
@@ -12,6 +13,7 @@ import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 import SectionVisibilityControl from './SectionVisibilityControl';
 
 import { renderFaqEditorPart1 } from './FaqEditor.part1';
+import { renderFaqEditorPart2 } from './FaqEditor.part2';
 import {
   createComponentModel,
   componentDefaults,
@@ -37,23 +39,16 @@ export default function FaqEditor($incomingProps: ComponentProps) {
       <section
         {...$attributes}
         className={$class('card', $attributes.className)}
+        data-r-0b16243c=""
       >
-        <div className="section-heading">
-          <div>
-            <p className="step">{'Готовый раздел меню'}</p>
-            <h2>{'Частые вопросы'}</h2>
-          </div>
-          <span>
-            {draft.faq.length}
-            {' / 20'}
-          </span>
-        </div>
-        <p>{'Вопросы показываются в этом порядке.'}</p>
+        {renderFaqEditorPart1($state)}
+        <p data-r-0b16243c="">{'Вопросы показываются в этом порядке.'}</p>
         <p
           aria-live="polite"
           className={$class('counter', {
             'counter--error': responseLength > 4000,
           })}
+          data-r-0b16243c=""
         >
           {' Итоговый ответ: '}
           {responseLength}
@@ -67,19 +62,21 @@ export default function FaqEditor($incomingProps: ComponentProps) {
             () => $state.draft.value,
             'visibleSections',
           )}
+          data-r-0b16243c=""
         />
         {draft.faq.length === 0 ? (
-          <p className="empty">
+          <p className="empty" data-r-0b16243c="">
             {
               ' Добавьте хотя бы один вопрос и ответ, чтобы показать этот раздел. '
             }
           </p>
         ) : null}
-        {renderFaqEditorPart1($state, $props)}
+        {renderFaqEditorPart2($state, $props)}
         <button
           disabled={draft.faq.length >= 20}
           type="button"
           onClick={$nativeHandler(add)}
+          data-r-0b16243c=""
         >
           {' Добавить вопрос '}
         </button>

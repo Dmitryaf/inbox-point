@@ -1,0 +1,54 @@
+.attention-panel {
+  border-color: var(--color-attention-border);
+  display: grid;
+  gap: 1rem;
+}
+
+.attention-panel-heading {
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 0.9rem;
+}
+
+.attention-panel-heading .eyebrow,
+.attention-panel-heading h2,
+.attention-panel-heading p {
+  margin-bottom: 0;
+}
+
+.attention-panel-heading h2 {
+  margin-top: 0.2rem;
+}
+
+.attention-panel-heading > p:last-child {
+  color: var(--color-text-muted);
+  margin-top: 0.45rem;
+}
+
+.attention-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.attention-list article {
+  background: var(--color-attention-soft);
+  border: 1px solid var(--color-attention-border);
+  border-radius: 0.85rem;
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.85rem;
+}
+
+.attention-list h3,
+.attention-list p {
+  margin: 0;
+}
+
+.attention-list p {
+  color: var(--color-text-muted);
+}
+
+.attention-list a {
+  color: var(--color-primary-hover);
+  font-weight: 750;
+  justify-self: start;
+}

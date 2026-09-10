@@ -24,17 +24,18 @@ export function renderTelegramSetupCardPart3(
   return (
     <>
       {chats.length ? (
-        <fieldset className="setup-options">
-          <legend>{'Операторская группа'}</legend>
+        <fieldset className="setup-options" data-r-44d690ea="">
+          <legend data-r-44d690ea="">{'Операторская группа'}</legend>
           {$renderList(chats, (chat) => (
-            <label key={chat.id}>
+            <label key={chat.id} data-r-44d690ea="">
               <input
                 value={chat.id}
                 type="radio"
                 checked={selectedChatId === chat.id}
                 onChange={$radioModel($state, 'selectedChatId', chat.id)}
+                data-r-44d690ea=""
               />
-              <span>{chatLabel(chat)}</span>
+              <span data-r-44d690ea="">{chatLabel(chat)}</span>
             </label>
           ))}
         </fieldset>

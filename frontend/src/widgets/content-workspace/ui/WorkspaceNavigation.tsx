@@ -1,3 +1,4 @@
+import '@frontend/widgets/content-workspace/styles/workspace-navigation.react-data-r-e6e22060.css';
 import {
   useComponentModel,
   ModelScopeProvider,

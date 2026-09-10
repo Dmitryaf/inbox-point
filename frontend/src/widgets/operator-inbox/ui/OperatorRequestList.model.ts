@@ -19,14 +19,8 @@ export function createComponentModel(
   _props: ResolvedProps,
   $emit: (event: string, ...args: unknown[]) => void,
 ) {
-  function formatDate(value: string): string {
-    return new Intl.DateTimeFormat('ru-RU', {
-      dateStyle: 'short',
-      timeStyle: 'short',
-    }).format(new Date(value));
-  }
   function channelName(channel: 'telegram' | 'vk'): string {
     return channel === 'telegram' ? 'Telegram' : 'VK';
   }
-  return { $emit, formatDate, channelName };
+  return { $emit, channelName };
 }

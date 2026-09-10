@@ -9,8 +9,7 @@ import type {
   ClientChannel,
   ServiceControlState,
 } from '@frontend/entities/service-control/model/types';
-import { HttpError } from '@frontend/shared/api/http-client';
-import { errorMessage } from '@frontend/shared/lib/error-message';
+import { requestErrorMessage } from '@frontend/shared/lib/request-error-message';
 
 interface ClientIntakeControlOptions {
   onChanged: () => void;
@@ -84,11 +83,7 @@ export function useClientIntakeControl(options: ClientIntakeControlOptions) {
   }
 
   function reportFailure(cause: unknown): void {
-    if (cause instanceof HttpError && cause.status === 401) {
-      options.onUnauthorized();
-      return;
-    }
-    error.value = errorMessage(cause);
+    error.value = requestErrorMessage(cause, options.onUnauthorized);
   }
 
   return {

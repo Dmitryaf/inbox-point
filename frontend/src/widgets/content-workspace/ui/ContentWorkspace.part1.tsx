@@ -29,16 +29,17 @@ export function renderContentWorkspacePart1(
   return (
     <>
       {workspace.loading.value ? (
-        <p role="status" className="state-card">
+        <p role="status" className="state-card card" data-r-09629bd3="">
           {' Загружаем информацию… '}
         </p>
       ) : !workspace.loaded.value ? (
-        <section className="state-card">
-          <p>{'Редактор не открыт. Повторите загрузку.'}</p>
+        <section className="state-card card" data-r-09629bd3="">
+          <p data-r-09629bd3="">{'Редактор не открыт. Повторите загрузку.'}</p>
           <button
             type="button"
             onClick={$nativeHandler($required($unref($state.workspace)).load)}
             className="secondary-button"
+            data-r-09629bd3=""
           >
             {' Повторить '}
           </button>
@@ -48,25 +49,32 @@ export function renderContentWorkspacePart1(
           className={$class('workspace', {
             'workspace--editing': activeView === 'edit',
           })}
+          data-r-09629bd3=""
         >
           <WorkspaceNavigation
             activeSection={activeSection}
             activeView={activeView}
             onSectionChange={$setter($state, 'activeSection')}
             onViewChange={$setter($state, 'activeView')}
+            data-r-09629bd3=""
           />
-          <section aria-label="Рабочая область" className="workspace-panel">
+          <section
+            aria-label="Рабочая область"
+            className="workspace-panel"
+            data-r-09629bd3=""
+          >
             {renderContentWorkspacePart2($state)}
           </section>
-          <aside className="workspace-rail">
+          <aside className="workspace-rail" data-r-09629bd3="">
             <SaveBar
               dirty={workspace.dirty.value}
               saving={workspace.saving.value}
               valid={validation.valid}
               validationMessage={validation.message}
               onSave={$callback(save)}
+              data-r-09629bd3=""
             />
-            <ContentSummary content={workspace.draft} />
+            <ContentSummary content={workspace.draft} data-r-09629bd3="" />
           </aside>
         </div>
       )}

@@ -1,3 +1,4 @@
+import '@frontend/widgets/operations-overview/styles/operations-overview.react-data-r-2dc401be.css';
 import {
   useComponentModel,
   ModelScopeProvider,
@@ -8,6 +9,7 @@ import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
 import { renderOperationsOverviewPart1 } from './OperationsOverview.part1';
 import { renderOperationsOverviewPart2 } from './OperationsOverview.part2';
+import { renderOperationsOverviewPart3 } from './OperationsOverview.part3';
 import {
   createComponentModel,
   componentDefaults,
@@ -31,9 +33,11 @@ export default function OperationsOverview($incomingProps: ComponentProps) {
         {...$attributes}
         aria-labelledby="overview-title"
         className={$class('overview', $attributes.className)}
+        data-r-2dc401be=""
       >
         {renderOperationsOverviewPart1($state, $props)}
         {renderOperationsOverviewPart2($state, $props)}
+        {renderOperationsOverviewPart3($state, $props)}
       </section>
     </ModelScopeProvider>
   );

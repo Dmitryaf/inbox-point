@@ -1,3 +1,4 @@
+import '@frontend/pages/operations-dashboard/styles/operations-dashboard-page.react-data-r-fef838bc.css';
 import {
   useComponentModel,
   ModelScopeProvider,
@@ -5,7 +6,6 @@ import {
 import { classNames as $class } from '@frontend/shared/lib/component-view';
 import { eventCallback as $callback } from '@frontend/shared/lib/component-events';
 import { unref as $unref } from '@frontend/shared/lib/model-state';
-import { requiredValue as $required } from '@frontend/shared/lib/component-bindings';
 
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
@@ -30,6 +30,7 @@ export default function OperationsDashboardPage(
     componentDefaults,
     createComponentModel,
   );
+  const { logOut } = $state;
   const session = $unref($state.session);
   const $attributes = inheritedAttributes($props);
   return (
@@ -37,14 +38,18 @@ export default function OperationsDashboardPage(
       <main
         {...$attributes}
         className={$class('ops-shell', $attributes.className)}
+        data-r-fef838bc=""
       >
-        <AdminPageHeader
-          authenticated={session.authenticated.value}
-          current="status"
-          intro="Проверьте, работают ли каналы и доходят ли ответы."
-          title="Состояние"
-          onLogout={$callback($required($unref($state.session)).endSession)}
-        />
+        {session.authenticated.value ? (
+          <AdminPageHeader
+            authenticated={session.authenticated.value}
+            current="status"
+            intro="Проверьте, работают ли каналы и доходят ли ответы."
+            title="Состояние"
+            onLogout={$callback(logOut)}
+            data-r-fef838bc=""
+          />
+        ) : null}
         {renderOperationsDashboardPagePart1($state, $scope)}
       </main>
     </ModelScopeProvider>

@@ -1,3 +1,4 @@
+import '@frontend/widgets/operator-inbox/styles/operator-conversation.react-data-r-e21483db.css';
 import {
   useComponentModel,
   ModelScopeProvider,
@@ -31,6 +32,7 @@ export default function OperatorConversation($incomingProps: ComponentProps) {
       <article
         {...$attributes}
         className={$class('operator-conversation', $attributes.className)}
+        data-r-e21483db=""
       >
         {renderOperatorConversationPart1($state, $props)}
         {renderOperatorConversationPart2($state, $props)}

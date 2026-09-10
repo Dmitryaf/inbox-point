@@ -1,8 +1,4 @@
-import { classNames as $class } from '@frontend/shared/lib/component-view';
-
-import { unref as $unref } from '@frontend/shared/lib/model-state';
-
-import { formatUptime } from '@frontend/entities/operations/lib/status-format';
+import OperationsAttentionPanel from './OperationsAttentionPanel';
 
 import type { WithDefaults } from '@frontend/shared/lib/component-model';
 import type {
@@ -14,34 +10,27 @@ export function renderOperationsOverviewPart1(
   $state: ReturnType<typeof createComponentModel>,
   $props: WithDefaults<ComponentProps, typeof componentDefaults>,
 ) {
-  const overallLabel = $state.overallLabel.value;
-  const overallDescription = $state.overallDescription.value;
-  const observedAt = $state.observedAt.value;
+  const { $emit } = $state;
 
   return (
     <>
-      <article
-        className={$class('summary-card card', {
-          'summary-card--attention': $props.status.state === 'attention',
-          'summary-card--maintenance': $props.status.state === 'maintenance',
-        })}
-      >
-        <div>
-          <p className="eyebrow">{'Общее состояние'}</p>
-          <h2 id="overview-title">{overallLabel}</h2>
-          <p className="summary-description">{overallDescription}</p>
-        </div>
-        <dl className="summary-facts">
-          <div>
-            <dt>{'Работает без перезапуска'}</dt>
-            <dd>{$unref(formatUptime)($props.status.uptimeSeconds)}</dd>
-          </div>
-          <div>
-            <dt>{'Данные обновлены'}</dt>
-            <dd>{observedAt}</dd>
-          </div>
-        </dl>
-      </article>
+      <OperationsAttentionPanel
+        pendingDeliveryId={$props.pendingDeliveryId}
+        pendingInboundEventId={$props.pendingInboundEventId}
+        pendingOperatorActionId={$props.pendingOperatorActionId}
+        status={$props.status}
+        onResolveDelivery={(id, resolution) =>
+          $emit('resolveDelivery', id, resolution)
+        }
+        onRetryDelivery={($event) => void $emit('retryDelivery', $event)}
+        onResolveOperatorAction={(id, resolution) =>
+          $emit('resolveOperatorAction', id, resolution)
+        }
+        onResolveInboundEvent={(id, source, resolution) =>
+          $emit('resolveInboundEvent', id, source, resolution)
+        }
+        data-r-2dc401be=""
+      />
     </>
   );
 }

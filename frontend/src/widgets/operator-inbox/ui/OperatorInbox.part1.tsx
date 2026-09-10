@@ -18,28 +18,41 @@ export function renderOperatorInboxPart1(
         <section
           aria-labelledby="operator-inbox-title"
           className="card operator-inbox"
+          data-r-ae8be5db=""
         >
-          <header className="operator-inbox-heading">
-            <div>
-              <p className="eyebrow">{'РЕЗЕРВНЫЙ РЕЖИМ'}</p>
-              <h2 id="operator-inbox-title">{'Входящие обращения'}</h2>
-              <p>
+          <header className="operator-inbox-heading" data-r-ae8be5db="">
+            <div data-r-ae8be5db="">
+              <p className="eyebrow" data-r-ae8be5db="">
+                {'РЕЗЕРВНЫЙ РЕЖИМ'}
+              </p>
+              <h2 id="operator-inbox-title" data-r-ae8be5db="">
+                {'Входящие обращения'}
+              </h2>
+              <p data-r-ae8be5db="">
                 {
-                  ' Здесь можно продолжить обращения, если основной Telegram-интерфейс недоступен. '
+                  ' Здесь можно отвечать, если группа операторов в Telegram недоступна. '
                 }
               </p>
             </div>
-            <span className="status-pill status-pill--neutral">
+            <span
+              className="status-pill status-pill--neutral"
+              data-r-ae8be5db=""
+            >
               {' Активных: '}
               {inbox.requests.value.length}
             </span>
           </header>
-          <AsyncMessage kind="success" text={inbox.notice.value} />
-          <div className="operator-inbox-layout">
+          <AsyncMessage
+            kind="success"
+            text={inbox.notice.value}
+            data-r-ae8be5db=""
+          />
+          <div className="operator-inbox-layout" data-r-ae8be5db="">
             <OperatorRequestList
               requests={inbox.requests.value}
               selectedRequestId={inbox.selectedRequestId.value}
               onSelect={$callback($required($unref($state.inbox)).select)}
+              data-r-ae8be5db=""
             />
             {inbox.selectedRequest.value ? (
               <OperatorConversation
@@ -49,6 +62,7 @@ export function renderOperatorInboxPart1(
                 onClose={inbox.close}
                 onReply={inbox.reply}
                 request={inbox.selectedRequest.value}
+                data-r-ae8be5db=""
               />
             ) : null}
           </div>

@@ -24,9 +24,16 @@ export function renderWorkspaceNavigationPart3(
 
   return (
     <>
-      <aside className="dashboard-sidebar desktop-workspace-navigation">
-        <nav aria-label="Разделы управления" className="sidebar-group">
-          <p>{'Работа с информацией'}</p>
+      <aside
+        className="dashboard-sidebar desktop-workspace-navigation"
+        data-r-e6e22060=""
+      >
+        <nav
+          aria-label="Разделы управления"
+          className="sidebar-group"
+          data-r-e6e22060=""
+        >
+          <p data-r-e6e22060="">{'Работа с информацией'}</p>
           {$renderList($unref(workspaceViews), (view) => (
             <button
               key={view.id}
@@ -37,8 +44,9 @@ export function renderWorkspaceNavigationPart3(
                 { active: $props.activeView === view.id },
                 'navigation-button',
               )}
+              data-r-e6e22060=""
             >
-              <AppIcon name={view.id} /> {view.label}
+              <AppIcon name={view.id} data-r-e6e22060="" /> {view.label}
             </button>
           ))}
         </nav>

@@ -1,3 +1,4 @@
+import '@frontend/entities/content/styles/collection-editor.react-data-r-c3e93385.css';
 import {
   useComponentModel,
   ModelScopeProvider,
@@ -8,6 +9,7 @@ import { nativeHandler as $nativeHandler } from '@frontend/shared/lib/component-
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
 import { renderCustomSectionsEditorPart1 } from './CustomSectionsEditor.part1';
+import { renderCustomSectionsEditorPart2 } from './CustomSectionsEditor.part2';
 import {
   createComponentModel,
   componentDefaults,
@@ -32,25 +34,20 @@ export default function CustomSectionsEditor($incomingProps: ComponentProps) {
       <section
         {...$attributes}
         className={$class('card', $attributes.className)}
+        data-r-c3e93385=""
       >
-        <div className="section-heading">
-          <div>
-            <p className="step">{'Свои кнопки'}</p>
-            <h2>{'Дополнительные разделы'}</h2>
-          </div>
-          <span>
-            {sections.length}
-            {' / 6'}
-          </span>
-        </div>
+        {renderCustomSectionsEditorPart1($state)}
         {sections.length === 0 ? (
-          <p className="empty">{' Дополнительных разделов пока нет. '}</p>
+          <p className="empty" data-r-c3e93385="">
+            {' Дополнительных разделов пока нет. '}
+          </p>
         ) : null}
-        {renderCustomSectionsEditorPart1($state, $props)}
+        {renderCustomSectionsEditorPart2($state, $props)}
         <button
           disabled={sections.length >= 6}
           type="button"
           onClick={$nativeHandler(add)}
+          data-r-c3e93385=""
         >
           {' Добавить раздел '}
         </button>

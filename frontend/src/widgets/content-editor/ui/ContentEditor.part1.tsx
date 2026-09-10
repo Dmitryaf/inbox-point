@@ -26,12 +26,14 @@ export function renderContentEditorPart1(
           errors={$props.errors}
           modelValue={draft}
           onModelValueChange={$setter($state, 'draft')}
+          data-r-7c201b3b=""
         />
       ) : $props.activeSection === 'faq' ? (
         <FaqEditor
           errors={$props.errors}
           modelValue={draft}
           onModelValueChange={$setter($state, 'draft')}
+          data-r-7c201b3b=""
         />
       ) : (
         <CustomSectionsEditor
@@ -41,6 +43,7 @@ export function renderContentEditorPart1(
             () => $state.draft.value,
             'customSections',
           )}
+          data-r-7c201b3b=""
         />
       )}
     </>

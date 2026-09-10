@@ -47,13 +47,20 @@ describe('OperationsDashboardPage', () => {
 
     expect(wrapper.text()).toContain('Нужно проверить');
     expect(wrapper.text()).toContain(
-      'Один из разделов требует внимания. Подробности отмечены ниже.',
+      'Выше показано, что не работает и что нужно сделать.',
     );
+    expect(wrapper.text()).toContain('Требует внимания');
+    const attentionPanel = wrapper.get('.attention-panel').element;
+    const summaryCard = wrapper.get('.summary-card').element;
+    expect(
+      attentionPanel.compareDocumentPosition(summaryCard) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(wrapper.get('h1').text()).toBe('Состояние');
     expect(wrapper.get('[aria-current="page"]').text()).toBe('Состояние');
     const statusCards = wrapper.findAll('.status-card');
     expect(statusCards[0]?.text()).toContain('Telegram');
-    expect(statusCards[0]?.text()).toContain('Запущен');
+    expect(statusCards[0]?.text()).toContain('Работает');
     expect(statusCards[0]?.text()).toContain(
       'Новые обращения приостановлены вручную',
     );
@@ -63,15 +70,23 @@ describe('OperationsDashboardPage', () => {
     expect(statusCards[1]?.text()).toContain('Последняя ошибка связи');
     expect(statusCards[2]?.text()).toContain('Ожидают отправки3');
     expect(statusCards[2]?.text()).toContain('Не доставлены2');
-    expect(statusCards[2]?.text()).toContain('Обработчик очередиЗапущен');
-    expect(statusCards[2]?.text()).toContain('Технические данные');
-    expect(statusCards[2]?.text()).toContain('ID обращенияrequest-9');
-    expect(statusCards[2]?.text()).toContain('ID темы в Telegramtopic-42');
-    expect(statusCards[2]?.text()).toContain('ID сообщенияoperator-message-17');
+    expect(statusCards[2]?.text()).toContain('Система отправкиЗапущена');
+    expect(wrapper.get('.attention-panel').text()).toContain(
+      'ID обращенияrequest-9',
+    );
+    expect(wrapper.get('.attention-panel').text()).toContain(
+      'ID темы в Telegramtopic-42',
+    );
+    expect(wrapper.get('.attention-panel').text()).toContain(
+      'ID сообщенияoperator-message-17',
+    );
+    expect(
+      wrapper.get('.attention-panel .technical-details').element,
+    ).toHaveProperty('open', false);
 
     await wrapper
       .findAll('button')
-      .find((button) => button.text() === 'Повторить доставку')
+      .find((button) => button.text() === 'Повторить отправку')
       ?.trigger('click');
     await flushPromises();
 
@@ -87,9 +102,7 @@ describe('OperationsDashboardPage', () => {
           requestUrl(input).endsWith('/service-control'),
         ).length,
     ).toBeGreaterThan(1);
-    expect(wrapper.text()).toContain(
-      'Ответ поставлен в очередь повторной доставки.',
-    );
+    expect(wrapper.text()).toContain('Повторная отправка началась.');
 
     await wrapper
       .findAll('button')
@@ -102,13 +115,15 @@ describe('OperationsDashboardPage', () => {
       expect.objectContaining({ method: 'POST' }),
     );
     expect(wrapper.text()).toContain(
-      'Исходящая доставка остановлена. Очередь сохранена.',
+      'Отправка ответов остановлена. Сохранённые ответы не потеряны.',
     );
 
     wrapper.unmount();
   });
 
   it('returns to login when the owner session expires', async () => {
+    window.history.replaceState(null, '', '/ops');
+    window.sessionStorage.clear();
     vi.stubGlobal(
       'fetch',
       vi.fn((input: RequestInfo | URL) => {
@@ -128,10 +143,12 @@ describe('OperationsDashboardPage', () => {
     const wrapper = mount(OperationsDashboardPage);
     await flushPromises();
 
-    expect(wrapper.text()).toContain('Сессия завершилась');
-    expect(wrapper.text()).toContain('Введите пароль администратора.');
-    expect(wrapper.find('.auth-panel .auth-card').exists()).toBe(true);
+    expect(window.location.pathname).toBe('/login');
+    expect(wrapper.text()).not.toContain('Состояние');
+    expect(wrapper.find('.auth-card').exists()).toBe(false);
 
     wrapper.unmount();
+    window.history.replaceState(null, '', '/');
+    window.sessionStorage.clear();
   });
 });

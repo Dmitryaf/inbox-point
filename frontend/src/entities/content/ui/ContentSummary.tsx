@@ -1,3 +1,4 @@
+import '@frontend/entities/content/styles/content-summary.react-data-r-109c0780.css';
 import {
   useComponentModel,
   ModelScopeProvider,
@@ -9,6 +10,7 @@ import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 import AppIcon from '@frontend/shared/ui/AppIcon';
 
 import { renderContentSummaryPart1 } from './ContentSummary.part1';
+import { renderContentSummaryPart2 } from './ContentSummary.part2';
 import {
   createComponentModel,
   componentDefaults,
@@ -25,7 +27,6 @@ export default function ContentSummary($incomingProps: ComponentProps) {
     componentDefaults,
     createComponentModel,
   );
-  const totalCount = $state.totalCount.value;
   const $attributes = inheritedAttributes($props);
   return (
     <ModelScopeProvider scope={$scope}>
@@ -33,21 +34,12 @@ export default function ContentSummary($incomingProps: ComponentProps) {
         {...$attributes}
         aria-labelledby="content-summary-title"
         className={$class('content-summary', $attributes.className)}
+        data-r-109c0780=""
       >
-        <div className="summary-heading">
-          <span className="summary-icon">
-            <AppIcon name="channel" />
-          </span>
-          <div>
-            <p>{'Меню в каналах'}</p>
-            <h3 id="content-summary-title">
-              {totalCount ? 'Готово к показу' : 'Пока не заполнено'}
-            </h3>
-          </div>
-        </div>
-        {renderContentSummaryPart1($state, $props)}
-        <p className="channel-note">
-          <AppIcon name="check" />
+        {renderContentSummaryPart1($state)}
+        {renderContentSummaryPart2($state, $props)}
+        <p className="channel-note" data-r-109c0780="">
+          <AppIcon name="check" data-r-109c0780="" />
           {' После сохранения изменения появятся в Telegram и VK. '}
         </p>
       </section>

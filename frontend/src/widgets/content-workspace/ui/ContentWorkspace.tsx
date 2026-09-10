@@ -1,3 +1,4 @@
+import '@frontend/widgets/content-workspace/styles/content-workspace.react-data-r-09629bd3.css';
 import {
   useComponentModel,
   ModelScopeProvider,
@@ -23,8 +24,16 @@ export default function ContentWorkspace($incomingProps: ComponentProps) {
   const workspace = $unref($state.workspace);
   return (
     <ModelScopeProvider scope={$scope}>
-      <AsyncMessage kind="error" text={workspace.error.value} />
-      <AsyncMessage kind="success" text={workspace.notice.value} />
+      <AsyncMessage
+        kind="error"
+        text={workspace.error.value}
+        data-r-09629bd3=""
+      />
+      <AsyncMessage
+        kind="success"
+        text={workspace.notice.value}
+        data-r-09629bd3=""
+      />
       {renderContentWorkspacePart1($state)}
     </ModelScopeProvider>
   );

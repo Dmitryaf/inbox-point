@@ -23,28 +23,40 @@ export function renderChangeHistoryPart1(
   return (
     <>
       {$props.loading ? (
-        <p role="status" className="empty">
+        <p role="status" className="empty" data-r-1c9d9933="">
           {'Обновляем историю…'}
         </p>
       ) : $props.changes.length === 0 ? (
-        <p className="empty">{'Изменений пока нет.'}</p>
+        <p className="empty" data-r-1c9d9933="">
+          {'Изменений пока нет.'}
+        </p>
       ) : (
-        <ol className="history-list">
+        <ol className="history-list" data-r-1c9d9933="">
           {$renderList($props.changes, (change, index) => (
-            <li key={`${change.changedAt}-${change.revision ?? 'old'}`}>
-              <strong>{$unref(formatChangeDate)(change.changedAt)}</strong>
-              <span>{$unref(formatSections)(change.sections)}</span>
+            <li
+              key={`${change.changedAt}-${change.revision ?? 'old'}`}
+              data-r-1c9d9933=""
+            >
+              <strong data-r-1c9d9933="">
+                {$unref(formatChangeDate)(change.changedAt)}
+              </strong>
+              <span data-r-1c9d9933="">
+                {$unref(formatSections)(change.sections)}
+              </span>
               {index === 0 ? (
-                <small>{'Текущая версия'}</small>
+                <small data-r-1c9d9933="">{'Текущая версия'}</small>
               ) : change.revision ? (
                 <RestoreAction
                   hasUnsavedChanges={$props.hasUnsavedChanges}
                   pending={$props.restoring}
                   revision={change.revision}
                   onRestore={($event) => void $emit('restore', $event)}
+                  data-r-1c9d9933=""
                 />
               ) : (
-                <small>{'Старая запись: восстановление недоступно'}</small>
+                <small data-r-1c9d9933="">
+                  {'Старая запись: восстановление недоступно'}
+                </small>
               )}
             </li>
           ))}

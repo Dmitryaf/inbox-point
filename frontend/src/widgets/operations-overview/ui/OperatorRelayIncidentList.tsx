@@ -1,3 +1,4 @@
+import '@frontend/widgets/operations-overview/styles/incident-list.react-data-r-e2822c38.css';
 import {
   useComponentModel,
   ModelScopeProvider,

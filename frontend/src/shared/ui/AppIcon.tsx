@@ -1,3 +1,4 @@
+import '@frontend/shared/styles/app-icon.react-data-r-5d93b4d9.css';
 import {
   useComponentModel,
   ModelScopeProvider,
@@ -32,6 +33,7 @@ export default function AppIcon($incomingProps: ComponentProps) {
         strokeWidth="1.8"
         aria-hidden="true"
         className={$class('app-icon', $attributes.className)}
+        data-r-5d93b4d9=""
       >
         {renderAppIconPart1($props)}
       </svg>

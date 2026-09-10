@@ -25,9 +25,9 @@ describe('SetupPage', () => {
     expect(wrapper.get('#telegram-setup-title').text()).toBe('Telegram');
     expect(wrapper.get('#vk-setup-title').text()).toBe('VK');
     expect(wrapper.get('[aria-current="page"]').text()).toBe('Каналы');
-    expect(wrapper.text()).toContain('Настройте Long Poll API');
+    expect(wrapper.text()).not.toContain('Настройте Long Poll API');
     expect(wrapper.text()).toContain(
-      'Ключ даёт доступ к сообщениям сообщества',
+      'Сначала подключите Telegram. После этого здесь откроется следующий шаг.',
     );
     expect(wrapper.text()).not.toContain('Доставка ответов');
     expect(wrapper.text()).not.toContain('Резервная копия');
@@ -70,6 +70,8 @@ describe('SetupPage', () => {
   });
 
   it('requires the shared admin login before loading channel status', async () => {
+    window.history.replaceState(null, '', '/setup');
+    window.sessionStorage.clear();
     const requestedUrls: string[] = [];
     vi.stubGlobal(
       'fetch',
@@ -78,9 +80,6 @@ describe('SetupPage', () => {
         requestedUrls.push(url);
         if (url.endsWith('/admin/session')) {
           return Promise.resolve(response({ authenticated: false }));
-        }
-        if (url.endsWith('/admin/login')) {
-          return Promise.resolve(response({ authenticated: true }));
         }
         if (url.endsWith('/setup/status')) {
           return Promise.resolve(response(disconnectedStatus));
@@ -92,21 +91,17 @@ describe('SetupPage', () => {
     const wrapper = mount(SetupPage);
     await flushPromises();
 
-    expect(wrapper.text()).toContain('Введите пароль');
+    expect(window.location.pathname).toBe('/login');
+    expect(wrapper.find('h1').exists()).toBe(false);
     expect(wrapper.find('#telegram-setup-title').exists()).toBe(false);
     expect(requestedUrls).not.toContain('/api/setup/status');
 
-    await wrapper.get('#admin-password').setValue('synthetic-admin-password');
-    await wrapper.get('.auth-card').trigger('submit');
-    await flushPromises();
-
-    expect(wrapper.get('#telegram-setup-title').text()).toBe('Telegram');
-    expect(requestedUrls).toContain('/api/setup/status');
-
     wrapper.unmount();
+    window.history.replaceState(null, '', '/');
+    window.sessionStorage.clear();
   });
 
-  it('uses a single column when only one channel needs setup', async () => {
+  it('opens VK only after Telegram is connected', async () => {
     vi.stubGlobal(
       'fetch',
       createAuthenticatedFetch({
@@ -123,6 +118,9 @@ describe('SetupPage', () => {
     expect(wrapper.get('.setup-channel-grid').classes()).toContain(
       'setup-channel-grid--mixed',
     );
+    expect(wrapper.text()).toContain('Telegram подключён');
+    expect(wrapper.text()).toContain('Настройте Long Poll API');
+    expect(wrapper.find('#vk-token').exists()).toBe(true);
 
     wrapper.unmount();
   });

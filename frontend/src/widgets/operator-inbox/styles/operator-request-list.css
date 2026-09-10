@@ -1,0 +1,46 @@
+.operator-request-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.operator-request-button {
+  align-items: start;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  display: grid;
+  gap: 0.2rem;
+  justify-items: start;
+  min-width: 0;
+  padding: 0.75rem;
+  text-align: left;
+  width: 100%;
+}
+
+.operator-request-button:hover,
+.operator-request-button--selected {
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
+}
+
+.operator-request-button span,
+.operator-request-button time {
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+}
+
+.operator-request-button .channel-badge {
+  background: var(--color-primary-soft);
+  border-radius: 999px;
+  color: var(--color-primary-hover);
+  font-weight: 750;
+  padding: 0.2rem 0.45rem;
+}
+
+@media (min-width: 700px) {
+  .operator-request-list {
+    align-content: start;
+    max-height: 38rem;
+    overflow-y: auto;
+  }
+}

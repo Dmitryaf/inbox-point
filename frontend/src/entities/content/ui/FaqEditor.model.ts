@@ -40,5 +40,15 @@ export function createComponentModel(
       draft.value.faq.push({ answer: '', question: '' });
     }
   }
-  return { draft, responseLength, add };
+  function move(index: number, offset: -1 | 1): void {
+    const target = index + offset;
+    if (target < 0 || target >= draft.value.faq.length) {
+      return;
+    }
+    const [item] = draft.value.faq.splice(index, 1);
+    if (item) {
+      draft.value.faq.splice(target, 0, item);
+    }
+  }
+  return { draft, responseLength, add, move };
 }

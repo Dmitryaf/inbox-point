@@ -1,3 +1,4 @@
+import '@frontend/entities/setup/styles/setup-card.react-data-r-44d690ea.css';
 import {
   useComponentModel,
   ModelScopeProvider,
@@ -30,9 +31,14 @@ export default function TelegramSetupCard($incomingProps: ComponentProps) {
         {...$attributes}
         aria-labelledby="telegram-setup-title"
         className={$class('setup-card card', $attributes.className)}
+        data-r-44d690ea=""
       >
-        <p className="step">{'Шаг 1'}</p>
-        <h2 id="telegram-setup-title">{'Telegram'}</h2>
+        <p className="step" data-r-44d690ea="">
+          {'Шаг 1'}
+        </p>
+        <h2 id="telegram-setup-title" data-r-44d690ea="">
+          {'Telegram'}
+        </h2>
         {renderTelegramSetupCardPart1($state, $props)}
       </section>
     </ModelScopeProvider>

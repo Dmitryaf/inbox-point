@@ -20,16 +20,19 @@ export function renderWorkspaceNavigationPart1(
 
   return (
     <>
-      <div className="mobile-workspace-navigation">
-        <div className="mobile-navigation-field">
-          <label htmlFor="workspace-view">{'Режим'}</label>
+      <div className="mobile-workspace-navigation" data-r-e6e22060="">
+        <div className="mobile-navigation-field" data-r-e6e22060="">
+          <label htmlFor="workspace-view" data-r-e6e22060="">
+            {'Режим'}
+          </label>
           <select
             id="workspace-view"
             value={$props.activeView}
             onChange={$nativeHandler(changeView)}
+            data-r-e6e22060=""
           >
             {$renderList($unref(workspaceViews), (view) => (
-              <option key={view.id} value={view.id}>
+              <option key={view.id} value={view.id} data-r-e6e22060="">
                 {view.label}
               </option>
             ))}

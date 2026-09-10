@@ -1,6 +1,8 @@
-import ChannelStatusCard from './ChannelStatusCard';
-import DeliveryStatusCard from './DeliveryStatusCard';
-import InboundEventStatusCard from './InboundEventStatusCard';
+import { classNames as $class } from '@frontend/shared/lib/component-view';
+
+import { unref as $unref } from '@frontend/shared/lib/model-state';
+
+import { formatUptime } from '@frontend/entities/operations/lib/status-format';
 
 import type { WithDefaults } from '@frontend/shared/lib/component-model';
 import type {
@@ -12,47 +14,43 @@ export function renderOperationsOverviewPart2(
   $state: ReturnType<typeof createComponentModel>,
   $props: WithDefaults<ComponentProps, typeof componentDefaults>,
 ) {
-  const { $emit } = $state;
+  const overallLabel = $state.overallLabel.value;
+  const overallDescription = $state.overallDescription.value;
+  const observedAt = $state.observedAt.value;
 
   return (
     <>
-      <div className="status-grid">
-        <ChannelStatusCard
-          name="Telegram"
-          channel={$props.status.channels.telegram}
-          intake={$props.status.intake.telegram}
-        />
-        <ChannelStatusCard
-          name="VK"
-          channel={$props.status.channels.vk}
-          intake={$props.status.intake.vk}
-        />
-        <DeliveryStatusCard
-          deliveries={$props.status.deliveries}
-          deliveryControlPending={$props.deliveryControlPending}
-          outbound={$props.status.outbound}
-          operatorRelays={$props.status.operatorRelays}
-          pendingDeliveryId={$props.pendingDeliveryId}
-          pendingOperatorActionId={$props.pendingOperatorActionId}
-          onChangeDeliveryMode={($event) =>
-            void $emit('changeDeliveryMode', $event)
-          }
-          onResolve={(id, resolution) =>
-            $emit('resolveDelivery', id, resolution)
-          }
-          onRetry={($event) => void $emit('retryDelivery', $event)}
-          onResolveOperatorAction={(id, resolution) =>
-            $emit('resolveOperatorAction', id, resolution)
-          }
-        />
-        <InboundEventStatusCard
-          inboundEvents={$props.status.inboundEvents}
-          pendingEventId={$props.pendingInboundEventId}
-          onResolve={(id, source, resolution) =>
-            $emit('resolveInboundEvent', id, source, resolution)
-          }
-        />
-      </div>
+      <article
+        className={$class('summary-card card', {
+          'summary-card--attention': $props.status.state === 'attention',
+          'summary-card--maintenance': $props.status.state === 'maintenance',
+        })}
+        data-r-2dc401be=""
+      >
+        <div data-r-2dc401be="">
+          <p className="eyebrow" data-r-2dc401be="">
+            {'Общее состояние'}
+          </p>
+          <h2 id="overview-title" data-r-2dc401be="">
+            {overallLabel}
+          </h2>
+          <p className="summary-description" data-r-2dc401be="">
+            {overallDescription}
+          </p>
+        </div>
+        <dl className="summary-facts" data-r-2dc401be="">
+          <div data-r-2dc401be="">
+            <dt data-r-2dc401be="">{'Работает'}</dt>
+            <dd data-r-2dc401be="">
+              {$unref(formatUptime)($props.status.uptimeSeconds)}
+            </dd>
+          </div>
+          <div data-r-2dc401be="">
+            <dt data-r-2dc401be="">{'Данные обновлены'}</dt>
+            <dd data-r-2dc401be="">{observedAt}</dd>
+          </div>
+        </dl>
+      </article>
     </>
   );
 }

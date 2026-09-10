@@ -1,3 +1,4 @@
+import '@frontend/entities/content/styles/core-sections-fields.react-data-r-54db50dd.css';
 import {
   useComponentModel,
   ModelScopeProvider,
@@ -31,9 +32,12 @@ export default function CoreSectionsFields($incomingProps: ComponentProps) {
       <section
         {...$attributes}
         className={$class('card', $attributes.className)}
+        data-r-54db50dd=""
       >
-        <p className="step">{'Основные разделы'}</p>
-        <h2>{'Расписание, цены и адрес'}</h2>
+        <p className="step" data-r-54db50dd="">
+          {'Основные разделы'}
+        </p>
+        <h2 data-r-54db50dd="">{'Расписание, цены и адрес'}</h2>
         {renderCoreSectionsFieldsPart1($state, $props)}
         {renderCoreSectionsFieldsPart2($state, $props)}
         {renderCoreSectionsFieldsPart3($state, $props)}

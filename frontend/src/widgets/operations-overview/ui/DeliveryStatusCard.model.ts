@@ -12,14 +12,8 @@ export type ComponentProps = {
   deliveries: OperationsStatus['deliveries'];
   deliveryControlPending: 'pause' | 'resume' | undefined;
   outbound: OperationsStatus['outbound'];
-  operatorRelays: OperationsStatus['operatorRelays'];
-  pendingOperatorActionId: string | undefined;
-  pendingDeliveryId: string | undefined;
 } & EventProps<{
   changeDeliveryMode: [mode: 'pause' | 'resume'];
-  resolve: [deliveryId: string, resolution: 'not_received' | 'received'];
-  retry: [deliveryId: string];
-  resolveOperatorAction: [actionId: string, resolution: 'received' | 'use_web'];
 }> &
   ComponentAttributes;
 export const componentDefaults = {};
@@ -31,16 +25,16 @@ export function createComponentModel(
   const props = $props;
   const state = computed(() => {
     if (props.deliveries.state === 'paused') {
-      return { label: 'Доставка остановлена', tone: 'neutral' };
+      return { label: 'Отправка остановлена', tone: 'neutral' };
     }
     if (props.deliveries.state === 'failed') {
       return { label: 'Есть ошибки', tone: 'attention' };
     }
     if (props.deliveries.state === 'stalled') {
-      return { label: 'Обработчик остановлен', tone: 'attention' };
+      return { label: 'Отправка остановлена', tone: 'attention' };
     }
     if (props.deliveries.state === 'backlog') {
-      return { label: 'Очередь задерживается', tone: 'attention' };
+      return { label: 'Ответы задерживаются', tone: 'attention' };
     }
     return { label: 'Работает', tone: 'healthy' };
   });

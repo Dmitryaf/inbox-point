@@ -5,7 +5,6 @@ import {
   requiredValue as $required,
 } from '@frontend/shared/lib/component-bindings';
 
-import AdminLoginForm from '@frontend/features/admin-auth/ui/AdminLoginForm';
 import AsyncMessage from '@frontend/shared/ui/AsyncMessage';
 
 import ContentWorkspace from '@frontend/widgets/content-workspace/ui/ContentWorkspace';
@@ -20,35 +19,23 @@ export function renderContentManagementPagePart1(
   return (
     <>
       {session.booting.value ? (
-        <p role="status" className="state-card">
+        <p role="status" className="state-card card" data-r-5179b381="">
           {' Открываем редактор… '}
         </p>
-      ) : (
-        <main>
-          {!session.authenticated.value ? (
-            <section className="auth-panel">
-              <div className="auth-stack">
-                <AsyncMessage kind="error" text={session.error.value} />
-                <AdminLoginForm
-                  pending={session.pending.value}
-                  onSubmit={$callback(
-                    $required($unref($state.session)).authenticate,
-                  )}
-                />
-              </div>
-            </section>
-          ) : null}
-          {session.authenticated.value ? (
-            <>
-              <AsyncMessage kind="error" text={session.error.value} />
-            </>
-          ) : null}
+      ) : session.authenticated.value ? (
+        <main data-r-5179b381="">
+          <AsyncMessage
+            kind="error"
+            text={session.error.value}
+            data-r-5179b381=""
+          />
           {workspaceActivated ? (
             <div
               style={Object.assign(
                 {},
                 { display: session.authenticated.value ? undefined : 'none' },
               )}
+              data-r-5179b381=""
             >
               <ContentWorkspace
                 authenticated={session.authenticated.value}
@@ -56,11 +43,12 @@ export function renderContentManagementPagePart1(
                 onUnauthorized={$callback(
                   $required($unref($state.session)).expireSession,
                 )}
+                data-r-5179b381=""
               />
             </div>
           ) : null}
         </main>
-      )}
+      ) : null}
     </>
   );
 }

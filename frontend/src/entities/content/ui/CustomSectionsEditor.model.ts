@@ -30,5 +30,15 @@ export function createComponentModel(
       sections.value.push({ label: '', text: '' });
     }
   }
-  return { sections, add };
+  function move(index: number, offset: -1 | 1): void {
+    const target = index + offset;
+    if (target < 0 || target >= sections.value.length) {
+      return;
+    }
+    const [section] = sections.value.splice(index, 1);
+    if (section) {
+      sections.value.splice(target, 0, section);
+    }
+  }
+  return { sections, add, move };
 }

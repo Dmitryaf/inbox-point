@@ -1,3 +1,4 @@
+import '@frontend/entities/setup/styles/setup-instructions.react-data-r-aa9e848d.css';
 import {
   useComponentModel,
   ModelScopeProvider,
@@ -20,7 +21,7 @@ export default function VkSetupInstructions($incomingProps: ComponentProps) {
   return (
     <ModelScopeProvider scope={$scope}>
       {renderVkSetupInstructionsPart1()}
-      <p className="setup-warning">
+      <p className="setup-warning" data-r-aa9e848d="">
         {
           ' Ключ даёт доступ к сообщениям сообщества. Не отправляйте его в чатах и не сохраняйте в заметках с общим доступом. '
         }

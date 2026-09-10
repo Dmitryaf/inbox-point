@@ -1,3 +1,4 @@
+import '@frontend/widgets/admin-shell/styles/admin-page-header.react-data-r-e15afcb7.css';
 import {
   useComponentModel,
   ModelScopeProvider,
@@ -30,8 +31,12 @@ export default function AdminPageHeader($incomingProps: ComponentProps) {
       <header
         {...$attributes}
         className={$class('admin-header', $attributes.className)}
+        data-r-e15afcb7=""
       >
         {renderAdminPageHeaderPart1($state, $props)}
+        <p className="page-intro" data-r-e15afcb7="">
+          {$props.intro}
+        </p>
         {renderAdminPageHeaderPart2($state, $props)}
       </header>
     </ModelScopeProvider>

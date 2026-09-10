@@ -16,16 +16,21 @@ export function renderOperatorConversationPart1(
 
   return (
     <>
-      <header className="operator-conversation-heading">
-        <div>
-          <h3>{$or($props.request.displayName, () => 'Без имени')}</h3>
-          <p>{$props.request.channel === 'telegram' ? 'Telegram' : 'VK'}</p>
+      <header className="operator-conversation-heading" data-r-e21483db="">
+        <div data-r-e21483db="">
+          <h3 data-r-e21483db="">
+            {$or($props.request.displayName, () => 'Без имени')}
+          </h3>
+          <p data-r-e21483db="">
+            {$props.request.channel === 'telegram' ? 'Telegram' : 'VK'}
+          </p>
         </div>
         <button
           type="button"
           disabled={$props.actionPending}
           onClick={$nativeHandler(closeRequest)}
           className="secondary-button"
+          data-r-e21483db=""
         >
           {' Закрыть обращение '}
         </button>

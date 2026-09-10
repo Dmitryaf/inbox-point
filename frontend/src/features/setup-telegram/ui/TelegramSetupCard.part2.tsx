@@ -1,3 +1,4 @@
+import { classNames as $class } from '@frontend/shared/lib/component-view';
 import { nativeHandler as $nativeHandler } from '@frontend/shared/lib/component-events';
 
 import { logicalOr as $or } from '@frontend/shared/lib/component-bindings';
@@ -20,6 +21,7 @@ export function renderTelegramSetupCardPart2(
   const pending = $state.pending.value;
   const selectedChatId = $state.selectedChatId.value;
   const chats = $state.chats.value;
+  const messageKind = $state.messageKind.value;
   const message = $state.message.value;
   if (!!$props.status.connected) {
     return null;
@@ -27,25 +29,29 @@ export function renderTelegramSetupCardPart2(
   return (
     <>
       {$props.status.locked ? (
-        <p className="setup-status">
+        <p className="setup-status setup-status--info" data-r-44d690ea="">
           {
-            ' Telegram настроен на сервере. Если он не работает, откройте раздел «Состояние». '
+            ' Telegram подключён при установке. Если он не работает, откройте раздел «Состояние». '
           }
         </p>
       ) : (
         <>
-          <label htmlFor="telegram-token">{'Токен от @BotFather'}</label>
+          <label htmlFor="telegram-token" data-r-44d690ea="">
+            {'Токен от @BotFather'}
+          </label>
           <input
             id="telegram-token"
             autoComplete="off"
             type="password"
             value={botToken ?? ''}
             onChange={$textModel($state, 'botToken')}
+            data-r-44d690ea=""
           />
           <button
             disabled={$or(pending !== null, () => botToken.trim().length < 20)}
             type="button"
             onClick={$nativeHandler(discover)}
+            data-r-44d690ea=""
           >
             {pending === 'discover' ? 'Ищем…' : 'Найти группы'}
           </button>
@@ -55,11 +61,16 @@ export function renderTelegramSetupCardPart2(
               disabled={$or(pending !== null, () => selectedChatId === null)}
               type="button"
               onClick={$nativeHandler(connect)}
+              data-r-44d690ea=""
             >
               {pending === 'connect' ? 'Подключаем…' : 'Подключить Telegram'}
             </button>
           ) : null}
-          <p role="status" className="setup-status">
+          <p
+            role={messageKind === 'error' ? 'alert' : 'status'}
+            className={$class('setup-status', `setup-status--${messageKind}`)}
+            data-r-44d690ea=""
+          >
             {message}
           </p>
         </>

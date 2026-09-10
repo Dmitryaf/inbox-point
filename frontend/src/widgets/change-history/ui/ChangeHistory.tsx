@@ -1,3 +1,4 @@
+import '@frontend/widgets/change-history/styles/change-history.react-data-r-1c9d9933.css';
 import {
   useComponentModel,
   ModelScopeProvider,
@@ -30,9 +31,14 @@ export default function ChangeHistory($incomingProps: ComponentProps) {
         {...$attributes}
         aria-labelledby="history-title"
         className={$class('card', $attributes.className)}
+        data-r-1c9d9933=""
       >
-        <p className="step">{'История'}</p>
-        <h2 id="history-title">{'Предыдущие версии'}</h2>
+        <p className="step" data-r-1c9d9933="">
+          {'История'}
+        </p>
+        <h2 id="history-title" data-r-1c9d9933="">
+          {'Предыдущие версии'}
+        </h2>
         {renderChangeHistoryPart1($state, $props)}
       </section>
     </ModelScopeProvider>

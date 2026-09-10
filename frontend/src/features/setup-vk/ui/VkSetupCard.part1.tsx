@@ -15,14 +15,27 @@ export function renderVkSetupCardPart1(
   return (
     <>
       {$props.status.connected ? (
-        <p className="setup-status setup-status--success">
-          {
-            ' VK подключён. После перезапуска сервис восстановит подключение автоматически. '
-          }
+        <p
+          role="status"
+          className="setup-status setup-status--success setup-connected-status"
+          data-r-712bbad4=""
+        >
+          <strong data-r-712bbad4="">{'VK подключён'}</strong>
+          <span data-r-712bbad4="">
+            {'Новые сообщения сообщества будут передаваться операторам.'}
+          </span>
         </p>
+      ) : !$props.telegramConnected ? (
+        <>
+          <p className="setup-status setup-status--info" data-r-712bbad4="">
+            {
+              ' Сначала подключите Telegram. После этого здесь откроется следующий шаг. '
+            }
+          </p>
+        </>
       ) : (
         <>
-          <VkSetupInstructions />
+          <VkSetupInstructions data-r-712bbad4="" />
           {renderVkSetupCardPart2($state, $props)}
         </>
       )}

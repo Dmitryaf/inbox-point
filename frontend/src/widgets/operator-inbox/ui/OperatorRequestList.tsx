@@ -1,3 +1,4 @@
+import '@frontend/widgets/operator-inbox/styles/operator-request-list.react-data-r-f52dee34.css';
 import {
   useComponentModel,
   ModelScopeProvider,
@@ -30,6 +31,7 @@ export default function OperatorRequestList($incomingProps: ComponentProps) {
         {...$attributes}
         aria-label="Активные обращения"
         className={$class('operator-request-list', $attributes.className)}
+        data-r-f52dee34=""
       >
         {renderOperatorRequestListPart1($state, $props)}
       </nav>

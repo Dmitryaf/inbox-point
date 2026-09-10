@@ -13,8 +13,11 @@ import {
 } from '@frontend/shared/lib/model-state';
 import { validateContentDraft } from '@frontend/entities/content/lib/content-validation';
 
-import type { EditorSection, WorkspaceView } from '../model/navigation';
-import { useContentWorkspace } from '../model/use-content-workspace';
+import type {
+  EditorSection,
+  WorkspaceView,
+} from '@frontend/widgets/content-workspace/model/navigation';
+import { useContentWorkspace } from '@frontend/widgets/content-workspace/model/use-content-workspace';
 
 export type ComponentProps = {
   authenticated: boolean;

@@ -1,3 +1,4 @@
+import '@frontend/features/restore-content/styles/restore-action.react-data-r-b537467e.css';
 import {
   useComponentModel,
   ModelScopeProvider,

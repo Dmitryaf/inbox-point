@@ -2,26 +2,8 @@
   box-sizing: border-box;
 }
 
-.app-icon {
-  display: block;
-  height: 1.1rem;
-  width: 1.1rem;
-}
-
 body {
-  background:
-    radial-gradient(
-      circle at 8% 4%,
-      rgba(188, 204, 220, 0.34),
-      transparent 28rem
-    ),
-    radial-gradient(
-      circle at 92% 8%,
-      rgba(215, 224, 232, 0.42),
-      transparent 30rem
-    ),
-    linear-gradient(145deg, #f5f7f9 0%, #f8f9fa 55%, #f1f4f7 100%);
-  background-attachment: fixed;
+  background: var(--color-background);
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
@@ -38,7 +20,7 @@ textarea {
 button {
   background: var(--color-primary);
   border: 1px solid var(--color-primary);
-  color: #ffffff;
+  color: var(--color-surface-raised);
   cursor: pointer;
   font-weight: 750;
   box-shadow: var(--shadow-control);
@@ -49,35 +31,47 @@ button {
 button:hover {
   background: var(--color-primary-hover);
   border-color: var(--color-primary-hover);
-  box-shadow: 0 5px 14px rgba(48, 72, 98, 0.16);
+  box-shadow: var(--shadow-card);
 }
 
 button:disabled {
-  background: #dce3ef;
-  border-color: #c4cede;
-  color: #5c687a;
+  background: var(--color-disabled);
+  border-color: var(--color-border);
+  color: var(--color-disabled-text);
   cursor: not-allowed;
   opacity: 1;
 }
 
 .secondary-button,
 button.quiet {
-  background: rgba(255, 255, 255, 0.82);
+  background: var(--color-surface-raised);
   border-color: var(--color-border-strong);
   color: var(--color-primary);
 }
 
 .secondary-button:hover,
 button.quiet:hover {
-  background: rgba(255, 255, 255, 0.88);
+  background: var(--color-primary-soft);
   border-color: var(--color-primary-hover);
   color: var(--color-primary-hover);
 }
 
 button.danger {
-  background: rgba(255, 255, 255, 0.68);
+  background: var(--color-surface-raised);
   border-color: var(--color-danger);
   color: var(--color-danger);
+}
+
+button.quiet-danger {
+  background: transparent;
+  border-color: var(--color-danger-border);
+  box-shadow: none;
+  color: var(--color-danger);
+}
+
+button.quiet-danger:hover {
+  background: var(--color-danger-soft);
+  border-color: var(--color-danger);
 }
 
 button:focus-visible,
@@ -88,10 +82,15 @@ textarea:focus-visible {
   outline-offset: 2px;
 }
 
+a:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
 input,
 select,
 textarea {
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--color-surface-raised);
   border: 1px solid var(--color-border-strong);
   color: var(--color-text);
   max-width: 100%;
@@ -128,7 +127,7 @@ label {
 input:hover,
 select:hover,
 textarea:hover {
-  border-color: #929fba;
+  border-color: var(--color-primary);
 }
 
 input:focus,
@@ -149,7 +148,7 @@ p {
 }
 
 h1 {
-  font-size: clamp(2rem, 7vw, 3.5rem);
+  font-size: clamp(1.8rem, 5vw, 2.45rem);
   letter-spacing: -0.04em;
   line-height: 1;
   margin-bottom: 0.75rem;
@@ -160,13 +159,32 @@ h2 {
   letter-spacing: -0.02em;
 }
 
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 1.25rem;
+  box-shadow: var(--shadow-card);
+  min-width: 0;
+  padding: 1rem;
+  width: 100%;
+}
+
 dd,
 dt,
-li,
-.preserve {
+li {
   min-width: 0;
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+.eyebrow,
+.brand,
+.step {
+  color: var(--color-primary);
+  font-size: 0.76rem;
+  font-weight: 850;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -180,5 +198,18 @@ li,
 
   button:active {
     transform: translateY(1px);
+  }
+}
+
+@media (min-width: 900px) {
+  .card {
+    padding: 1.35rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .card {
+    border-radius: 1rem;
+    padding: 0.85rem;
   }
 }

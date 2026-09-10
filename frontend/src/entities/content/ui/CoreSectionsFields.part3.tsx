@@ -21,23 +21,37 @@ export function renderCoreSectionsFieldsPart3(
 
   return (
     <>
-      <details className="field-group">
-        <summary>
-          <span className="summary-copy">
-            <strong>{'Адрес'}</strong>
-            <span className="summary-action summary-action--open">
+      <details className="field-group" data-r-54db50dd="">
+        <summary data-r-54db50dd="">
+          <span className="summary-copy" data-r-54db50dd="">
+            <strong data-r-54db50dd="">{'Адрес'}</strong>
+            <span
+              className="summary-action summary-action--open"
+              data-r-54db50dd=""
+            >
               {' Открыть настройки раздела '}
             </span>
-            <span className="summary-action summary-action--close">
+            <span
+              className="summary-action summary-action--close"
+              data-r-54db50dd=""
+            >
               {' Скрыть настройки раздела '}
             </span>
           </span>
-          <span className="summary-meta">
-            <small>{draft.address.trim() ? 'Заполнено' : 'Не заполнено'}</small>
-            <span aria-hidden="true" className="disclosure-chevron" />
+          <span className="summary-meta" data-r-54db50dd="">
+            <small data-r-54db50dd="">
+              {draft.address.trim() ? 'Заполнено' : 'Не заполнено'}
+            </small>
+            <span
+              aria-hidden="true"
+              className="disclosure-chevron"
+              data-r-54db50dd=""
+            />
           </span>
         </summary>
-        <label htmlFor="address">{'Текст ответа'}</label>
+        <label htmlFor="address" data-r-54db50dd="">
+          {'Текст ответа'}
+        </label>
         <textarea
           id="address"
           aria-describedby={$props.errors.address ? 'address-error' : undefined}
@@ -46,12 +60,18 @@ export function renderCoreSectionsFieldsPart3(
           rows={4}
           value={draft.address ?? ''}
           onChange={$textProperty(() => $state.draft.value, 'address')}
+          data-r-54db50dd=""
         />
-        <FieldError id="address-error" text={$props.errors.address} />
+        <FieldError
+          id="address-error"
+          text={$props.errors.address}
+          data-r-54db50dd=""
+        />
         <p
           className={$class('counter', {
             'counter--error': responseLengths.address > 4000,
           })}
+          data-r-54db50dd=""
         >
           {' Итоговый ответ: '}
           {responseLengths.address}
@@ -65,6 +85,7 @@ export function renderCoreSectionsFieldsPart3(
             () => $state.draft.value,
             'visibleSections',
           )}
+          data-r-54db50dd=""
         />
       </details>
     </>

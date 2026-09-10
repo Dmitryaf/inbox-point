@@ -4,8 +4,8 @@ import {
   createEmptyContent,
   snapshotContent,
 } from '@frontend/entities/content/model/content-draft';
-import { HttpError } from '@frontend/shared/api/http-client';
-import { errorMessage } from '@frontend/shared/lib/error-message';
+import { requestErrorMessage } from '@frontend/shared/lib/request-error-message';
+import { preserveContentDraft } from '@frontend/widgets/content-workspace/model/content-draft-recovery';
 
 export function createContentWorkspaceState(onUnauthorized: () => void) {
   const draft = reactive(createEmptyContent());
@@ -20,11 +20,12 @@ export function createContentWorkspaceState(onUnauthorized: () => void) {
   const dirty = computed(() => snapshotContent(draft) !== savedSnapshot.value);
 
   function reportFailure(cause: unknown): string {
-    if (cause instanceof HttpError && cause.status === 401) {
+    const message = requestErrorMessage(cause, () => {
+      if (dirty.value) {
+        preserveContentDraft(draft, savedSnapshot.value, version.value);
+      }
       onUnauthorized();
-      return '';
-    }
-    const message = errorMessage(cause);
+    });
     error.value = message;
     return message;
   }

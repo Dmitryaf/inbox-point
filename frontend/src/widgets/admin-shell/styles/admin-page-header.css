@@ -1,0 +1,94 @@
+.admin-header {
+  display: grid;
+  gap: 0.65rem;
+  margin-inline: auto;
+  max-width: 1120px;
+  min-width: 0;
+  padding: 1rem 0 1.15rem;
+  width: 100%;
+}
+
+.admin-header-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.admin-header h1 {
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
+  margin-bottom: 0;
+}
+
+.admin-title-block {
+  max-width: 720px;
+  min-width: 0;
+}
+
+.admin-header-row > .secondary-button {
+  flex: 0 0 auto;
+}
+
+.admin-navigation {
+  display: grid;
+  gap: 0.35rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-width: 32rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.admin-navigation a {
+  align-items: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  color: var(--color-text-muted);
+  display: flex;
+  font-size: 0.9rem;
+  font-weight: 750;
+  justify-content: center;
+  min-height: 2.65rem;
+  min-width: 0;
+  padding: 0.55rem 0.7rem;
+  text-align: center;
+  text-decoration: none;
+}
+
+.admin-navigation a:hover {
+  background: var(--color-surface-raised);
+  border-color: var(--color-border-strong);
+  color: var(--color-primary-hover);
+}
+
+.admin-navigation a[aria-current='page'] {
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
+  color: var(--color-primary-hover);
+}
+
+.admin-navigation a:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.page-intro {
+  color: var(--color-text-muted);
+  font-size: 0.96rem;
+  margin-bottom: 0;
+  max-width: 42rem;
+}
+
+@media (max-width: 520px) {
+  .admin-navigation a {
+    font-size: 0.78rem;
+    padding-inline: 0.35rem;
+  }
+
+  .admin-header-row > .secondary-button {
+    min-height: 2.35rem;
+    padding-inline: 0.75rem;
+  }
+}

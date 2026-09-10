@@ -18,6 +18,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 final class StaticFrontend {
     private static final Map<String, Asset> ASSETS = Map.ofEntries(
+            Map.entry("/setup/favicon.svg", new Asset("favicon.svg", "image/svg+xml;charset=UTF-8")),
+            Map.entry("/manage/favicon.svg", new Asset("favicon.svg", "image/svg+xml;charset=UTF-8")),
+            Map.entry("/ops/favicon.svg", new Asset("favicon.svg", "image/svg+xml;charset=UTF-8")),
             Map.entry("/setup", new Asset("index.html", "text/html;charset=UTF-8")),
             Map.entry("/setup/app.js", new Asset("app.js", "text/javascript;charset=UTF-8")),
             Map.entry("/manage", new Asset("index.html", "text/html;charset=UTF-8")),
@@ -36,7 +39,7 @@ final class StaticFrontend {
         frontend = Path.of(directory);
     }
 
-    @GetMapping({"/setup", "/setup/app.js", "/setup/style.css", "/manage", "/manage/app.js", "/manage/style.css", "/ops", "/ops/app.js", "/ops/style.css"})
+    @GetMapping({"/setup", "/setup/app.js", "/setup/style.css", "/manage", "/manage/app.js", "/manage/style.css", "/ops", "/ops/app.js", "/ops/style.css", "/setup/favicon.svg", "/manage/favicon.svg", "/ops/favicon.svg"})
     ResponseEntity<byte[]> serve(HttpServletRequest request, HttpServletResponse response) throws IOException {
         var route = request.getRequestURI();
         var operations = route.startsWith("/ops");
@@ -46,7 +49,7 @@ final class StaticFrontend {
                 return ResponseEntity.notFound().build();
             }
             response.setHeader("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; "
-                    + "connect-src 'self'; frame-ancestors 'none'; form-action 'self'");
+                    + "connect-src 'self'; img-src 'self'; frame-ancestors 'none'; form-action 'self'");
         }
         var asset = ASSETS.get(route);
         var file = frontend.resolve(asset.file());

@@ -1,3 +1,4 @@
+import '@frontend/features/admin-auth/styles/admin-login-form.react-data-r-2e9199db.css';
 import {
   useComponentModel,
   ModelScopeProvider,
@@ -33,10 +34,13 @@ export default function AdminLoginForm($incomingProps: ComponentProps) {
         {...$attributes}
         onSubmit={$nativeHandler(submit, { prevent: true })}
         className={$class('auth-card card', $attributes.className)}
+        data-r-2e9199db=""
       >
-        <h2>{'Вход'}</h2>
-        <p>{'Введите пароль администратора.'}</p>
-        <label htmlFor="admin-password">{'Пароль'}</label>
+        <h1 data-r-2e9199db="">{'Вход в управление'}</h1>
+        <p data-r-2e9199db="">{'Введите пароль администратора.'}</p>
+        <label htmlFor="admin-password" data-r-2e9199db="">
+          {'Пароль'}
+        </label>
         <input
           id="admin-password"
           autoComplete="current-password"
@@ -44,8 +48,9 @@ export default function AdminLoginForm($incomingProps: ComponentProps) {
           type="password"
           value={password ?? ''}
           onChange={$textModel($state, 'password')}
+          data-r-2e9199db=""
         />
-        <button disabled={$props.pending} type="submit">
+        <button disabled={$props.pending} type="submit" data-r-2e9199db="">
           {$props.pending ? 'Проверяем…' : 'Войти'}
         </button>
       </form>

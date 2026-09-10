@@ -6,7 +6,6 @@ import {
 import { unref as $unref } from '@frontend/shared/lib/model-state';
 import { requiredValue as $required } from '@frontend/shared/lib/component-bindings';
 
-import AdminLoginForm from '@frontend/features/admin-auth/ui/AdminLoginForm';
 import ClientIntakeControl from '@frontend/features/control-client-intake/ui/ClientIntakeControl';
 
 import OperatorInbox from '@frontend/widgets/operator-inbox/ui/OperatorInbox';
@@ -30,76 +29,99 @@ export function renderOperationsDashboardPagePart1(
   return (
     <>
       {session.booting.value ? (
-        <section className="card loading-card">
-          <p>{'Проверяем доступ…'}</p>
+        <section role="status" className="card loading-card" data-r-fef838bc="">
+          <p data-r-fef838bc="">{'Проверяем доступ…'}</p>
         </section>
-      ) : !session.authenticated.value ? (
-        <section className="auth-panel">
-          <div className="auth-stack">
-            {session.error.value ? (
-              <p role="alert" className="message message--error">
-                {session.error.value}
-              </p>
-            ) : null}
-            <AdminLoginForm
-              pending={session.pending.value}
-              onSubmit={$callback(
-                $required($unref($state.session)).authenticate,
-              )}
-            />
-          </div>
-        </section>
-      ) : (
-        <section className="ops-workspace">
+      ) : session.authenticated.value ? (
+        <section className="ops-workspace" data-r-fef838bc="">
           {session.error.value ? (
-            <p role="alert" className="message message--error">
+            <p
+              role="alert"
+              className="message message--error card"
+              data-r-fef838bc=""
+            >
               {session.error.value}
             </p>
           ) : null}
-          <div className="toolbar">
-            <p>{'Состояние обновляется автоматически каждые 30 секунд.'}</p>
+          {operations.error.value ? (
+            <p
+              role="alert"
+              className="message message--error card"
+              data-r-fef838bc=""
+            >
+              {operations.error.value}
+            </p>
+          ) : null}
+          {renderOperationsDashboardPagePart2($state)}
+          <div className="toolbar" data-r-fef838bc="">
+            <p data-r-fef838bc="">
+              {'Данные обновляются автоматически каждые 30 секунд.'}
+            </p>
             <button
               disabled={operations.loading.value}
               type="button"
               onClick={$nativeHandler($unref($state.refreshAll))}
               className="secondary-button"
+              data-r-fef838bc=""
             >
               {operations.loading.value ? 'Обновляем…' : 'Обновить'}
             </button>
           </div>
-          {operations.error.value ? (
-            <p role="alert" className="message message--error">
-              {operations.error.value}
-            </p>
-          ) : null}
-          {renderOperationsDashboardPagePart2($state)}
           <ClientIntakeControl
             onChanged={$callback($unref($state.refreshAll))}
             onUnauthorized={$callback(
               $required($unref($state.session)).expireSession,
             )}
             ref={$templateRef($state, 'intakeControl', $scope)}
+            data-r-fef838bc=""
           />
-          <AsyncMessage kind="error" text={deliveryRetry.error.value} />
-          <AsyncMessage kind="success" text={deliveryRetry.notice.value} />
-          <AsyncMessage kind="error" text={operatorResolution.error.value} />
-          <AsyncMessage kind="success" text={operatorResolution.notice.value} />
-          <AsyncMessage kind="error" text={deliveryControl.error.value} />
-          <AsyncMessage kind="success" text={deliveryControl.notice.value} />
+          <AsyncMessage
+            kind="error"
+            text={deliveryRetry.error.value}
+            data-r-fef838bc=""
+          />
+          <AsyncMessage
+            kind="success"
+            text={deliveryRetry.notice.value}
+            data-r-fef838bc=""
+          />
+          <AsyncMessage
+            kind="error"
+            text={operatorResolution.error.value}
+            data-r-fef838bc=""
+          />
+          <AsyncMessage
+            kind="success"
+            text={operatorResolution.notice.value}
+            data-r-fef838bc=""
+          />
+          <AsyncMessage
+            kind="error"
+            text={deliveryControl.error.value}
+            data-r-fef838bc=""
+          />
+          <AsyncMessage
+            kind="success"
+            text={deliveryControl.notice.value}
+            data-r-fef838bc=""
+          />
           <OperatorInbox
             onUnauthorized={session.expireSession}
             ref={$templateRef($state, 'operatorInbox', $scope)}
+            data-r-fef838bc=""
           />
           <AsyncMessage
             kind="error"
             text={inboundEventResolution.error.value}
+            data-r-fef838bc=""
           />
           <AsyncMessage
             kind="success"
             text={inboundEventResolution.notice.value}
+            data-r-fef838bc=""
           />
         </section>
-      )}
+      ) : null}
     </>
   );
 }
