@@ -17,8 +17,18 @@ describe('SetupPage disconnect', () => {
         if (url.endsWith('/setup/status')) {
           return Promise.resolve(response(localStatus));
         }
+        if (url.endsWith('/telegram/discover')) {
+          return Promise.resolve(
+            response({
+              chats: [{ id: -2002, isForum: true, title: 'Support' }],
+            }),
+          );
+        }
         if (options?.method === 'DELETE') {
           return Promise.resolve(response({ connected: false }));
+        }
+        if (options?.method === 'POST') {
+          return Promise.resolve(response({ connected: true }));
         }
         return Promise.reject(new Error(`Unexpected request: ${url}`));
       },
@@ -57,6 +67,35 @@ describe('SetupPage disconnect', () => {
       '/api/setup/telegram',
       expect.objectContaining({ method: 'DELETE' }),
     );
+    expect(wrapper.findAll('.status-pill').map((pill) => pill.text())).toEqual([
+      'Не подключён',
+      'Не подключён',
+    ]);
+
+    await wrapper
+      .get('#telegram-token')
+      .setValue('replacement-synthetic-telegram-token');
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Найти группы')
+      ?.trigger('click');
+    await flushPromises();
+    await wrapper.get('input[type="radio"]').setValue(true);
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Подключить Telegram')
+      ?.trigger('click');
+    await flushPromises();
+
+    await wrapper.get('#vk-community').setValue('https://vk.com/replacement');
+    await wrapper.get('#vk-token').setValue('replacement-synthetic-vk-token');
+    await wrapper.get('form.setup-form').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.findAll('.status-pill').map((pill) => pill.text())).toEqual([
+      'Подключён',
+      'Подключён',
+    ]);
     wrapper.unmount();
   });
 

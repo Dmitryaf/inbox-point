@@ -183,6 +183,105 @@ describe('setup routes', () => {
     expect(vk.json()).toEqual({ connected: false });
     expect(telegram.statusCode).toBe(200);
     expect(telegram.json()).toEqual({ connected: false });
+
+    const status = await app.inject({
+      method: 'GET',
+      url: '/api/setup/status',
+    });
+    expect(status.json()).toEqual({
+      connected: false,
+      locked: false,
+      source: 'none',
+      vk: { connected: false, locked: false, source: 'none' },
+    });
+  });
+
+  it('reports connect, disconnect, and reconnect through the status API', async () => {
+    const app = createApp(config);
+    apps.add(app);
+    registerTestSetup(app, { allowLocalBypass: true });
+    const headers = { host: 'localhost', origin: 'http://localhost' };
+
+    for (const suffix of ['first', 'replacement']) {
+      const telegram = await app.inject({
+        headers,
+        method: 'POST',
+        payload: {
+          botToken: `synthetic-telegram-token-${suffix}`,
+          operatorChatId: -1001,
+        },
+        url: '/api/setup/telegram/connect',
+      });
+      const vk = await app.inject({
+        headers,
+        method: 'POST',
+        payload: {
+          accessToken: `synthetic-vk-access-token-${suffix}`,
+          community: 'https://vk.com/test',
+        },
+        url: '/api/setup/vk/connect',
+      });
+      const connectedStatus = await app.inject({
+        method: 'GET',
+        url: '/api/setup/status',
+      });
+
+      expect(telegram.statusCode).toBe(200);
+      expect(vk.statusCode).toBe(200);
+      expect(connectedStatus.json()).toEqual({
+        connected: true,
+        locked: true,
+        source: 'local',
+        vk: { connected: true, locked: true, source: 'local' },
+      });
+
+      if (suffix === 'first') {
+        await app.inject({ headers, method: 'DELETE', url: '/api/setup/vk' });
+        await app.inject({
+          headers,
+          method: 'DELETE',
+          url: '/api/setup/telegram',
+        });
+        const disconnectedStatus = await app.inject({
+          method: 'GET',
+          url: '/api/setup/status',
+        });
+        expect(disconnectedStatus.json()).toEqual({
+          connected: false,
+          locked: false,
+          source: 'none',
+          vk: { connected: false, locked: false, source: 'none' },
+        });
+      }
+    }
+  });
+
+  it('rejects disconnect for environment-managed channels in the API', async () => {
+    const app = createApp(config);
+    apps.add(app);
+    registerTestSetup(app, {
+      allowLocalBypass: true,
+      telegramRunning: true,
+      telegramSource: 'environment',
+      vkRunning: true,
+      vkSource: 'environment',
+    });
+
+    const telegram = await app.inject({
+      headers: { host: 'localhost', origin: 'http://localhost' },
+      method: 'DELETE',
+      url: '/api/setup/telegram',
+    });
+    const vk = await app.inject({
+      headers: { host: 'localhost', origin: 'http://localhost' },
+      method: 'DELETE',
+      url: '/api/setup/vk',
+    });
+
+    expect(telegram.statusCode).toBe(409);
+    expect(telegram.json()).toEqual({ message: 'Управляется на сервере.' });
+    expect(vk.statusCode).toBe(409);
+    expect(vk.json()).toEqual({ message: 'Управляется на сервере.' });
   });
 
   it('requires VK to be disconnected before Telegram', async () => {
@@ -203,6 +302,29 @@ describe('setup routes', () => {
 
     expect(result.statusCode).toBe(409);
     expect(result.json()).toEqual({ message: 'Сначала отключите VK.' });
+  });
+
+  it('requires Telegram to be connected before VK in the API', async () => {
+    const app = createApp(config);
+    apps.add(app);
+    registerTestSetup(app, {
+      allowLocalBypass: true,
+      telegramSource: 'none',
+      vkSource: 'none',
+    });
+
+    const result = await app.inject({
+      headers: { host: 'localhost', origin: 'http://localhost' },
+      method: 'POST',
+      payload: {
+        accessToken: 'synthetic-vk-community-access-token',
+        community: 'https://vk.com/test',
+      },
+      url: '/api/setup/vk/connect',
+    });
+
+    expect(result.statusCode).toBe(409);
+    expect(result.json()).toEqual({ message: 'Сначала подключите Telegram.' });
   });
 
   it('rejects cross-origin disconnect requests', async () => {
@@ -231,6 +353,7 @@ function registerTestSetup(
     password?: string;
     telegramRunning?: boolean;
     telegramSource?: 'environment' | 'local' | 'none';
+    vkRunning?: boolean;
     vkSource?: 'environment' | 'local' | 'none';
   },
 ): void {
@@ -241,11 +364,20 @@ function registerTestSetup(
     allowLocalBypass: options.allowLocalBypass,
     secureCookies: true,
   });
+  let telegramRunning = options.telegramRunning ?? false;
   const telegram = new TelegramSetupController(
     {
-      running: options.telegramRunning ?? false,
-      start: () => Promise.resolve(),
-      stop: () => Promise.resolve(),
+      get running() {
+        return telegramRunning;
+      },
+      start: () => {
+        telegramRunning = true;
+        return Promise.resolve();
+      },
+      stop: () => {
+        telegramRunning = false;
+        return Promise.resolve();
+      },
     },
     {
       clear: () => Promise.resolve(),
@@ -254,11 +386,20 @@ function registerTestSetup(
     },
     options.telegramSource ?? 'none',
   );
+  let vkRunning = options.vkRunning ?? false;
   const vk = new VkSetupController(
     {
-      running: false,
-      start: () => Promise.resolve(),
-      stop: () => Promise.resolve(),
+      get running() {
+        return vkRunning;
+      },
+      start: () => {
+        vkRunning = true;
+        return Promise.resolve();
+      },
+      stop: () => {
+        vkRunning = false;
+        return Promise.resolve();
+      },
     },
     {
       clear: () => Promise.resolve(),
@@ -266,6 +407,10 @@ function registerTestSetup(
       save: () => Promise.resolve(),
     },
     options.vkSource ?? 'none',
+    () => ({
+      getLongPollServer: () => Promise.resolve({}),
+      resolveCommunity: () => Promise.resolve(42),
+    }),
   );
   registerAdminSessionRoutes(app, access, routeAccess, true);
   registerSetupRoutes(app, telegram, vk, routeAccess);

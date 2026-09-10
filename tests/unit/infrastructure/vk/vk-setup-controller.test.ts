@@ -5,135 +5,202 @@ import type { VkSettingsStore } from '@/infrastructure/persistence/vk-settings-s
 import {
   VkSetupController,
   type VkRuntimeControl,
+  type VkSettingsSource,
   type VkSetupGateway,
 } from '@/infrastructure/vk/vk-setup-controller.js';
 
+const initialConfig: VkRuntimeConfig = {
+  accessToken: 'initial-synthetic-vk-access-token',
+  groupId: 42,
+  pollTimeoutSeconds: 25,
+};
+
 describe('VkSetupController', () => {
-  it('clears local settings and stops VK on disconnect', async () => {
-    let running = true;
-    const clear = vi.fn(() => Promise.resolve());
-    const stop = vi.fn(() => {
-      running = false;
-      return Promise.resolve();
-    });
-    const controller = new VkSetupController(
-      {
-        get running() {
-          return running;
-        },
-        start: vi.fn(() => Promise.resolve()),
-        stop,
-      },
-      {
-        clear,
-        load: vi.fn(() => Promise.resolve(undefined)),
-        save: vi.fn(() => Promise.resolve()),
-      },
-      'local',
-    );
-
-    await controller.disconnect();
-
-    expect(clear).toHaveBeenCalledOnce();
-    expect(stop).toHaveBeenCalledOnce();
-    expect(controller.status()).toEqual({
+  it('stops VK before clearing local settings', async () => {
+    const harness = createHarness({ running: true, stored: initialConfig });
+    await harness.controller.disconnect();
+    expect(harness.events).toEqual(['stop', 'clear']);
+    expect(harness.stored()).toBeUndefined();
+    expect(harness.controller.status()).toEqual({
       connected: false,
       locked: false,
       source: 'none',
     });
   });
 
-  it('keeps VK running when local settings cannot be cleared', async () => {
-    const stop = vi.fn(() => Promise.resolve());
-    const controller = new VkSetupController(
-      { running: true, start: vi.fn(() => Promise.resolve()), stop },
-      {
-        clear: vi.fn(() => Promise.reject(new Error('disk failure'))),
-        load: vi.fn(() => Promise.resolve(undefined)),
-        save: vi.fn(() => Promise.resolve()),
-      },
-      'local',
+  it('keeps persisted settings when stopping VK fails', async () => {
+    const harness = createHarness({
+      running: true,
+      stopError: new Error('stop failure'),
+      stored: initialConfig,
+    });
+    await expect(harness.controller.disconnect()).rejects.toThrow(
+      'stop failure',
     );
+    expect(harness.events).toEqual(['stop']);
+    expect(harness.stored()).toEqual(initialConfig);
+    expect(harness.controller.status()).toEqual({
+      connected: true,
+      locked: true,
+      source: 'local',
+    });
+  });
 
-    await expect(controller.disconnect()).rejects.toThrow('disk failure');
-    expect(stop).not.toHaveBeenCalled();
-    expect(controller.status().source).toBe('local');
+  it('keeps persisted settings and local source when clearing fails', async () => {
+    const harness = createHarness({
+      clearError: new Error('disk failure'),
+      running: true,
+      stored: initialConfig,
+    });
+    await expect(harness.controller.disconnect()).rejects.toThrow(
+      'disk failure',
+    );
+    expect(harness.events).toEqual(['stop', 'clear']);
+    expect(harness.stored()).toEqual(initialConfig);
+    expect(harness.controller.status()).toEqual({
+      connected: false,
+      locked: false,
+      source: 'local',
+    });
+  });
+
+  it('treats repeated disconnect as an idempotent success', async () => {
+    const harness = createHarness({ running: true, stored: initialConfig });
+    await harness.controller.disconnect();
+    await harness.controller.disconnect();
+    expect(harness.events).toEqual(['stop', 'clear']);
+  });
+
+  it('supports connect, disconnect, and connect again with fresh settings', async () => {
+    const harness = createHarness({ source: 'none' });
+    const replacementConfig: VkRuntimeConfig = {
+      accessToken: 'replacement-synthetic-vk-access-token',
+      groupId: 84,
+      pollTimeoutSeconds: 25,
+    };
+    harness.resolveCommunity
+      .mockResolvedValueOnce(initialConfig.groupId)
+      .mockResolvedValueOnce(replacementConfig.groupId);
+
+    await harness.controller.connect(initialConfig.accessToken, 'first');
+    expect(harness.stored()).toEqual(initialConfig);
+    await harness.controller.disconnect();
+    expect(harness.controller.status().source).toBe('none');
+    await harness.controller.connect(replacementConfig.accessToken, 'second');
+    expect(harness.stored()).toEqual(replacementConfig);
+    expect(harness.controller.status()).toEqual({
+      connected: true,
+      locked: true,
+      source: 'local',
+    });
+    expect(harness.events).toEqual([
+      'validate',
+      'start',
+      'save',
+      'stop',
+      'clear',
+      'validate',
+      'start',
+      'save',
+    ]);
+  });
+
+  it('rejects disconnect for server-managed settings', async () => {
+    const harness = createHarness({
+      running: true,
+      source: 'environment',
+      stored: initialConfig,
+    });
+    await expect(harness.controller.disconnect()).rejects.toThrow(
+      'managed by server configuration',
+    );
+    expect(harness.events).toEqual([]);
+    expect(harness.stored()).toEqual(initialConfig);
   });
 
   it('validates Long Poll before starting and saving the connection', async () => {
-    const events: string[] = [];
-    const start = vi.fn(() => {
-      events.push('start');
-      return Promise.resolve();
-    });
-    const save = vi.fn(() => {
-      events.push('save');
-      return Promise.resolve();
-    });
-    const config: VkRuntimeConfig = {
-      accessToken: 'synthetic-vk-access-token',
-      groupId: 42,
-      pollTimeoutSeconds: 25,
-    };
-    const runtime: VkRuntimeControl = {
-      running: false,
-      start,
-      stop: vi.fn(() => Promise.resolve()),
-    };
-    const settingsStore: VkSettingsStore = {
-      clear: vi.fn(() => Promise.resolve()),
-      load: vi.fn(() => Promise.resolve(undefined)),
-      save,
-    };
-    const gateway: VkSetupGateway = {
-      getLongPollServer: vi.fn(() => {
-        events.push('validate');
-        return Promise.resolve({});
-      }),
-      resolveCommunity: vi.fn(() => Promise.resolve(42)),
-    };
-    const controller = new VkSetupController(
-      runtime,
-      settingsStore,
-      'none',
-      () => gateway,
+    const harness = createHarness({ source: 'none' });
+    await harness.controller.connect(
+      initialConfig.accessToken,
+      'https://vk.com/test',
     );
-
-    await controller.connect(config.accessToken, 'https://vk.com/test');
-
-    expect(events).toEqual(['validate', 'start', 'save']);
-    expect(start).toHaveBeenCalledWith(config);
-    expect(save).toHaveBeenCalledWith(config);
+    expect(harness.events).toEqual(['validate', 'start', 'save']);
+    expect(harness.stored()).toEqual(initialConfig);
   });
 
   it('does not start or save an invalid Long Poll configuration', async () => {
-    const start = vi.fn(() => Promise.resolve());
-    const save = vi.fn(() => Promise.resolve());
-    const runtime: VkRuntimeControl = {
-      running: false,
-      start,
-      stop: vi.fn(() => Promise.resolve()),
-    };
-    const settingsStore: VkSettingsStore = {
-      clear: vi.fn(() => Promise.resolve()),
-      load: vi.fn(() => Promise.resolve(undefined)),
-      save,
-    };
-    const gateway: VkSetupGateway = {
-      getLongPollServer: vi.fn(() => Promise.reject(new Error('disabled'))),
-      resolveCommunity: vi.fn(() => Promise.resolve(42)),
-    };
-    const controller = new VkSetupController(
-      runtime,
-      settingsStore,
-      'none',
-      () => gateway,
-    );
-
+    const harness = createHarness({ source: 'none' });
+    harness.getLongPollServer.mockRejectedValueOnce(new Error('disabled'));
     await expect(
-      controller.connect('synthetic-vk-access-token', 'test'),
+      harness.controller.connect(initialConfig.accessToken, 'test'),
     ).rejects.toThrow('disabled');
-    expect(start).not.toHaveBeenCalled();
-    expect(save).not.toHaveBeenCalled();
+    expect(harness.getLongPollServer).toHaveBeenCalledOnce();
+    expect(harness.events).toEqual([]);
+    expect(harness.stored()).toBeUndefined();
   });
 });
+
+function createHarness(options: {
+  clearError?: Error;
+  running?: boolean;
+  source?: VkSettingsSource;
+  stopError?: Error;
+  stored?: VkRuntimeConfig;
+}) {
+  const events: string[] = [];
+  let running = options.running ?? false;
+  let stored = options.stored;
+  const runtime: VkRuntimeControl = {
+    get running() {
+      return running;
+    },
+    start: vi.fn(() => {
+      events.push('start');
+      running = true;
+      return Promise.resolve();
+    }),
+    stop: vi.fn(() => {
+      events.push('stop');
+      if (options.stopError) {
+        return Promise.reject(options.stopError);
+      }
+      running = false;
+      return Promise.resolve();
+    }),
+  };
+  const settingsStore: VkSettingsStore = {
+    clear: vi.fn(() => {
+      events.push('clear');
+      if (options.clearError) {
+        return Promise.reject(options.clearError);
+      }
+      stored = undefined;
+      return Promise.resolve();
+    }),
+    load: vi.fn(() => Promise.resolve(stored)),
+    save: vi.fn((settings: VkRuntimeConfig) => {
+      events.push('save');
+      stored = settings;
+      return Promise.resolve();
+    }),
+  };
+  const getLongPollServer = vi.fn<VkSetupGateway['getLongPollServer']>(() => {
+    events.push('validate');
+    return Promise.resolve({});
+  });
+  const resolveCommunity = vi.fn<VkSetupGateway['resolveCommunity']>(() =>
+    Promise.resolve(initialConfig.groupId),
+  );
+  return {
+    controller: new VkSetupController(
+      runtime,
+      settingsStore,
+      options.source ?? 'local',
+      () => ({ getLongPollServer, resolveCommunity }),
+    ),
+    events,
+    getLongPollServer,
+    resolveCommunity,
+    stored: () => stored,
+  };
+}
