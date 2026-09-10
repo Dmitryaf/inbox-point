@@ -9,6 +9,7 @@ services:
       CLOSED_REQUEST_RETENTION_DAYS: '${CLOSED_REQUEST_RETENTION_DAYS:-7}'
       DATABASE_PATH: /app/data/messenger-handoff.sqlite
       HOST: 0.0.0.0
+      HTTP_TRUSTED_PROXIES: '${APP_NETWORK_GATEWAY:-172.30.1.1}/32'
       INSTANCE_ID: '${INSTANCE_ID:-default}'
       LOG_LEVEL: info
       NODE_ENV: production
@@ -53,3 +54,10 @@ services:
 
 volumes:
   messenger-handoff-data:
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: '${APP_NETWORK_SUBNET:-172.30.1.0/24}'
+          gateway: '${APP_NETWORK_GATEWAY:-172.30.1.1}'

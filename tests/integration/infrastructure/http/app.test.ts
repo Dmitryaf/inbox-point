@@ -65,6 +65,53 @@ describe('HTTP service status', () => {
     expect(directRemote.json()).toEqual({ ip: '192.0.2.10' });
   });
 
+  it('trusts forwarded metadata from a configured Docker bridge gateway only', async () => {
+    const app = createApp({
+      ...config,
+      trustedProxies: ['172.20.0.1/32'],
+    });
+    apps.add(app);
+    app.get('/test/request-metadata', (request) => ({
+      host: request.host,
+      ip: request.ip,
+      protocol: request.protocol,
+    }));
+
+    const throughConfiguredGateway = await app.inject({
+      headers: {
+        host: 'app:3000',
+        'x-forwarded-for': '198.51.100.24',
+        'x-forwarded-host': 'messenger.example.com',
+        'x-forwarded-proto': 'https',
+      },
+      method: 'GET',
+      remoteAddress: '172.20.0.1',
+      url: '/test/request-metadata',
+    });
+    const throughUntrustedGateway = await app.inject({
+      headers: {
+        host: 'app:3000',
+        'x-forwarded-for': '198.51.100.99',
+        'x-forwarded-host': 'attacker.example.com',
+        'x-forwarded-proto': 'https',
+      },
+      method: 'GET',
+      remoteAddress: '172.21.0.1',
+      url: '/test/request-metadata',
+    });
+
+    expect(throughConfiguredGateway.json()).toEqual({
+      host: 'messenger.example.com',
+      ip: '198.51.100.24',
+      protocol: 'https',
+    });
+    expect(throughUntrustedGateway.json()).toEqual({
+      host: 'app:3000',
+      ip: '172.21.0.1',
+      protocol: 'http',
+    });
+  });
+
   it('reports readiness without exposing delivery state', async () => {
     const app = createApp(config);
     apps.add(app);

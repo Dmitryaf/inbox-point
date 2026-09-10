@@ -80,7 +80,7 @@ export function createAdminRouteAccess(
         const parsedOrigin = new URL(origin);
         if (
           parsedOrigin.protocol !== `${request.protocol}:` ||
-          parsedOrigin.host !== request.headers.host
+          parsedOrigin.host !== request.host
         ) {
           return reply.code(403).send({ message: 'Запрос отклонён.' });
         }

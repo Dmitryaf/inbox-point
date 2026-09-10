@@ -194,6 +194,41 @@ describe('admin session routes', () => {
       app.inject({ method: 'GET', url: '/api/ops/session' }),
     ).resolves.toMatchObject({ statusCode: 404 });
   });
+
+  it('accepts a same-origin mutation through a configured Docker bridge gateway', async () => {
+    const app = createApp({
+      ...config,
+      trustedProxies: ['172.20.0.1/32'],
+    });
+    apps.add(app);
+    const access = new PasswordSessionAccess('correct-admin-password', {
+      createToken: () => 'production-session',
+    });
+    const routeAccess = createAdminRouteAccess(app, access, {
+      allowLocalBypass: false,
+      secureCookies: true,
+    });
+    registerAdminSessionRoutes(app, access, routeAccess, true);
+
+    const login = await app.inject({
+      headers: {
+        host: 'app:3000',
+        origin: 'https://messenger.example.com',
+        'x-forwarded-for': '192.0.2.10',
+        'x-forwarded-host': 'messenger.example.com',
+        'x-forwarded-proto': 'https',
+      },
+      method: 'POST',
+      payload: { password: 'correct-admin-password' },
+      remoteAddress: '172.20.0.1',
+      url: '/api/admin/login',
+    });
+
+    expect(login.statusCode).toBe(200);
+    expect(login.headers['set-cookie']).toContain(
+      '__Host-mh-admin-session=production-session',
+    );
+  });
 });
 
 async function expectSurfaceAccess(

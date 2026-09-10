@@ -1,24 +1,18 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import type { RuntimeConfig } from '@/config/runtime-config.js';
 
+const loopbackTrustedProxies = ['127.0.0.1', '::1', '::ffff:127.0.0.1'];
+
 export function createApp(config: RuntimeConfig): FastifyInstance {
   const app = Fastify({
     logger: {
       base: { instanceId: config.instanceId },
       level: config.logLevel,
     },
-    trustProxy: (address, hop) => hop === 0 && isLoopback(address),
+    trustProxy: [...loopbackTrustedProxies, ...(config.trustedProxies ?? [])],
   });
 
   app.get('/health', () => ({ status: 'ok' }));
 
   return app;
-}
-
-function isLoopback(address: string): boolean {
-  return (
-    address === '127.0.0.1' ||
-    address === '::1' ||
-    address === '::ffff:127.0.0.1'
-  );
 }

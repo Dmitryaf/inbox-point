@@ -1,3 +1,5 @@
+import { isIP } from 'node:net';
+
 import { z } from 'zod';
 
 import { instanceIdSchema } from '@/config/instance-id.js';
@@ -13,6 +15,14 @@ const telegramProxyUrlSchema = z
     return url.username === '' && url.password === '';
   }, 'Telegram proxy URL must not contain credentials');
 
+const trustedProxiesSchema = z
+  .string()
+  .transform((value) => value.split(',').map((entry) => entry.trim()))
+  .refine(
+    (entries) => entries.length > 0 && entries.every(isValidProxyAddressOrCidr),
+    'Trusted proxies must be a comma-separated list of IP addresses or CIDRs',
+  );
+
 const runtimeConfigSchema = z.object({
   NODE_ENV: z
     .enum(['development', 'test', 'production'])
@@ -20,6 +30,7 @@ const runtimeConfigSchema = z.object({
   HOST: z.string().min(1).default('127.0.0.1'),
   PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
   INSTANCE_ID: instanceIdSchema,
+  HTTP_TRUSTED_PROXIES: optionalEnvironmentValue(trustedProxiesSchema),
   ADMIN_PASSWORD: optionalEnvironmentValue(z.string().min(12).max(200)),
   LOG_LEVEL: z
     .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
@@ -78,6 +89,7 @@ export interface RuntimeConfig {
   port: number;
   telegram?: TelegramRuntimeConfig;
   telegramProxyUrl?: URL;
+  trustedProxies?: string[];
   vk?: VkRuntimeConfig;
 }
 
@@ -124,6 +136,9 @@ export function loadRuntimeConfig(
     logLevel: result.data.LOG_LEVEL,
     nodeEnv: result.data.NODE_ENV,
     port: result.data.PORT,
+    ...(result.data.HTTP_TRUSTED_PROXIES
+      ? { trustedProxies: result.data.HTTP_TRUSTED_PROXIES }
+      : {}),
     ...(result.data.TELEGRAM_PROXY_URL
       ? { telegramProxyUrl: new URL(result.data.TELEGRAM_PROXY_URL) }
       : {}),
@@ -146,6 +161,27 @@ export function loadRuntimeConfig(
         }
       : {}),
   };
+}
+
+function isValidProxyAddressOrCidr(value: string): boolean {
+  const [address, prefix, ...unexpected] = value.split('/');
+  if (!address || unexpected.length > 0) {
+    return false;
+  }
+
+  const version = isIP(address);
+  if (version === 0) {
+    return false;
+  }
+  if (prefix === undefined) {
+    return true;
+  }
+  if (!/^(0|[1-9]\d*)$/.test(prefix)) {
+    return false;
+  }
+
+  const prefixLength = Number(prefix);
+  return prefixLength <= (version === 4 ? 32 : 128);
 }
 
 function optionalEnvironmentValue<Output>(schema: z.ZodType<Output>) {
