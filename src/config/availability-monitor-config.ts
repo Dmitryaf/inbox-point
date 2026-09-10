@@ -1,6 +1,9 @@
 import { z } from 'zod';
 
+import { instanceIdSchema } from '@/config/instance-id.js';
+
 const schema = z.object({
+  INSTANCE_ID: instanceIdSchema,
   MONITOR_ALERT_BEARER_TOKEN: z.preprocess(
     (value) => (value === '' ? undefined : value),
     z.string().min(1).max(500).optional(),
@@ -18,6 +21,7 @@ export interface AvailabilityMonitorConfig {
   alertBearerToken?: string;
   alertWebhookUrl: URL;
   intervalMs: number;
+  instanceId: string;
   readinessUrl: URL;
   timeoutMs: number;
 }
@@ -37,6 +41,7 @@ export function loadAvailabilityMonitorConfig(
       : {}),
     alertWebhookUrl: new URL(result.data.MONITOR_ALERT_WEBHOOK_URL),
     intervalMs: result.data.MONITOR_INTERVAL_SECONDS * 1_000,
+    instanceId: result.data.INSTANCE_ID,
     readinessUrl: new URL(result.data.MONITOR_READINESS_URL),
     timeoutMs: result.data.MONITOR_TIMEOUT_SECONDS * 1_000,
   };

@@ -523,7 +523,7 @@ describe('Telegram handoff integration', () => {
     information.replace({
       faq: [
         {
-          answer: 'Напишите преподавателю.',
+          answer: 'Напишите оператору.',
           question: 'Как записаться?',
         },
       ],

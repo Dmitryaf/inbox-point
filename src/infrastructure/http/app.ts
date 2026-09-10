@@ -4,6 +4,7 @@ import type { RuntimeConfig } from '@/config/runtime-config.js';
 export function createApp(config: RuntimeConfig): FastifyInstance {
   const app = Fastify({
     logger: {
+      base: { instanceId: config.instanceId },
       level: config.logLevel,
     },
     trustProxy: (address, hop) => hop === 0 && isLoopback(address),

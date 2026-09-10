@@ -8,6 +8,7 @@ describe('loadRuntimeConfig', () => {
       closedRequestRetentionDays: 7,
       databasePath: './data/messenger-handoff.sqlite',
       host: '127.0.0.1',
+      instanceId: 'default',
       logLevel: 'info',
       nodeEnv: 'development',
       port: 3000,
@@ -29,10 +30,44 @@ describe('loadRuntimeConfig', () => {
       closedRequestRetentionDays: 7,
       databasePath: './data/messenger-handoff.sqlite',
       host: '127.0.0.1',
+      instanceId: 'default',
       logLevel: 'info',
       nodeEnv: 'development',
       port: 3000,
     });
+  });
+
+  it('configures an instance label and a Telegram-only HTTP proxy', () => {
+    const config = loadRuntimeConfig({
+      INSTANCE_ID: 'instance-a',
+      TELEGRAM_PROXY_URL: 'http://10.77.0.2:8888',
+    });
+
+    expect(config.instanceId).toBe('instance-a');
+    expect(config.telegramProxyUrl?.toString()).toBe('http://10.77.0.2:8888/');
+  });
+
+  it('rejects malformed instance and proxy settings without exposing credentials', () => {
+    expect(() =>
+      loadRuntimeConfig({ INSTANCE_ID: '../instance' }),
+    ).toThrowError('Invalid runtime configuration: INSTANCE_ID:');
+
+    const secret = 'proxy-secret-must-not-appear';
+    const load = (): void => {
+      loadRuntimeConfig({
+        TELEGRAM_BOT_TOKEN: secret,
+        TELEGRAM_PROXY_URL: 'socks5://10.77.0.2:1080',
+      });
+    };
+    expect(load).toThrowError(
+      'Invalid runtime configuration: TELEGRAM_PROXY_URL:',
+    );
+    expect(load).not.toThrowError(new RegExp(secret));
+    expect(() =>
+      loadRuntimeConfig({
+        TELEGRAM_PROXY_URL: 'http://user:password@10.77.0.2:8888',
+      }),
+    ).toThrowError('Invalid runtime configuration: TELEGRAM_PROXY_URL:');
   });
 
   it('configures a bounded closed-request retention period', () => {

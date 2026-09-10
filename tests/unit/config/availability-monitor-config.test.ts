@@ -28,11 +28,22 @@ describe('loadAvailabilityMonitorConfig', () => {
     expect(config).toMatchObject({
       intervalMs: 30_000,
       alertBearerToken: 'synthetic-token',
+      instanceId: 'default',
       timeoutMs: 5_000,
     });
     expect(config.readinessUrl.toString()).toBe('https://example.test/ready');
     expect(config.alertWebhookUrl.toString()).toBe(
       'https://alerts.example.test/hook',
     );
+  });
+
+  it('maps an explicit operational instance label', () => {
+    const config = loadAvailabilityMonitorConfig({
+      INSTANCE_ID: 'instance-a',
+      MONITOR_ALERT_WEBHOOK_URL: 'https://alerts.example.test/hook',
+      MONITOR_READINESS_URL: 'https://example.test/ready',
+    });
+
+    expect(config.instanceId).toBe('instance-a');
   });
 });

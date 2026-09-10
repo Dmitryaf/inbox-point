@@ -1,11 +1,25 @@
 import { z } from 'zod';
 
+import { instanceIdSchema } from '@/config/instance-id.js';
+
+const telegramProxyUrlSchema = z
+  .url()
+  .refine((value) => {
+    const protocol = new URL(value).protocol;
+    return protocol === 'http:' || protocol === 'https:';
+  }, 'Telegram proxy URL must use HTTP or HTTPS')
+  .refine((value) => {
+    const url = new URL(value);
+    return url.username === '' && url.password === '';
+  }, 'Telegram proxy URL must not contain credentials');
+
 const runtimeConfigSchema = z.object({
   NODE_ENV: z
     .enum(['development', 'test', 'production'])
     .default('development'),
   HOST: z.string().min(1).default('127.0.0.1'),
   PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
+  INSTANCE_ID: instanceIdSchema,
   ADMIN_PASSWORD: optionalEnvironmentValue(z.string().min(12).max(200)),
   LOG_LEVEL: z
     .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
@@ -31,6 +45,7 @@ const runtimeConfigSchema = z.object({
     .min(1)
     .max(50)
     .default(30),
+  TELEGRAM_PROXY_URL: optionalEnvironmentValue(telegramProxyUrlSchema),
   VK_ACCESS_TOKEN: optionalEnvironmentValue(z.string().min(20)),
   VK_ENABLED: z
     .enum(['true', 'false'])
@@ -57,10 +72,12 @@ export interface RuntimeConfig {
   databasePath: string;
   closedRequestRetentionDays: number;
   host: string;
+  instanceId: string;
   logLevel: 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace' | 'silent';
   nodeEnv: 'development' | 'test' | 'production';
   port: number;
   telegram?: TelegramRuntimeConfig;
+  telegramProxyUrl?: URL;
   vk?: VkRuntimeConfig;
 }
 
@@ -103,9 +120,13 @@ export function loadRuntimeConfig(
     closedRequestRetentionDays: result.data.CLOSED_REQUEST_RETENTION_DAYS,
     databasePath: result.data.DATABASE_PATH,
     host: result.data.HOST,
+    instanceId: result.data.INSTANCE_ID,
     logLevel: result.data.LOG_LEVEL,
     nodeEnv: result.data.NODE_ENV,
     port: result.data.PORT,
+    ...(result.data.TELEGRAM_PROXY_URL
+      ? { telegramProxyUrl: new URL(result.data.TELEGRAM_PROXY_URL) }
+      : {}),
     ...(result.data.TELEGRAM_ENABLED
       ? {
           telegram: {

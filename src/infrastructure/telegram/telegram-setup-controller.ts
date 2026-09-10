@@ -2,6 +2,7 @@ import type { TelegramRuntimeConfig } from '@/config/runtime-config.js';
 import type { TelegramSettingsStore } from '@/infrastructure/persistence/telegram-settings-store.js';
 import {
   TelegramApiClient,
+  type TelegramFetch,
   type TelegramOperatorChat,
 } from '@/infrastructure/telegram/telegram-api-client.js';
 import type { TelegramRuntimeControl } from '@/infrastructure/telegram/telegram-runtime.js';
@@ -21,6 +22,7 @@ export class TelegramSetupController {
     private readonly runtime: TelegramRuntimeControl,
     private readonly settingsStore: TelegramSettingsStore,
     source: TelegramSettingsSource,
+    private readonly fetchImplementation: TelegramFetch = fetch,
   ) {
     this.source = source;
   }
@@ -37,7 +39,10 @@ export class TelegramSetupController {
     botToken: string,
   ): Promise<readonly TelegramOperatorChat[]> {
     this.assertMutable();
-    return new TelegramApiClient(botToken).discoverOperatorChats();
+    return new TelegramApiClient(
+      botToken,
+      this.fetchImplementation,
+    ).discoverOperatorChats();
   }
 
   public async connect(

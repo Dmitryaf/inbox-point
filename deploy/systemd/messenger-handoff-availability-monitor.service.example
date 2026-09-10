@@ -1,0 +1,21 @@
+[Unit]
+Description=Messenger Handoff independent availability monitor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=messenger-monitor
+Group=messenger-monitor
+WorkingDirectory=/opt/messenger-handoff-monitor
+EnvironmentFile=/etc/messenger-handoff/monitor.env
+ExecStart=/usr/bin/node dist/availability-monitor.js
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+
+[Install]
+WantedBy=multi-user.target

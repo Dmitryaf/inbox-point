@@ -17,6 +17,7 @@ const config: RuntimeConfig = {
   closedRequestRetentionDays: 7,
   databasePath: './data/test.sqlite',
   host: '0.0.0.0',
+  instanceId: 'default',
   logLevel: 'silent',
   nodeEnv: 'production',
   port: 3000,
@@ -44,7 +45,7 @@ describe('managed content routes', () => {
         return Promise.resolve({
           faq: [
             {
-              answer: 'Напишите преподавателю.',
+              answer: 'Напишите оператору.',
               question: 'Как записаться?',
             },
           ],
@@ -139,7 +140,7 @@ describe('managed content routes', () => {
           customSections: [],
           faq: [
             {
-              answer: 'Напишите преподавателю.',
+              answer: 'Напишите оператору.',
               question: 'Как записаться?',
             },
           ],
@@ -212,7 +213,7 @@ describe('managed content routes', () => {
       {
         faq: [
           {
-            answer: 'Напишите преподавателю.',
+            answer: 'Напишите оператору.',
             question: 'Как записаться?',
           },
         ],
