@@ -14,8 +14,8 @@ export function renderContentWorkspacePart2(
   $state: ReturnType<typeof createComponentModel>,
 ) {
   const workspace = $unref($state.workspace);
-  const activeView = $state.activeView.value;
   const activeSection = $state.activeSection.value;
+  const activeView = $state.activeView.value;
   const fieldErrors = $state.fieldErrors.value;
   if (!!workspace.loading.value) {
     return null;

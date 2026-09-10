@@ -62,6 +62,59 @@ test('passwordless development bypass skips login and hides logout', async ({
 });
 
 for (const viewport of [
+  { height: 900, label: 'desktop workspace', width: 1440 },
+  { height: 844, label: 'mobile workspace', width: 390 },
+]) {
+  test(`${viewport.label} keeps its geometry while changing views`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(viewport);
+    await login(page);
+
+    const workspaceMain = page.locator('.workspace-main');
+    const navigation =
+      viewport.width >= 900
+        ? page.getByRole('navigation', { name: 'Разделы информации' })
+        : page.locator('.mobile-workspace-navigation');
+    const initialMainBox = await requiredBox(workspaceMain);
+    const initialNavigationBox = await requiredBox(navigation);
+
+    if (viewport.width >= 900) {
+      await page.getByRole('button', { name: 'Предпросмотр' }).click();
+    } else {
+      await page.getByLabel('Режим', { exact: true }).selectOption('preview');
+    }
+    await expect(
+      page.getByRole('heading', { name: 'Так клиент увидит ваши ответы' }),
+    ).toBeVisible();
+    expectStablePlacement(await requiredBox(workspaceMain), initialMainBox);
+    expectStableBox(await requiredBox(navigation), initialNavigationBox);
+
+    if (viewport.width >= 900) {
+      await page.getByRole('button', { name: 'История' }).click();
+    } else {
+      await page.getByLabel('Режим', { exact: true }).selectOption('history');
+    }
+    await expect(
+      page.getByRole('heading', { name: 'Предыдущие версии' }),
+    ).toBeVisible();
+    expectStablePlacement(await requiredBox(workspaceMain), initialMainBox);
+    expectStableBox(await requiredBox(navigation), initialNavigationBox);
+
+    if (viewport.width >= 900) {
+      await page.getByRole('button', { name: 'Основное' }).click();
+    } else {
+      await page.getByLabel('Раздел', { exact: true }).selectOption('core');
+    }
+    await expect(
+      page.getByRole('heading', { name: 'Расписание, цены и адрес' }),
+    ).toBeVisible();
+    expectStablePlacement(await requiredBox(workspaceMain), initialMainBox);
+    expectStableBox(await requiredBox(navigation), initialNavigationBox);
+  });
+}
+
+for (const viewport of [
   { height: 900, label: 'desktop', width: 1440 },
   { height: 800, label: 'small desktop', width: 1024 },
   { height: 844, label: 'mobile', width: 390 },
@@ -110,4 +163,30 @@ async function login(page: Page): Promise<void> {
     await page.getByRole('button', { name: 'Войти' }).click();
   }
   await expect(page).toHaveURL(/\/manage$/);
+}
+
+async function requiredBox(locator: ReturnType<Page['locator']>) {
+  const box = await locator.boundingBox();
+  expect(box).not.toBeNull();
+  if (!box) {
+    throw new Error('Expected the element to have a bounding box');
+  }
+  return box;
+}
+
+function expectStableBox(
+  actual: Awaited<ReturnType<typeof requiredBox>>,
+  expected: Awaited<ReturnType<typeof requiredBox>>,
+): void {
+  expectStablePlacement(actual, expected);
+  expect(Math.abs(actual.height - expected.height)).toBeLessThanOrEqual(1);
+}
+
+function expectStablePlacement(
+  actual: Awaited<ReturnType<typeof requiredBox>>,
+  expected: Awaited<ReturnType<typeof requiredBox>>,
+): void {
+  expect(Math.abs(actual.x - expected.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(actual.y - expected.y)).toBeLessThanOrEqual(1);
+  expect(Math.abs(actual.width - expected.width)).toBeLessThanOrEqual(1);
 }
