@@ -115,6 +115,8 @@ INSTANCE_ID=organization-a
 NODE_ENV=production
 ADMIN_PASSWORD=<LONG_RANDOM_PASSWORD>
 HOST_PORT=3101
+APP_NETWORK_SUBNET=172.30.1.0/24
+APP_NETWORK_GATEWAY=172.30.1.1
 TELEGRAM_PROXY_URL=http://10.77.0.2:8888
 BACKUP_HOST_PATH=/srv/backups/messenger-handoff/organization-a
 BACKUP_EXPORT_PATH=/srv/backups/messenger-handoff/organization-a
@@ -124,6 +126,14 @@ Set channel credentials in `.env` or connect them later through the protected
 UI. The proxy URL contains no bot token. `INSTANCE_ID` is an operational label
 used in logs, alerts, snapshot metadata, and non-default snapshot names; it is
 not a tenant identifier and does not change application data access.
+
+Choose an unused private `APP_NETWORK_SUBNET` on the Docker host. Compose pins
+the bridge gateway and passes that exact gateway `/32` to the application as
+its trusted immediate HTTP proxy. Loopback is also trusted. Do not replace this
+with a whole private range or a wildcard: only Caddy traffic entering through
+the loopback-published host port should be allowed to control
+`X-Forwarded-Proto`, `X-Forwarded-Host`, and `X-Forwarded-For`. Use a different
+subnet and gateway for every additional instance on the same host.
 
 Create the backup directory separately from application data, then start the
 instance with an explicit Compose project:
@@ -156,6 +166,12 @@ The template relies on Caddy 2.10 or newer for the 1 MB request-body limit. It
 also provides automatic HTTPS, compression, a loopback reverse proxy, and basic
 security headers. DNS A/AAAA records must point to the RU server. Do not put the
 admin UI on plain HTTP.
+
+From a browser, open the public HTTPS admin UI, sign in, complete one intended
+state-changing action such as saving the initial content, reload the page to
+confirm the saved value, and sign out. A `403` from login, save, or logout fails
+this reverse-proxy smoke test. Do not accept a deployment based only on the two
+GET health checks above.
 
 ## 6. Configure monitoring
 
@@ -267,9 +283,10 @@ Use this order for the first production installation:
 
 Repeat the deployment with a new checkout or immutable image reference, domain,
 `.env`, `INSTANCE_ID`, Compose project (`-p organization-b`), loopback host port,
-backup directory, monitor configuration, and credentials. Do not share volumes,
-SQLite files, channel settings, sessions, or administrator passwords. No
-`tenant_id`, organization selector, or cross-instance control plane is required.
+Docker bridge subnet and gateway, backup directory, monitor configuration, and
+credentials. Do not share volumes, network subnets, SQLite files, channel
+settings, sessions, or administrator passwords. No `tenant_id`, organization
+selector, or cross-instance control plane is required.
 
 The intended evolution path is deliberately incremental:
 

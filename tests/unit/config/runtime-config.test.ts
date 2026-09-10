@@ -47,6 +47,25 @@ describe('loadRuntimeConfig', () => {
     expect(config.telegramProxyUrl?.toString()).toBe('http://10.77.0.2:8888/');
   });
 
+  it('configures explicit trusted proxy addresses and CIDRs', () => {
+    expect(
+      loadRuntimeConfig({
+        HTTP_TRUSTED_PROXIES: '172.20.0.1/32, 2001:db8::1',
+      }),
+    ).toMatchObject({
+      trustedProxies: ['172.20.0.1/32', '2001:db8::1'],
+    });
+  });
+
+  it('rejects invalid trusted proxy entries', () => {
+    expect(() =>
+      loadRuntimeConfig({ HTTP_TRUSTED_PROXIES: '172.20.0.1/33' }),
+    ).toThrowError('Invalid runtime configuration: HTTP_TRUSTED_PROXIES:');
+    expect(() =>
+      loadRuntimeConfig({ HTTP_TRUSTED_PROXIES: 'proxy.example.com' }),
+    ).toThrowError('Invalid runtime configuration: HTTP_TRUSTED_PROXIES:');
+  });
+
   it('rejects malformed instance and proxy settings without exposing credentials', () => {
     expect(() =>
       loadRuntimeConfig({ INSTANCE_ID: '../instance' }),
