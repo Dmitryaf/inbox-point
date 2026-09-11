@@ -17,6 +17,16 @@ class TelegramSetupTest {
     Path directory;
 
     @Test
+    void explainsMissingVkPermissionsAndLongPollSettingsWithoutEchoingApiContent() {
+        assertThat(TelegramSetupController.vkExplanation(new java.io.IOException("VK access token is missing manage permission")))
+                .contains("Управление сообществом");
+        assertThat(TelegramSetupController.vkExplanation(new java.io.IOException("VK Long Poll message_new event is disabled")))
+                .contains("Входящие сообщения");
+        assertThat(TelegramSetupController.vkExplanation(new java.io.IOException("synthetic raw API response")))
+                .doesNotContain("synthetic raw API response");
+    }
+
+    @Test
     void discoversAForumPersistsConnectionAndStartsItAfterRestart() throws Exception {
         try (var server = new TelegramTestServer(request -> TelegramTestServer.Response.ok(switch (request.method()) {
             case "getUpdates" -> request.body().path("timeout").asInt() == 0

@@ -36,6 +36,7 @@ public final class VkChannel implements AutoCloseable {
     }
 
     public void check(long group) throws IOException, InterruptedException {
+        api.verifyReady(group);
         initial = api.open(group);
     }
 

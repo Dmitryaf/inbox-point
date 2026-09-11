@@ -51,19 +51,22 @@ final class VkApiClient {
         if (!flag(events.path("message_new"))) {
             throw new IOException("VK Long Poll message_new event is disabled");
         }
-        if (!flag(events.path("message_reply"))) {
-            throw new IOException("VK Long Poll message_reply event is disabled");
-        }
     }
 
     long resolveConfiguredCommunity(String reference) throws IOException, InterruptedException {
-        var permissions = call("groups.getTokenPermissions", "").path("permissions");
-        if (!permissions.isArray()) {
+        var tokenPermissions = call("groups.getTokenPermissions", "");
+        var permissions = tokenPermissions.path("permissions");
+        if (!tokenPermissions.path("mask").isIntegralNumber() || tokenPermissions.path("mask").asLong() < 0
+                || !permissions.isArray()) {
             throw invalid("groups.getTokenPermissions");
         }
         for (var required : List.of("manage", "messages")) {
             boolean allowed = false;
             for (var permission : permissions) {
+                if (!permission.path("name").isString() || !permission.path("setting").isIntegralNumber()
+                        || permission.path("setting").asLong() < 0) {
+                    throw invalid("groups.getTokenPermissions");
+                }
                 allowed |= required.equals(permission.path("name").asString(""));
             }
             if (!allowed) {

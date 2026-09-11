@@ -90,7 +90,7 @@ final class TelegramSetupController {
             runtime.connectVk(input.path("accessToken").asString(""), input.path("community").asString(""));
             return ResponseEntity.ok(Map.of("connected", true));
         } catch (IOException failure) {
-            return error(400, "Не удалось подключить VK. Проверьте токен, сообщество и настройки сообщений.");
+            return error(400, vkExplanation(failure));
         } catch (IllegalStateException | IllegalArgumentException failure) {
             return error(400, failure.getMessage());
         } catch (InterruptedException stopped) {
@@ -133,6 +133,35 @@ final class TelegramSetupController {
 
     private static ResponseEntity<Map<String, String>> error(int status, String message) {
         return ResponseEntity.status(status).body(Map.of("message", message));
+    }
+
+    static String vkExplanation(IOException failure) {
+        var text = failure.getMessage() == null ? "" : failure.getMessage();
+        if (text.contains("missing manage permission")) {
+            return "Создайте новый ключ VK и разрешите ему «Управление сообществом».";
+        }
+        if (text.contains("missing messages permission")) {
+            return "Создайте новый ключ VK и разрешите ему «Сообщения сообщества».";
+        }
+        if (text.contains("Long Poll is disabled")) {
+            return "Откройте «Дополнительно» → «Работа с API» → «Long Poll API» и включите Long Poll.";
+        }
+        if (text.contains("message_new event is disabled")) {
+            return "В Long Poll API откройте «Типы событий» и включите «Входящие сообщения».";
+        }
+        if (text.contains("does not point to a community")) {
+            return "Укажите ссылку именно на сообщество VK.";
+        }
+        if (failure instanceof com.inboxpoint.operations.ApiFailure api && api.diagnostic() != null
+                && api.diagnostic().apiCode() != null) {
+            return switch (api.diagnostic().apiCode()) {
+                case 5 -> "Ключ VK недействителен или был удалён. Создайте новый ключ доступа.";
+                case 15 -> "VK не дал ключу доступ к указанному сообществу. Проверьте, что ссылка и ключ относятся к одному сообществу.";
+                case 27 -> "Используйте ключ доступа, созданный в настройках самого сообщества VK.";
+                default -> "Не удалось подключить VK. Проверьте ссылку, ключ и права сообщества.";
+            };
+        }
+        return "Не удалось подключить VK. Проверьте ссылку, ключ и права сообщества.";
     }
 
     private static String explanation(Exception failure) {

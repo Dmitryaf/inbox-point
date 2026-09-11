@@ -128,6 +128,39 @@ for (const viewport of [
   });
 }
 
+test('VK setup stays anchored while details open', async ({ page }) => {
+  await page.setViewportSize({ height: 900, width: 1440 });
+  await login(page);
+  await page.route('**/api/setup/status', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      json: {
+        connected: true,
+        locked: true,
+        source: 'local',
+        vk: { connected: false, locked: false, source: 'none' },
+      },
+    });
+  });
+  await page.goto('/setup');
+
+  const vkCard = page.locator('.setup-card').filter({ hasText: 'VK' });
+  const collapsed = await requiredBox(vkCard);
+  await vkCard.getByRole('button', { name: 'Подключить VK' }).click();
+  await expect(page.getByText('Настройте Long Poll API.')).toBeVisible();
+  const expanded = await requiredBox(vkCard);
+
+  expectStablePlacement(expanded, collapsed);
+  await expect(vkCard).toContainText(
+    '«Дополнительно» → «Работа с API» → «Long Poll API»',
+  );
+  await expect(vkCard).toContainText('обязательно поставьте две галочки');
+  await expect(vkCard).toContainText('Добавить кнопку „Начать“');
+  await expect(vkCard).toContainText(
+    'Разрешить приложению доступ к управлению сообществом',
+  );
+});
+
 for (const viewport of [
   { height: 900, label: 'desktop', width: 1440 },
   { height: 844, label: 'mobile', width: 390 },
