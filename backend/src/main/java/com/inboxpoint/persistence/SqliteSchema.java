@@ -14,8 +14,10 @@ public final class SqliteSchema {
             if (schema == null) {
                 throw new IOException("Telegram storage schema is missing");
             }
+            int previous;
             try (var version = statement.executeQuery("PRAGMA user_version")) {
-                if (version.next() && version.getInt(1) > 5) {
+                previous = version.next() ? version.getInt(1) : 0;
+                if (previous > 6) {
                     throw new SQLException("Unsupported SQLite schema version");
                 }
             }
@@ -51,8 +53,72 @@ public final class SqliteSchema {
             ensureColumn(connection, "inbound_events", "last_error", "TEXT");
             ensureColumn(connection, "inbound_events", "next_attempt_at", "TEXT");
             statement.execute("CREATE INDEX IF NOT EXISTS inbound_events_by_status ON inbound_events(source, status, received_at)");
-            statement.execute("PRAGMA user_version = 5");
+            if (previous > 0 && previous < 6) {
+                migrateTopicReuse(statement);
+            }
+            statement.execute("CREATE INDEX IF NOT EXISTS support_requests_by_operator_topic ON support_requests(operator_topic_id, status, created_at)");
+            statement.execute(topicTrigger("insert", "INSERT", ""));
+            statement.execute(topicTrigger("update", "UPDATE OF operator_topic_id, channel, external_conversation_id", " AND id <> NEW.id"));
+            statement.execute("PRAGMA user_version = 6");
         }
+    }
+
+    private static void migrateTopicReuse(java.sql.Statement statement) throws SQLException {
+        statement.execute("PRAGMA foreign_keys = OFF");
+        try {
+            statement.execute("BEGIN IMMEDIATE");
+            try {
+                boolean migrationRequired;
+                try (var version = statement.executeQuery("PRAGMA user_version")) {
+                    migrationRequired = version.next() && version.getInt(1) < 6;
+                }
+                if (migrationRequired) {
+                    statement.execute("""
+                            CREATE TABLE support_requests_v6 (
+                                id TEXT PRIMARY KEY,
+                                channel TEXT NOT NULL CHECK (channel IN ('telegram', 'vk')),
+                                external_conversation_id TEXT NOT NULL,
+                                operator_topic_id TEXT NOT NULL,
+                                status TEXT NOT NULL CHECK (status IN ('active', 'closed')),
+                                created_at TEXT NOT NULL, closed_at TEXT, client_display_name TEXT
+                            ) STRICT
+                            """);
+                    statement.execute("""
+                            INSERT INTO support_requests_v6
+                            SELECT id, channel, external_conversation_id, operator_topic_id, status, created_at,
+                                closed_at, client_display_name FROM support_requests
+                            """);
+                    statement.execute("DROP TABLE support_requests");
+                    statement.execute("ALTER TABLE support_requests_v6 RENAME TO support_requests");
+                    statement.execute("""
+                            CREATE UNIQUE INDEX one_active_request_per_conversation
+                            ON support_requests(channel, external_conversation_id) WHERE status = 'active'
+                            """);
+                    try (var violations = statement.executeQuery("PRAGMA foreign_key_check")) {
+                        if (violations.next()) {
+                            throw new SQLException("SQLite topic reuse migration violated foreign keys");
+                        }
+                    }
+                    statement.execute("PRAGMA user_version = 6");
+                }
+                statement.execute("COMMIT");
+            } catch (SQLException | RuntimeException failed) {
+                statement.execute("ROLLBACK");
+                throw failed;
+            }
+        } finally {
+            statement.execute("PRAGMA foreign_keys = ON");
+        }
+    }
+
+    private static String topicTrigger(String label, String operation, String excludeCurrent) {
+        return """
+                CREATE TRIGGER IF NOT EXISTS operator_topic_conversation_%s
+                BEFORE %s ON support_requests WHEN EXISTS (
+                    SELECT 1 FROM support_requests WHERE operator_topic_id = NEW.operator_topic_id%s
+                    AND (channel <> NEW.channel OR external_conversation_id <> NEW.external_conversation_id)
+                ) BEGIN SELECT RAISE(ABORT, 'operator topic belongs to another conversation'); END
+                """.formatted(label, operation, excludeCurrent);
     }
 
     private static void ensureColumn(Connection connection, String table, String name, String definition) throws SQLException {

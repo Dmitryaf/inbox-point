@@ -18,6 +18,33 @@ class OperatorRelayRestartTest {
     Path directory;
 
     @Test
+    void reusesTheClosedRequestTopicWithoutReopeningTheOldRequestRecord() throws Exception {
+        var database = directory.resolve("topic.sqlite");
+        var now = Instant.parse("2026-10-01T10:00:00Z");
+        var clock = Clock.fixed(now, ZoneOffset.UTC);
+        try (var bot = new TelegramTestServer(call -> switch (call.method()) {
+            case "reopenForumTopic" -> TelegramTestServer.Response.ok("true");
+            case "sendMessage" -> TelegramTestServer.Response.message(101);
+            default -> throw new AssertionError(call.method());
+        }); var client = HttpClient.newHttpClient(); var store = new TelegramStore(database)) {
+            var original = new TelegramStore.Request("original", 123, 42, true, "vk");
+            store.open(original, now.minusSeconds(90));
+            store.changeStatus(original.id(), false, now.minusSeconds(30));
+            var api = new TelegramBotApi(client, bot.origin(), TelegramTestServer.TOKEN, Duration.ofSeconds(3));
+            var inbox = new DurableTelegramInbox(new TelegramTopicsInbox(api, -100123), database, clock);
+            var service = new HandoffService(store, inbox, clock, new ClientMessageQueue());
+            service.processVk("new", 123, 5, "Synthetic", "Second question");
+            var current = store.byTopic(42);
+            assertThat(current.id()).isNotEqualTo(original.id());
+            assertThat(current.active()).isTrue();
+            assertThat(store.byId(original.id()).active()).isFalse();
+            service.reconcileTopic(42, "stale-closing", false, now.minusSeconds(15));
+            assertThat(store.byTopic(42).active()).isTrue();
+            assertThat(bot.requests()).extracting(TelegramTestServer.Request::method).containsExactly("reopenForumTopic", "sendMessage");
+        }
+    }
+
+    @Test
     void holdsAnUnconfirmedQuestionAcrossRestartUntilTheOperatorResolvesIt() throws Exception {
         var database = directory.resolve("relay.sqlite");
         var now = Instant.parse("2026-09-12T12:00:00Z");

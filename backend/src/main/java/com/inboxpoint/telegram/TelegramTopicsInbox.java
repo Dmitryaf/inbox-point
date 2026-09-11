@@ -1,7 +1,17 @@
 package com.inboxpoint.telegram;
 
 record TelegramTopicsInbox(TelegramBotApi api, long group) implements OperatorInbox {
-    public String open(String request, String message, String title) throws TelegramBotApi.RequestFailed, InterruptedException {
+    public String open(String request, String message, String title, String reusableTopic) throws TelegramBotApi.RequestFailed, InterruptedException {
+        if (reusableTopic != null) {
+            try {
+                reopen(reusableTopic);
+                return reusableTopic;
+            } catch (TelegramBotApi.RequestFailed unavailable) {
+                if (unavailable.topicProblem() != TelegramBotApi.TopicProblem.MISSING) {
+                    throw unavailable;
+                }
+            }
+        }
         return Long.toString(api.createForumTopic(group, title));
     }
 

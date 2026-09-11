@@ -10,8 +10,8 @@ final class SwitchableOperatorInbox implements OperatorInbox {
         this.primary = primary;
     }
 
-    public String open(String request, String message, String title) throws InterruptedException {
-        return route("", target -> target.open(request, message, title));
+    public String open(String request, String message, String title, String reusableTopic) throws InterruptedException {
+        return route("", target -> target.open(request, message, title, reusableTopic));
     }
 
     @Override

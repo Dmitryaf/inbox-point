@@ -53,7 +53,8 @@ final class TelegramTextHandoff {
         boolean operator = chat == operatorGroup && topic > 0 && "supergroup".equals(type);
         var event = Long.toString(update.path("update_id").asLong());
         if (operator && (message.has("forum_topic_closed") || message.has("forum_topic_reopened"))) {
-            handoff.reconcileTopic(topic, event, message.has("forum_topic_reopened"));
+            var occurred = java.time.Instant.ofEpochSecond(message.path("date").asLong(0));
+            handoff.reconcileTopic(topic, event, message.has("forum_topic_reopened"), occurred);
             return;
         }
         var sender = message.path("from");

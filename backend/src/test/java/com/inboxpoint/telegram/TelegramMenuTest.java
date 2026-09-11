@@ -25,6 +25,8 @@ class TelegramMenuTest {
         try (var server = new TelegramTestServer(call -> switch (call.method()) {
             case "createForumTopic" -> TelegramTestServer.Response.ok("{\"message_thread_id\":" + topics.incrementAndGet() + "}");
             case "closeForumTopic" -> TelegramTestServer.Response.ok("true");
+            case "reopenForumTopic" -> new TelegramTestServer.Response(400,
+                    "{\"ok\":false,\"error_code\":400,\"description\":\"Bad Request: message thread not found\"}");
             case "sendMessage" -> {
                 if (call.body().path("chat_id").asLong() < 0 && relays.incrementAndGet() == 2) {
                     yield new TelegramTestServer.Response(400,

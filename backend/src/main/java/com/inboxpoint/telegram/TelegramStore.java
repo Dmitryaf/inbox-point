@@ -65,7 +65,10 @@ final class TelegramStore implements AutoCloseable {
     }
 
     Request byTopic(String topic) throws SQLException {
-        return request("operator_topic_id = ?", topic);
+        return request("""
+                operator_topic_id = ? ORDER BY CASE status WHEN 'active' THEN 0 ELSE 1 END,
+                    julianday(created_at) DESC, rowid DESC LIMIT 1
+                """, topic);
     }
 
     Request byId(String id) throws SQLException {
@@ -93,6 +96,13 @@ final class TelegramStore implements AutoCloseable {
                     created_at, client_display_name)
                 VALUES (?, ?, ?, ?, 'active', ?, ?)
                 """, request.id(), request.channel(), Long.toString(request.conversation()), request.topic(), now.toString(), displayName);
+    }
+
+    boolean topicEventIsCurrent(String id, Instant occurred) throws SQLException {
+        try (var statement = prepare("SELECT created_at FROM support_requests WHERE id = ?", id);
+                var rows = statement.executeQuery()) {
+            return rows.next() && Instant.parse(rows.getString(1)).getEpochSecond() <= occurred.getEpochSecond();
+        }
     }
 
     boolean switchTopic(String id, String current, String replacement) throws SQLException {

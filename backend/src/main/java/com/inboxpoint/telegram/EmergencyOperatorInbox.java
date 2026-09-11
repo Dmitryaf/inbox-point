@@ -2,7 +2,7 @@ package com.inboxpoint.telegram;
 
 final class EmergencyOperatorInbox implements OperatorInbox {
     @Override
-    public String open(String request, String message, String title) {
+    public String open(String request, String message, String title, String reusableTopic) {
         return webTopic(request);
     }
 

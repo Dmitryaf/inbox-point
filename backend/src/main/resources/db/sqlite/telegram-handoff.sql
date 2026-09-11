@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS support_requests (
   id TEXT PRIMARY KEY,
   channel TEXT NOT NULL CHECK (channel IN ('telegram', 'vk')),
   external_conversation_id TEXT NOT NULL,
-  operator_topic_id TEXT NOT NULL UNIQUE,
+  operator_topic_id TEXT NOT NULL,
   status TEXT NOT NULL CHECK (status IN ('active', 'closed')),
   created_at TEXT NOT NULL,
   closed_at TEXT

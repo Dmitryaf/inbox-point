@@ -65,13 +65,15 @@ final class HandoffService {
         title = title.substring(0, title.offsetByCodePoints(0, Math.min(128, title.codePointCount(0, title.length()))));
         var requestId = UUID.randomUUID().toString();
         var webTopic = "web:" + requestId;
+        var prior = store.latestRequest(channel, chat);
+        var reusable = prior == null || EmergencyOperatorInbox.isWebTopic(prior.topic()) ? null : prior.topic();
         request = new TelegramStore.Request(requestId, chat, webTopic, true, channel);
         store.open(request, name, clock.instant());
         store.recordMessage(requestId, "client_to_operator", message, name, text, clock.instant());
         store.usageEvent("new-request:" + requestId, "new_request", channel, requestId, clock.instant());
         String topic;
         try {
-            topic = inbox.open(requestId, message, title);
+            topic = inbox.open(requestId, message, title, reusable);
         } catch (DurableTelegramInbox.UnknownOutcome uncertain) {
             recordWebTakeover(request);
             store.acknowledge(request, ACKNOWLEDGEMENT, clock.instant());
@@ -152,14 +154,14 @@ final class HandoffService {
         store.usageEvent("web-takeover:" + request.id(), "web_takeover", request.channel(), request.id(), clock.instant());
     }
 
-    void reconcileTopic(long topic, String event, boolean active) throws SQLException {
+    void reconcileTopic(long topic, String event, boolean active, java.time.Instant occurred) throws SQLException {
         if (!store.claim("operator:telegram", event, clock.instant())) {
             return;
         }
         var request = store.byTopic(topic);
-        if (request != null && request.active() != active
+        if (request != null && store.topicEventIsCurrent(request.id(), occurred) && request.active() != active
                 && (!active || store.activeRequest(request.channel(), request.conversation()) == null)) {
-            store.changeStatus(request.id(), active, clock.instant());
+            store.changeStatus(request.id(), active, occurred);
         }
         store.completeEvent("operator:telegram", event, clock.instant());
     }
