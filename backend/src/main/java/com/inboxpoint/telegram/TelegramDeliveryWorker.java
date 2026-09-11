@@ -16,6 +16,7 @@ final class TelegramDeliveryWorker {
     private final DeliveryFailurePolicy failures;
     private final Supplier<VkChannel> vk;
     private final BooleanSupplier paused;
+    private final Supplier<tools.jackson.databind.JsonNode> keyboard;
 
     TelegramDeliveryWorker(TelegramStore store, TelegramBotApi api, Clock clock) {
         this(store, api, clock, () -> null);
@@ -31,6 +32,12 @@ final class TelegramDeliveryWorker {
 
     TelegramDeliveryWorker(TelegramStore store, Supplier<TelegramBotApi> telegram, Clock clock,
             Supplier<VkChannel> vk, BooleanSupplier paused) {
+        this(store, telegram, clock, vk, paused, () -> null);
+    }
+
+    TelegramDeliveryWorker(TelegramStore store, Supplier<TelegramBotApi> telegram, Clock clock,
+            Supplier<VkChannel> vk, BooleanSupplier paused, Supplier<tools.jackson.databind.JsonNode> keyboard) {
+        this.keyboard = keyboard;
         this.vk = vk;
         this.paused = paused;
         this.store = store;
@@ -66,7 +73,7 @@ final class TelegramDeliveryWorker {
             try {
                 sent = "vk".equals(item.channel())
                         ? vkChannel.send(item.conversation(), item.text(), item.key())
-                        : api.sendMessage(item.conversation(), null, item.text());
+                        : api.sendMessage(item.conversation(), null, item.text(), keyboard.get());
             } catch (IOException failure) {
                 failures.record(item, failure);
                 continue;

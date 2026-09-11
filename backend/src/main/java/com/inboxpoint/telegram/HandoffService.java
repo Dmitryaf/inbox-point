@@ -9,7 +9,7 @@ import java.util.Locale;
 import java.util.UUID;
 
 final class HandoffService {
-    static final String ACKNOWLEDGEMENT = "Вопрос отправлен. Ответ появится здесь.";
+    static final String ACKNOWLEDGEMENT = "Вопрос отправлен.";
     private static final int MESSAGE_LIMIT = 4096;
     private final TelegramStore store;
     private final OperatorInbox inbox;

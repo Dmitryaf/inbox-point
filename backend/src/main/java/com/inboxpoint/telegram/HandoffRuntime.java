@@ -17,6 +17,7 @@ final class HandoffRuntime {
     private final Path database;
     private final BooleanSupplier paused;
     private final Supplier<VkChannel> vk;
+    private final Supplier<tools.jackson.databind.JsonNode> keyboard;
     private final AtomicReference<OperatorInbox> inbox = new AtomicReference<>();
     private final OperatorInbox routingInbox = new SwitchableOperatorInbox(inbox::get);
     private final AtomicReference<TelegramBotApi> telegram = new AtomicReference<>();
@@ -25,6 +26,11 @@ final class HandoffRuntime {
     private volatile Instant startedAt;
 
     HandoffRuntime(Path database, BooleanSupplier paused, Supplier<VkChannel> vk) {
+        this(database, paused, vk, () -> null);
+    }
+
+    HandoffRuntime(Path database, BooleanSupplier paused, Supplier<VkChannel> vk, Supplier<tools.jackson.databind.JsonNode> keyboard) {
+        this.keyboard = keyboard;
         this.database = database;
         this.paused = paused;
         this.vk = vk;
@@ -71,7 +77,7 @@ final class HandoffRuntime {
 
     private void deliver() {
         try (var store = new TelegramStore(database)) {
-            var worker = new TelegramDeliveryWorker(store, telegram::get, Clock.systemUTC(), vk, paused);
+            var worker = new TelegramDeliveryWorker(store, telegram::get, Clock.systemUTC(), vk, paused, keyboard);
             while (!Thread.currentThread().isInterrupted()) {
                 lastCycle = Instant.now();
                 var processed = worker.runOnce();

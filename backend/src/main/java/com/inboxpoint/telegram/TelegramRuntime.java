@@ -67,7 +67,7 @@ public final class TelegramRuntime {
         settingsFile = database.toAbsolutePath().resolveSibling("telegram-settings.json");
         origin = URI.create(environment.getProperty("inboxpoint.telegram.api-origin", "https://api.telegram.org"));
         vk = new VkSetup(environment, database);
-        handoff = new HandoffRuntime(database, serviceControl::deliveryPaused, vk::channel);
+        handoff = new HandoffRuntime(database, serviceControl::deliveryPaused, vk::channel, () -> TelegramClientMenu.keyboard(information, false));
     }
 
     @EventListener(ApplicationReadyEvent.class)
