@@ -1,11 +1,46 @@
-.setup-steps {
-  color: var(--color-text-muted);
-  margin: 0.9rem 0 1.1rem;
-  padding-left: 1.3rem;
+.setup-intro {
+  background: var(--color-primary-soft);
+  border-radius: var(--radius-control);
+  color: var(--color-text);
+  margin-top: 0.9rem;
+  padding: 0.8rem;
 }
 
-.setup-steps li + li {
-  margin-top: 0.35rem;
+.setup-intro p {
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  margin: 0.25rem 0 0;
+}
+
+.setup-steps {
+  counter-reset: setup-step;
+  display: grid;
+  gap: 0.65rem;
+  list-style: none;
+  margin: 0.9rem 0 1.1rem;
+  padding: 0;
+}
+
+.setup-steps li {
+  counter-increment: setup-step;
+  display: grid;
+  gap: 0.2rem 0.7rem;
+  grid-template-columns: 1.8rem minmax(0, 1fr);
+}
+
+.setup-steps li::before {
+  align-items: center;
+  background: var(--color-primary);
+  border-radius: 50%;
+  color: var(--color-surface-raised);
+  content: counter(setup-step);
+  display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 800;
+  grid-row: 1 / span 2;
+  height: 1.8rem;
+  justify-content: center;
+  width: 1.8rem;
 }
 
 .setup-steps strong,
@@ -15,7 +50,13 @@
 
 .setup-steps span {
   color: var(--color-text-muted);
+  line-height: 1.5;
   margin-top: 0.2rem;
+}
+
+.setup-steps a {
+  color: var(--color-primary-hover);
+  font-weight: 700;
 }
 
 .setup-warning {

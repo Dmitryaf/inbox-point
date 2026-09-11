@@ -34,6 +34,10 @@ describe('AdminPageHeader', () => {
       '/ops',
     ]);
     expect(links[1]?.attributes('aria-current')).toBe('page');
+    expect(wrapper.get('.admin-brand').attributes('aria-label')).toBe(
+      'Inbox Point — открыть ответы',
+    );
+    expect(wrapper.get('.product-logo__mark').find('svg').exists()).toBe(true);
 
     links[2]?.element.focus();
     expect(document.activeElement).toBe(links[2]?.element);

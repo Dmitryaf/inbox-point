@@ -13,7 +13,7 @@ export function renderChannelIntakeControlsPart1(
   $state: ReturnType<typeof createComponentModel>,
   $props: WithDefaults<ComponentProps, typeof componentDefaults>,
 ) {
-  const { channelName, pauseExplanation, $emit } = $state;
+  const { channelName, pauseExplanation, $emit, canPause } = $state;
 
   return (
     <>
@@ -24,19 +24,24 @@ export function renderChannelIntakeControlsPart1(
               <strong data-r-0bf4defe="">{channelName(channel)}</strong>
               <span
                 className={$class('intake-status', {
+                  'intake-status--disconnected':
+                    !$props.channels[channel].configured,
                   'intake-status--paused':
+                    $props.channels[channel].configured &&
                     $props.state.channels[channel].mode === 'paused',
                 })}
                 data-r-0bf4defe=""
               >
-                {$props.state.channels[channel].mode === 'paused'
-                  ? 'На паузе'
-                  : 'Приём включён'}
+                {!$props.channels[channel].configured
+                  ? 'Не подключён'
+                  : $props.state.channels[channel].mode === 'paused'
+                    ? 'На паузе'
+                    : 'Приём включён'}
               </span>
             </div>
             <p data-r-0bf4defe="">{pauseExplanation(channel)}</p>
           </div>
-          {$props.state.channels[channel].mode === 'active' ? (
+          {canPause(channel) ? (
             <button
               type="button"
               disabled={Boolean($props.pendingChannel)}
@@ -48,7 +53,7 @@ export function renderChannelIntakeControlsPart1(
                 ? 'Приостанавливаем…'
                 : 'Приостановить'}
             </button>
-          ) : (
+          ) : $props.channels[channel].configured ? (
             <button
               type="button"
               disabled={Boolean($props.pendingChannel)}
@@ -59,7 +64,7 @@ export function renderChannelIntakeControlsPart1(
                 ? 'Возобновляем…'
                 : 'Возобновить'}
             </button>
-          )}
+          ) : null}
         </article>
       ))}
     </>

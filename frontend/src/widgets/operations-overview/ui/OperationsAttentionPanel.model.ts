@@ -5,16 +5,12 @@ import {
 } from '@frontend/shared/lib/component-model';
 
 import { computed } from '@frontend/shared/lib/model-state';
-import type {
-  ChannelOperationsStatus,
-  OperationsStatus,
-} from '@frontend/entities/operations/model/types';
+import type { OperationsStatus } from '@frontend/entities/operations/model/types';
+import {
+  channelProblem,
+  type ChannelProblem,
+} from '@frontend/widgets/operations-overview/model/operations-attention';
 
-interface ChannelProblem {
-  action: string;
-  name: string;
-  summary: string;
-}
 export type ComponentProps = {
   pendingDeliveryId: string | undefined;
   pendingInboundEventId: string | undefined;
@@ -52,6 +48,20 @@ export function createComponentModel(
       props.status.deliveries.state === 'stalled' ||
       !props.status.deliveries.worker.running,
   );
+  const setupProblems = computed(() =>
+    channelProblems.value.filter((problem) => problem.kind === 'setup'),
+  );
+  const connectionProblems = computed(() =>
+    channelProblems.value.filter((problem) => problem.kind === 'connection'),
+  );
+  const hasOperationalProblems = computed(
+    () =>
+      connectionProblems.value.length > 0 ||
+      deliveryStopped.value ||
+      props.status.deliveries.incidents.length > 0 ||
+      props.status.operatorRelays.incidents.length > 0 ||
+      props.status.inboundEvents.incidents.length > 0,
+  );
   const hasAttention = computed(
     () =>
       channelProblems.value.length > 0 ||
@@ -60,26 +70,12 @@ export function createComponentModel(
       props.status.operatorRelays.incidents.length > 0 ||
       props.status.inboundEvents.incidents.length > 0,
   );
-  function channelProblem(
-    name: string,
-    channel: ChannelOperationsStatus,
-  ): ChannelProblem | undefined {
-    if (channel.state === 'running' || channel.state === 'starting') {
-      return undefined;
-    }
-    if (channel.state === 'not_configured') {
-      return {
-        action: 'Откройте раздел «Каналы» и завершите подключение.',
-        name: `${name} не подключён`,
-        summary: 'Сообщения из этого канала сейчас не принимаются.',
-      };
-    }
-    return {
-      action:
-        'Обновите состояние. Если связь не восстановилась, проверьте подключение канала.',
-      name: `Нет связи с ${name}`,
-      summary: 'Новые сообщения из этого канала могут не поступать.',
-    };
-  }
-  return { $emit, channelProblems, deliveryStopped, hasAttention };
+  return {
+    $emit,
+    deliveryStopped,
+    setupProblems,
+    connectionProblems,
+    hasOperationalProblems,
+    hasAttention,
+  };
 }

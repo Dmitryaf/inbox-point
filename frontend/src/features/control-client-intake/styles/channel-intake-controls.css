@@ -45,6 +45,10 @@ p {
   color: var(--color-attention);
 }
 
+.intake-status--disconnected {
+  color: var(--color-text-muted);
+}
+
 button {
   flex: 0 0 auto;
 }

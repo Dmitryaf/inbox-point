@@ -4,12 +4,14 @@ import {
   type WithDefaults,
 } from '@frontend/shared/lib/component-model';
 
+import type { OperationsStatus } from '@frontend/entities/operations/model/types';
 import type {
   ClientChannel,
   ServiceControlState,
 } from '@frontend/entities/service-control/model/types';
 
 export type ComponentProps = {
+  channels: OperationsStatus['channels'];
   pendingChannel: ClientChannel | undefined;
   state: ServiceControlState;
 } & EventProps<{
@@ -26,7 +28,16 @@ export function createComponentModel(
   function channelName(channel: ClientChannel): string {
     return channel === 'telegram' ? 'Telegram' : 'VK';
   }
+  function canPause(channel: ClientChannel): boolean {
+    return (
+      props.channels[channel].configured &&
+      props.state.channels[channel].mode === 'active'
+    );
+  }
   function pauseExplanation(channel: ClientChannel): string {
+    if (!props.channels[channel].configured) {
+      return `Подключите ${channelName(channel)} в разделе «Каналы».`;
+    }
     const channelIsPaused = props.state.channels[channel].mode === 'paused';
     if (channelIsPaused) {
       return channel === 'telegram'
@@ -38,5 +49,5 @@ export function createComponentModel(
     }
     return 'Новый вопрос можно задать через сообщество.';
   }
-  return { $emit, channelName, pauseExplanation };
+  return { $emit, channelName, canPause, pauseExplanation };
 }

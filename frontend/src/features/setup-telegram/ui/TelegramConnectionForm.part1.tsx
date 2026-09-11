@@ -35,7 +35,7 @@ export function renderTelegramConnectionFormPart1(
       ) : (
         <>
           <label htmlFor="telegram-token" data-r-4c039fa9="">
-            {'Токен от @BotFather'}
+            {'Токен бота — строка-пароль от @BotFather'}
           </label>
           <input
             id="telegram-token"
@@ -51,7 +51,9 @@ export function renderTelegramConnectionFormPart1(
             onClick={$nativeHandler(discover)}
             data-r-4c039fa9=""
           >
-            {pending === 'discover' ? 'Ищем…' : 'Найти группы'}
+            {pending === 'discover'
+              ? 'Проверяем…'
+              : 'Проверить токен и найти группу'}
           </button>
           {renderTelegramConnectionFormPart2($state, $props)}
           {chats.length ? (

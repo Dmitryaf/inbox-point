@@ -4,9 +4,15 @@ import { requiredValue as $required } from '@frontend/shared/lib/component-bindi
 
 import ChannelIntakeControls from './ChannelIntakeControls';
 
-import type { createComponentModel } from './ClientIntakeControl.model';
+import type { WithDefaults } from '@frontend/shared/lib/component-model';
+import type {
+  createComponentModel,
+  ComponentProps,
+  componentDefaults,
+} from './ClientIntakeControl.model';
 export function renderClientIntakeControlPart1(
   $state: ReturnType<typeof createComponentModel>,
+  $props: WithDefaults<ComponentProps, typeof componentDefaults>,
 ) {
   const control = $unref($state.control);
 
@@ -19,6 +25,7 @@ export function renderClientIntakeControlPart1(
       ) : control.state.value ? (
         <ChannelIntakeControls
           pendingChannel={control.pendingChannel.value}
+          channels={$props.channels}
           state={control.state.value}
           onChange={$callback($required($unref($state.control)).changeMode)}
           data-r-77f00789=""

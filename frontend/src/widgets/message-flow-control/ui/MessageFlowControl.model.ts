@@ -11,6 +11,7 @@ import { useTemplateRef } from '@frontend/shared/lib/model-state';
 import type { OperationsStatus } from '@frontend/entities/operations/model/types';
 
 export type ComponentProps = {
+  channels: OperationsStatus['channels'];
   outbound: OperationsStatus['outbound'];
   outboundPending: 'pause' | 'resume' | undefined;
 } & EventProps<{

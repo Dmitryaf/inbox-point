@@ -41,7 +41,7 @@ export function renderVkSetupCardPart5(
           data-r-712bbad4=""
         >
           <label htmlFor="vk-community" data-r-712bbad4="">
-            {'Адрес сообщества VK'}
+            {'Ссылка на страницу сообщества VK'}
           </label>
           <input
             id="vk-community"
@@ -53,7 +53,7 @@ export function renderVkSetupCardPart5(
             data-r-712bbad4=""
           />
           <label htmlFor="vk-token" data-r-712bbad4="">
-            {'Ключ доступа VK'}
+            {'Ключ доступа к сообщениям сообщества'}
           </label>
           <input
             id="vk-token"

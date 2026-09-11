@@ -56,6 +56,12 @@ describe('SetupPage disconnect', () => {
       '/api/setup/vk',
       expect.objectContaining({ method: 'DELETE' }),
     );
+    const vkDisconnectOptions = fetchMock.mock.calls.find(
+      ([input, options]) =>
+        requestUrl(input).endsWith('/setup/vk') && options?.method === 'DELETE',
+    )?.[1];
+    expect(vkDisconnectOptions?.body).toBeUndefined();
+    expect(vkDisconnectOptions?.headers).toBeUndefined();
     expect(confirmMock).toHaveBeenCalledWith(
       expect.stringContaining('История обращений сохранится'),
     );
@@ -77,7 +83,7 @@ describe('SetupPage disconnect', () => {
       .setValue('replacement-synthetic-telegram-token');
     await wrapper
       .findAll('button')
-      .find((button) => button.text() === 'Найти группы')
+      .find((button) => button.text() === 'Проверить токен и найти группу')
       ?.trigger('click');
     await flushPromises();
     await wrapper.get('input[type="radio"]').setValue(true);

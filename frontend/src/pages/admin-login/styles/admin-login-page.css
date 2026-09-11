@@ -14,10 +14,9 @@
 }
 
 .login-brand {
-  font-size: 1rem;
-  font-weight: 700;
-  margin: 0;
-  text-align: center;
+  --product-logo-size: 2.5rem;
+
+  justify-self: center;
 }
 
 .login-state {

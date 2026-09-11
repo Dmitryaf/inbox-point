@@ -6,16 +6,16 @@ import type { createComponentModel } from './OperationsAttentionPanel.model';
 export function renderOperationsAttentionPanelPart2(
   $state: ReturnType<typeof createComponentModel>,
 ) {
-  const channelProblems = $state.channelProblems.value;
+  const connectionProblems = $state.connectionProblems.value;
   const hasAttention = $state.hasAttention.value;
   if (!hasAttention) {
     return null;
   }
   return (
     <>
-      {channelProblems.length ? (
+      {connectionProblems.length ? (
         <div className="attention-list" data-r-a910a991="">
-          {$renderList(channelProblems, (problem) => (
+          {$renderList(connectionProblems, (problem) => (
             <article key={problem.name} data-r-a910a991="">
               <h3 data-r-a910a991="">{problem.name}</h3>
               <p data-r-a910a991="">{problem.summary}</p>

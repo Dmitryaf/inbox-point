@@ -2,6 +2,7 @@ import { renderList as $renderList } from '@frontend/shared/lib/component-view';
 
 import { unref as $unref } from '@frontend/shared/lib/model-state';
 
+import ProductLogo from '@frontend/shared/ui/ProductLogo';
 import { RouterLink } from '@frontend/shared/lib/router';
 
 import type { WithDefaults } from '@frontend/shared/lib/component-model';
@@ -20,8 +21,13 @@ export function renderAdminPageHeaderPart1(
   return (
     <>
       <div className="admin-topbar" data-r-e15afcb7="">
-        <RouterLink to="/manage" className="admin-brand" data-r-e15afcb7="">
-          {' Inbox Point '}
+        <RouterLink
+          aria-label="Inbox Point — открыть ответы"
+          to="/manage"
+          className="admin-brand"
+          data-r-e15afcb7=""
+        >
+          <ProductLogo data-r-e15afcb7="" />
         </RouterLink>
         <nav
           aria-label="Разделы администратора"

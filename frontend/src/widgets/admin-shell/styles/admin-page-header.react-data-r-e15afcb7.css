@@ -17,10 +17,8 @@
   min-height: 3.75rem;
 }
 .admin-brand[data-r-e15afcb7] {
-  color: var(--color-text);
+  border-radius: var(--radius-control);
   flex: 0 0 auto;
-  font-size: 0.95rem;
-  font-weight: 700;
   text-decoration: none;
 }
 .admin-navigation[data-r-e15afcb7] {

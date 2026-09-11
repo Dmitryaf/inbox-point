@@ -1,0 +1,129 @@
+.connection-guide {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.connection-guide-heading {
+  align-items: flex-start;
+  display: flex;
+  gap: 0.8rem;
+}
+
+.connection-guide-heading h3,
+.connection-guide-heading p,
+.connection-guide-steps p,
+.connection-guide-note {
+  margin: 0;
+}
+
+.connection-guide-heading p,
+.connection-guide-steps p,
+.connection-guide-note {
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.connection-guide-heading p {
+  margin-top: 0.3rem;
+}
+
+.connection-guide-icon {
+  align-items: center;
+  background: var(--color-primary-soft);
+  border-radius: var(--radius-control);
+  color: var(--color-primary);
+  display: inline-flex;
+  flex: 0 0 auto;
+  justify-content: center;
+  min-height: 2.5rem;
+  width: 2.5rem;
+}
+
+.connection-guide-steps {
+  display: grid;
+  gap: 0.65rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.connection-guide-steps li {
+  align-items: center;
+  background: var(--color-surface-muted);
+  border-radius: var(--radius-control);
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: 0.8rem;
+}
+
+.connection-step-number {
+  align-items: center;
+  background: var(--color-primary);
+  border-radius: 50%;
+  color: var(--color-surface-raised);
+  display: inline-flex;
+  font-size: 0.8rem;
+  font-weight: 800;
+  height: 1.8rem;
+  justify-content: center;
+  width: 1.8rem;
+}
+
+.connection-step-status {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.connection-guide-action {
+  align-items: center;
+  background: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-control);
+  color: var(--color-surface-raised);
+  display: inline-flex;
+  font-weight: 700;
+  justify-self: start;
+  min-height: 2.55rem;
+  padding: 0.6rem 0.95rem;
+  text-decoration: none;
+}
+
+.connection-guide-action:hover {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+}
+
+.connection-guide-action:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.connection-guide-note {
+  font-size: 0.84rem;
+}
+
+@media (max-width: 520px) {
+  .connection-guide {
+    padding: 0.85rem;
+  }
+
+  .connection-guide-steps li {
+    align-items: start;
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .connection-step-status {
+    grid-column: 2;
+  }
+
+  .connection-guide-action {
+    justify-content: center;
+    width: 100%;
+  }
+}

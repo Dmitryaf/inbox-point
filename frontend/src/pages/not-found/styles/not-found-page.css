@@ -11,7 +11,14 @@
   max-width: 28rem;
 }
 
-.not-found-page p:not(.brand) {
+.not-found-logo {
+  --product-logo-size: 2.5rem;
+
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.not-found-page p {
   color: var(--color-text-muted);
   line-height: 1.6;
 }

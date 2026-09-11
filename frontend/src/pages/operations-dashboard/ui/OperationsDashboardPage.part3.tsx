@@ -22,6 +22,7 @@ export function renderOperationsDashboardPagePart3(
     <>
       {operations.status.value ? (
         <MessageFlowControl
+          channels={operations.status.value.channels}
           outbound={operations.status.value.outbound}
           outboundPending={deliveryControl.pendingMode.value}
           onChanged={$callback($unref($state.refreshAll))}

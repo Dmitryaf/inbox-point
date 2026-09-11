@@ -46,7 +46,7 @@ export default function ClientIntakeControl($incomingProps: ComponentProps) {
         </h3>
         <p className="intake-control-intro" data-r-77f00789="">
           {
-            ' Пауза действует отдельно для Telegram и VK. Текущие обращения продолжат работать. '
+            ' Для подключённых каналов пауза действует отдельно. Текущие обращения продолжат работать. '
           }
         </p>
         <AsyncMessage
@@ -59,7 +59,7 @@ export default function ClientIntakeControl($incomingProps: ComponentProps) {
           text={control.notice.value}
           data-r-77f00789=""
         />
-        {renderClientIntakeControlPart1($state)}
+        {renderClientIntakeControlPart1($state, $props)}
       </section>
     </ModelScopeProvider>
   );

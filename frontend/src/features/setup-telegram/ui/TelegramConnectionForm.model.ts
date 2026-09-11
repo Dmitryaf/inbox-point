@@ -43,7 +43,7 @@ export function createComponentModel(
       selectedChatId.value = null;
       message.value = result.chats.length
         ? 'Выберите операторскую группу.'
-        : 'Напишите в группе сообщение и повторите поиск.';
+        : 'Группа не найдена. Проверьте, что бот добавлен администратором, темы включены и после добавления бота в группе отправлено сообщение.';
     } catch (cause: unknown) {
       message.value = errorMessage(cause);
       messageKind.value = 'error';
