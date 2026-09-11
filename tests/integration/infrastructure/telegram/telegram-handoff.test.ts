@@ -141,7 +141,7 @@ describe('Telegram handoff integration', () => {
       repository,
     });
     deliveryWorker = new DeliveryWorker({
-      channels: [new TelegramClientChannel(gateway)],
+      channels: [new TelegramClientChannel(gateway, information)],
       repository,
     });
     router = new TelegramUpdateRouter(
@@ -176,6 +176,9 @@ describe('Telegram handoff integration', () => {
       },
       update_id: 1,
     });
+    information.replace({
+      customSections: [{ label: 'Как добраться', text: 'Вход со двора.' }],
+    });
     await router.route({
       message: {
         chat: { id: -1_001, type: 'supergroup' },
@@ -200,14 +203,21 @@ describe('Telegram handoff integration', () => {
       messageThreadId: 900,
     });
     expect(gateway.sent[0]?.text).toContain('Question');
-    expect(gateway.sent[1]).toEqual({
+    expect(gateway.sent[1]).toMatchObject({
       chatId: 101,
-      text: 'Вопрос отправлен. Ответ появится здесь.',
+      text: 'Вопрос отправлен.',
     });
-    expect(gateway.sent[2]).toEqual({
+    expect(gateway.sent[2]).toMatchObject({
       chatId: 101,
       text: 'Answer',
     });
+    const refreshedMenu = gateway.sent[2]?.replyMarkup;
+    if (!refreshedMenu || !('keyboard' in refreshedMenu)) {
+      throw new Error('Expected an updated reply keyboard');
+    }
+    expect(
+      refreshedMenu.keyboard.flat().map((button) => button.text),
+    ).toContain('Как добраться');
     expect(
       repository.getUsageEventCounts(new Date('2026-01-01')).new_request,
     ).toBe(1);

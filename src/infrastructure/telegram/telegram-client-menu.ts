@@ -125,7 +125,11 @@ function resolveMenuResponse(
   const normalized = text.trim();
   const command = parseCommand(normalized);
   const paused = intakePolicy.isPaused('telegram');
-  const mainMenu = createMainMenu(information, hasActiveRequest, paused);
+  const mainMenu = createTelegramMainKeyboard(
+    information,
+    hasActiveRequest,
+    paused,
+  );
   const informationResponse = information.resolve(normalized);
   if (
     informationResponse &&
@@ -202,7 +206,7 @@ function resolveMenuResponse(
   return undefined;
 }
 
-function createMainMenu(
+export function createTelegramMainKeyboard(
   information: ClientInformationResolver,
   hasActiveRequest: boolean,
   paused = false,

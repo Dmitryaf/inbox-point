@@ -172,9 +172,7 @@ describe('VK handoff integration', () => {
 
     expect(gateway.sent).toHaveLength(2);
     expect(gateway.sent[0]?.peerId).toBe(101);
-    expect(gateway.sent[0]?.text).toBe(
-      'Вопрос отправлен. Ответ появится здесь.',
-    );
+    expect(gateway.sent[0]?.text).toBe('Вопрос отправлен.');
     expect(gateway.sent[0]?.randomId).toBeGreaterThan(0);
     expect(gateway.sent[0]?.keyboard).toMatchObject({
       inline: false,
