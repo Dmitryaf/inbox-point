@@ -75,7 +75,7 @@ export class TelegramRuntime implements TelegramRuntimeControl {
       this.fetchImplementation,
     );
     await gateway.verifySetup(config.operatorChatId);
-    const clientChannel = new TelegramClientChannel(gateway);
+    const clientChannel = new TelegramClientChannel(gateway, this.information);
     const operatorInbox = new TelegramTopicsInbox(
       gateway,
       config.operatorChatId,

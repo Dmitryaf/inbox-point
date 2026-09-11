@@ -64,7 +64,8 @@ export function useContentWorkspace(options: ContentWorkspaceOptions) {
       if (snapshotContent(state.draft) === submittedSnapshot) {
         Object.assign(state.draft, savedContent);
       }
-      state.notice.value = 'Информация сохранена и уже доступна в каналах.';
+      state.notice.value =
+        'Информация сохранена. Новые ответы доступны сразу. Кнопки обновятся, когда бот отправит клиенту следующее сообщение; для немедленного обновления клиент может отправить /start в Telegram или нажать «Начать» в VK.';
       saved = true;
     } catch (cause: unknown) {
       const message = state.reportFailure(cause);
@@ -98,7 +99,7 @@ export function useContentWorkspace(options: ContentWorkspaceOptions) {
       state.version.value = result.version;
       state.notice.value =
         snapshotContent(state.draft) === restoredSnapshot
-          ? 'Предыдущая версия восстановлена и уже доступна в каналах.'
+          ? 'Предыдущая версия восстановлена. Новые ответы доступны сразу, а кнопки обновятся со следующим сообщением бота.'
           : 'Предыдущая версия восстановлена. Ваши новые правки остались в редакторе и ещё не сохранены.';
       restored = true;
     } catch (cause: unknown) {

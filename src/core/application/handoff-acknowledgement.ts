@@ -1,7 +1,7 @@
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
 import type { SupportRequest } from '@/core/model/support-request.js';
 
-export const handoffAcknowledgement = 'Вопрос отправлен. Ответ появится здесь.';
+export const handoffAcknowledgement = 'Вопрос отправлен.';
 
 export function enqueueHandoffAcknowledgement(
   repository: SupportRepository,

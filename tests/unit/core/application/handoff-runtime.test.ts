@@ -225,7 +225,7 @@ describe('HandoffRuntime', () => {
       ),
     ).toEqual([
       expect.objectContaining({
-        text: 'Вопрос отправлен. Ответ появится здесь.',
+        text: 'Вопрос отправлен.',
       }),
     ]);
 
@@ -360,7 +360,7 @@ describe('HandoffRuntime', () => {
       repository
         .findPendingDeliveries(new Date('2100-01-01T00:00:00.000Z'), 10)
         .map((delivery) => delivery.text),
-    ).toEqual(['Вопрос отправлен. Ответ появится здесь.']);
+    ).toEqual(['Вопрос отправлен.']);
     expect(
       repository.findConversationMessages(request?.id ?? '', 10),
     ).toContainEqual(
