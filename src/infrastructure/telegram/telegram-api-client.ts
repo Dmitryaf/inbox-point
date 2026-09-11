@@ -324,7 +324,11 @@ function responseValidationError(method: string, problem: string): Error {
 }
 
 function hasUncertainSideEffect(method: string): boolean {
-  return method === 'createForumTopic' || method === 'sendMessage';
+  return (
+    method === 'createForumTopic' ||
+    method === 'reopenForumTopic' ||
+    method === 'sendMessage'
+  );
 }
 
 function isAbortError(error: unknown): boolean {
@@ -336,8 +340,15 @@ export function isUnavailableForumTopicError(error: unknown): boolean {
     return false;
   }
   const message = error.message.toLowerCase();
+  return message.includes('topic_closed') || isMissingForumTopicError(error);
+}
+
+export function isMissingForumTopicError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  const message = error.message.toLowerCase();
   return (
-    message.includes('topic_closed') ||
     message.includes('topic_id_invalid') ||
     message.includes('message thread not found')
   );

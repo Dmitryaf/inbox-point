@@ -966,7 +966,11 @@ export class SqliteSupportRepository implements SupportRepository {
           created_at,
           closed_at
         FROM support_requests
-        WHERE operator_topic_id = ?`,
+        WHERE operator_topic_id = ?
+        ORDER BY CASE status WHEN 'active' THEN 0 ELSE 1 END,
+          created_at DESC,
+          id DESC
+        LIMIT 1`,
       )
       .get(topicId) as SupportRequestRow | undefined;
 

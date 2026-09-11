@@ -146,6 +146,14 @@ export class HandoffService {
     const requestId = this.createId();
     const createdAt = this.clock();
     const webTopicId = createWebOperatorTopicId(requestId);
+    const latestRequest = this.repository.findLatestRequest(
+      message.channel,
+      message.conversationId,
+    );
+    const reusableTopicId =
+      latestRequest && !isWebOperatorTopic(latestRequest.operatorTopicId)
+        ? latestRequest.operatorTopicId
+        : undefined;
 
     this.repository.createRequest({
       channel: message.channel,
@@ -176,6 +184,7 @@ export class HandoffService {
     try {
       opened = await this.operatorInbox.openRequest({
         requestId,
+        ...(reusableTopicId ? { reusableTopicId } : {}),
         source: message,
         title: createTopicTitle(message.channel, message.displayName),
       });
@@ -309,7 +318,10 @@ export class HandoffService {
   ): Promise<void> {
     await this.handleEvent('operator:telegram', externalEventId, () => {
       const request = this.repository.findRequestByTopicId(operatorTopicId);
-      if (request) {
+      if (
+        request &&
+        topicEventCanAffectRequest(request.createdAt, occurredAt)
+      ) {
         this.repository.closeRequest(request.id, occurredAt);
       }
       return Promise.resolve();
@@ -374,6 +386,15 @@ export class HandoffService {
 
 function createConversationKey(message: SupportMessage): string {
   return `${message.channel}\u0000${message.conversationId}`;
+}
+
+function topicEventCanAffectRequest(
+  requestCreatedAt: Date,
+  eventOccurredAt: Date,
+): boolean {
+  const requestCreatedSecond = Math.floor(requestCreatedAt.getTime() / 1_000);
+  const eventOccurredSecond = Math.floor(eventOccurredAt.getTime() / 1_000);
+  return requestCreatedSecond <= eventOccurredSecond;
 }
 
 function createTopicTitle(

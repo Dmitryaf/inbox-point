@@ -16,6 +16,7 @@ import type { SupportMessage } from '@/core/model/support-message.js';
 import { createWebOperatorTopicId } from '@/core/model/operator-topic.js';
 
 import {
+  isMissingForumTopicError,
   isUnavailableForumTopicError,
   type TelegramGateway,
 } from './telegram-api-client.js';
@@ -54,6 +55,19 @@ export class TelegramTopicsInbox
       },
       'open',
       async () => {
+        if (request.reusableTopicId) {
+          try {
+            await this.gateway.reopenForumTopic(
+              this.operatorChatId,
+              Number(request.reusableTopicId),
+            );
+            return request.reusableTopicId;
+          } catch (error: unknown) {
+            if (!isMissingForumTopicError(error)) {
+              throw error;
+            }
+          }
+        }
         const topic = await this.gateway.createForumTopic(
           this.operatorChatId,
           request.title,

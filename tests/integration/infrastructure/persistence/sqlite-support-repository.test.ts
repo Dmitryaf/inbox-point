@@ -217,6 +217,40 @@ describe('SqliteSupportRepository', () => {
     repository.close();
   });
 
+  it('reuses a topic only for later requests from the same client', () => {
+    const repository = new SqliteSupportRepository(':memory:');
+    repository.createRequest({
+      channel: 'telegram',
+      conversationId: '101',
+      createdAt: new Date('2026-09-11T12:00:00.000Z'),
+      id: 'request-1',
+      operatorTopicId: '900',
+      status: 'active',
+    });
+    repository.closeRequest('request-1', new Date('2026-09-11T12:01:00.000Z'));
+    repository.createRequest({
+      channel: 'telegram',
+      conversationId: '101',
+      createdAt: new Date('2026-09-11T12:02:00.000Z'),
+      id: 'request-2',
+      operatorTopicId: '900',
+      status: 'active',
+    });
+
+    expect(repository.findRequestByTopicId('900')?.id).toBe('request-2');
+    expect(() =>
+      repository.createRequest({
+        channel: 'telegram',
+        conversationId: '202',
+        createdAt: new Date('2026-09-11T12:03:00.000Z'),
+        id: 'request-3',
+        operatorTopicId: '900',
+        status: 'active',
+      }),
+    ).toThrow('operator topic belongs to another conversation');
+    repository.close();
+  });
+
   it('restores request and duplicate-event state after restart', () => {
     const directory = mkdtempSync(join(tmpdir(), 'inbox-point-test-'));
     temporaryDirectories.push(directory);
@@ -455,7 +489,7 @@ describe('SqliteSupportRepository', () => {
     database.close();
 
     expect(() => new SqliteSupportRepository(databasePath)).toThrow(
-      'Unsupported SQLite schema version 2; expected 5',
+      'Unsupported SQLite schema version 2; expected 6',
     );
   });
 
@@ -497,7 +531,7 @@ describe('SqliteSupportRepository', () => {
 
     const verified = new DatabaseSync(databasePath, { readOnly: true });
     expect(verified.prepare('PRAGMA user_version').get()).toEqual({
-      user_version: 5,
+      user_version: 6,
     });
     expect(
       verified
@@ -506,6 +540,92 @@ describe('SqliteSupportRepository', () => {
         )
         .get(),
     ).toEqual({ name: 'operator_actions' });
+    verified.close();
+  });
+
+  it('migrates a version 5 database to reusable client topics', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'inbox-point-test-'));
+    temporaryDirectories.push(directory);
+    const databasePath = join(directory, 'handoff.sqlite');
+    const oldDatabase = new DatabaseSync(databasePath);
+    oldDatabase.exec(`
+      CREATE TABLE support_requests (
+        id TEXT PRIMARY KEY,
+        channel TEXT NOT NULL CHECK (channel IN ('telegram', 'vk')),
+        external_conversation_id TEXT NOT NULL,
+        client_display_name TEXT,
+        operator_topic_id TEXT NOT NULL UNIQUE,
+        status TEXT NOT NULL CHECK (status IN ('active', 'closed')),
+        created_at TEXT NOT NULL,
+        closed_at TEXT
+      ) STRICT;
+      CREATE TABLE conversation_messages (
+        id TEXT PRIMARY KEY,
+        request_id TEXT NOT NULL REFERENCES support_requests(id),
+        direction TEXT NOT NULL CHECK (
+          direction IN ('client_to_operator', 'operator_to_client')
+        ),
+        external_message_id TEXT NOT NULL,
+        sender_name TEXT,
+        text TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        UNIQUE (request_id, direction, external_message_id)
+      ) STRICT;
+      INSERT INTO support_requests (
+        id,
+        channel,
+        external_conversation_id,
+        operator_topic_id,
+        status,
+        created_at,
+        closed_at
+      ) VALUES (
+        'request-1',
+        'telegram',
+        '101',
+        '900',
+        'closed',
+        '2026-09-11T12:00:00.000Z',
+        '2026-09-11T12:01:00.000Z'
+      );
+      INSERT INTO conversation_messages (
+        id,
+        request_id,
+        direction,
+        external_message_id,
+        text,
+        created_at
+      ) VALUES (
+        'message-1',
+        'request-1',
+        'client_to_operator',
+        'external-1',
+        'Первый вопрос',
+        '2026-09-11T12:00:00.000Z'
+      );
+      PRAGMA user_version = 5;
+    `);
+    oldDatabase.close();
+
+    const migrated = new SqliteSupportRepository(databasePath);
+    migrated.createRequest({
+      channel: 'telegram',
+      conversationId: '101',
+      createdAt: new Date('2026-09-11T12:02:00.000Z'),
+      id: 'request-2',
+      operatorTopicId: '900',
+      status: 'active',
+    });
+    expect(migrated.findRequestByTopicId('900')?.id).toBe('request-2');
+    expect(migrated.findConversationMessages('request-1', 10)).toEqual([
+      expect.objectContaining({ id: 'message-1', text: 'Первый вопрос' }),
+    ]);
+    migrated.close();
+
+    const verified = new DatabaseSync(databasePath, { readOnly: true });
+    expect(verified.prepare('PRAGMA user_version').get()).toEqual({
+      user_version: 6,
+    });
     verified.close();
   });
 

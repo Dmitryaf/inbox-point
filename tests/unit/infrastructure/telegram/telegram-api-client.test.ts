@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import { DeliveryOutcomeUnknownError } from '@/core/contracts/client-channel.js';
 import {
+  isMissingForumTopicError,
   isUnavailableForumTopicError,
   TelegramApiClient,
 } from '@/infrastructure/telegram/telegram-api-client.js';
@@ -27,6 +28,18 @@ describe('TelegramApiClient', () => {
     expect(
       isUnavailableForumTopicError(
         new Error('Telegram API sendMessage failed: TOPIC_CLOSED'),
+      ),
+    ).toBe(true);
+    expect(
+      isMissingForumTopicError(
+        new Error('Telegram API sendMessage failed: TOPIC_CLOSED'),
+      ),
+    ).toBe(false);
+    expect(
+      isMissingForumTopicError(
+        new Error(
+          'Telegram API sendMessage failed: Bad Request: message thread not found',
+        ),
       ),
     ).toBe(true);
   });
@@ -221,5 +234,16 @@ describe('TelegramApiClient', () => {
     await expect(
       client.createForumTopic(-1_001, 'New request'),
     ).rejects.toBeInstanceOf(DeliveryOutcomeUnknownError);
+  });
+
+  it('marks a lost reopenForumTopic response as an unknown outcome', async () => {
+    const client = new TelegramApiClient(
+      'synthetic-token',
+      vi.fn(() => Promise.reject(new Error('connection reset'))),
+    );
+
+    await expect(client.reopenForumTopic(-1_001, 900)).rejects.toBeInstanceOf(
+      DeliveryOutcomeUnknownError,
+    );
   });
 });
