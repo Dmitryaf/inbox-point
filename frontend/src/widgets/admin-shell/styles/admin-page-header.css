@@ -20,10 +20,8 @@
 }
 
 .admin-brand {
-  color: var(--color-text);
+  border-radius: var(--radius-control);
   flex: 0 0 auto;
-  font-size: 0.95rem;
-  font-weight: 700;
   text-decoration: none;
 }
 

@@ -2,6 +2,7 @@ import { classNames as $class } from '@frontend/shared/lib/component-view';
 
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
+import ConnectionSetupGuide from './ConnectionSetupGuide';
 import DeliveryIncidentList from './DeliveryIncidentList';
 import InboundEventIncidentList from './InboundEventIncidentList';
 import OperatorRelayIncidentList from './OperatorRelayIncidentList';
@@ -19,6 +20,8 @@ export function renderOperationsAttentionPanelPart1(
   $props: WithDefaults<ComponentProps, typeof componentDefaults>,
 ) {
   const { $emit } = $state;
+  const hasOperationalProblems = $state.hasOperationalProblems.value;
+  const setupProblems = $state.setupProblems.value;
   const deliveryStopped = $state.deliveryStopped.value;
   const hasAttention = $state.hasAttention.value;
   const $attributes = inheritedAttributes($props);
@@ -30,20 +33,33 @@ export function renderOperationsAttentionPanelPart1(
           {...$attributes}
           aria-labelledby="attention-title"
           aria-live="polite"
-          className={$class('attention-panel card', $attributes.className)}
+          className={$class(
+            'attention-panel card',
+            { 'attention-panel--setup-only': !hasOperationalProblems },
+            $attributes.className,
+          )}
           data-r-a910a991=""
         >
           <header className="attention-panel-heading" data-r-a910a991="">
             <p className="eyebrow" data-r-a910a991="">
-              {'Сначала проверьте это'}
+              {hasOperationalProblems
+                ? 'Сначала проверьте это'
+                : 'Первый запуск'}
             </p>
             <h2 id="attention-title" data-r-a910a991="">
-              {'Требует внимания'}
+              {hasOperationalProblems
+                ? 'Требует внимания'
+                : 'Закончите подключение'}
             </h2>
             <p data-r-a910a991="">
-              {'Здесь собраны только проблемы, для которых нужно ваше решение.'}
+              {hasOperationalProblems
+                ? 'Здесь собраны только проблемы, для которых нужно ваше решение.'
+                : 'Подключите каналы один раз — после этого Inbox Point начнёт принимать сообщения клиентов.'}
             </p>
           </header>
+          {setupProblems.length ? (
+            <ConnectionSetupGuide problems={setupProblems} data-r-a910a991="" />
+          ) : null}
           {renderOperationsAttentionPanelPart2($state)}
           {deliveryStopped ? (
             <div className="attention-list" data-r-a910a991="">

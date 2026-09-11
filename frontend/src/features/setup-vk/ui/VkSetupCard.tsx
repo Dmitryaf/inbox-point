@@ -27,6 +27,7 @@ export default function VkSetupCard($incomingProps: ComponentProps) {
     componentDefaults,
     createComponentModel,
   );
+  const expanded = $state.expanded.value;
   const toggleLabel = $state.toggleLabel.value;
   const $attributes = inheritedAttributes($props);
   return (
@@ -37,6 +38,7 @@ export default function VkSetupCard($incomingProps: ComponentProps) {
         className={$class(
           'setup-card card',
           {
+            'setup-card--expanded': expanded,
             'setup-card--locked':
               !$props.telegramConnected && !$props.status.connected,
           },

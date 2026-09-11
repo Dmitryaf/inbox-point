@@ -20,6 +20,14 @@ export default function VkSetupInstructions($incomingProps: ComponentProps) {
 
   return (
     <ModelScopeProvider scope={$scope}>
+      <div className="setup-intro" data-r-aa9e848d="">
+        <strong data-r-aa9e848d="">{'Что вы настраиваете'}</strong>
+        <p data-r-aa9e848d="">
+          {
+            ' Клиенты продолжат писать в сообщения вашего сообщества VK. Inbox Point будет переносить эти сообщения в уже подключённую группу сотрудников. '
+          }
+        </p>
+      </div>
       {renderVkSetupInstructionsPart1()}
       <p className="setup-warning" data-r-aa9e848d="">
         {

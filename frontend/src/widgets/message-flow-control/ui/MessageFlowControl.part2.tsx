@@ -23,6 +23,7 @@ export function renderMessageFlowControlPart2(
     <>
       <div className="message-flow-body" data-r-c8d03842="">
         <ClientIntakeControl
+          channels={$props.channels}
           onChanged={() => void $unref($state.emit)('changed')}
           onUnauthorized={() => void $unref($state.emit)('unauthorized')}
           ref={$templateRef($state, 'intakeControl', $scope)}

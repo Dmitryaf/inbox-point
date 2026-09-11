@@ -7,9 +7,12 @@ import {
   type ModelOptions,
   type ModelRef,
 } from '@frontend/shared/lib/component-props';
+import type { OperationsStatus } from '@frontend/entities/operations/model/types';
 import { useClientIntakeControl } from '@frontend/features/control-client-intake/model/use-client-intake-control';
 
-export type ComponentProps = EventProps<{
+export type ComponentProps = {
+  channels: OperationsStatus['channels'];
+} & EventProps<{
   changed: [];
   unauthorized: [];
 }> &

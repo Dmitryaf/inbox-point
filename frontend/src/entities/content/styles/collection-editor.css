@@ -25,6 +25,7 @@
   background: var(--color-surface-muted);
   border-radius: 0.75rem;
   color: var(--color-text-muted);
+  margin: 1rem 0;
   padding: 0.8rem;
 }
 

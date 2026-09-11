@@ -1,0 +1,52 @@
+.product-logo {
+  --product-logo-size: 2rem;
+
+  align-items: center;
+  color: var(--color-text);
+  display: inline-flex;
+  gap: 0.65rem;
+  line-height: 1;
+}
+
+.product-logo__mark {
+  align-items: center;
+  background: linear-gradient(
+    145deg,
+    var(--color-primary-hover),
+    var(--color-brand-mark-end)
+  );
+  border-radius: 32%;
+  box-shadow: 0 0.35rem 0.9rem var(--color-brand-shadow);
+  color: white;
+  display: inline-flex;
+  flex: 0 0 auto;
+  height: var(--product-logo-size);
+  justify-content: center;
+  width: var(--product-logo-size);
+}
+
+.product-logo__mark svg {
+  height: 72%;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+  width: 72%;
+}
+
+.product-logo__mark circle {
+  fill: var(--color-brand-point);
+  stroke: var(--color-primary-hover);
+}
+
+.product-logo__wordmark {
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  white-space: nowrap;
+}
+
+.product-logo__wordmark b {
+  color: var(--color-primary);
+  font-weight: inherit;
+}

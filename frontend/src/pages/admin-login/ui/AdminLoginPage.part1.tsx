@@ -4,6 +4,7 @@ import { logicalOr as $or } from '@frontend/shared/lib/component-bindings';
 
 import AdminLoginForm from '@frontend/features/admin-auth/ui/AdminLoginForm';
 import AsyncMessage from '@frontend/shared/ui/AsyncMessage';
+import ProductLogo from '@frontend/shared/ui/ProductLogo';
 
 import type { createComponentModel } from './AdminLoginPage.model';
 export function renderAdminLoginPagePart1(
@@ -16,9 +17,7 @@ export function renderAdminLoginPagePart1(
   return (
     <>
       <div className="login-stack" data-r-3fb97507="">
-        <p className="login-brand" data-r-3fb97507="">
-          {'Inbox Point'}
-        </p>
+        <ProductLogo className="login-brand" data-r-3fb97507="" />
         <AsyncMessage
           kind="error"
           text={$or(session.error.value, () => loginMessage)}

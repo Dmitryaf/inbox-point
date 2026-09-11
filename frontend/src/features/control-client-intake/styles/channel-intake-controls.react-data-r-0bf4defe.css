@@ -38,6 +38,9 @@ p[data-r-0bf4defe] {
 .intake-status--paused[data-r-0bf4defe] {
   color: var(--color-attention);
 }
+.intake-status--disconnected[data-r-0bf4defe] {
+  color: var(--color-text-muted);
+}
 button[data-r-0bf4defe] {
   flex: 0 0 auto;
 }

@@ -11,6 +11,7 @@ test('login, history navigation, reload and logout keep the admin boundary', asy
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
     'Вход в управление',
   );
+  await expect(page.locator('.product-logo__mark')).toBeVisible();
 
   await page.getByLabel('Пароль').fill(password);
   await page.getByRole('button', { name: 'Войти' }).click();
@@ -18,6 +19,9 @@ test('login, history navigation, reload and logout keep the admin boundary', asy
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
     'Ответы клиентам',
   );
+  await expect(
+    page.getByRole('link', { name: 'Inbox Point — открыть ответы' }),
+  ).toBeVisible();
 
   await page.getByRole('link', { name: 'Каналы' }).click();
   await expect(page).toHaveURL(/\/setup$/);
@@ -60,6 +64,97 @@ test('passwordless development bypass skips login and hides logout', async ({
   );
   await expect(page.getByRole('button', { name: 'Выйти' })).toHaveCount(0);
 });
+
+test('message controls distinguish disconnected channels from active intake', async ({
+  page,
+}) => {
+  await login(page);
+  await page.goto('/ops');
+  const connectionGuide = page.locator('.connection-guide');
+  await expect(
+    page.getByRole('heading', { name: 'Закончите подключение' }),
+  ).toBeVisible();
+  await expect(
+    connectionGuide.getByRole('heading', {
+      name: 'Подключите каналы по порядку',
+    }),
+  ).toBeVisible();
+  await expect(connectionGuide.locator('li')).toHaveCount(2);
+  await expect(
+    connectionGuide.getByRole('link', { name: 'Начать подключение' }),
+  ).toHaveAttribute('href', '/setup');
+  await page.getByText('Открыть управление').click();
+
+  const controls = page.locator('.intake-channel-list');
+  await expect(controls.getByText('Не подключён', { exact: true })).toHaveCount(
+    2,
+  );
+  await expect(
+    controls.getByRole('button', { name: 'Приостановить' }),
+  ).toHaveCount(0);
+  await expect(controls).toContainText(
+    'Подключите Telegram в разделе «Каналы».',
+  );
+});
+
+for (const viewport of [
+  { height: 900, label: 'desktop', width: 1440 },
+  { height: 844, label: 'mobile', width: 390 },
+]) {
+  test(`Telegram setup gives a concrete first-time checklist on ${viewport.label}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(viewport);
+    await login(page);
+    await page.goto('/setup');
+    await page.getByRole('button', { name: 'Подключить Telegram' }).click();
+
+    await expect(page.getByText('Что вы настраиваете')).toBeVisible();
+    await expect(page.locator('.setup-steps > li')).toHaveCount(6);
+    await expect(
+      page.getByRole('link', { name: '«Открыть @BotFather»' }),
+    ).toHaveAttribute('href', 'https://t.me/BotFather');
+    await expect(
+      page.getByLabel('Токен бота — строка-пароль от @BotFather'),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Проверить токен и найти группу' }),
+    ).toBeDisabled();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+  });
+}
+
+for (const viewport of [
+  { height: 900, label: 'desktop', width: 1440 },
+  { height: 844, label: 'mobile', width: 390 },
+]) {
+  test(`empty editor blocks keep visible spacing on ${viewport.label}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(viewport);
+    await login(page);
+
+    if (viewport.width >= 900) {
+      await page.getByRole('button', { name: 'Свои разделы' }).click();
+    } else {
+      await page.getByLabel('Раздел', { exact: true }).selectOption('custom');
+    }
+
+    const heading = await requiredBox(
+      page.getByRole('heading', { name: 'Дополнительные разделы' }),
+    );
+    const emptyState = await requiredBox(
+      page.getByText('Дополнительных разделов пока нет.'),
+    );
+    expect(emptyState.y - (heading.y + heading.height)).toBeGreaterThanOrEqual(
+      12,
+    );
+  });
+}
 
 for (const viewport of [
   { height: 900, label: 'desktop workspace', width: 1440 },
@@ -148,9 +243,9 @@ for (const viewport of [
         Math.min(...positions.map(({ width }) => width)),
     ).toBeLessThanOrEqual(1);
 
-    await page.getByRole('link', { name: 'Ответы' }).focus();
+    await page.getByRole('link', { name: 'Ответы', exact: true }).focus();
     const outline = await page
-      .getByRole('link', { name: 'Ответы' })
+      .getByRole('link', { name: 'Ответы', exact: true })
       .evaluate((element) => getComputedStyle(element).outlineStyle);
     expect(outline).not.toBe('none');
   });

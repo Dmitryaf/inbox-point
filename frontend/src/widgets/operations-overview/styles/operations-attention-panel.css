@@ -4,6 +4,10 @@
   gap: 1rem;
 }
 
+.attention-panel--setup-only {
+  border-color: var(--color-border);
+}
+
 .attention-panel-heading {
   border-bottom: 1px solid var(--color-border);
   padding-bottom: 0.9rem;

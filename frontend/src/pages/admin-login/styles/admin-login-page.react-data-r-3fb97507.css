@@ -12,10 +12,9 @@
   width: 100%;
 }
 .login-brand[data-r-3fb97507] {
-  font-size: 1rem;
-  font-weight: 700;
-  margin: 0;
-  text-align: center;
+  --product-logo-size: 2.5rem;
+
+  justify-self: center;
 }
 .login-state[data-r-3fb97507] {
   color: var(--color-text-muted);

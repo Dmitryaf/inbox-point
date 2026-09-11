@@ -34,7 +34,11 @@ export default function TelegramSetupCard($incomingProps: ComponentProps) {
       <section
         {...$attributes}
         aria-labelledby="telegram-setup-title"
-        className={$class('setup-card card', $attributes.className)}
+        className={$class(
+          'setup-card card',
+          { 'setup-card--expanded': expanded },
+          $attributes.className,
+        )}
         data-r-44d690ea=""
       >
         {renderTelegramSetupCardPart1($props)}

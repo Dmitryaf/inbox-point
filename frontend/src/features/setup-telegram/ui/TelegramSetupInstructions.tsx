@@ -22,6 +22,14 @@ export default function TelegramSetupInstructions(
 
   return (
     <ModelScopeProvider scope={$scope}>
+      <div className="setup-intro" data-r-9c77fc79="">
+        <strong data-r-9c77fc79="">{'Что вы настраиваете'}</strong>
+        <p data-r-9c77fc79="">
+          {
+            ' Клиенты будут писать вашему Telegram-боту. Каждое новое обращение появится отдельной темой в закрытой группе сотрудников. '
+          }
+        </p>
+      </div>
       {renderTelegramSetupInstructionsPart1()}
       <p className="setup-warning" data-r-9c77fc79="">
         {
