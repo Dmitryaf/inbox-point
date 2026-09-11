@@ -53,7 +53,7 @@ export function renderVkSetupCardPart5(
             data-r-712bbad4=""
           />
           <label htmlFor="vk-token" data-r-712bbad4="">
-            {'Ключ доступа к сообщениям сообщества'}
+            {'Ключ с правами управления и сообщений'}
           </label>
           <input
             id="vk-token"

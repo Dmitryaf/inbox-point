@@ -410,6 +410,10 @@ function registerTestSetup(
     options.vkSource ?? 'none',
     () => ({
       getLongPollServer: () => Promise.resolve({}),
+      getLongPollSettings: () =>
+        Promise.resolve({ enabled: true, messageNew: true }),
+      getTokenPermissions: () =>
+        Promise.resolve({ names: ['manage', 'messages'] }),
       resolveCommunity: () => Promise.resolve(42),
     }),
   );

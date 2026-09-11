@@ -35,8 +35,26 @@ export function vkSetupErrorMessage(error: unknown): string {
   if (message.includes('managed by server')) {
     return 'Эта настройка управляется сервером.';
   }
+  if (message.includes('missing manage permission')) {
+    return 'Создайте новый ключ VK и разрешите ему «Управление сообществом».';
+  }
+  if (message.includes('missing messages permission')) {
+    return 'Создайте новый ключ VK и разрешите ему «Сообщения сообщества».';
+  }
+  if (message.includes('Long Poll is disabled')) {
+    return 'Откройте «Дополнительно» → «Работа с API» → «Long Poll API» и включите Long Poll.';
+  }
+  if (message.includes('message_new event is disabled')) {
+    return 'В Long Poll API откройте «Типы событий» и включите «Входящие сообщения».';
+  }
+  if (message.includes('code 5')) {
+    return 'Ключ VK недействителен или был удалён. Создайте новый ключ доступа.';
+  }
   if (message.includes('code 15')) {
-    return 'Включите Long Poll API в настройках сообщества VK.';
+    return 'VK не дал ключу доступ к указанному сообществу. Проверьте, что ссылка и ключ относятся к одному сообществу.';
+  }
+  if (message.includes('code 27')) {
+    return 'Используйте ключ доступа, созданный в настройках самого сообщества VK.';
   }
   return 'Не удалось подключить VK. Проверьте ссылку, ключ и права сообщества.';
 }
