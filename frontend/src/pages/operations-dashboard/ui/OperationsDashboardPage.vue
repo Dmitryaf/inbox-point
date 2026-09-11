@@ -85,6 +85,7 @@ const {
     <MessageFlowControl
       v-if="operations.status.value"
       ref="intakeControl"
+      :channels="operations.status.value.channels"
       :outbound="operations.status.value.outbound"
       :outbound-pending="deliveryControl.pendingMode.value"
       @changed="refreshAll"

@@ -60,7 +60,7 @@ describe('SetupPage', () => {
       .setValue('123456789:synthetic-telegram-token');
     await wrapper
       .findAll('button')
-      .find((button) => button.text() === 'Найти группы')
+      .find((button) => button.text() === 'Проверить токен и найти группу')
       ?.trigger('click');
     await flushPromises();
 
@@ -125,6 +125,12 @@ describe('SetupPage', () => {
       .find((button) => button.text() === 'Подключить VK')
       ?.trigger('click');
     expect(wrapper.text()).toContain('Настройте Long Poll API');
+    expect(wrapper.text()).toContain(
+      '«Настройки» → «Работа с API» → «Long Poll API»',
+    );
+    expect(wrapper.text()).toContain(
+      'Полученная длинная строка — пароль для подключения',
+    );
     expect(wrapper.find('#vk-token').exists()).toBe(true);
 
     wrapper.unmount();

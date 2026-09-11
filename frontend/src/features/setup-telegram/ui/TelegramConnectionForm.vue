@@ -31,7 +31,7 @@ async function discover(): Promise<void> {
     selectedChatId.value = null;
     message.value = result.chats.length
       ? 'Выберите операторскую группу.'
-      : 'Напишите в группе сообщение и повторите поиск.';
+      : 'Группа не найдена. Проверьте, что бот добавлен администратором, темы включены и после добавления бота в группе отправлено сообщение.';
   } catch (cause: unknown) {
     message.value = errorMessage(cause);
     messageKind.value = 'error';
@@ -71,7 +71,7 @@ async function connect(): Promise<void> {
     «Мониторинг».
   </p>
   <template v-else>
-    <label for="telegram-token">Токен от @BotFather</label>
+    <label for="telegram-token">Токен бота — строка-пароль от @BotFather</label>
     <input
       id="telegram-token"
       v-model="botToken"
@@ -83,7 +83,9 @@ async function connect(): Promise<void> {
       type="button"
       @click="discover"
     >
-      {{ pending === 'discover' ? 'Ищем…' : 'Найти группы' }}
+      {{
+        pending === 'discover' ? 'Проверяем…' : 'Проверить токен и найти группу'
+      }}
     </button>
     <fieldset v-if="chats.length" class="setup-options">
       <legend>Операторская группа</legend>

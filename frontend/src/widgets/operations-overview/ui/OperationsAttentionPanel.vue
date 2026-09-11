@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import type {
-  ChannelOperationsStatus,
-  OperationsStatus,
-} from '@frontend/entities/operations/model/types';
+import type { OperationsStatus } from '@frontend/entities/operations/model/types';
+import {
+  channelProblem,
+  type ChannelProblem,
+} from '@frontend/widgets/operations-overview/model/operations-attention';
+import ConnectionSetupGuide from './ConnectionSetupGuide.vue';
 import DeliveryIncidentList from './DeliveryIncidentList.vue';
 import InboundEventIncidentList from './InboundEventIncidentList.vue';
 import OperatorRelayIncidentList from './OperatorRelayIncidentList.vue';
@@ -29,12 +31,6 @@ defineEmits<{
   ];
 }>();
 
-interface ChannelProblem {
-  action: string;
-  name: string;
-  summary: string;
-}
-
 const channelProblems = computed<ChannelProblem[]>(() =>
   [
     channelProblem('Telegram', props.status.channels.telegram),
@@ -46,6 +42,20 @@ const deliveryStopped = computed(
     props.status.deliveries.state === 'stalled' ||
     !props.status.deliveries.worker.running,
 );
+const setupProblems = computed(() =>
+  channelProblems.value.filter((problem) => problem.kind === 'setup'),
+);
+const connectionProblems = computed(() =>
+  channelProblems.value.filter((problem) => problem.kind === 'connection'),
+);
+const hasOperationalProblems = computed(
+  () =>
+    connectionProblems.value.length > 0 ||
+    deliveryStopped.value ||
+    props.status.deliveries.incidents.length > 0 ||
+    props.status.operatorRelays.incidents.length > 0 ||
+    props.status.inboundEvents.incidents.length > 0,
+);
 const hasAttention = computed(
   () =>
     channelProblems.value.length > 0 ||
@@ -54,45 +64,41 @@ const hasAttention = computed(
     props.status.operatorRelays.incidents.length > 0 ||
     props.status.inboundEvents.incidents.length > 0,
 );
-
-function channelProblem(
-  name: string,
-  channel: ChannelOperationsStatus,
-): ChannelProblem | undefined {
-  if (channel.state === 'running' || channel.state === 'starting') {
-    return undefined;
-  }
-  if (channel.state === 'not_configured') {
-    return {
-      action: 'Откройте раздел «Каналы» и завершите подключение.',
-      name: `${name} не подключён`,
-      summary: 'Сообщения из этого канала сейчас не принимаются.',
-    };
-  }
-  return {
-    action:
-      'Обновите состояние. Если связь не восстановилась, проверьте подключение канала.',
-    name: `Нет связи с ${name}`,
-    summary: 'Новые сообщения из этого канала могут не поступать.',
-  };
-}
 </script>
 
 <template>
   <section
     v-if="hasAttention"
     class="attention-panel card"
+    :class="{ 'attention-panel--setup-only': !hasOperationalProblems }"
     aria-labelledby="attention-title"
     aria-live="polite"
   >
     <header class="attention-panel-heading">
-      <p class="eyebrow">Сначала проверьте это</p>
-      <h2 id="attention-title">Требует внимания</h2>
-      <p>Здесь собраны только проблемы, для которых нужно ваше решение.</p>
+      <p class="eyebrow">
+        {{ hasOperationalProblems ? 'Сначала проверьте это' : 'Первый запуск' }}
+      </p>
+      <h2 id="attention-title">
+        {{
+          hasOperationalProblems ? 'Требует внимания' : 'Закончите подключение'
+        }}
+      </h2>
+      <p>
+        {{
+          hasOperationalProblems
+            ? 'Здесь собраны только проблемы, для которых нужно ваше решение.'
+            : 'Подключите каналы один раз — после этого Inbox Point начнёт принимать сообщения клиентов.'
+        }}
+      </p>
     </header>
 
-    <div v-if="channelProblems.length" class="attention-list">
-      <article v-for="problem in channelProblems" :key="problem.name">
+    <ConnectionSetupGuide
+      v-if="setupProblems.length"
+      :problems="setupProblems"
+    />
+
+    <div v-if="connectionProblems.length" class="attention-list">
+      <article v-for="problem in connectionProblems" :key="problem.name">
         <h3>{{ problem.name }}</h3>
         <p>{{ problem.summary }}</p>
         <p>{{ problem.action }}</p>

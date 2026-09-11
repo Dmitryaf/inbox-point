@@ -43,7 +43,7 @@ describe('SetupPage errors', () => {
       .setValue('123456789:synthetic-telegram-token');
     await wrapper
       .findAll('button')
-      .find((button) => button.text() === 'Найти группы')
+      .find((button) => button.text() === 'Проверить токен и найти группу')
       ?.trigger('click');
     await flushPromises();
 

@@ -38,7 +38,11 @@ async function disconnect(): Promise<void> {
 </script>
 
 <template>
-  <section class="setup-card card" aria-labelledby="telegram-setup-title">
+  <section
+    class="setup-card card"
+    :class="{ 'setup-card--expanded': expanded }"
+    aria-labelledby="telegram-setup-title"
+  >
     <header class="setup-card-heading">
       <div>
         <h2 id="telegram-setup-title">Telegram</h2>

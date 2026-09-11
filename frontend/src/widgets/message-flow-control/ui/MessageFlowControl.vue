@@ -6,6 +6,7 @@ import ClientIntakeControl from '@frontend/features/control-client-intake/ui/Cli
 import OutboundDeliveryControl from '@frontend/features/control-outbound-delivery/ui/OutboundDeliveryControl.vue';
 
 defineProps<{
+  channels: OperationsStatus['channels'];
   outbound: OperationsStatus['outbound'];
   outboundPending: 'pause' | 'resume' | undefined;
 }>();
@@ -42,6 +43,7 @@ defineExpose({
     <div class="message-flow-body">
       <ClientIntakeControl
         ref="intakeControl"
+        :channels="channels"
         @changed="emit('changed')"
         @unauthorized="emit('unauthorized')"
       />

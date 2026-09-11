@@ -49,16 +49,16 @@ app.get('/api/setup/status', requireAdmin, () => ({
 app.get('/api/ops/status', requireAdmin, () => ({
   channels: {
     telegram: {
-      configured: true,
-      running: true,
-      source: 'local',
-      state: 'running',
+      configured: false,
+      running: false,
+      source: 'none',
+      state: 'not_configured',
     },
     vk: {
-      configured: true,
-      running: true,
-      source: 'local',
-      state: 'running',
+      configured: false,
+      running: false,
+      source: 'none',
+      state: 'not_configured',
     },
   },
   deliveries: {
@@ -75,7 +75,7 @@ app.get('/api/ops/status', requireAdmin, () => ({
   operatorRelays: { incidents: [], state: 'healthy', uncertain: 0 },
   outbound: { mode: 'active' },
   startedAt: '2026-09-10T07:00:00.000Z',
-  state: 'healthy',
+  state: 'attention',
   uptimeSeconds: 3_600,
 }));
 app.get('/api/ops/service-control', requireAdmin, () => ({

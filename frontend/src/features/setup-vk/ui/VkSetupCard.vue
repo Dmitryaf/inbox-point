@@ -38,7 +38,10 @@ const toggleLabel = computed(() => {
 <template>
   <section
     class="setup-card card"
-    :class="{ 'setup-card--locked': !telegramConnected && !status.connected }"
+    :class="{
+      'setup-card--expanded': expanded,
+      'setup-card--locked': !telegramConnected && !status.connected,
+    }"
     aria-labelledby="vk-setup-title"
   >
     <header class="setup-card-heading">
@@ -103,7 +106,7 @@ const toggleLabel = computed(() => {
           «Мониторинг».
         </p>
         <form v-else class="setup-form" @submit.prevent="connect">
-          <label for="vk-community">Адрес сообщества VK</label>
+          <label for="vk-community">Ссылка на страницу сообщества VK</label>
           <input
             id="vk-community"
             v-model="community"
@@ -111,7 +114,7 @@ const toggleLabel = computed(() => {
             required
             type="text"
           />
-          <label for="vk-token">Ключ доступа VK</label>
+          <label for="vk-token">Ключ доступа к сообщениям сообщества</label>
           <input
             id="vk-token"
             v-model="accessToken"

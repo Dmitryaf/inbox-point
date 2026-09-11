@@ -30,7 +30,9 @@ describe('ClientIntakeControl', () => {
     vi.stubGlobal('fetch', fetchMock);
     const confirmMock = vi.spyOn(window, 'confirm').mockReturnValue(true);
 
-    const wrapper = mount(ClientIntakeControl);
+    const wrapper = mount(ClientIntakeControl, {
+      props: { channels: configuredChannels() },
+    });
     await refresh(wrapper.vm);
     await flushPromises();
     const pauseButtons = wrapper
@@ -66,7 +68,9 @@ describe('ClientIntakeControl', () => {
     const fetchMock = vi.fn(() => Promise.resolve(response(activeState())));
     vi.stubGlobal('fetch', fetchMock);
 
-    const wrapper = mount(ClientIntakeControl);
+    const wrapper = mount(ClientIntakeControl, {
+      props: { channels: configuredChannels() },
+    });
     await refresh(wrapper.vm);
     await flushPromises();
 
@@ -84,12 +88,34 @@ describe('ClientIntakeControl', () => {
       );
     vi.stubGlobal('fetch', fetchMock);
 
-    const wrapper = mount(ClientIntakeControl);
+    const wrapper = mount(ClientIntakeControl, {
+      props: { channels: configuredChannels() },
+    });
 
     await expect(refresh(wrapper.vm)).resolves.toBe(
       'Не удалось прочитать состояние.',
     );
     expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+  });
+
+  it('does not claim that intake is active for disconnected channels', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(response(activeState()))),
+    );
+
+    const wrapper = mount(ClientIntakeControl, {
+      props: { channels: configuredChannels(false) },
+    });
+    await refresh(wrapper.vm);
+    await flushPromises();
+
+    expect(
+      wrapper.findAll('.intake-status').map((status) => status.text()),
+    ).toEqual(['Не подключён', 'Не подключён']);
+    expect(wrapper.text()).toContain('Подключите Telegram в разделе «Каналы».');
+    expect(wrapper.text()).toContain('Подключите VK в разделе «Каналы».');
+    expect(wrapper.findAll('button')).toHaveLength(0);
   });
 });
 
@@ -102,6 +128,23 @@ function activeState() {
     channels: {
       telegram: { mode: 'active' },
       vk: { mode: 'active' },
+    },
+  };
+}
+
+function configuredChannels(configured = true) {
+  return {
+    telegram: {
+      configured,
+      running: configured,
+      source: configured ? ('local' as const) : ('none' as const),
+      state: configured ? ('running' as const) : ('not_configured' as const),
+    },
+    vk: {
+      configured,
+      running: configured,
+      source: configured ? ('local' as const) : ('none' as const),
+      state: configured ? ('running' as const) : ('not_configured' as const),
     },
   };
 }

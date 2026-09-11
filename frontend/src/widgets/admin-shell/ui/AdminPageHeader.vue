@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import ProductLogo from '@frontend/shared/ui/ProductLogo.vue';
+
 export type AdminSection = 'answers' | 'channels' | 'monitoring';
 
 defineProps<{
@@ -23,7 +25,13 @@ const sections: readonly {
 <template>
   <header class="admin-header">
     <div class="admin-topbar">
-      <RouterLink class="admin-brand" to="/manage"> Inbox Point </RouterLink>
+      <RouterLink
+        aria-label="Inbox Point — открыть ответы"
+        class="admin-brand"
+        to="/manage"
+      >
+        <ProductLogo />
+      </RouterLink>
       <nav class="admin-navigation" aria-label="Разделы администратора">
         <RouterLink
           v-for="section in sections"

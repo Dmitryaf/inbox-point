@@ -35,6 +35,8 @@ describe('AdminLoginPage', () => {
 
     expect(router.currentRoute.value.path).toBe('/login');
     expect(wrapper.get('h1').text()).toBe('Вход в управление');
+    expect(wrapper.get('.product-logo').text()).toBe('Inbox Point');
+    expect(wrapper.get('.product-logo__mark').find('svg').exists()).toBe(true);
     expect(wrapper.text()).toContain('Сессия завершилась. Войдите снова.');
     expect(wrapper.text()).not.toContain('Состояние');
 

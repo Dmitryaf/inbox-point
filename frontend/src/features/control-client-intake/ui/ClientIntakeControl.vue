@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { OperationsStatus } from '@frontend/entities/operations/model/types';
 import { useClientIntakeControl } from '@frontend/features/control-client-intake/model/use-client-intake-control';
 import AsyncMessage from '@frontend/shared/ui/AsyncMessage.vue';
 import ChannelIntakeControls from './ChannelIntakeControls.vue';
@@ -7,6 +8,7 @@ const emit = defineEmits<{
   changed: [];
   unauthorized: [];
 }>();
+defineProps<{ channels: OperationsStatus['channels'] }>();
 const control = useClientIntakeControl({
   onChanged: () => emit('changed'),
   onUnauthorized: () => emit('unauthorized'),
@@ -19,8 +21,8 @@ defineExpose({ refresh: control.load });
     <p class="eyebrow">Клиент → оператор</p>
     <h3 id="intake-flow-title">Новые обращения</h3>
     <p class="intake-control-intro">
-      Пауза действует отдельно для Telegram и VK. Текущие обращения продолжат
-      работать.
+      Для подключённых каналов пауза действует отдельно. Текущие обращения
+      продолжат работать.
     </p>
     <AsyncMessage kind="error" :text="control.actionError.value" />
     <AsyncMessage kind="success" :text="control.notice.value" />
@@ -30,6 +32,7 @@ defineExpose({ refresh: control.load });
     <ChannelIntakeControls
       v-else-if="control.state.value"
       :pending-channel="control.pendingChannel.value"
+      :channels="channels"
       :state="control.state.value"
       @change="control.changeMode"
     />

@@ -9,6 +9,7 @@ import {
 import { useAdminSession } from '@frontend/features/admin-auth/model/use-admin-session';
 import AdminLoginForm from '@frontend/features/admin-auth/ui/AdminLoginForm.vue';
 import AsyncMessage from '@frontend/shared/ui/AsyncMessage.vue';
+import ProductLogo from '@frontend/shared/ui/ProductLogo.vue';
 
 const session = useAdminSession();
 const loginMessage = ref(takeAdminLoginMessage());
@@ -32,7 +33,7 @@ async function authenticate(password: string): Promise<void> {
 <template>
   <main class="login-page">
     <div class="login-stack">
-      <p class="login-brand">Inbox Point</p>
+      <ProductLogo class="login-brand" />
       <AsyncMessage kind="error" :text="session.error.value || loginMessage" />
       <p v-if="session.booting.value" class="login-state" role="status">
         Проверяем доступ…

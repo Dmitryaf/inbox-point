@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import type { OperationsStatus } from '@frontend/entities/operations/model/types';
 import type {
   ClientChannel,
   ServiceControlState,
 } from '@frontend/entities/service-control/model/types';
 
 const props = defineProps<{
+  channels: OperationsStatus['channels'];
   pendingChannel: ClientChannel | undefined;
   state: ServiceControlState;
 }>();
@@ -16,7 +18,17 @@ function channelName(channel: ClientChannel): string {
   return channel === 'telegram' ? 'Telegram' : 'VK';
 }
 
+function canPause(channel: ClientChannel): boolean {
+  return (
+    props.channels[channel].configured &&
+    props.state.channels[channel].mode === 'active'
+  );
+}
+
 function pauseExplanation(channel: ClientChannel): string {
+  if (!props.channels[channel].configured) {
+    return `Подключите ${channelName(channel)} в разделе «Каналы».`;
+  }
   const channelIsPaused = props.state.channels[channel].mode === 'paused';
   if (channelIsPaused) {
     return channel === 'telegram'
@@ -39,21 +51,25 @@ function pauseExplanation(channel: ClientChannel): string {
           <span
             class="intake-status"
             :class="{
+              'intake-status--disconnected': !channels[channel].configured,
               'intake-status--paused':
+                channels[channel].configured &&
                 state.channels[channel].mode === 'paused',
             }"
           >
             {{
-              state.channels[channel].mode === 'paused'
-                ? 'На паузе'
-                : 'Приём включён'
+              !channels[channel].configured
+                ? 'Не подключён'
+                : state.channels[channel].mode === 'paused'
+                  ? 'На паузе'
+                  : 'Приём включён'
             }}
           </span>
         </div>
         <p>{{ pauseExplanation(channel) }}</p>
       </div>
       <button
-        v-if="state.channels[channel].mode === 'active'"
+        v-if="canPause(channel)"
         class="danger"
         type="button"
         :disabled="Boolean(pendingChannel)"
@@ -62,7 +78,7 @@ function pauseExplanation(channel: ClientChannel): string {
         {{ pendingChannel === channel ? 'Приостанавливаем…' : 'Приостановить' }}
       </button>
       <button
-        v-else
+        v-else-if="channels[channel].configured"
         type="button"
         :disabled="Boolean(pendingChannel)"
         @click="$emit('change', channel, 'active')"
