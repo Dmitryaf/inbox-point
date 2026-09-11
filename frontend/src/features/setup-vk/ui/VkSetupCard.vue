@@ -114,7 +114,7 @@ const toggleLabel = computed(() => {
             required
             type="text"
           />
-          <label for="vk-token">Ключ доступа к сообщениям сообщества</label>
+          <label for="vk-token">Ключ с правами управления и сообщений</label>
           <input
             id="vk-token"
             v-model="accessToken"

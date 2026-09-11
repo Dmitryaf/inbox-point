@@ -22,6 +22,6 @@
 
   .setup-channel-grid:has(.setup-card--expanded) {
     grid-template-columns: minmax(0, 42rem);
-    justify-content: center;
+    justify-content: start;
   }
 }

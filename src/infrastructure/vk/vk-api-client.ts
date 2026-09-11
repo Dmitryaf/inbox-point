@@ -11,6 +11,27 @@ const apiErrorSchema = z.object({
   }),
 });
 
+const vkBooleanSchema = z
+  .union([z.boolean(), z.literal(0), z.literal(1)])
+  .transform(Boolean);
+
+const tokenPermissionsSchema = z.object({
+  mask: z.number().int().nonnegative(),
+  permissions: z.array(
+    z.object({
+      name: z.string(),
+      setting: z.number().int().nonnegative(),
+    }),
+  ),
+});
+
+const longPollSettingsSchema = z.object({
+  is_enabled: vkBooleanSchema,
+  events: z.object({
+    message_new: vkBooleanSchema,
+  }),
+});
+
 const longPollServerSchema = z.object({
   key: z.string().min(1),
   server: z.string().url(),
@@ -50,6 +71,15 @@ export interface VkLongPollServer {
   key: string;
   server: string;
   ts: string;
+}
+
+export interface VkLongPollSettings {
+  enabled: boolean;
+  messageNew: boolean;
+}
+
+export interface VkTokenPermissions {
+  names: readonly string[];
 }
 
 export type VkLongPollResponse =
@@ -109,6 +139,29 @@ export class VkApiClient implements VkGateway {
       { group_id: String(groupId) },
       longPollServerSchema,
     );
+  }
+
+  public async getLongPollSettings(
+    groupId: number,
+  ): Promise<VkLongPollSettings> {
+    const settings = await this.call(
+      'groups.getLongPollSettings',
+      { group_id: String(groupId) },
+      longPollSettingsSchema,
+    );
+    return {
+      enabled: settings.is_enabled,
+      messageNew: settings.events.message_new,
+    };
+  }
+
+  public async getTokenPermissions(): Promise<VkTokenPermissions> {
+    const permissions = await this.call(
+      'groups.getTokenPermissions',
+      {},
+      tokenPermissionsSchema,
+    );
+    return { names: permissions.permissions.map(({ name }) => name) };
   }
 
   public async resolveCommunity(reference: string): Promise<number> {

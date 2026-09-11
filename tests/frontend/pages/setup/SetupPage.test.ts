@@ -126,13 +126,20 @@ describe('SetupPage', () => {
       ?.trigger('click');
     expect(wrapper.text()).toContain('Настройте Long Poll API');
     expect(wrapper.text()).toContain(
-      '«Настройки» → «Работа с API» → «Long Poll API»',
+      '«Дополнительно» → «Работа с API» → «Long Poll API»',
+    );
+    expect(wrapper.text()).toContain('обязательно поставьте две галочки');
+    expect(wrapper.text()).toContain('«Добавить кнопку „Начать“»');
+    expect(wrapper.text()).toContain(
+      '«Разрешить приложению доступ к управлению сообществом»',
     );
     expect(wrapper.text()).toContain(
-      'Полученная длинная строка — пароль для подключения',
+      '«Разрешить приложению доступ к сообщениям сообщества»',
     );
-    expect(wrapper.find('#vk-token').exists()).toBe(true);
-
+    expect(wrapper.text()).not.toContain('Если VK предложит выбрать права');
+    expect(wrapper.get('label[for="vk-token"]').text()).toBe(
+      'Ключ с правами управления и сообщений',
+    );
     wrapper.unmount();
   });
 });

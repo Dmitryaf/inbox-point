@@ -128,6 +128,46 @@ describe('VkApiClient', () => {
     await expect(request).rejects.not.toThrowError(new RegExp(token));
   });
 
+  it('reads key permissions and Long Poll settings separately', async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          response: {
+            mask: 266_240,
+            permissions: [
+              { name: 'manage', setting: 262_144 },
+              { name: 'messages', setting: 4_096 },
+            ],
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          response: {
+            events: { message_new: 1 },
+            is_enabled: 1,
+          },
+        }),
+      );
+    const client = new VkApiClient('synthetic-vk-token', fetchMock);
+
+    await expect(client.getTokenPermissions()).resolves.toEqual({
+      names: ['manage', 'messages'],
+    });
+    await expect(client.getLongPollSettings(42)).resolves.toEqual({
+      enabled: true,
+      messageNew: true,
+    });
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      'https://api.vk.com/method/groups.getTokenPermissions',
+    );
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(
+      'https://api.vk.com/method/groups.getLongPollSettings',
+    );
+  });
+
   it('resolves a community link without requiring a numeric group id', async () => {
     const fetchMock = vi
       .fn<typeof fetch>()

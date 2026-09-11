@@ -94,11 +94,15 @@ describe('VkSetupController', () => {
       source: 'local',
     });
     expect(harness.events).toEqual([
+      'permissions',
+      'settings',
       'validate',
       'start',
       'save',
       'stop',
       'clear',
+      'permissions',
+      'settings',
       'validate',
       'start',
       'save',
@@ -124,7 +128,13 @@ describe('VkSetupController', () => {
       initialConfig.accessToken,
       'https://vk.com/test',
     );
-    expect(harness.events).toEqual(['validate', 'start', 'save']);
+    expect(harness.events).toEqual([
+      'permissions',
+      'settings',
+      'validate',
+      'start',
+      'save',
+    ]);
     expect(harness.stored()).toEqual(initialConfig);
   });
 
@@ -135,8 +145,44 @@ describe('VkSetupController', () => {
       harness.controller.connect(initialConfig.accessToken, 'test'),
     ).rejects.toThrow('disabled');
     expect(harness.getLongPollServer).toHaveBeenCalledOnce();
-    expect(harness.events).toEqual([]);
+    expect(harness.events).toEqual(['permissions', 'settings']);
     expect(harness.stored()).toBeUndefined();
+  });
+
+  it('rejects a key without community management permission', async () => {
+    const harness = createHarness({ source: 'none' });
+    harness.getTokenPermissions.mockResolvedValueOnce({
+      names: ['messages'],
+    });
+
+    await expect(
+      harness.controller.connect(initialConfig.accessToken, 'test'),
+    ).rejects.toThrow('missing manage permission');
+    expect(harness.events).toEqual([]);
+    expect(harness.getTokenPermissions).toHaveBeenCalledOnce();
+    expect(harness.resolveCommunity).not.toHaveBeenCalled();
+  });
+
+  it('distinguishes disabled Long Poll from disabled incoming events', async () => {
+    const disabled = createHarness({ source: 'none' });
+    disabled.getLongPollSettings.mockResolvedValueOnce({
+      enabled: false,
+      messageNew: true,
+    });
+    await expect(
+      disabled.controller.connect(initialConfig.accessToken, 'test'),
+    ).rejects.toThrow('Long Poll is disabled');
+    expect(disabled.getLongPollServer).not.toHaveBeenCalled();
+
+    const missingEvent = createHarness({ source: 'none' });
+    missingEvent.getLongPollSettings.mockResolvedValueOnce({
+      enabled: true,
+      messageNew: false,
+    });
+    await expect(
+      missingEvent.controller.connect(initialConfig.accessToken, 'test'),
+    ).rejects.toThrow('message_new event is disabled');
+    expect(missingEvent.getLongPollServer).not.toHaveBeenCalled();
   });
 });
 
@@ -188,6 +234,18 @@ function createHarness(options: {
     events.push('validate');
     return Promise.resolve({});
   });
+  const getLongPollSettings = vi.fn<VkSetupGateway['getLongPollSettings']>(
+    () => {
+      events.push('settings');
+      return Promise.resolve({ enabled: true, messageNew: true });
+    },
+  );
+  const getTokenPermissions = vi.fn<VkSetupGateway['getTokenPermissions']>(
+    () => {
+      events.push('permissions');
+      return Promise.resolve({ names: ['manage', 'messages'] });
+    },
+  );
   const resolveCommunity = vi.fn<VkSetupGateway['resolveCommunity']>(() =>
     Promise.resolve(initialConfig.groupId),
   );
@@ -196,10 +254,17 @@ function createHarness(options: {
       runtime,
       settingsStore,
       options.source ?? 'local',
-      () => ({ getLongPollServer, resolveCommunity }),
+      () => ({
+        getLongPollServer,
+        getLongPollSettings,
+        getTokenPermissions,
+        resolveCommunity,
+      }),
     ),
     events,
     getLongPollServer,
+    getLongPollSettings,
+    getTokenPermissions,
     resolveCommunity,
     stored: () => stored,
   };
