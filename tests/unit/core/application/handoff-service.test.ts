@@ -40,6 +40,10 @@ class FakeOperatorInbox implements OperatorInbox {
       await this.firstOpenGate;
     }
 
+    if (request.reusableTopicId) {
+      this.reopened.push(request.reusableTopicId);
+      return { topicId: request.reusableTopicId };
+    }
     return { topicId: `topic-${openNumber}` };
   }
 
@@ -166,7 +170,7 @@ describe('HandoffService', () => {
     ]);
   });
 
-  it('creates a new request after the previous request is closed', async () => {
+  it('creates a new request in the previous client topic after close', async () => {
     await service.handleClientMessage(
       'update-1',
       createClientMessage('message-1', 'First'),
@@ -191,14 +195,15 @@ describe('HandoffService', () => {
     );
     await service.handleOperatorMessage('update-second-reply', {
       externalMessageId: 'operator-second',
-      operatorTopicId: 'topic-2',
+      operatorTopicId: 'topic-1',
       receivedAt: new Date('2026-08-31T12:02:00.000Z'),
       text: 'Second answer',
     });
 
     const secondRequest = repository.findActiveRequest('telegram', '101');
     expect(inbox.opened).toHaveLength(2);
-    expect(inbox.reopened).toEqual([]);
+    expect(inbox.opened[1]?.reusableTopicId).toBe('topic-1');
+    expect(inbox.reopened).toEqual(['topic-1']);
     expect(inbox.relayed).toEqual([
       {
         initial: true,
@@ -208,12 +213,12 @@ describe('HandoffService', () => {
       {
         initial: true,
         message: createClientMessage('message-2', 'New question'),
-        operatorTopicId: 'topic-2',
+        operatorTopicId: 'topic-1',
       },
     ]);
     expect(firstRequest?.id).toBeDefined();
     expect(secondRequest).toMatchObject({
-      operatorTopicId: 'topic-2',
+      operatorTopicId: 'topic-1',
     });
     expect(secondRequest?.id).not.toBe(firstRequest?.id);
     expect(
@@ -248,6 +253,36 @@ describe('HandoffService', () => {
 
     expect(inbox.closed).toEqual(['old-topic']);
     expect(repository.findRequestByTopicId('old-topic')?.status).toBe('closed');
+    expect(repository.findActiveRequest('telegram', '101')?.id).toBe(
+      'current-request',
+    );
+  });
+
+  it('ignores a delayed close event from a previous request in a reused topic', async () => {
+    repository.createRequest({
+      channel: 'telegram',
+      closedAt: new Date('2026-08-31T11:30:00.000Z'),
+      conversationId: '101',
+      createdAt: new Date('2026-08-31T11:00:00.000Z'),
+      id: 'old-request',
+      operatorTopicId: 'shared-topic',
+      status: 'closed',
+    });
+    repository.createRequest({
+      channel: 'telegram',
+      conversationId: '101',
+      createdAt: new Date('2026-08-31T12:00:00.000Z'),
+      id: 'current-request',
+      operatorTopicId: 'shared-topic',
+      status: 'active',
+    });
+
+    await service.handleOperatorTopicClosed(
+      'delayed-close',
+      'shared-topic',
+      new Date('2026-08-31T11:30:00.000Z'),
+    );
+
     expect(repository.findActiveRequest('telegram', '101')?.id).toBe(
       'current-request',
     );

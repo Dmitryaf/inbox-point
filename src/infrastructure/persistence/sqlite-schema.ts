@@ -1,6 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 
-export const sqliteSchemaVersion = 5;
+export const sqliteSchemaVersion = 6;
 
 export const requiredSqliteTables = [
   'conversation_messages',
@@ -26,7 +26,11 @@ export function initializeSqliteSchema(database: DatabaseSync): void {
     version = 4;
   }
   if (hasTables !== undefined && version === 4) {
-    migrateSchema(database, inboundEventRetryMigrationSql, sqliteSchemaVersion);
+    migrateSchema(database, inboundEventRetryMigrationSql, 5);
+    version = 5;
+  }
+  if (hasTables !== undefined && version === 5) {
+    migrateSupportRequestsForTopicReuse(database);
     version = sqliteSchemaVersion;
   }
   if (hasTables !== undefined && version !== sqliteSchemaVersion) {
@@ -37,6 +41,64 @@ export function initializeSqliteSchema(database: DatabaseSync): void {
 
   database.exec(initialSchemaSql);
   database.exec(`PRAGMA user_version = ${sqliteSchemaVersion}`);
+}
+
+function migrateSupportRequestsForTopicReuse(database: DatabaseSync): void {
+  database.exec('PRAGMA foreign_keys = OFF');
+  database.exec('BEGIN IMMEDIATE');
+  try {
+    database.exec(`
+      CREATE TABLE support_requests_v6 (
+        id TEXT PRIMARY KEY,
+        channel TEXT NOT NULL CHECK (channel IN ('telegram', 'vk')),
+        external_conversation_id TEXT NOT NULL,
+        client_display_name TEXT,
+        operator_topic_id TEXT NOT NULL,
+        status TEXT NOT NULL CHECK (status IN ('active', 'closed')),
+        created_at TEXT NOT NULL,
+        closed_at TEXT
+      ) STRICT;
+
+      INSERT INTO support_requests_v6 (
+        id,
+        channel,
+        external_conversation_id,
+        client_display_name,
+        operator_topic_id,
+        status,
+        created_at,
+        closed_at
+      )
+      SELECT
+        id,
+        channel,
+        external_conversation_id,
+        client_display_name,
+        operator_topic_id,
+        status,
+        created_at,
+        closed_at
+      FROM support_requests;
+
+      DROP TABLE support_requests;
+      ALTER TABLE support_requests_v6 RENAME TO support_requests;
+      ${supportRequestIndexesAndTriggersSql}
+      PRAGMA user_version = ${sqliteSchemaVersion};
+    `);
+
+    const foreignKeyViolations = database
+      .prepare('PRAGMA foreign_key_check')
+      .all();
+    if (foreignKeyViolations.length > 0) {
+      throw new Error('SQLite topic reuse migration violated foreign keys');
+    }
+    database.exec('COMMIT');
+  } catch (error: unknown) {
+    database.exec('ROLLBACK');
+    throw error;
+  } finally {
+    database.exec('PRAGMA foreign_keys = ON');
+  }
 }
 
 function readSchemaVersion(database: DatabaseSync): number {
@@ -107,21 +169,60 @@ const operatorActionsTableSql = `
     ON operator_actions(status, created_at, id);
 `;
 
+const supportRequestIndexesAndTriggersSql = `
+  CREATE UNIQUE INDEX IF NOT EXISTS one_active_request_per_conversation
+    ON support_requests(channel, external_conversation_id)
+    WHERE status = 'active';
+
+  CREATE INDEX IF NOT EXISTS support_requests_by_operator_topic
+    ON support_requests(operator_topic_id, status, created_at);
+
+  CREATE TRIGGER IF NOT EXISTS operator_topic_conversation_insert
+    BEFORE INSERT ON support_requests
+    WHEN EXISTS (
+      SELECT 1
+      FROM support_requests
+      WHERE operator_topic_id = NEW.operator_topic_id
+        AND (
+          channel <> NEW.channel
+          OR external_conversation_id <> NEW.external_conversation_id
+        )
+    )
+    BEGIN
+      SELECT RAISE(ABORT, 'operator topic belongs to another conversation');
+    END;
+
+  CREATE TRIGGER IF NOT EXISTS operator_topic_conversation_update
+    BEFORE UPDATE OF operator_topic_id, channel, external_conversation_id
+      ON support_requests
+    WHEN EXISTS (
+      SELECT 1
+      FROM support_requests
+      WHERE operator_topic_id = NEW.operator_topic_id
+        AND id <> NEW.id
+        AND (
+          channel <> NEW.channel
+          OR external_conversation_id <> NEW.external_conversation_id
+        )
+    )
+    BEGIN
+      SELECT RAISE(ABORT, 'operator topic belongs to another conversation');
+    END;
+`;
+
 const initialSchemaSql = `
   CREATE TABLE IF NOT EXISTS support_requests (
     id TEXT PRIMARY KEY,
     channel TEXT NOT NULL CHECK (channel IN ('telegram', 'vk')),
     external_conversation_id TEXT NOT NULL,
     client_display_name TEXT,
-    operator_topic_id TEXT NOT NULL UNIQUE,
+    operator_topic_id TEXT NOT NULL,
     status TEXT NOT NULL CHECK (status IN ('active', 'closed')),
     created_at TEXT NOT NULL,
     closed_at TEXT
   ) STRICT;
 
-  CREATE UNIQUE INDEX IF NOT EXISTS one_active_request_per_conversation
-    ON support_requests(channel, external_conversation_id)
-    WHERE status = 'active';
+  ${supportRequestIndexesAndTriggersSql}
 
   CREATE TABLE IF NOT EXISTS message_links (
     id TEXT PRIMARY KEY,

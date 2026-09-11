@@ -71,10 +71,14 @@ class FakeVkGateway implements VkGateway {
 }
 
 class FakeOperatorInbox implements OperatorInbox {
+  public readonly closed: string[] = [];
+  public readonly createdTopics: string[] = [];
   public readonly opened: OpenOperatorRequest[] = [];
+  public readonly reopened: string[] = [];
   public readonly relayed: SupportMessage[] = [];
 
-  public closeRequest(): Promise<void> {
+  public closeRequest(operatorTopicId: string): Promise<void> {
+    this.closed.push(operatorTopicId);
     return Promise.resolve();
   }
 
@@ -82,7 +86,13 @@ class FakeOperatorInbox implements OperatorInbox {
     request: OpenOperatorRequest,
   ): Promise<{ topicId: string }> {
     this.opened.push(request);
-    return Promise.resolve({ topicId: 'topic-1' });
+    if (request.reusableTopicId) {
+      this.reopened.push(request.reusableTopicId);
+      return Promise.resolve({ topicId: request.reusableTopicId });
+    }
+    const topicId = `topic-${this.createdTopics.length + 1}`;
+    this.createdTopics.push(topicId);
+    return Promise.resolve({ topicId });
   }
 
   public relayCustomerMessage(
@@ -182,6 +192,55 @@ describe('VK handoff integration', () => {
     expect(
       repository.getUsageEventCounts(new Date('2026-01-01')).new_request,
     ).toBe(1);
+  });
+
+  it('reuses one Telegram topic for later requests from the same VK client', async () => {
+    await router.route(createMessageEvent());
+    const firstRequest = repository.findActiveRequest('vk', '101');
+    await service.handleOperatorMessage('telegram-close-1', {
+      externalMessageId: 'telegram-command-1',
+      operatorTopicId: 'topic-1',
+      receivedAt: new Date('2026-09-01T12:01:00.000Z'),
+      text: '/close',
+    });
+
+    await router.route(
+      createMessageEvent({
+        conversation_message_id: 8,
+        id: 502,
+        text: 'Second question from VK',
+      }),
+    );
+    const nextRequest = repository.findActiveRequest('vk', '101');
+
+    expect(firstRequest?.id).toBeDefined();
+    expect(nextRequest?.id).not.toBe(firstRequest?.id);
+    expect(nextRequest?.operatorTopicId).toBe('topic-1');
+    expect(inbox.closed).toEqual(['topic-1']);
+    expect(inbox.createdTopics).toEqual(['topic-1']);
+    expect(inbox.opened[1]?.reusableTopicId).toBe('topic-1');
+    expect(inbox.reopened).toEqual(['topic-1']);
+
+    await service.handleOperatorMessage('telegram-answer-2', {
+      externalMessageId: 'telegram-answer-2',
+      operatorTopicId: 'topic-1',
+      receivedAt: new Date('2026-09-01T12:02:00.000Z'),
+      text: 'Second answer to VK',
+    });
+    const worker = new DeliveryWorker({
+      channels: [new VkClientChannel(gateway)],
+      repository,
+    });
+    await worker.processPending();
+    await worker.processPending();
+    await worker.processPending();
+
+    expect(gateway.sent.map((message) => message.text)).toContain(
+      'Second answer to VK',
+    );
+    expect(
+      repository.getUsageEventCounts(new Date('2026-01-01')).new_request,
+    ).toBe(2);
   });
 
   it('hides empty information buttons without blocking typed labels', async () => {

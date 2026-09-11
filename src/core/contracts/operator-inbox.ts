@@ -26,6 +26,7 @@ export class OperatorActionOutcomeUnknownError extends Error {
 
 export interface OpenOperatorRequest {
   requestId: string;
+  reusableTopicId?: string;
   source: SupportMessage;
   title: string;
 }

@@ -40,6 +40,9 @@ export class TelegramUpdateRouter {
       message.chat.type === 'supergroup' &&
       message.message_thread_id !== undefined
     ) {
+      if (message.from?.is_bot) {
+        return;
+      }
       const externalEventId = String(update.update_id);
       if (message.forum_topic_closed) {
         await this.handoffService.handleOperatorTopicClosed(

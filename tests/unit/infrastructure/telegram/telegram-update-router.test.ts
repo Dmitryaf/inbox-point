@@ -195,6 +195,23 @@ describe('TelegramUpdateRouter', () => {
     ]);
   });
 
+  it('ignores topic lifecycle messages caused by a bot action', async () => {
+    const handler = new RecordingHandler();
+    const router = new TelegramUpdateRouter(handler, -1_001);
+    const update = createTopicServiceUpdate({ forum_topic_closed: {} });
+    if (update.message) {
+      update.message.from = {
+        first_name: 'Inbox Point',
+        id: 42,
+        is_bot: true,
+      };
+    }
+
+    await router.route(update);
+
+    expect(handler.topicEvents).toEqual([]);
+  });
+
   it('explains unsupported media to clients and operators', async () => {
     const handler = new RecordingHandler();
     const notifier = new RecordingNotifier();
