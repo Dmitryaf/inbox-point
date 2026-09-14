@@ -40,12 +40,12 @@ export class FileContentSettingsStore implements ContentSettingsStore {
     );
   }
 
-  public async loadPreviousMenuActions(): Promise<readonly string[]> {
+  public async loadHistoricalMenuActions(): Promise<readonly string[]> {
     const document = await this.readDocument();
     if (!document) {
       return [];
     }
-    return [...findPreviousMenuActions(document)];
+    return [...findHistoricalMenuActions(document)];
   }
 
   public async save(content: ClientInformationContent): Promise<void> {
@@ -57,14 +57,6 @@ export class FileContentSettingsStore implements ContentSettingsStore {
     }
 
     const revision = nextRevision(current);
-    const currentMenuActions = getMenuActionValues(current?.content ?? {});
-    const nextMenuActions = getMenuActionValues(validated);
-    const previousMenuActions = haveSameValues(
-      currentMenuActions,
-      nextMenuActions,
-    )
-      ? findPreviousMenuActions(current)
-      : currentMenuActions;
     await this.writeDocument({
       content: validated,
       history: [
@@ -76,7 +68,6 @@ export class FileContentSettingsStore implements ContentSettingsStore {
         },
         ...(current?.history ?? []),
       ].slice(0, 20),
-      ...(previousMenuActions.length > 0 ? { previousMenuActions } : {}),
     });
   }
 
@@ -118,31 +109,27 @@ export class FileContentSettingsStore implements ContentSettingsStore {
   }
 }
 
-function findPreviousMenuActions(
+function findHistoricalMenuActions(
   document: ContentSettingsDocument | undefined,
 ): readonly string[] {
   if (!document) {
     return [];
   }
-  if (document.previousMenuActions) {
-    return document.previousMenuActions;
+  const currentMenuActions = new Set(getMenuActionValues(document.content));
+  const historicalMenuActions = new Set<string>();
+  for (const entry of document.history) {
+    for (const action of getMenuActionValues(entry.content)) {
+      if (!currentMenuActions.has(action)) {
+        historicalMenuActions.add(action);
+      }
+    }
   }
-  const currentMenuActions = getMenuActionValues(document.content);
-  const previous = document.history.find(
-    (entry) =>
-      !haveSameValues(getMenuActionValues(entry.content), currentMenuActions),
-  );
-  return previous ? getMenuActionValues(previous.content) : [];
-}
-
-function haveSameValues(
-  first: readonly string[],
-  second: readonly string[],
-): boolean {
-  return (
-    first.length === second.length &&
-    first.every((value, index) => value === second[index])
-  );
+  for (const action of document.legacyPreviousMenuActions ?? []) {
+    if (!currentMenuActions.has(action)) {
+      historicalMenuActions.add(action);
+    }
+  }
+  return [...historicalMenuActions];
 }
 
 function nextRevision(document: ContentSettingsDocument | undefined): number {

@@ -58,10 +58,13 @@ describe('client information', () => {
 
   it('formats list sections without inventing missing values', () => {
     const catalog = new ClientInformationCatalog();
-    catalog.replace({
-      prices: 'Разовое занятие — 500 ₽\n- Абонемент — 3200 ₽',
-      schedule: 'Понедельник, 19:00\nПятница, 20:00',
-    });
+    catalog.replace(
+      {
+        prices: 'Разовое занятие — 500 ₽\n- Абонемент — 3200 ₽',
+        schedule: 'Понедельник, 19:00\nПятница, 20:00',
+      },
+      [],
+    );
 
     expect(catalog.resolve(scheduleButton)).toBe(
       'Расписание\n\n• Понедельник, 19:00\n• Пятница, 20:00',
@@ -84,33 +87,31 @@ describe('client information', () => {
     ]);
   });
 
-  it('recognizes only actions from the immediately previous menu revision', () => {
-    const catalog = new ClientInformationCatalog({
-      customSections: [{ label: 'Расписание группы', text: 'В понедельник.' }],
-    });
+  it('recognizes historical actions while giving current actions priority', () => {
+    const catalog = new ClientInformationCatalog(
+      {
+        customSections: [{ label: 'Цены занятий', text: 'Текущий ответ.' }],
+      },
+      ['Стоимость', 'Абонементы'],
+    );
 
-    catalog.replace({
-      customSections: [{ label: 'Расписание занятий', text: 'В понедельник.' }],
-    });
-    catalog.replace({
-      customSections: [
-        { label: 'Расписание занятий', text: 'В понедельник и среду.' },
-      ],
-    });
-
-    expect(catalog.isStaleMenuAction(' Расписание группы ')).toBe(true);
-    expect(catalog.isStaleMenuAction('Расписание занятий')).toBe(false);
+    expect(catalog.isStaleMenuAction(' Абонементы ')).toBe(true);
+    expect(catalog.isStaleMenuAction('Стоимость')).toBe(true);
+    expect(catalog.isStaleMenuAction('Цены занятий')).toBe(false);
     expect(catalog.isStaleMenuAction('Обычный вопрос')).toBe(false);
 
-    catalog.replace({
-      customSections: [{ label: 'Занятия', text: 'В понедельник и среду.' }],
-    });
+    catalog.replace(
+      {
+        customSections: [{ label: 'Абонементы', text: 'Снова текущий ответ.' }],
+      },
+      ['Цены занятий', 'Стоимость'],
+    );
 
-    expect(catalog.isStaleMenuAction('Расписание группы')).toBe(false);
-    expect(catalog.isStaleMenuAction('Расписание занятий')).toBe(true);
+    expect(catalog.isStaleMenuAction('Абонементы')).toBe(false);
+    expect(catalog.isStaleMenuAction('Цены занятий')).toBe(true);
   });
 
-  it('restores stale-menu recognition from persisted menu content', () => {
+  it('restores stale-menu recognition from persisted content history', () => {
     const catalog = new ClientInformationCatalog(
       {
         customSections: [

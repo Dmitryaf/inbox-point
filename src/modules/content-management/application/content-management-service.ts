@@ -32,7 +32,10 @@ export class ContentManagementService {
     const save = this.saveQueue.then(async () => {
       this.assertVersion(expectedVersion);
       await this.store.save(content);
-      this.catalog.replace(content);
+      this.catalog.replace(
+        content,
+        await this.store.loadHistoricalMenuActions(),
+      );
       return createSnapshot(content);
     });
     this.saveQueue = save.then(
@@ -49,7 +52,10 @@ export class ContentManagementService {
     const restore = this.saveQueue.then(async () => {
       this.assertVersion(expectedVersion);
       const restored = await this.store.restore(revision);
-      this.catalog.replace(restored);
+      this.catalog.replace(
+        restored,
+        await this.store.loadHistoricalMenuActions(),
+      );
       return createSnapshot(restored);
     });
     this.saveQueue = restore.then(

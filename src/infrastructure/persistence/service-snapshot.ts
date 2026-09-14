@@ -18,6 +18,7 @@ import { z } from 'zod';
 
 import { defaultInstanceId, instanceIdSchema } from '@/config/instance-id.js';
 import { isFileSystemError } from '@/infrastructure/file-system/local-state-file.js';
+import { SqliteAdminSessionStore } from '@/infrastructure/persistence/sqlite-admin-session-store.js';
 import {
   SqliteBackupService,
   verifySqliteBackup,
@@ -264,10 +265,21 @@ export async function restoreServiceSnapshot(
       }
     }
     verifySqliteBackup(restored.databasePath);
+    invalidateRestoredAdminSessions(restored.databasePath);
+    verifySqliteBackup(restored.databasePath);
     return restored;
   } catch (error: unknown) {
     await rm(resolvedTarget, { recursive: true });
     throw error;
+  }
+}
+
+function invalidateRestoredAdminSessions(databasePath: string): void {
+  const sessions = new SqliteAdminSessionStore(databasePath);
+  try {
+    sessions.deleteAll();
+  } finally {
+    sessions.close();
   }
 }
 

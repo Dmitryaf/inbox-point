@@ -59,14 +59,14 @@ export interface ClientInformationResolver {
 
 export class ClientInformationCatalog implements ClientInformationResolver {
   private content: ClientInformationContent;
-  private previousMenuActions: readonly string[];
+  private historicalMenuActions: readonly string[];
 
   public constructor(
     content: ClientInformationContent = {},
-    previousMenuActions: readonly string[] = [],
+    historicalMenuActions: readonly string[] = [],
   ) {
     this.content = copyClientInformationContent(content);
-    this.previousMenuActions = [...previousMenuActions];
+    this.historicalMenuActions = [...historicalMenuActions];
   }
 
   public getContent(): ClientInformationContent {
@@ -85,26 +85,24 @@ export class ClientInformationCatalog implements ClientInformationResolver {
 
   public initialize(
     content: ClientInformationContent,
-    previousMenuActions: readonly string[] = [],
+    historicalMenuActions: readonly string[] = [],
   ): void {
     this.content = copyClientInformationContent(content);
-    this.previousMenuActions = [...previousMenuActions];
+    this.historicalMenuActions = [...historicalMenuActions];
   }
 
-  public replace(content: ClientInformationContent): void {
-    const next = copyClientInformationContent(content);
-    const currentMenuActions = getMenuActionValues(this.content);
-    const nextMenuActions = getMenuActionValues(next);
-    if (!haveSameValues(currentMenuActions, nextMenuActions)) {
-      this.previousMenuActions = currentMenuActions;
-    }
-    this.content = next;
+  public replace(
+    content: ClientInformationContent,
+    historicalMenuActions: readonly string[] = [],
+  ): void {
+    this.content = copyClientInformationContent(content);
+    this.historicalMenuActions = [...historicalMenuActions];
   }
 
   public isStaleMenuAction(text: string): boolean {
     const normalized = text.trim();
     return (
-      this.previousMenuActions.includes(normalized) &&
+      this.historicalMenuActions.includes(normalized) &&
       !getMenuActionValues(this.content).includes(normalized)
     );
   }
@@ -176,16 +174,6 @@ function getInformationButtonValues(
     buttons.push(faqButton);
   }
   return buttons;
-}
-
-function haveSameValues(
-  first: readonly string[],
-  second: readonly string[],
-): boolean {
-  return (
-    first.length === second.length &&
-    first.every((value, index) => value === second[index])
-  );
 }
 
 export function isHandoffRequest(text: string): boolean {

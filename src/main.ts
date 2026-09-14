@@ -131,7 +131,7 @@ async function start(): Promise<void> {
     try {
       informationCatalog.initialize(
         (await contentSettingsStore.load()) ?? {},
-        await contentSettingsStore.loadPreviousMenuActions(),
+        await contentSettingsStore.loadHistoricalMenuActions(),
       );
     } catch (error: unknown) {
       app.log.error({ err: error }, 'Ignoring invalid local content settings');

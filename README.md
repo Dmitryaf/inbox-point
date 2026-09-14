@@ -42,9 +42,9 @@ text.
 
 Telegram and VK cannot remotely replace a persistent keyboard already shown on
 a person's device. Inbox Point attaches the current keyboard to later bot
-responses. If a person uses a button from the immediately previous menu
-revision, the service shows the current choices instead of opening an operator
-request.
+responses. If a person uses a button found in the retained history of the last
+20 content revisions but absent from the current menu, the service shows the
+current choices instead of opening an operator request.
 
 ## Data
 
@@ -143,7 +143,8 @@ After a production build, `npm run snapshot:create` creates a verified service
 snapshot and `npm run snapshot:restore -- <snapshot> <new-data-directory>`
 restores it only into a new directory. A snapshot contains SQLite, saved content,
 service-control state, checksums, and metadata. It excludes channel credentials,
-passwords, and `.env` files.
+passwords, and `.env` files. Admin sessions are not restorable state: snapshot
+restore invalidates remembered sessions, so trusted devices must sign in again.
 
 The `operations` Compose profile runs a one-shot verified external backup:
 
