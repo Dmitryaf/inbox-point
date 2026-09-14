@@ -18,7 +18,7 @@ public final class ServiceCommands {
 
     public static boolean handles(String command) {
         return "healthcheck".equals(command) || "availability-monitor".equals(command)
-                || "snapshot-create".equals(command) || "snapshot-restore".equals(command) || "backup-create".equals(command);
+                || "snapshot-verify".equals(command) || "snapshot-create".equals(command) || "snapshot-restore".equals(command) || "backup-create".equals(command);
     }
 
     public static int run(String[] args, Map<String, String> environment) {
@@ -111,6 +111,11 @@ public final class ServiceCommands {
                 var days = number(environment, "CLOSED_REQUEST_RETENTION_DAYS", 7, 1, 365);
                 System.out.println(new ServiceSnapshot(database, database.toAbsolutePath().normalize().getParent().resolve("snapshots"),
                         instance(environment), days).create(Instant.now()));
+            } else if ("snapshot-verify".equals(args[0])) {
+                if (args.length != 2) {
+                    throw new IllegalArgumentException("Snapshot directory is required");
+                }
+                ServiceSnapshot.verify(Path.of(args[1]));
             } else {
                 if (args.length != 3) {
                     throw new IllegalArgumentException("Snapshot directory and new restore directory are required");

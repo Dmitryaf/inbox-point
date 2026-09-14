@@ -205,8 +205,9 @@ if [[ "$previous_commit" != "$target_commit" ]]; then
         test ! -e "$final_path"
         cp -a "$source_path" "$temporary_path"
         mv "$temporary_path" "$final_path"
+        java -jar /app/inbox-point.jar snapshot-verify "$final_path"
       ' updater "$internal_snapshot_path" "$snapshot_name"; then
-    abort 'snapshot copy container failed'
+    abort 'snapshot copy or manifest verification failed'
   fi
   if ! backup_host_directory=$(
     docker inspect --format '{{range .Mounts}}{{if eq .Destination "/backup"}}{{.Source}}{{end}}{{end}}' \
@@ -222,9 +223,7 @@ if [[ "$previous_commit" != "$target_commit" ]]; then
   current_step='verify copied service snapshot'
   for required_file in \
     manifest.json \
-    database.sqlite \
-    content-settings.json \
-    service-control.json; do
+    database.sqlite; do
     if [[ ! -f "$snapshot_path/$required_file" ]]; then
       abort "copied snapshot is missing $required_file"
     fi
