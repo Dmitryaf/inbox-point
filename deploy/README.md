@@ -150,6 +150,70 @@ content, service-control, and locally managed channel settings. The named volume
 is scoped by the Compose project. The backup bind mount is separate and must
 also be unique per instance.
 
+## Routine updates
+
+For an already deployed instance, use the update script from its checkout. The
+current branch must track the remote branch that should be deployed.
+
+```bash
+bash ./deploy/update-instance.sh \
+  --project organization-a \
+  --env /opt/inbox-point/.env \
+  --public-url https://inboxpoint.example.com
+```
+
+The script refuses tracked working-tree changes, fetches the branch's configured
+remote, and prints the current and fetched target commits. If an update exists,
+it then:
+
+1. creates the existing service-snapshot format from the running application;
+2. copies it through the operations service's read-only data mount into the
+   `BACKUP_HOST_PATH` bind mount;
+3. verifies that the host copy contains `manifest.json`, `database.sqlite`,
+   `content-settings.json`, and `service-control.json`;
+4. fast-forwards the checked-out branch to the exact fetched commit;
+5. validates Compose, rebuilds only `app`, and lets Compose recreate it only
+   when its image or configuration changed;
+6. waits up to 180 seconds for Docker health, then checks the public HTTPS
+   `/health` and `/ready` endpoints.
+
+Use `--health-timeout <seconds>` only when this instance has a measured startup
+time that needs a different bound. If the fetched commit is already deployed,
+the script does not create a redundant snapshot or rebuild; it still validates
+Compose, container health, and both public endpoints.
+
+Any failure stops the update and prints the failed stage, previous commit,
+fetched target, current checkout commit, and pre-deploy snapshot location. It
+also prints safe `ps` and `logs` commands for diagnosis. The script never reads
+or prints `.env` contents and never performs an automatic rollback.
+
+### Manual troubleshooting and recovery
+
+The individual commands remain useful when the updater cannot complete. Run
+them deliberately and keep the commit and snapshot path in the incident notes:
+
+```bash
+git status --short
+git fetch origin
+git rev-parse HEAD
+git rev-parse '@{upstream}'
+
+docker compose -p organization-a --env-file .env --profile operations run --rm backup
+git merge --ff-only '@{upstream}'
+docker compose -p organization-a --env-file .env config --quiet
+docker compose -p organization-a --env-file .env up -d --build app
+docker compose -p organization-a --env-file .env ps app
+docker compose -p organization-a --env-file .env logs --tail=100 app
+curl --fail https://inboxpoint.example.com/health
+curl --fail https://inboxpoint.example.com/ready
+```
+
+These commands are a troubleshooting procedure, not an automatic rollback.
+Before changing source or containers manually, first confirm that the external
+backup command succeeded and record the resulting path. If recovery requires an
+older source or image and a snapshot restore, follow [Back up and restore](#7-back-up-and-restore)
+with the instance stopped; do not restore over the live data directory.
+
 ## 5. Put Caddy in front
 
 Install Caddy on the RU host, copy `Caddyfile.example` to `/etc/caddy/Caddyfile`,
