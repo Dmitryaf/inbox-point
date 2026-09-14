@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { ClientInformationCatalog } from '@/core/application/client-information.js';
+import {
+  ClientInformationCatalog,
+  handoffButton,
+} from '@/core/application/client-information.js';
+import { createTelegramMainKeyboard } from '@/infrastructure/telegram/telegram-client-menu.js';
 import {
   buildClientResponsePreviews,
+  buildTelegramMenuPreviewRows,
   formatFaqResponse,
 } from '@frontend/entities/content/lib/client-response-preview';
 import { validateContentDraft } from '@frontend/entities/content/lib/content-validation';
@@ -28,6 +33,33 @@ describe('client response preview', () => {
         .getInformationButtons()
         .map((label) => [label, catalog.resolve(label)]),
     );
+  });
+
+  it('uses the same button rows as the initial Telegram menu', () => {
+    const content = createEmptyContent();
+    content.schedule = 'Пн, 18:00';
+    content.prices = 'Пробное — 500 ₽';
+    content.address = 'ул. Мира, 1';
+    content.faq = [{ answer: 'Напишите нам.', question: 'Как записаться?' }];
+    content.customSections = [
+      { label: 'Подготовка', text: 'Возьмите сменную обувь.' },
+      { label: 'Парковка', text: 'Въезд со двора.' },
+      { label: 'Контакты', text: 'Позвоните нам.' },
+    ];
+    const catalog = new ClientInformationCatalog(content);
+    const telegramKeyboard = createTelegramMainKeyboard(catalog, false);
+    if (!('keyboard' in telegramKeyboard)) {
+      throw new Error('Expected a Telegram keyboard');
+    }
+
+    const previewRows = buildTelegramMenuPreviewRows(
+      buildClientResponsePreviews(content),
+    );
+
+    expect(previewRows).toEqual(
+      telegramKeyboard.keyboard.map((row) => row.map((button) => button.text)),
+    );
+    expect(previewRows.at(-1)).toEqual([handoffButton]);
   });
 
   it('rejects a FAQ whose final formatted response exceeds the channel limit', () => {

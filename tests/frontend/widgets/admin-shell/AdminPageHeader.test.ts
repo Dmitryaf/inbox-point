@@ -45,13 +45,22 @@ describe('AdminPageHeader', () => {
 
     const buttons = wrapper.findAll('button');
     expect(buttons.map((button) => button.text())).toEqual([
-      'Выйти везде',
       'Выйти',
+      'Выйти на всех устройствах',
     ]);
+    expect(buttons[0]?.classes()).toContain('quiet');
+    expect(buttons[1]?.classes()).toContain('admin-session-actions__all');
+    expect(buttons[1]?.classes()).not.toContain('quiet');
+    expect(wrapper.get('.admin-session-actions').attributes('role')).toBe(
+      'group',
+    );
+    expect(wrapper.get('.admin-session-actions').attributes('aria-label')).toBe(
+      'Выход из управления',
+    );
     await buttons[0]?.trigger('click');
-    expect(wrapper.emitted('revokeAll')).toHaveLength(1);
-    await buttons[1]?.trigger('click');
     expect(wrapper.emitted('logout')).toHaveLength(1);
+    await buttons[1]?.trigger('click');
+    expect(wrapper.emitted('revokeAll')).toHaveLength(1);
     wrapper.unmount();
   });
 

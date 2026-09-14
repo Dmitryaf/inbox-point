@@ -1,5 +1,5 @@
 .card > .step + h2[data-r-1c9d9933] {
-  margin-bottom: 0;
+  margin-bottom: 0.8rem;
 }
 .empty[data-r-1c9d9933] {
   background: var(--color-surface-muted);

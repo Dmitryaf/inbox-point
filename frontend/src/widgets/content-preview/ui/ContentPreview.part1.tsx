@@ -1,10 +1,14 @@
-import { renderList as $renderList } from '@frontend/shared/lib/component-view';
+import {
+  classNames as $class,
+  renderList as $renderList,
+} from '@frontend/shared/lib/component-view';
 
 import type { createComponentModel } from './ContentPreview.model';
 export function renderContentPreviewPart1(
   $state: ReturnType<typeof createComponentModel>,
 ) {
   const responses = $state.responses.value;
+  const buttonRows = $state.buttonRows.value;
 
   return (
     <>
@@ -20,18 +24,6 @@ export function renderContentPreviewPart1(
         >
           <div className="message-preview-menu" data-r-e038eaba="">
             <p data-r-e038eaba="">{'Здравствуйте! Чем помочь?'}</p>
-            <div
-              aria-label="Кнопки меню"
-              className="message-preview-buttons"
-              data-r-e038eaba=""
-            >
-              {$renderList(responses, (response) => (
-                <span key={response.label} data-r-e038eaba="">
-                  {response.label}
-                </span>
-              ))}
-              <span data-r-e038eaba="">{'Задать вопрос'}</span>
-            </div>
           </div>
           {$renderList(responses, (response) => (
             <article
@@ -47,6 +39,27 @@ export function renderContentPreviewPart1(
               </p>
             </article>
           ))}
+          <div
+            aria-label="Кнопки меню Telegram"
+            className="message-preview-buttons"
+            data-r-e038eaba=""
+          >
+            {$renderList(buttonRows, (row, rowIndex) => (
+              <div
+                key={rowIndex}
+                className={$class('message-preview-button-row', {
+                  'message-preview-button-row--single': row.length === 1,
+                })}
+                data-r-e038eaba=""
+              >
+                {$renderList(row, (label) => (
+                  <span key={label} data-r-e038eaba="">
+                    {label}
+                  </span>
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </>

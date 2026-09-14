@@ -1,5 +1,5 @@
 .card > .step + h2 {
-  margin-bottom: 0;
+  margin-bottom: 0.35rem;
 }
 
 .preview-intro {
@@ -54,19 +54,37 @@
 }
 
 .message-preview-buttons {
-  display: flex;
-  flex-wrap: wrap;
+  background: color-mix(in srgb, var(--color-border-strong) 22%, transparent);
+  border-radius: 0.75rem;
+  display: grid;
   gap: 0.45rem;
+  margin-top: 0.25rem;
+  padding: 0.45rem;
+}
+
+.message-preview-button-row {
+  display: grid;
+  gap: 0.45rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.message-preview-button-row--single {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .message-preview-buttons span {
-  background: var(--color-primary-soft);
-  border: 1px solid var(--color-border-strong);
-  border-radius: 999px;
-  color: var(--color-primary-hover);
-  font-size: 0.85rem;
-  font-weight: 700;
-  padding: 0.45rem 0.7rem;
+  align-items: center;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  color: var(--color-text);
+  display: grid;
+  font-size: 0.9rem;
+  font-weight: 600;
+  justify-items: center;
+  min-height: 2.6rem;
+  padding: 0.55rem 0.7rem;
+  text-align: center;
 }
 
 .preview-service-message {

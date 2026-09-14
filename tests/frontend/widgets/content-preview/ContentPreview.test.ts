@@ -16,10 +16,15 @@ describe('ContentPreview', () => {
 
     const wrapper = mount(ContentPreview, { props: { content } });
     const menu = wrapper.get('.message-preview-buttons');
-    const buttons = menu.findAll('span').map((item) => item.text());
+    const rows = menu
+      .findAll('.message-preview-button-row')
+      .map((row) => row.findAll('span').map((item) => item.text()));
 
-    expect(wrapper.get('h2').text()).toBe('Так клиент увидит ваши ответы');
-    expect(buttons).toEqual(['Расписание', 'Подготовка', 'Задать вопрос']);
+    expect(wrapper.get('h2').text()).toBe('Предпросмотр ответов');
+    expect(wrapper.get('.preview-intro').text()).toBe(
+      'Здесь показаны содержание и порядок ответов',
+    );
+    expect(rows).toEqual([['Расписание'], ['Подготовка'], ['Задать вопрос']]);
     expect(wrapper.findAll('.preview-client-message')[0]?.text()).toBe(
       'Расписание',
     );

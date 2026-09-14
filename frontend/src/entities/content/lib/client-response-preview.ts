@@ -5,8 +5,26 @@ import type {
 } from '@frontend/entities/content/model/types';
 
 export interface ClientResponsePreview {
+  group: 'custom' | 'information';
   label: string;
   text: string;
+}
+
+export function buildTelegramMenuPreviewRows(
+  responses: readonly ClientResponsePreview[],
+): string[][] {
+  const informationButtons = responses
+    .filter((response) => response.group === 'information')
+    .map((response) => response.label);
+  const customButtons = responses
+    .filter((response) => response.group === 'custom')
+    .map((response) => response.label);
+
+  return [
+    ...createButtonRows(informationButtons),
+    ...createButtonRows(customButtons),
+    ['Задать вопрос'],
+  ];
 }
 
 export function buildClientResponsePreviews(
@@ -17,6 +35,7 @@ export function buildClientResponsePreviews(
   addStandardResponse(responses, content, 'prices', 'Цены');
   if (isSectionVisible(content, 'address') && content.address.trim()) {
     responses.push({
+      group: 'information',
       label: 'Адрес',
       text: formatAddressResponse(content.address),
     });
@@ -24,6 +43,7 @@ export function buildClientResponsePreviews(
   const faq = normalizeFaqItems(content.faq);
   if (isSectionVisible(content, 'faq') && faq.length > 0) {
     responses.push({
+      group: 'information',
       label: 'Частые вопросы',
       text: formatFaqResponse(faq),
     });
@@ -31,6 +51,7 @@ export function buildClientResponsePreviews(
   for (const section of content.customSections) {
     if (section.label.trim() && section.text.trim()) {
       responses.push({
+        group: 'custom',
         label: section.label.trim(),
         text: section.text.trim(),
       });
@@ -78,7 +99,16 @@ function addStandardResponse(
     return;
   }
   responses.push({
+    group: 'information',
     label,
     text: formatListResponse(label, value),
   });
+}
+
+function createButtonRows(buttons: readonly string[]): string[][] {
+  const rows: string[][] = [];
+  for (let index = 0; index < buttons.length; index += 2) {
+    rows.push(buttons.slice(index, index + 2));
+  }
+  return rows;
 }

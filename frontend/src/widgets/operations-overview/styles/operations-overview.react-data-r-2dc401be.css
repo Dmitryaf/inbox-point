@@ -33,6 +33,9 @@
   display: grid;
   gap: 0.65rem;
 }
+.status-grid[data-r-2dc401be] {
+  align-items: start;
+}
 .summary-facts[data-r-2dc401be] {
   margin: 0;
 }
