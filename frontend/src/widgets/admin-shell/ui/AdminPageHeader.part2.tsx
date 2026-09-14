@@ -13,16 +13,12 @@ export function renderAdminPageHeaderPart2(
   return (
     <>
       {$props.showLogout ? (
-        <div className="admin-session-actions" data-r-e15afcb7="">
-          <button
-            disabled={$props.pending}
-            type="button"
-            onClick={() => void $emit('revokeAll')}
-            className="quiet"
-            data-r-e15afcb7=""
-          >
-            {' Выйти везде '}
-          </button>
+        <div
+          role="group"
+          aria-label="Выход из управления"
+          className="admin-session-actions"
+          data-r-e15afcb7=""
+        >
           <button
             disabled={$props.pending}
             type="button"
@@ -31,6 +27,15 @@ export function renderAdminPageHeaderPart2(
             data-r-e15afcb7=""
           >
             {' Выйти '}
+          </button>
+          <button
+            disabled={$props.pending}
+            type="button"
+            onClick={() => void $emit('revokeAll')}
+            className="admin-session-actions__all"
+            data-r-e15afcb7=""
+          >
+            {' Выйти на всех устройствах '}
           </button>
         </div>
       ) : null}

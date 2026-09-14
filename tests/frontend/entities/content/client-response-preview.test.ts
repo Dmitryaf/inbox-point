@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import expected from '@test/fixtures/client-response-preview.json';
+import expectedRows from '@test/fixtures/telegram-menu-preview.json';
 import {
   buildClientResponsePreviews,
+  buildTelegramMenuPreviewRows,
   formatFaqResponse,
 } from '@frontend/entities/content/lib/client-response-preview';
 import { validateContentDraft } from '@frontend/entities/content/lib/content-validation';
@@ -17,6 +19,24 @@ describe('client response preview', () => {
     const previews = buildClientResponsePreviews(content);
 
     expect(previews.map(({ label, text }) => [label, text])).toEqual(expected);
+  });
+
+  it('uses the same button rows as the initial Telegram menu', () => {
+    const content = createEmptyContent();
+    content.schedule = 'Пн, 18:00';
+    content.prices = 'Пробное — 500 ₽';
+    content.address = 'ул. Мира, 1';
+    content.faq = [{ answer: 'Напишите нам.', question: 'Как записаться?' }];
+    content.customSections = [
+      { label: 'Подготовка', text: 'Возьмите сменную обувь.' },
+      { label: 'Парковка', text: 'Въезд со двора.' },
+      { label: 'Контакты', text: 'Позвоните нам.' },
+    ];
+    const previewRows = buildTelegramMenuPreviewRows(
+      buildClientResponsePreviews(content),
+    );
+
+    expect(previewRows).toEqual(expectedRows);
   });
 
   it('rejects a FAQ whose final formatted response exceeds the channel limit', () => {

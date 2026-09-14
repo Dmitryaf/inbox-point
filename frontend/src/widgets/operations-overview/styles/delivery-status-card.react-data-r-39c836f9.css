@@ -20,7 +20,14 @@
   margin: 0;
 }
 .status-technical-details[data-r-39c836f9] {
-  border-top: 1px solid var(--color-border);
+  background: var(--color-surface-muted);
+  border-radius: 0.75rem;
   margin-top: 0.8rem;
-  padding-top: 0.7rem;
+  padding: 0.7rem 0.75rem;
+}
+.status-technical-details[open] summary[data-r-39c836f9] {
+  margin-bottom: 0.7rem;
+}
+.status-technical-details .delivery-facts[data-r-39c836f9] {
+  grid-template-columns: minmax(0, 1fr);
 }

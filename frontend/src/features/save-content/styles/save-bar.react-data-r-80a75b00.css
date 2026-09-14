@@ -11,12 +11,15 @@
   position: sticky;
   z-index: 2;
 }
+.save-bar > div[data-r-80a75b00] {
+  display: grid;
+  gap: 0.25rem;
+}
 .save-bar-label[data-r-80a75b00] {
   color: var(--color-text-muted);
   display: block;
   font-size: 0.72rem;
   font-weight: 600;
-  margin-bottom: 0.15rem;
 }
 .save-bar p[data-r-80a75b00] {
   color: var(--color-text-muted);

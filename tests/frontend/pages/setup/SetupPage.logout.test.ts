@@ -93,7 +93,7 @@ describe('SetupPage logout', () => {
     await flushPromises();
     const revokeButton = wrapper
       .findAll('button')
-      .find((button) => button.text() === 'Выйти везде');
+      .find((button) => button.text() === 'Выйти на всех устройствах');
 
     await revokeButton?.trigger('click');
     await flushPromises();

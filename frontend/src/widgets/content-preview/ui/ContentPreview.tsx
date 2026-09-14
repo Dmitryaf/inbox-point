@@ -37,12 +37,10 @@ export default function ContentPreview($incomingProps: ComponentProps) {
           {'Предпросмотр'}
         </p>
         <h2 id="preview-title" data-r-e038eaba="">
-          {'Так клиент увидит ваши ответы'}
+          {'Предпросмотр ответов'}
         </h2>
         <p className="preview-intro" data-r-e038eaba="">
-          {
-            ' Это пример. В Telegram и VK оформление немного различается, но кнопки и тексты будут такими же. '
-          }
+          {'Здесь показаны содержание и порядок ответов'}
         </p>
         {renderContentPreviewPart1($state)}
       </section>

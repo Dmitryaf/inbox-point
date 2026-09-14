@@ -55,6 +55,29 @@ class TelegramMenuTest {
         }
     }
 
+    @Test
+    void firstContactUsesTheKeyboardRowsShownInTheEditorPreview() throws Exception {
+        var information = new ClientInformation(directory.resolve("preview.sqlite").toString());
+        var mapper = JsonMapper.shared();
+        var content = mapper.createObjectNode().put("schedule", "Пн, 18:00").put("prices", "Пробное — 500 ₽")
+                .put("address", "ул. Мира, 1");
+        content.putArray("faq").addObject().put("question", "Как записаться?").put("answer", "Напишите нам.");
+        var custom = content.putArray("customSections");
+        custom.addObject().put("label", "Подготовка").put("text", "Возьмите сменную обувь.");
+        custom.addObject().put("label", "Парковка").put("text", "Въезд со двора.");
+        custom.addObject().put("label", "Контакты").put("text", "Позвоните нам.");
+        information.save(content);
+        var actual = mapper.createArrayNode();
+        for (var row : TelegramClientMenu.keyboard(information, false).path("keyboard")) {
+            var output = actual.addArray();
+            for (var button : row) {
+                output.add(button.path("text").asString());
+            }
+        }
+        var fixture = Path.of("..", "tests", "fixtures", "telegram-menu-preview.json");
+        assertThat(actual).isEqualTo(mapper.readTree(java.nio.file.Files.readString(fixture)));
+    }
+
     private static JsonNode update(long id, String text) {
         var root = JsonMapper.shared().createObjectNode().put("update_id", id);
         var message = root.putObject("message").put("message_id", id).put("text", text);

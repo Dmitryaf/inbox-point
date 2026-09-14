@@ -52,7 +52,7 @@ final class TelegramClientMenu {
                 inbox.close(active.topic());
                 store.changeStatus(active.id(), false, now);
             }
-            api.sendMessage(chat, null, response, keyboard(information, blocked));
+            api.sendMessage(chat, null, response, keyboard(information, blocked, active != null && !RESET.equals(trimmed)));
             if (information.isPublishedInformation(trimmed)) {
                 store.usageEvent("information:telegram:" + event, "information_section", "telegram", null, Instant.now());
             }
@@ -95,6 +95,10 @@ final class TelegramClientMenu {
     }
 
     static JsonNode keyboard(ClientInformation information, boolean blocked) {
+        return keyboard(information, blocked, false);
+    }
+
+    private static JsonNode keyboard(ClientInformation information, boolean blocked, boolean active) {
         var markup = JsonMapper.shared().createObjectNode().put("resize_keyboard", true)
                 .put("is_persistent", true).put("input_field_placeholder", "Выберите действие");
         var rows = markup.putArray("keyboard");
@@ -105,12 +109,15 @@ final class TelegramClientMenu {
                 row.addObject().put("text", label);
             }
         }
-        for (var section : information.sections()) {
-            rows.addArray().addObject().put("text", section.label());
+        var custom = information.sections();
+        for (int index = 0; index < custom.size(); index += 2) {
+            var row = rows.addArray();
+            for (var section : custom.subList(index, Math.min(index + 2, custom.size()))) {
+                row.addObject().put("text", section.label());
+            }
         }
-        if (!blocked) {
-            rows.addArray().addObject().put("text", ASK);
-            rows.addArray().addObject().put("text", RESET);
+        if (active || !blocked) {
+            rows.addArray().addObject().put("text", active ? RESET : ASK);
         }
         return rows.isEmpty() ? JsonMapper.shared().createObjectNode().put("remove_keyboard", true) : markup;
     }

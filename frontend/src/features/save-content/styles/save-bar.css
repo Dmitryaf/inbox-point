@@ -12,12 +12,16 @@
   z-index: 2;
 }
 
+.save-bar > div {
+  display: grid;
+  gap: 0.25rem;
+}
+
 .save-bar-label {
   color: var(--color-text-muted);
   display: block;
   font-size: 0.72rem;
   font-weight: 600;
-  margin-bottom: 0.15rem;
 }
 
 .save-bar p {

@@ -40,6 +40,10 @@
   gap: 0.65rem;
 }
 
+.status-grid {
+  align-items: start;
+}
+
 .summary-facts {
   margin: 0;
 }
