@@ -10,6 +10,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -19,7 +20,9 @@ import {
   ServiceSnapshotService,
   verifyServiceSnapshot,
 } from '@/infrastructure/persistence/service-snapshot.js';
+import { SqliteAdminSessionStore } from '@/infrastructure/persistence/sqlite-admin-session-store.js';
 import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-support-repository.js';
+import { PasswordSessionAccess } from '@/infrastructure/security/password-session-access.js';
 import { FileContentSettingsStore } from '@/modules/content-management/infrastructure/file-store/file-content-settings-store.js';
 import { FileServiceControlStore } from '@/modules/service-control/infrastructure/file-store/file-service-control-store.js';
 
@@ -137,6 +140,72 @@ describe('ServiceSnapshotService', () => {
     expect(readdirSync(restoreDirectory)).not.toContain(
       'telegram-settings.json',
     );
+    repository.close();
+  });
+
+  it('restores business data without resurrecting revoked admin sessions', async () => {
+    const directory = createTemporaryDirectory();
+    const databasePath = join(directory, 'data', 'inbox-point.sqlite');
+    const repository = new SqliteSupportRepository(databasePath);
+    repository.createRequest({
+      channel: 'telegram',
+      conversationId: '101',
+      createdAt: new Date('2026-09-06T12:00:00.000Z'),
+      id: 'request-1',
+      operatorTopicId: 'topic-1',
+      status: 'active',
+    });
+    const sessionStore = new SqliteAdminSessionStore(databasePath);
+    const access = new PasswordSessionAccess('correct-password', {
+      createToken: () => 'remembered-session-token',
+      rememberedSessionStore: sessionStore,
+    });
+    const login = access.login('correct-password', '192.0.2.10', true);
+    if (login.kind !== 'authenticated') {
+      throw new Error('Expected remembered login to succeed');
+    }
+    expect(access.authenticate(login.token)).toBe(true);
+
+    const snapshot = await new ServiceSnapshotService(databasePath, {
+      clock: () => new Date('2026-09-06T12:05:00.000Z'),
+      createId: () => 'sessions',
+    }).createSnapshot();
+    expect(
+      readRememberedSessionCount(join(snapshot.path, 'database.sqlite')),
+    ).toBe(1);
+    access.revokeAllSessions();
+    expect(access.authenticate(login.token)).toBe(false);
+
+    const restored = await restoreServiceSnapshot(
+      snapshot.path,
+      join(directory, 'restored-data'),
+    );
+    expect(readRememberedSessionCount(restored.databasePath)).toBe(0);
+    const restoredDatabase = new DatabaseSync(restored.databasePath, {
+      readOnly: true,
+    });
+    expect(restoredDatabase.prepare('PRAGMA user_version').get()).toEqual({
+      user_version: 7,
+    });
+    restoredDatabase.close();
+    const restoredSessionStore = new SqliteAdminSessionStore(
+      restored.databasePath,
+    );
+    const restoredAccess = new PasswordSessionAccess('correct-password', {
+      rememberedSessionStore: restoredSessionStore,
+    });
+    expect(restoredAccess.authenticate(login.token)).toBe(false);
+    const restoredRepository = new SqliteSupportRepository(
+      restored.databasePath,
+    );
+    expect(restoredRepository.findRequestById('request-1')).toMatchObject({
+      id: 'request-1',
+      status: 'active',
+    });
+
+    restoredRepository.close();
+    restoredSessionStore.close();
+    sessionStore.close();
     repository.close();
   });
 
@@ -280,4 +349,18 @@ function createTemporaryDirectory(): string {
   const directory = mkdtempSync(join(tmpdir(), 'handoff-snapshot-'));
   temporaryDirectories.push(directory);
   return directory;
+}
+
+function readRememberedSessionCount(databasePath: string): number {
+  const database = new DatabaseSync(databasePath, { readOnly: true });
+  try {
+    const row = database
+      .prepare('SELECT COUNT(*) AS count FROM remembered_admin_sessions')
+      .get() as { count: number };
+    return row.count;
+  } finally {
+    database.close();
+    rmSync(databasePath + '-shm', { force: true });
+    rmSync(databasePath + '-wal', { force: true });
+  }
 }

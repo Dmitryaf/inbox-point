@@ -16,11 +16,12 @@ export interface StoredContentChange extends ContentChange {
 export interface ContentSettingsDocument {
   content: ClientInformationContent;
   history: readonly StoredContentChange[];
-  previousMenuActions?: readonly string[];
+  legacyPreviousMenuActions?: readonly string[];
 }
 
 export interface ContentSettingsStore {
   load(): Promise<ClientInformationContent | undefined>;
+  loadHistoricalMenuActions(): Promise<readonly string[]>;
   loadHistory(): Promise<readonly ContentChange[]>;
   restore(revision: number): Promise<ClientInformationContent>;
   save(content: ClientInformationContent): Promise<void>;

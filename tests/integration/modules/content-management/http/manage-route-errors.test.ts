@@ -33,6 +33,8 @@ describe('managed content read errors', () => {
     const internalMessage = 'The local content settings are invalid';
     const store: ContentSettingsStore = {
       load: () => Promise.reject(new Error(internalMessage)),
+      loadHistoricalMenuActions: () =>
+        Promise.reject(new Error(internalMessage)),
       loadHistory: () => Promise.reject(new Error(internalMessage)),
       restore: () => Promise.reject(new Error('not used')),
       save: () => Promise.reject(new Error('not used')),

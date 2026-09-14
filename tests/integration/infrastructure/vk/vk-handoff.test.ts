@@ -397,14 +397,14 @@ describe('VK handoff integration', () => {
     expect(gateway.sent[1]?.text).toBe('Приходите за 10 минут до начала.');
   });
 
-  it('recovers from a stale VK button without opening an operator request', async () => {
-    information.replace({
-      customSections: [{ label: 'Старая кнопка', text: 'Первый ответ.' }],
-    });
-    information.replace({
-      customSections: [{ label: 'Новая кнопка', text: 'Первый ответ.' }],
-    });
-    const event = createMessageEvent({ text: 'Старая кнопка' });
+  it('recovers an older VK button without opening an operator request', async () => {
+    information.replace(
+      {
+        customSections: [{ label: 'Цены занятий', text: 'Текущий ответ.' }],
+      },
+      ['Стоимость', 'Абонементы'],
+    );
+    const event = createMessageEvent({ text: 'Абонементы' });
 
     await router.route(event);
     await router.route(event);
@@ -419,7 +419,7 @@ describe('VK handoff integration', () => {
       gateway.sent[0]?.keyboard?.buttons
         .flat()
         .map((button) => button.action.label),
-    ).toContain('Новая кнопка');
+    ).toContain('Цены занятий');
   });
 
   it('ignores outgoing, empty, and group-chat events', async () => {

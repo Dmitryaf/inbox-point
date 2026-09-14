@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -172,7 +172,39 @@ describe('FileContentSettingsStore', () => {
     await expect(store.loadHistory()).resolves.toHaveLength(1);
   });
 
-  it('loads the previous menu revision across content-only changes', async () => {
+  it('derives deduplicated historical actions from retained revisions', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'inbox-point-content-'));
+    directories.push(directory);
+    const path = join(directory, 'content-settings.json');
+    const store = new FileContentSettingsStore(path);
+
+    await store.save({
+      customSections: [
+        { label: 'Абонементы', text: 'Первый ответ.' },
+        { label: 'Документы', text: 'Что взять с собой.' },
+      ],
+    });
+    await store.save({
+      customSections: [{ label: 'Стоимость', text: 'Второй ответ.' }],
+    });
+    await store.save({
+      customSections: [{ label: 'Стоимость', text: 'Уточнённый ответ.' }],
+    });
+    await store.save({
+      customSections: [{ label: 'Цены занятий', text: 'Текущий ответ.' }],
+    });
+
+    await expect(store.loadHistoricalMenuActions()).resolves.toEqual([
+      'Стоимость',
+      'Абонементы',
+      'Документы',
+    ]);
+    expect(JSON.parse(await readFile(path, 'utf8'))).not.toHaveProperty(
+      'previousMenuActions',
+    );
+  });
+
+  it('limits historical actions to the retained content revisions', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'inbox-point-content-'));
     directories.push(directory);
     const store = new FileContentSettingsStore(
@@ -183,21 +215,104 @@ describe('FileContentSettingsStore', () => {
       customSections: [{ label: 'Старая кнопка', text: 'Первый ответ.' }],
     });
     await store.save({
-      customSections: [{ label: 'Новая кнопка', text: 'Первый ответ.' }],
+      customSections: [{ label: 'Текущая кнопка', text: 'Первый ответ.' }],
     });
-    await store.save({
-      customSections: [{ label: 'Новая кнопка', text: 'Обновлённый ответ.' }],
-    });
-    for (let index = 0; index < 21; index += 1) {
+    for (let index = 0; index < 20; index += 1) {
       await store.save({
         customSections: [
-          { label: 'Новая кнопка', text: `Версия ответа ${index}.` },
+          { label: 'Текущая кнопка', text: `Версия ответа ${index}.` },
         ],
       });
     }
 
-    await expect(store.loadPreviousMenuActions()).resolves.toEqual([
+    await expect(store.loadHistoricalMenuActions()).resolves.toEqual([]);
+    await expect(store.loadHistory()).resolves.toHaveLength(20);
+  });
+
+  it('reads the legacy previous-menu field without writing it again', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'inbox-point-content-'));
+    directories.push(directory);
+    const path = join(directory, 'content-settings.json');
+    await writeFile(
+      path,
+      JSON.stringify({
+        content: {
+          customSections: [{ label: 'Текущая кнопка', text: 'Ответ.' }],
+        },
+        history: [
+          {
+            changedAt: '2026-09-01T12:00:00.000Z',
+            content: {
+              customSections: [{ label: 'Текущая кнопка', text: 'Ответ.' }],
+            },
+            revision: 1,
+            sections: ['customSections'],
+          },
+        ],
+        previousMenuActions: ['Старая кнопка'],
+      }),
+      'utf8',
+    );
+    const store = new FileContentSettingsStore(path);
+
+    await expect(store.loadHistoricalMenuActions()).resolves.toEqual([
       'Старая кнопка',
+    ]);
+    await store.save({
+      customSections: [{ label: 'Текущая кнопка', text: 'Новый ответ.' }],
+    });
+    expect(JSON.parse(await readFile(path, 'utf8'))).not.toHaveProperty(
+      'previousMenuActions',
+    );
+  });
+
+  it('gives a reused or unhidden current action priority over history', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'inbox-point-content-'));
+    directories.push(directory);
+    const store = new FileContentSettingsStore(
+      join(directory, 'content-settings.json'),
+    );
+
+    await store.save({ schedule: 'Понедельник, 19:00' });
+    await store.save({
+      schedule: 'Понедельник, 19:00',
+      visibleSections: ['prices', 'address', 'faq'],
+    });
+    await expect(store.loadHistoricalMenuActions()).resolves.toEqual([
+      'Расписание',
+    ]);
+
+    await store.save({
+      schedule: 'Понедельник, 19:00',
+      visibleSections: ['schedule', 'prices', 'address', 'faq'],
+    });
+    await expect(store.loadHistoricalMenuActions()).resolves.toEqual([]);
+  });
+
+  it('recomputes historical actions when restoring an old revision', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'inbox-point-content-'));
+    directories.push(directory);
+    const store = new FileContentSettingsStore(
+      join(directory, 'content-settings.json'),
+    );
+
+    await store.save({
+      customSections: [{ label: 'Абонементы', text: 'Первый ответ.' }],
+    });
+    await store.save({
+      customSections: [{ label: 'Стоимость', text: 'Второй ответ.' }],
+    });
+    await store.save({
+      customSections: [{ label: 'Цены занятий', text: 'Третий ответ.' }],
+    });
+    await store.restore(1);
+
+    await expect(store.load()).resolves.toEqual({
+      customSections: [{ label: 'Абонементы', text: 'Первый ответ.' }],
+    });
+    await expect(store.loadHistoricalMenuActions()).resolves.toEqual([
+      'Цены занятий',
+      'Стоимость',
     ]);
   });
 

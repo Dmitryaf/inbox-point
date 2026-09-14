@@ -38,7 +38,7 @@ const revisionSchema = historyEntrySchema.extend({
   content: contentPayloadSchema,
   revision: z.number().int().positive(),
 });
-const previousMenuActionsSchema = z
+const legacyPreviousMenuActionsSchema = z
   .array(z.string().trim().min(1).max(40))
   .max(10)
   .refine((actions) => new Set(actions).size === actions.length);
@@ -47,7 +47,7 @@ export const storedContentSchema = z
   .object({
     content: contentPayloadSchema,
     history: z.array(revisionSchema).max(20),
-    previousMenuActions: previousMenuActionsSchema.optional(),
+    previousMenuActions: legacyPreviousMenuActionsSchema.optional(),
   })
   .strict();
 

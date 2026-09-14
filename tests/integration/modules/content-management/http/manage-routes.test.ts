@@ -39,6 +39,7 @@ describe('managed content routes', () => {
     const saved: unknown[] = [];
     const store: ContentSettingsStore = {
       load: () => Promise.resolve(undefined),
+      loadHistoricalMenuActions: () => Promise.resolve([]),
       loadHistory: () => Promise.resolve(history),
       restore: (revision) => {
         restored.push(revision);
@@ -231,6 +232,7 @@ describe('managed content routes', () => {
     apps.add(app);
     const store: ContentSettingsStore = {
       load: () => Promise.resolve(undefined),
+      loadHistoricalMenuActions: () => Promise.resolve([]),
       loadHistory: () => Promise.resolve([]),
       restore: () => Promise.reject(new Error('not available')),
       save: () => Promise.resolve(),
@@ -267,6 +269,7 @@ describe('managed content routes', () => {
     apps.add(app);
     const store: ContentSettingsStore = {
       load: () => Promise.resolve(undefined),
+      loadHistoricalMenuActions: () => Promise.resolve([]),
       loadHistory: () => Promise.resolve([]),
       restore: () => Promise.reject(new Error('not available')),
       save: () => Promise.resolve(),

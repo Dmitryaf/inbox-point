@@ -237,6 +237,11 @@ excluded and must come from a separate secret backup. A rollback uses the
 previous pinned image/source plus a verified compatible snapshot, followed by
 the acceptance checks below.
 
+Admin authentication sessions are not restored. The restore command clears
+remembered sessions after copying and verifying SQLite, so every remembered
+device must sign in again. Ordinary in-memory sessions already end when the
+stopped application exits.
+
 ## 8. Acceptance and failure drills
 
 Before enabling real conversations, verify:
