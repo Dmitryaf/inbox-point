@@ -173,13 +173,17 @@ confirm the saved value, and sign out. A `403` from login, save, or logout fails
 this reverse-proxy smoke test. Do not accept a deployment based only on the two
 GET health checks above.
 
-An ordinary admin session lasts 12 hours and ends on application restart. The
-optional remembered-device session lasts 30 days and keeps only an HMAC token
-hash in SQLite; the raw token remains in the secure browser cookie. Test both
-current-session logout and “logout everywhere”. Restart after changing
-`ADMIN_PASSWORD`; tokens issued with the previous password then become invalid.
+For session lifetimes and connection controls, see
+[Administration and channel lifecycle](#administration-and-channel-lifecycle).
 
 ## 6. Configure monitoring
+
+`/health` only confirms that the HTTP process responds; Docker uses it for its
+healthcheck. `/ready` returns 503 when a configured Telegram or VK poller is
+failed, stopped, or stale; when the delivery worker is stopped or stalled;
+when deliveries are backlogged or stale; or when unresolved inbound or
+operator-relay incidents exist. An unconfigured channel alone does not fail
+readiness. The independent monitor must check the public HTTPS `/ready` URL.
 
 Build the same pinned source on an independent host. Copy
 `.env.monitor.example` to `/etc/inbox-point/monitor.env`, set mode `0600`,
@@ -201,12 +205,26 @@ instance label.
 
 ## 7. Back up and restore
 
+Requests, routing, delivery state, minimal usage events, and hashed remembered
+sessions are stored in SQLite. Usage events contain no message text. Saved
+content and service-control state live next to the database.
+
+After a production build, `npm run snapshot:create` creates a verified service
+snapshot containing SQLite, saved content, service-control state, checksums,
+and metadata. Snapshots exclude channel credentials, passwords, raw session
+tokens, and `.env` files.
+
 Run and inspect the external backup before scheduling it:
 
 ```bash
 docker compose -p organization-a --env-file .env --profile operations run --rm backup
 find /srv/backups/inbox-point/organization-a -maxdepth 2 -type f -name manifest.json -print
 ```
+
+The `BACKUP_HOST_PATH` bind mount must be outside the application volume and
+preferably off the application VPS. The backup job verifies the snapshot,
+rotates old generations, exits non-zero on failure, and sends an independent
+webhook alert.
 
 For multiple isolated deployments on one host, place each checkout at
 `/opt/inbox-point-<instance>` and enable its template timer, for example:
@@ -263,6 +281,51 @@ Invalid `INSTANCE_ID` or `TELEGRAM_PROXY_URL` values stop startup with a
 sanitized configuration error. An unreachable but syntactically valid proxy
 does not fall back to a direct Telegram connection: Telegram calls fail through
 that dedicated transport and normal channel/readiness failure handling applies.
+
+## Administration and channel lifecycle
+
+The `/setup`, `/manage`, and `/ops` routes share one administrator sign-in.
+Direct reloads and browser back/forward navigation work across them. Unknown
+frontend paths show the application 404 page; unknown `/api/*` paths return
+HTTP 404.
+
+### Authentication
+
+- Development without `ADMIN_PASSWORD` allows loopback access without login
+  and does not show logout.
+- Development with `ADMIN_PASSWORD` uses the normal login, session, and logout flow.
+- Production exposes administration only when `ADMIN_PASSWORD` is set.
+
+Ordinary sessions last 12 hours and are kept in process memory, so a restart
+ends them. Optional remembered-device sessions last 30 days and store only an
+HMAC token hash in SQLite; the raw token stays in the browser cookie. Both
+cookie variants are HTTP-only, `SameSite=Strict`, and use `Path=/`; production
+adds `Secure` and the `__Host-` prefix.
+
+Logout revokes the current session. “Logout everywhere” revokes all ordinary
+and remembered sessions. Restart after changing `ADMIN_PASSWORD`; tokens issued
+with the previous password then become invalid. Test both logout controls.
+Snapshot restore also invalidates remembered sessions.
+
+### Channel connections
+
+The Channels page distinguishes `environment` and `local` connections.
+Environment-managed connections must be changed on the server and cannot be
+disconnected through the UI or setup API. Local connections can be disconnected
+and reconnected without deleting request history. Disconnect VK before Telegram:
+VK operator handoff depends on Telegram, and the backend enforces this order.
+
+A disconnect stops the channel before deleting local settings. If stopping
+fails, settings stay untouched. If deletion fails, the runtime is already
+stopped, but settings remain available for a retry or the next service start.
+
+### Content and customer menus
+
+Use `/manage` to edit and preview information and review previous revisions.
+Telegram and VK cannot remotely replace a persistent keyboard already shown on
+a customer's device. Inbox Point attaches the current keyboard to later bot
+responses. A button found in the last 20 content revisions but absent from the
+current menu shows current choices instead of opening an operator request.
 
 ## First-organization runbook
 
