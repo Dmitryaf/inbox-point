@@ -112,7 +112,7 @@ if [[ ${1:-} == compose ]]; then
     *' exec -T app node dist/create-service-snapshot.js '*)
       printf '%s\n' '/app/data/snapshots/inbox-point.instance.snapshot-test'
       ;;
-    *' --profile operations run -d --no-deps '*)
+    *' --profile operations run -T -d --no-deps '*)
       snapshot="$FAKE_BACKUP_DIRECTORY/inbox-point.instance.snapshot-test"
       mkdir -p "$snapshot"
       touch "$snapshot/manifest.json" "$snapshot/database.sqlite" \
