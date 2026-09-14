@@ -191,7 +191,7 @@ if [[ "$previous_commit" != "$target_commit" ]]; then
 
   current_step='copy service snapshot to the configured host backup directory'
   if ! copy_container_output=$(
-    "${compose[@]}" --profile operations run -d --no-deps \
+    "${compose[@]}" --profile operations run -T -d --no-deps \
       --entrypoint /bin/sh backup -c '
         set -eu
         source_path=$1
