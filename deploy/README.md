@@ -169,8 +169,10 @@ it then:
 1. creates the existing service-snapshot format from the running application;
 2. copies it through the operations service's read-only data mount into the
    `BACKUP_HOST_PATH` bind mount;
-3. verifies that the host copy contains `manifest.json`, `database.sqlite`,
-   `content-settings.json`, and `service-control.json`;
+3. verifies the copied snapshot with the existing service-snapshot verifier:
+   `manifest.json` and `database.sqlite` are required, optional state files are
+   required only when listed in `manifest.files`, and file sizes and SHA-256
+   checksums must match the manifest;
 4. fast-forwards the checked-out branch to the exact fetched commit;
 5. validates Compose, rebuilds only `app`, and lets Compose recreate it only
    when its image or configuration changed;

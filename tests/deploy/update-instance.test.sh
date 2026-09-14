@@ -134,10 +134,20 @@ if [[ ${1:-} == compose ]]; then
       fi
       snapshot="$FAKE_BACKUP_DIRECTORY/inbox-point.instance.snapshot-test"
       mkdir -p "$snapshot"
-      touch "$snapshot/manifest.json" "$snapshot/database.sqlite" \
-        "$snapshot/content-settings.json"
-      if [[ ${FAKE_MISSING_SERVICE_CONTROL:-0} != 1 ]]; then
+      touch "$snapshot/database.sqlite" "$snapshot/content-settings.json"
+      empty_sha='e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
+      manifest_files="{\"name\":\"database.sqlite\",\"sha256\":\"$empty_sha\",\"size\":0},{\"name\":\"content-settings.json\",\"sha256\":\"$empty_sha\",\"size\":0}"
+      if [[ ${FAKE_ALL_OPTIONAL:-0} == 1 ]]; then
         touch "$snapshot/service-control.json"
+        manifest_files+=",{\"name\":\"service-control.json\",\"sha256\":\"$empty_sha\",\"size\":0}"
+      elif [[ ${FAKE_MISSING_LISTED_FILE:-0} == 1 ]]; then
+        manifest_files+=",{\"name\":\"service-control.json\",\"sha256\":\"$empty_sha\",\"size\":0}"
+      fi
+      printf '{"closedRequestRetentionDays":7,"createdAt":"2026-09-14T12:00:00.000Z","expiresAt":"2026-09-21T12:00:00.000Z","files":[%s],"formatVersion":1,"instanceId":"test","secretsIncluded":false,"sqliteSchemaVersion":7}\n' \
+        "$manifest_files" >"$snapshot/manifest.json"
+      if [[ ${FAKE_MISSING_LISTED_FILE:-0} == 1 ]]; then
+        printf '%s\n' 'synthetic manifest verification failure' >&2
+        exit 77
       fi
       ;;
     *' config --quiet '*) exit 0 ;;
@@ -258,6 +268,8 @@ test_successful_update() {
     'cp -a "$source_path" "$temporary_path"' \
     'mv "$temporary_path" "$final_path"' \
     'snapshot copy is atomically renamed after copying'
+  assert_contains "$fixture/commands.log" 'verifyServiceSnapshot' \
+    'copied snapshot uses the application manifest verifier'
   assert_before "$fixture/commands.log" \
     "run -T --no-deps --name $container_name --entrypoint /bin/sh backup" \
     'docker inspect --format' \
@@ -275,6 +287,12 @@ test_successful_update() {
     'success reports the deployed commit'
   assert_not_contains "$fixture/output.log" 'must-not-appear' \
     'environment secrets are not printed'
+  if [[ -f "$fixture/backups/inbox-point.instance.snapshot-test/content-settings.json" &&
+    ! -e "$fixture/backups/inbox-point.instance.snapshot-test/service-control.json" ]]; then
+    pass 'snapshot without optional service control is accepted'
+  else
+    fail 'snapshot without optional service control is accepted'
+  fi
 }
 
 test_dirty_tree_refusal() {
@@ -318,22 +336,49 @@ test_current_commit_is_not_rebuilt() {
     'current commit still checks public readiness'
 }
 
-test_required_snapshot_files() {
+test_all_optional_snapshot_files() {
+  local fixture
+  new_fixture
+  fixture=$fixture_result
+  if run_update "$fixture" env FAKE_ALL_OPTIONAL=1 \
+    >"$fixture/output.log" 2>&1; then
+    pass 'snapshot with all optional state files succeeds'
+  else
+    fail 'snapshot with all optional state files succeeds'
+  fi
+  if [[ -f "$fixture/backups/inbox-point.instance.snapshot-test/content-settings.json" &&
+    -f "$fixture/backups/inbox-point.instance.snapshot-test/service-control.json" ]]; then
+    pass 'all optional state files are copied'
+  else
+    fail 'all optional state files are copied'
+  fi
+}
+
+test_missing_manifest_file_fails() {
   local fixture
   local container_name
   new_fixture
   fixture=$fixture_result
-  if run_update "$fixture" env FAKE_MISSING_SERVICE_CONTROL=1 \
+  if run_update "$fixture" env FAKE_MISSING_LISTED_FILE=1 \
     >"$fixture/output.log" 2>&1; then
-    fail 'incomplete copied snapshot stops the update'
+    fail 'missing file listed in manifest stops the update'
   else
-    pass 'incomplete copied snapshot stops the update'
+    pass 'missing file listed in manifest stops the update'
   fi
   assert_contains "$fixture/output.log" \
-    'Reason: copied snapshot is missing service-control.json' \
-    'missing snapshot file is named'
+    'Reason: snapshot copy or manifest verification failed' \
+    'manifest verification failure is reported'
+  assert_contains \
+    "$fixture/backups/inbox-point.instance.snapshot-test/manifest.json" \
+    '"name":"service-control.json"' \
+    'failed fixture manifest lists service-control.json'
+  if [[ ! -e "$fixture/backups/inbox-point.instance.snapshot-test/service-control.json" ]]; then
+    pass 'listed service-control.json is absent in the failed fixture'
+  else
+    fail 'listed service-control.json is absent in the failed fixture'
+  fi
   assert_not_contains "$fixture/commands.log" "git merge --ff-only $NEW_COMMIT" \
-    'source stays unchanged when snapshot verification fails'
+    'source stays unchanged when a listed snapshot file is missing'
   container_name=$(copy_container_name "$fixture/commands.log")
   assert_contains "$fixture/output.log" \
     "Snapshot copy container: $container_name" \
@@ -399,7 +444,8 @@ test_successful_update
 test_unique_copy_container_names
 test_dirty_tree_refusal
 test_current_commit_is_not_rebuilt
-test_required_snapshot_files
+test_all_optional_snapshot_files
+test_missing_manifest_file_fails
 test_copy_failure_keeps_container
 test_health_failure_report
 
