@@ -12,7 +12,7 @@ current_step='validate arguments'
 previous_commit='not resolved'
 target_commit='not resolved'
 snapshot_report='not created'
-backup_container_id=''
+backup_container_name=''
 
 usage() {
   cat <<'EOF'
@@ -43,9 +43,9 @@ failure_report() {
   printf 'Target commit: %s\n' "$target_commit" >&2
   printf 'Current commit: %s\n' "$deployed_commit" >&2
   printf 'Pre-deploy snapshot: %s\n' "$snapshot_report" >&2
-  if [[ -n "$backup_container_id" ]]; then
-    printf 'Snapshot copy container: %s\n' "$backup_container_id" >&2
-    printf 'Inspect it with: docker logs %q\n' "$backup_container_id" >&2
+  if [[ -n "$backup_container_name" ]]; then
+    printf 'Snapshot copy container: %s\n' "$backup_container_name" >&2
+    printf 'Inspect it with: docker logs %q\n' "$backup_container_name" >&2
   fi
   printf 'No automatic rollback was attempted.\n' >&2
   if [[ -n "$project" && -n "$env_file" ]]; then
@@ -190,9 +190,11 @@ if [[ "$previous_commit" != "$target_commit" ]]; then
   snapshot_report="app:$internal_snapshot_path (external copy not completed)"
 
   current_step='copy service snapshot to the configured host backup directory'
-  if ! copy_container_output=$(
-    "${compose[@]}" --profile operations run -T -d --no-deps \
-      --entrypoint /bin/sh backup -c '
+  printf -v backup_container_suffix '%(%s)T-%s-%s' \
+    -1 "$BASHPID" "$RANDOM"
+  backup_container_name="${project}-snapshot-copy-${backup_container_suffix}"
+  if ! "${compose[@]}" --profile operations run -T --no-deps \
+    --name "$backup_container_name" --entrypoint /bin/sh backup -c '
         set -eu
         source_path=$1
         snapshot_name=$2
@@ -203,20 +205,12 @@ if [[ "$previous_commit" != "$target_commit" ]]; then
         test ! -e "$final_path"
         cp -a "$source_path" "$temporary_path"
         mv "$temporary_path" "$final_path"
-      ' updater "$internal_snapshot_path" "$snapshot_name"
-  ); then
-    abort 'could not start the snapshot copy container'
-  fi
-  backup_container_id=$(
-    printf '%s\n' "$copy_container_output" |
-      awk 'NF { value=$0 } END { print value }'
-  )
-  if [[ ! "$backup_container_id" =~ ^[a-f0-9]{12,64}$ ]]; then
-    abort 'Docker Compose returned an unexpected snapshot copy container ID'
+      ' updater "$internal_snapshot_path" "$snapshot_name"; then
+    abort 'snapshot copy container failed'
   fi
   if ! backup_host_directory=$(
     docker inspect --format '{{range .Mounts}}{{if eq .Destination "/backup"}}{{.Source}}{{end}}{{end}}' \
-      "$backup_container_id"
+      "$backup_container_name"
   ); then
     abort 'could not resolve the configured host backup directory'
   fi
@@ -224,12 +218,6 @@ if [[ "$previous_commit" != "$target_commit" ]]; then
     abort 'the backup service has no host directory mounted at /backup'
   snapshot_path="${backup_host_directory%/}/$snapshot_name"
   snapshot_report="$snapshot_path (copy not yet verified)"
-  if ! copy_exit_code=$(docker wait "$backup_container_id"); then
-    abort 'could not wait for the snapshot copy container'
-  fi
-  if [[ "$copy_exit_code" != '0' ]]; then
-    abort "snapshot copy container exited with status $copy_exit_code"
-  fi
 
   current_step='verify copied service snapshot'
   for required_file in \
@@ -242,10 +230,10 @@ if [[ "$previous_commit" != "$target_commit" ]]; then
     fi
   done
   snapshot_report=$snapshot_path
-  if ! docker rm "$backup_container_id" >/dev/null; then
+  if ! docker rm "$backup_container_name" >/dev/null; then
     abort 'snapshot is safe, but the completed copy container could not be removed'
   fi
-  backup_container_id=''
+  backup_container_name=''
 
   current_step='recheck tracked working tree before source update'
   if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
