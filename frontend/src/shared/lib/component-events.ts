@@ -100,8 +100,8 @@ interface NativeModifiers {
   self?: boolean;
   key?: string;
 }
-export function nativeHandler(
-  handler: (...args: never[]) => unknown,
+export function nativeHandler<NativeEvent extends Event = Event>(
+  handler: (event: NativeEvent) => unknown,
   modifiers: NativeModifiers = {},
 ): React.EventHandler<React.SyntheticEvent> {
   return (event) => {
