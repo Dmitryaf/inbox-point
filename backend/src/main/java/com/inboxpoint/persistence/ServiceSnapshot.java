@@ -163,7 +163,10 @@ public final class ServiceSnapshot {
                 privateFile(path);
                 checkFingerprint(path, entry);
             }
-            try (var copy = openArchive(database, true)) {
+            try (var copy = openArchive(database, false); var statement = copy.createStatement()) {
+                verifyDatabase(copy, 7);
+                statement.execute("PRAGMA secure_delete = ON");
+                statement.executeUpdate("DELETE FROM remembered_admin_sessions");
                 verifyDatabase(copy, 7);
             }
             return database;

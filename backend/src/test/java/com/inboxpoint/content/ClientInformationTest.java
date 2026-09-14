@@ -14,15 +14,16 @@ class ClientInformationTest {
     Path directory;
 
     @Test
-    void recognisesAButtonRemovedFromThePreviousMenuEvenAfterRestart() throws Exception {
+    void recognisesButtonsRemovedFromMultipleMenuRevisionsAfterRestart() throws Exception {
         var database = directory.resolve("stale-menu.sqlite").toString();
         var info = new ClientInformation(database);
         info.save(JsonMapper.shared().createObjectNode().put("schedule", "Monday"));
         info.save(JsonMapper.shared().createObjectNode().put("address", "First"));
-        info.save(JsonMapper.shared().createObjectNode().put("address", "Second"));
+        info.save(JsonMapper.shared().createObjectNode().put("prices", "Second"));
         var restored = new ClientInformation(database);
+        assertThat(restored.isStaleMenuAction("Цены")).isFalse();
         assertThat(restored.isStaleMenuAction("Расписание")).isTrue();
-        assertThat(restored.isStaleMenuAction("Адрес")).isFalse();
+        assertThat(restored.isStaleMenuAction("Адрес")).isTrue();
         assertThat(restored.isStaleMenuAction("Other customer question")).isFalse();
     }
 

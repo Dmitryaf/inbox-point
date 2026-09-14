@@ -173,6 +173,12 @@ confirm the saved value, and sign out. A `403` from login, save, or logout fails
 this reverse-proxy smoke test. Do not accept a deployment based only on the two
 GET health checks above.
 
+An ordinary admin session lasts 12 hours and ends on application restart. The
+optional remembered-device session lasts 30 days and keeps only an HMAC token
+hash in SQLite; the raw token remains in the secure browser cookie. Test both
+current-session logout and “logout everywhere”. Restart after changing
+`ADMIN_PASSWORD`; tokens issued with the previous password then become invalid.
+
 ## 6. Configure monitoring
 
 Build the same pinned source on an independent host. Copy
@@ -230,6 +236,11 @@ them into the instance volume. Channel credentials and `.env` are deliberately
 excluded and must come from a separate secret backup. A rollback uses the
 previous pinned image/source plus a verified compatible snapshot, followed by
 the acceptance checks below.
+
+Admin authentication sessions are not restored. The restore command clears
+remembered sessions after copying and verifying SQLite, so every remembered
+device must sign in again. Ordinary in-memory sessions already end when the
+stopped application exits.
 
 ## 8. Acceptance and failure drills
 

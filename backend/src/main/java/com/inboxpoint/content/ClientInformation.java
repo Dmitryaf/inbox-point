@@ -50,7 +50,7 @@ public final class ClientInformation {
             }
             var content = normalize(json.path("content"));
             var entries = history(json.path("history"));
-            state = new State(content, entries, previousMenuActions(json, content, entries));
+            state = new State(content, entries, historicalMenuActions(content, entries));
         } catch (NoSuchFileException missing) {
             state = new State(new Snapshot(Map.of(), List.of(), List.of(), null), List.of(), List.of());
         } catch (IOException | RuntimeException invalid) {
@@ -136,13 +136,7 @@ public final class ClientInformation {
                 .mapToInt(change -> change.revision() == null ? 0 : change.revision()).max().orElse(0);
         revisions.add(new Change(Instant.now().toString(), changed, newest + 1, next.jsonFields()));
         revisions.addAll(previous.history().stream().limit(19).toList());
-        var previousActions = menuActions(previous.content()).equals(menuActions(next))
-                ? previous.previousMenuActions() : menuActions(previous.content());
         var output = JsonMapper.shared().createObjectNode();
-        if (!previousActions.isEmpty()) {
-            var actions = output.putArray("previousMenuActions");
-            previousActions.forEach(actions::add);
-        }
         var payload = output.putObject("content");
         serialize(payload, next);
         var entries = output.putArray("history");
@@ -156,7 +150,7 @@ public final class ClientInformation {
             revision.sections().forEach(fields::add);
         }
         LocalJsonFile.write(file, output);
-        state = new State(next, List.copyOf(revisions), previousActions);
+        state = new State(next, List.copyOf(revisions), historicalMenuActions(next, revisions));
         return next.jsonFields();
     }
 
@@ -191,23 +185,22 @@ public final class ClientInformation {
 
     public boolean isStaleMenuAction(String label) {
         var snapshot = state;
-        return snapshot.previousMenuActions().contains(label.strip()) && !menuActions(snapshot.content()).contains(label.strip());
+        return snapshot.historicalMenuActions().contains(label.strip()) && !menuActions(snapshot.content()).contains(label.strip());
     }
 
-    private static List<String> previousMenuActions(JsonNode input, Snapshot current, List<Change> history) {
-        if (input.path("previousMenuActions").isArray()) {
-            var result = new ArrayList<String>();
-            for (var action : input.path("previousMenuActions")) {
-                if (action.isString()) {
-                    result.add(action.asString());
+    private static List<String> historicalMenuActions(Snapshot current, List<Change> history) {
+        var active = new HashSet<>(menuActions(current));
+        var retired = new java.util.LinkedHashSet<String>();
+        for (var change : history) {
+            if (change.content() != null) {
+                for (var label : menuActions(normalize(JsonMapper.shared().valueToTree(change.content())))) {
+                    if (!active.contains(label)) {
+                        retired.add(label);
+                    }
                 }
             }
-            return List.copyOf(result);
         }
-        var active = menuActions(current);
-        return history.stream().filter(change -> change.content() != null)
-                .map(change -> menuActions(normalize(JsonMapper.shared().valueToTree(change.content()))))
-                .filter(actions -> !actions.equals(active)).findFirst().orElse(List.of());
+        return List.copyOf(retired);
     }
 
     private static List<String> menuActions(Snapshot content) {
@@ -275,7 +268,7 @@ public final class ClientInformation {
         return false;
     }
 
-    private record State(Snapshot content, List<Change> history, List<String> previousMenuActions) { }
+    private record State(Snapshot content, List<Change> history, List<String> historicalMenuActions) { }
 
     public List<Change> history() {
         return state.history();

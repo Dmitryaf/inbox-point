@@ -54,6 +54,9 @@ describe('ContentManagementPage channel button notice', () => {
       'Открытые у клиентов кнопки обновятся со следующим ответом бота',
     );
     expect(wrapper.get('[role="status"]').text()).toContain(
+      'кнопку из недавней версии меню',
+    );
+    expect(wrapper.get('[role="status"]').text()).toContain(
       'без создания обращения',
     );
   });

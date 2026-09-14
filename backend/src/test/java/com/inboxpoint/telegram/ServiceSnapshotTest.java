@@ -33,12 +33,19 @@ class ServiceSnapshotTest {
             original.queue(outstanding, "queued", 4, "Waiting for delivery", earlier);
             original.changeStatus(outstanding.id(), false, earlier);
 
+            try (var sql = java.sql.DriverManager.getConnection("jdbc:sqlite:" + database); var statement = sql.createStatement()) {
+                statement.executeUpdate("INSERT INTO remembered_admin_sessions VALUES ('synthetic-hash', 1, 9999999999999)");
+            }
             var snapshot = new ServiceSnapshot(database, 7).create(now);
             assertThat(ServiceSnapshot.verify(snapshot).files()).extracting(ServiceSnapshot.FileEntry::name)
                     .containsExactly("database.sqlite", "content-settings.json");
             var target = directory.resolve("restored");
             var copy = ServiceSnapshot.restore(snapshot, target);
             assertThat(Files.exists(target.resolve("telegram-settings.json"))).isFalse();
+            try (var sql = java.sql.DriverManager.getConnection("jdbc:sqlite:" + copy); var statement = sql.createStatement();
+                    var sessions = statement.executeQuery("SELECT COUNT(*) FROM remembered_admin_sessions")) {
+                assertThat(sessions.getInt(1)).isZero();
+            }
             try (var restored = new TelegramStore(copy)) {
                 assertThat(restored.operatorMessages(finished.id())).isEmpty();
                 assertThat(restored.operatorMessages(outstanding.id())).hasSize(1);
