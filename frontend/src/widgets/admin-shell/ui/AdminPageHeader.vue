@@ -43,15 +43,12 @@ const sections: readonly {
           {{ section.label }}
         </RouterLink>
       </nav>
-      <div v-if="showLogout" class="admin-session-actions">
-        <button
-          class="quiet"
-          :disabled="pending"
-          type="button"
-          @click="$emit('revokeAll')"
-        >
-          Выйти везде
-        </button>
+      <div
+        v-if="showLogout"
+        class="admin-session-actions"
+        role="group"
+        aria-label="Выход из управления"
+      >
         <button
           class="quiet"
           :disabled="pending"
@@ -59,6 +56,14 @@ const sections: readonly {
           @click="$emit('logout')"
         >
           Выйти
+        </button>
+        <button
+          class="admin-session-actions__all"
+          :disabled="pending"
+          type="button"
+          @click="$emit('revokeAll')"
+        >
+          Выйти на всех устройствах
         </button>
       </div>
     </div>

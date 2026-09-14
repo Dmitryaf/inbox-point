@@ -216,8 +216,9 @@ for (const viewport of [
       await page.getByLabel('Режим', { exact: true }).selectOption('preview');
     }
     await expect(
-      page.getByRole('heading', { name: 'Так клиент увидит ваши ответы' }),
+      page.getByRole('heading', { name: 'Предпросмотр ответов' }),
     ).toBeVisible();
+    await expectTelegramKeyboardLayout(page);
     expectStablePlacement(await requiredBox(workspaceMain), initialMainBox);
     expectStableBox(await requiredBox(navigation), initialNavigationBox);
 
@@ -229,6 +230,15 @@ for (const viewport of [
     await expect(
       page.getByRole('heading', { name: 'Предыдущие версии' }),
     ).toBeVisible();
+    const historyHeading = await requiredBox(
+      page.getByRole('heading', { name: 'Предыдущие версии' }),
+    );
+    const emptyHistory = await requiredBox(
+      page.getByText('Изменений пока нет.'),
+    );
+    expect(
+      emptyHistory.y - (historyHeading.y + historyHeading.height),
+    ).toBeGreaterThanOrEqual(12);
     expectStablePlacement(await requiredBox(workspaceMain), initialMainBox);
     expectStableBox(await requiredBox(navigation), initialNavigationBox);
 
@@ -287,6 +297,62 @@ for (const viewport of [
   });
 }
 
+test('opening channel details does not resize the other channel card', async ({
+  page,
+}) => {
+  await page.setViewportSize({ height: 900, width: 1440 });
+  await login(page);
+  await page.route('**/api/ops/status', async (route) => {
+    const channel = {
+      configured: true,
+      lastSuccessfulPollAt: '2026-09-14T16:14:21.000Z',
+      running: true,
+      source: 'local',
+      state: 'running',
+    };
+    await route.fulfill({
+      contentType: 'application/json',
+      json: {
+        channels: { telegram: channel, vk: channel },
+        deliveries: {
+          failed: 0,
+          incidents: [],
+          pending: 0,
+          state: 'healthy',
+          uncertain: 0,
+          worker: { running: true, state: 'running' },
+        },
+        inboundEvents: { incidents: [], quarantined: 0, state: 'healthy' },
+        intake: { telegram: { mode: 'active' }, vk: { mode: 'active' } },
+        observedAt: '2026-09-14T16:15:00.000Z',
+        operatorRelays: { incidents: [], state: 'healthy', uncertain: 0 },
+        outbound: { mode: 'active' },
+        startedAt: '2026-09-14T12:15:00.000Z',
+        state: 'healthy',
+        uptimeSeconds: 14_400,
+      },
+    });
+  });
+  await page.goto('/ops');
+
+  const telegramCard = page.locator('.status-card').filter({
+    has: page.getByRole('heading', { name: 'Telegram' }),
+  });
+  const vkCard = page.locator('.status-card').filter({
+    has: page.getByRole('heading', { name: 'VK', exact: true }),
+  });
+  const telegramCollapsed = await requiredBox(telegramCard);
+  const vkCollapsed = await requiredBox(vkCard);
+
+  await vkCard.locator('summary').click();
+  await expect(vkCard.locator('details')).toHaveAttribute('open', '');
+
+  const telegramAfter = await requiredBox(telegramCard);
+  const vkExpanded = await requiredBox(vkCard);
+  expectStableBox(telegramAfter, telegramCollapsed);
+  expect(vkExpanded.height).toBeGreaterThan(vkCollapsed.height);
+});
+
 async function login(page: Page): Promise<void> {
   await page.goto('/login');
   if (page.url().endsWith('/login')) {
@@ -303,6 +369,28 @@ async function requiredBox(locator: ReturnType<Page['locator']>) {
     throw new Error('Expected the element to have a bounding box');
   }
   return box;
+}
+
+async function expectTelegramKeyboardLayout(page: Page): Promise<void> {
+  const rows = page.locator('.message-preview-button-row');
+  await expect(rows).toHaveCount(3);
+  await expect(rows.nth(0).locator('span')).toHaveText(['Расписание', 'Цены']);
+  await expect(rows.nth(1).locator('span')).toHaveText([
+    'Адрес',
+    'Частые вопросы',
+  ]);
+  await expect(rows.nth(2).locator('span')).toHaveText(['Задать вопрос']);
+
+  const firstRow = await requiredBox(rows.nth(0));
+  const actionRow = await requiredBox(rows.nth(2));
+  expect(Math.abs(firstRow.width - actionRow.width)).toBeLessThanOrEqual(1);
+
+  const firstButton = await requiredBox(rows.nth(0).locator('span').nth(0));
+  const secondButton = await requiredBox(rows.nth(0).locator('span').nth(1));
+  expect(Math.abs(firstButton.y - secondButton.y)).toBeLessThanOrEqual(1);
+  expect(Math.abs(firstButton.width - secondButton.width)).toBeLessThanOrEqual(
+    1,
+  );
 }
 
 function expectStableBox(
