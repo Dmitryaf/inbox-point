@@ -11,7 +11,7 @@ import type { createComponentModel } from './AdminShell.model';
 export function renderAdminShellPart1(
   $state: ReturnType<typeof createComponentModel>,
 ) {
-  const { logOut } = $state;
+  const { logOut, revokeAll } = $state;
   const session = $unref($state.session);
   const current = $state.current.value;
   const intro = $state.intro.value;
@@ -28,9 +28,11 @@ export function renderAdminShellPart1(
           <AdminPageHeader
             current={current}
             intro={intro}
+            pending={session.pending.value}
             showLogout={session.mode.value === 'password'}
             title={title}
             onLogout={$callback(logOut)}
+            onRevokeAll={$callback(revokeAll)}
             data-r-2be24c3c=""
           />
           <main className="admin-shell-content" data-r-2be24c3c="">

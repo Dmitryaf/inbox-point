@@ -172,6 +172,35 @@ describe('FileContentSettingsStore', () => {
     await expect(store.loadHistory()).resolves.toHaveLength(1);
   });
 
+  it('loads the previous menu revision across content-only changes', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'inbox-point-content-'));
+    directories.push(directory);
+    const store = new FileContentSettingsStore(
+      join(directory, 'content-settings.json'),
+    );
+
+    await store.save({
+      customSections: [{ label: 'Старая кнопка', text: 'Первый ответ.' }],
+    });
+    await store.save({
+      customSections: [{ label: 'Новая кнопка', text: 'Первый ответ.' }],
+    });
+    await store.save({
+      customSections: [{ label: 'Новая кнопка', text: 'Обновлённый ответ.' }],
+    });
+    for (let index = 0; index < 21; index += 1) {
+      await store.save({
+        customSections: [
+          { label: 'Новая кнопка', text: `Версия ответа ${index}.` },
+        ],
+      });
+    }
+
+    await expect(store.loadPreviousMenuActions()).resolves.toEqual([
+      'Старая кнопка',
+    ]);
+  });
+
   it('persists menu visibility independently from section content', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'inbox-point-content-'));
     directories.push(directory);

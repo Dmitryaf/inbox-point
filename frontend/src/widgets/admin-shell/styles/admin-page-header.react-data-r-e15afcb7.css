@@ -43,8 +43,12 @@
   border-bottom-color: var(--color-primary);
   color: var(--color-primary-hover);
 }
-.admin-logout[data-r-e15afcb7] {
+.admin-session-actions[data-r-e15afcb7] {
+  display: flex;
+  gap: 0.35rem;
   margin-left: auto;
+}
+.admin-session-actions button[data-r-e15afcb7] {
   min-height: 2.25rem;
   padding-block: 0.4rem;
 }
@@ -74,7 +78,7 @@
     display: flex;
     min-height: 2.5rem;
   }
-  .admin-logout[data-r-e15afcb7] {
+  .admin-session-actions[data-r-e15afcb7] {
     margin-left: auto;
   }
   .admin-navigation[data-r-e15afcb7] {

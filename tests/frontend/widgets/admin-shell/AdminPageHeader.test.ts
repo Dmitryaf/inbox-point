@@ -17,6 +17,7 @@ describe('AdminPageHeader', () => {
       props: {
         current: 'channels',
         intro: 'Пояснение страницы.',
+        pending: false,
         showLogout: true,
         title: 'Каналы',
       },
@@ -42,7 +43,14 @@ describe('AdminPageHeader', () => {
     links[2]?.element.focus();
     expect(document.activeElement).toBe(links[2]?.element);
 
-    await wrapper.get('button').trigger('click');
+    const buttons = wrapper.findAll('button');
+    expect(buttons.map((button) => button.text())).toEqual([
+      'Выйти везде',
+      'Выйти',
+    ]);
+    await buttons[0]?.trigger('click');
+    expect(wrapper.emitted('revokeAll')).toHaveLength(1);
+    await buttons[1]?.trigger('click');
     expect(wrapper.emitted('logout')).toHaveLength(1);
     wrapper.unmount();
   });
@@ -54,6 +62,7 @@ describe('AdminPageHeader', () => {
       props: {
         current: 'answers',
         intro: 'Пояснение страницы.',
+        pending: false,
         showLogout: false,
         title: 'Ответы клиентам',
       },

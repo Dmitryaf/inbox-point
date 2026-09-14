@@ -397,6 +397,31 @@ describe('VK handoff integration', () => {
     expect(gateway.sent[1]?.text).toBe('Приходите за 10 минут до начала.');
   });
 
+  it('recovers from a stale VK button without opening an operator request', async () => {
+    information.replace({
+      customSections: [{ label: 'Старая кнопка', text: 'Первый ответ.' }],
+    });
+    information.replace({
+      customSections: [{ label: 'Новая кнопка', text: 'Первый ответ.' }],
+    });
+    const event = createMessageEvent({ text: 'Старая кнопка' });
+
+    await router.route(event);
+    await router.route(event);
+
+    expect(repository.findActiveRequest('vk', '101')).toBeUndefined();
+    expect(inbox.opened).toHaveLength(0);
+    expect(gateway.sent).toHaveLength(1);
+    expect(gateway.sent[0]?.text).toBe(
+      'Меню обновилось. Выберите нужный раздел ниже.',
+    );
+    expect(
+      gateway.sent[0]?.keyboard?.buttons
+        .flat()
+        .map((button) => button.action.label),
+    ).toContain('Новая кнопка');
+  });
+
   it('ignores outgoing, empty, and group-chat events', async () => {
     await router.route(createMessageEvent({ out: 1 }));
     await router.route(createMessageEvent({ text: ' ' }));

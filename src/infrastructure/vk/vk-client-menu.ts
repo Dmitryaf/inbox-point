@@ -46,7 +46,8 @@ export class VkClientMenu implements VkClientMenuHandler {
       this.information,
       message.text,
     );
-    if (paused && !informationRequested) {
+    const staleMenuAction = this.information.isStaleMenuAction(message.text);
+    if (paused && !informationRequested && !staleMenuAction) {
       return this.completeWithoutResponse(message.externalEventId);
     }
     const response = resolveMenuResponse(
@@ -149,6 +150,10 @@ function resolveMenuResponse(
   const information = informationResolver.resolve(normalized);
   if (information) {
     return information;
+  }
+
+  if (informationResolver.isStaleMenuAction(normalized)) {
+    return 'Меню обновилось. Выберите нужный раздел ниже.';
   }
 
   if (isHandoffRequest(normalized)) {

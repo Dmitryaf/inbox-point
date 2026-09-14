@@ -25,6 +25,7 @@ import { ServiceControlService } from '@/modules/service-control/application/ser
 import { FileServiceControlStore } from '@/modules/service-control/infrastructure/file-store/file-service-control-store.js';
 import { createDefaultServiceControlState } from '@/modules/service-control/model/service-control-state.js';
 import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-support-repository.js';
+import { SqliteAdminSessionStore } from '@/infrastructure/persistence/sqlite-admin-session-store.js';
 import { FileTelegramSettingsStore } from '@/infrastructure/persistence/telegram-settings-store.js';
 import { FileVkSettingsStore } from '@/infrastructure/persistence/vk-settings-store.js';
 import { startChannelRuntime } from '@/infrastructure/runtime/start-channel-runtime.js';
@@ -47,6 +48,7 @@ async function start(): Promise<void> {
   const serviceControlState =
     (await serviceControlStore.load()) ?? createDefaultServiceControlState();
   const repository = new SqliteSupportRepository(config.databasePath);
+  const adminSessionStore = new SqliteAdminSessionStore(config.databasePath);
   const app = createApp(config);
   const retention = new DataRetentionService(
     repository,
@@ -117,6 +119,7 @@ async function start(): Promise<void> {
     await handoffRuntime.stop();
     retention.stop();
     repository.close();
+    adminSessionStore.close();
   };
 
   process.once('SIGINT', () => void close('SIGINT'));
@@ -126,7 +129,10 @@ async function start(): Promise<void> {
     retention.start();
     handoffRuntime.start();
     try {
-      informationCatalog.replace((await contentSettingsStore.load()) ?? {});
+      informationCatalog.initialize(
+        (await contentSettingsStore.load()) ?? {},
+        await contentSettingsStore.loadPreviousMenuActions(),
+      );
     } catch (error: unknown) {
       app.log.error({ err: error }, 'Ignoring invalid local content settings');
     }
@@ -166,7 +172,9 @@ async function start(): Promise<void> {
       informationCatalog,
       contentSettingsStore,
     );
-    const adminAccess = new PasswordSessionAccess(config.adminPassword);
+    const adminAccess = new PasswordSessionAccess(config.adminPassword, {
+      rememberedSessionStore: adminSessionStore,
+    });
     const adminRouteAccess = createAdminRouteAccess(app, adminAccess, {
       allowLocalBypass: config.nodeEnv !== 'production',
       secureCookies: config.nodeEnv === 'production',
@@ -253,6 +261,7 @@ async function start(): Promise<void> {
     await handoffRuntime.stop();
     retention.stop();
     repository.close();
+    adminSessionStore.close();
     throw error;
   }
 }

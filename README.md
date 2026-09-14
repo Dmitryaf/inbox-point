@@ -40,12 +40,19 @@ operator assignment, multi-tenancy, and SaaS billing are outside the first
 release. Unsupported attachments receive a request to resend the question as
 text.
 
+Telegram and VK cannot remotely replace a persistent keyboard already shown on
+a person's device. Inbox Point attaches the current keyboard to later bot
+responses. If a person uses a button from the immediately previous menu
+revision, the service shows the current choices instead of opening an operator
+request.
+
 ## Data
 
-Requests, message routing, delivery state, and minimal usage events are stored
-locally in SQLite. Configured information and service-control state are stored
-next to the database. Usage events do not contain message text. Service
-snapshots exclude Telegram and VK credentials, passwords, and `.env` files.
+Requests, message routing, delivery state, minimal usage events, and hashed
+remembered-session records are stored locally in SQLite. Configured information
+and service-control state are stored next to the database. Usage events do not
+contain message text. Service snapshots exclude Telegram and VK credentials,
+passwords, raw session tokens, and `.env` files.
 
 ## Local development
 
@@ -80,9 +87,16 @@ Authentication depends on the environment:
   flow;
 - production exposes the administration UI only when `ADMIN_PASSWORD` is set.
 
-The password session lasts 12 hours. Its cookie is HTTP-only, `SameSite=Strict`,
-uses `Path=/`, and is `Secure` with the `__Host-` prefix in production. Run the
-normal code, test, and build gate with:
+An ordinary password session lasts 12 hours and is kept in process memory, so a
+restart ends it. The optional “remember this device” session lasts 30 days and
+stores an HMAC token hash in SQLite; the raw token is kept only in the browser's
+cookie. Changing `ADMIN_PASSWORD` invalidates existing sessions. Logout revokes
+the current session, while “logout everywhere” revokes all ordinary and
+remembered sessions.
+
+Both cookie variants are HTTP-only, `SameSite=Strict`, use `Path=/`, and are
+`Secure` with the `__Host-` prefix in production. Run the normal code, test, and
+build gate with:
 
 ```bash
 npm run check

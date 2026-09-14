@@ -84,6 +84,45 @@ describe('client information', () => {
     ]);
   });
 
+  it('recognizes only actions from the immediately previous menu revision', () => {
+    const catalog = new ClientInformationCatalog({
+      customSections: [{ label: 'Расписание группы', text: 'В понедельник.' }],
+    });
+
+    catalog.replace({
+      customSections: [{ label: 'Расписание занятий', text: 'В понедельник.' }],
+    });
+    catalog.replace({
+      customSections: [
+        { label: 'Расписание занятий', text: 'В понедельник и среду.' },
+      ],
+    });
+
+    expect(catalog.isStaleMenuAction(' Расписание группы ')).toBe(true);
+    expect(catalog.isStaleMenuAction('Расписание занятий')).toBe(false);
+    expect(catalog.isStaleMenuAction('Обычный вопрос')).toBe(false);
+
+    catalog.replace({
+      customSections: [{ label: 'Занятия', text: 'В понедельник и среду.' }],
+    });
+
+    expect(catalog.isStaleMenuAction('Расписание группы')).toBe(false);
+    expect(catalog.isStaleMenuAction('Расписание занятий')).toBe(true);
+  });
+
+  it('restores stale-menu recognition from persisted menu content', () => {
+    const catalog = new ClientInformationCatalog(
+      {
+        customSections: [
+          { label: 'Расписание занятий', text: 'В понедельник.' },
+        ],
+      },
+      ['Расписание группы'],
+    );
+
+    expect(catalog.isStaleMenuAction('Расписание группы')).toBe(true);
+  });
+
   it('formats FAQ pairs with visible questions and separators', () => {
     const catalog = new ClientInformationCatalog({
       faq: [

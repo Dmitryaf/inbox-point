@@ -51,10 +51,10 @@ describe('ContentManagementPage channel button notice', () => {
     await flushPromises();
 
     expect(wrapper.get('[role="status"]').text()).toContain(
-      'Кнопки обновятся, когда бот отправит клиенту следующее сообщение',
+      'Открытые у клиентов кнопки обновятся со следующим ответом бота',
     );
     expect(wrapper.get('[role="status"]').text()).toContain(
-      'нажать «Начать» в VK',
+      'без создания обращения',
     );
   });
 });

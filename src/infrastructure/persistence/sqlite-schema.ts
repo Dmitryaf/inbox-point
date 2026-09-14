@@ -1,6 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 
-export const sqliteSchemaVersion = 6;
+export const sqliteSchemaVersion = 7;
 
 export const requiredSqliteTables = [
   'conversation_messages',
@@ -8,6 +8,7 @@ export const requiredSqliteTables = [
   'inbound_events',
   'message_links',
   'operator_actions',
+  'remembered_admin_sessions',
   'usage_events',
   'processed_events',
   'support_requests',
@@ -31,6 +32,10 @@ export function initializeSqliteSchema(database: DatabaseSync): void {
   }
   if (hasTables !== undefined && version === 5) {
     migrateSupportRequestsForTopicReuse(database);
+    version = 6;
+  }
+  if (hasTables !== undefined && version === 6) {
+    migrateSchema(database, rememberedAdminSessionsTableSql, 7);
     version = sqliteSchemaVersion;
   }
   if (hasTables !== undefined && version !== sqliteSchemaVersion) {
@@ -167,6 +172,17 @@ const operatorActionsTableSql = `
 
   CREATE INDEX IF NOT EXISTS operator_actions_by_status
     ON operator_actions(status, created_at, id);
+`;
+
+const rememberedAdminSessionsTableSql = `
+  CREATE TABLE IF NOT EXISTS remembered_admin_sessions (
+    token_hash TEXT PRIMARY KEY,
+    created_at INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL CHECK (expires_at > created_at)
+  ) STRICT;
+
+  CREATE INDEX IF NOT EXISTS remembered_admin_sessions_by_expiry
+    ON remembered_admin_sessions(expires_at);
 `;
 
 const supportRequestIndexesAndTriggersSql = `
@@ -327,4 +343,5 @@ const initialSchemaSql = `
   ) STRICT;
 
   ${operatorActionsTableSql}
+  ${rememberedAdminSessionsTableSql}
 `;

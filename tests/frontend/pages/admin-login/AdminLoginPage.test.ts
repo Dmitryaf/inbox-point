@@ -16,14 +16,19 @@ describe('AdminLoginPage', () => {
     await router.push('/ops');
     openAdminLogin(router, '/ops', 'Сессия завершилась. Войдите снова.');
 
+    let loginBody: unknown;
     vi.stubGlobal(
       'fetch',
-      vi.fn((input: RequestInfo | URL) => {
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
         const url = requestUrl(input);
         if (url.endsWith('/admin/session')) {
           return Promise.resolve(response({ authenticated: false }));
         }
         if (url.endsWith('/admin/login')) {
+          if (typeof init?.body !== 'string') {
+            throw new Error('Expected a JSON login body');
+          }
+          loginBody = JSON.parse(init.body);
           return Promise.resolve(response({ authenticated: true }));
         }
         return Promise.reject(new Error(`Unexpected request: ${url}`));
@@ -41,10 +46,15 @@ describe('AdminLoginPage', () => {
     expect(wrapper.text()).not.toContain('Состояние');
 
     await wrapper.get('#admin-password').setValue('synthetic-admin-password');
+    await wrapper.get('input[type="checkbox"]').setValue(true);
     await wrapper.get('.auth-card').trigger('submit');
     await flushPromises();
 
     expect(router.currentRoute.value.path).toBe('/ops');
+    expect(loginBody).toEqual({
+      password: 'synthetic-admin-password',
+      rememberDevice: true,
+    });
     expect(wrapper.text()).not.toContain('synthetic-admin-password');
 
     wrapper.unmount();

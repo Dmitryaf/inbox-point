@@ -143,6 +143,13 @@ function resolveMenuResponse(
     };
   }
 
+  if (information.isStaleMenuAction(normalized)) {
+    return {
+      replyMarkup: mainMenu,
+      text: 'Меню обновилось. Выберите нужный раздел ниже.',
+    };
+  }
+
   if (paused && !hasActiveRequest) {
     return {
       replyMarkup: mainMenu,

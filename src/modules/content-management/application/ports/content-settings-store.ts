@@ -16,6 +16,7 @@ export interface StoredContentChange extends ContentChange {
 export interface ContentSettingsDocument {
   content: ClientInformationContent;
   history: readonly StoredContentChange[];
+  previousMenuActions?: readonly string[];
 }
 
 export interface ContentSettingsStore {

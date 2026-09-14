@@ -5,6 +5,7 @@ import {
   login,
   logout,
   readSession,
+  revokeAllSessions,
   type AdminSessionMode,
 } from '@frontend/features/admin-auth/api/session-api';
 
@@ -29,11 +30,14 @@ export function useAdminSession() {
     }
   });
 
-  const authenticate = async (password: string): Promise<boolean> => {
+  const authenticate = async (
+    password: string,
+    rememberDevice: boolean,
+  ): Promise<boolean> => {
     pending.value = true;
     error.value = '';
     try {
-      const session = await login(password);
+      const session = await login(password, rememberDevice);
       authenticated.value = session.authenticated;
       mode.value = session.mode;
       return true;
@@ -46,6 +50,7 @@ export function useAdminSession() {
   };
 
   const endSession = async (): Promise<void> => {
+    pending.value = true;
     error.value = '';
     try {
       const session = await logout();
@@ -53,6 +58,22 @@ export function useAdminSession() {
       mode.value = session.mode;
     } catch (cause: unknown) {
       error.value = errorMessage(cause);
+    } finally {
+      pending.value = false;
+    }
+  };
+
+  const endAllSessions = async (): Promise<void> => {
+    pending.value = true;
+    error.value = '';
+    try {
+      const session = await revokeAllSessions();
+      authenticated.value = session.authenticated;
+      mode.value = session.mode;
+    } catch (cause: unknown) {
+      error.value = errorMessage(cause);
+    } finally {
+      pending.value = false;
     }
   };
 
@@ -65,6 +86,7 @@ export function useAdminSession() {
     authenticate,
     authenticated,
     booting,
+    endAllSessions,
     endSession,
     error,
     expireSession,

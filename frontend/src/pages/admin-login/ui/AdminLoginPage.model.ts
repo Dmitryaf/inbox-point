@@ -24,8 +24,11 @@ export function createComponentModel() {
     },
     { immediate: true },
   );
-  async function authenticate(password: string): Promise<void> {
-    await session.authenticate(password);
+  async function authenticate(
+    password: string,
+    rememberDevice: boolean,
+  ): Promise<void> {
+    await session.authenticate(password, rememberDevice);
   }
   return { session, loginMessage, authenticate };
 }

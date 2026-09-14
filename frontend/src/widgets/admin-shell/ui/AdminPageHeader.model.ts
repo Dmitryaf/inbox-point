@@ -8,10 +8,12 @@ export type AdminSection = 'answers' | 'channels' | 'monitoring';
 export type ComponentProps = {
   current: AdminSection;
   intro: string;
+  pending: boolean;
   showLogout: boolean;
   title: string;
 } & EventProps<{
   logout: [];
+  revokeAll: [];
 }> &
   ComponentAttributes;
 export const componentDefaults = {};
