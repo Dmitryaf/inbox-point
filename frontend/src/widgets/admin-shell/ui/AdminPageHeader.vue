@@ -6,10 +6,11 @@ export type AdminSection = 'answers' | 'channels' | 'monitoring';
 defineProps<{
   current: AdminSection;
   intro: string;
+  pending: boolean;
   showLogout: boolean;
   title: string;
 }>();
-defineEmits<{ logout: [] }>();
+defineEmits<{ logout: []; revokeAll: [] }>();
 
 const sections: readonly {
   href: string;
@@ -42,14 +43,24 @@ const sections: readonly {
           {{ section.label }}
         </RouterLink>
       </nav>
-      <button
-        v-if="showLogout"
-        class="quiet admin-logout"
-        type="button"
-        @click="$emit('logout')"
-      >
-        Выйти
-      </button>
+      <div v-if="showLogout" class="admin-session-actions">
+        <button
+          class="quiet"
+          :disabled="pending"
+          type="button"
+          @click="$emit('revokeAll')"
+        >
+          Выйти везде
+        </button>
+        <button
+          class="quiet"
+          :disabled="pending"
+          type="button"
+          @click="$emit('logout')"
+        >
+          Выйти
+        </button>
+      </div>
     </div>
     <div class="admin-page-heading">
       <h1>{{ title }}</h1>

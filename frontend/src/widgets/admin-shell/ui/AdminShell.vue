@@ -54,6 +54,17 @@ async function logOut(): Promise<void> {
   dirty.value = false;
   await session.endSession();
 }
+
+async function revokeAll(): Promise<void> {
+  if (dirty.value && !window.confirm('Выйти без сохранения изменений?')) {
+    return;
+  }
+  if (!window.confirm('Выйти из управления на всех устройствах?')) {
+    return;
+  }
+  dirty.value = false;
+  await session.endAllSessions();
+}
 </script>
 
 <template>
@@ -65,9 +76,11 @@ async function logOut(): Promise<void> {
       <AdminPageHeader
         :current="current"
         :intro="intro"
+        :pending="session.pending.value"
         :show-logout="session.mode.value === 'password'"
         :title="title"
         @logout="logOut"
+        @revoke-all="revokeAll"
       />
       <main class="admin-shell-content">
         <p

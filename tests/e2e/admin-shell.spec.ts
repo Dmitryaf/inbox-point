@@ -3,7 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 const password = 'synthetic-admin-password';
 const bypassServer = 'http://127.0.0.1:4175';
 
-test('login, history navigation, reload and logout keep the admin boundary', async ({
+test('remembered login, navigation, reload and logout keep the admin boundary', async ({
   page,
 }) => {
   await page.goto('/manage');
@@ -14,6 +14,7 @@ test('login, history navigation, reload and logout keep the admin boundary', asy
   await expect(page.locator('.product-logo__mark')).toBeVisible();
 
   await page.getByLabel('Пароль').fill(password);
+  await page.getByLabel('Запомнить это устройство на 30 дней').check();
   await page.getByRole('button', { name: 'Войти' }).click();
   await expect(page).toHaveURL(/\/manage$/);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
@@ -48,7 +49,7 @@ test('login, history navigation, reload and logout keep the admin boundary', asy
   );
 
   await page.goto('/manage');
-  await page.getByRole('button', { name: 'Выйти' }).click();
+  await page.getByRole('button', { exact: true, name: 'Выйти' }).click();
   await expect(page).toHaveURL(/\/login$/);
   const protectedResponse = await page.request.get('/api/manage/content');
   expect(protectedResponse.status()).toBe(401);
@@ -62,7 +63,9 @@ test('passwordless development bypass skips login and hides logout', async ({
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
     'Ответы клиентам',
   );
-  await expect(page.getByRole('button', { name: 'Выйти' })).toHaveCount(0);
+  await expect(
+    page.getByRole('button', { exact: true, name: 'Выйти' }),
+  ).toHaveCount(0);
 });
 
 test('message controls distinguish disconnected channels from active intake', async ({

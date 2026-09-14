@@ -1,5 +1,6 @@
 import {
   copyClientInformationContent,
+  getMenuActionValues,
   type ClientInformationContent,
 } from '@/core/application/client-information.js';
 import {
@@ -39,6 +40,14 @@ export class FileContentSettingsStore implements ContentSettingsStore {
     );
   }
 
+  public async loadPreviousMenuActions(): Promise<readonly string[]> {
+    const document = await this.readDocument();
+    if (!document) {
+      return [];
+    }
+    return [...findPreviousMenuActions(document)];
+  }
+
   public async save(content: ClientInformationContent): Promise<void> {
     const validated = validateContentInput(content);
     const current = await this.readDocument();
@@ -48,6 +57,14 @@ export class FileContentSettingsStore implements ContentSettingsStore {
     }
 
     const revision = nextRevision(current);
+    const currentMenuActions = getMenuActionValues(current?.content ?? {});
+    const nextMenuActions = getMenuActionValues(validated);
+    const previousMenuActions = haveSameValues(
+      currentMenuActions,
+      nextMenuActions,
+    )
+      ? findPreviousMenuActions(current)
+      : currentMenuActions;
     await this.writeDocument({
       content: validated,
       history: [
@@ -59,6 +76,7 @@ export class FileContentSettingsStore implements ContentSettingsStore {
         },
         ...(current?.history ?? []),
       ].slice(0, 20),
+      ...(previousMenuActions.length > 0 ? { previousMenuActions } : {}),
     });
   }
 
@@ -98,6 +116,33 @@ export class FileContentSettingsStore implements ContentSettingsStore {
   ): Promise<void> {
     await writePrivateTextFile(this.path, serializeContentDocument(document));
   }
+}
+
+function findPreviousMenuActions(
+  document: ContentSettingsDocument | undefined,
+): readonly string[] {
+  if (!document) {
+    return [];
+  }
+  if (document.previousMenuActions) {
+    return document.previousMenuActions;
+  }
+  const currentMenuActions = getMenuActionValues(document.content);
+  const previous = document.history.find(
+    (entry) =>
+      !haveSameValues(getMenuActionValues(entry.content), currentMenuActions),
+  );
+  return previous ? getMenuActionValues(previous.content) : [];
+}
+
+function haveSameValues(
+  first: readonly string[],
+  second: readonly string[],
+): boolean {
+  return (
+    first.length === second.length &&
+    first.every((value, index) => value === second[index])
+  );
 }
 
 function nextRevision(document: ContentSettingsDocument | undefined): number {

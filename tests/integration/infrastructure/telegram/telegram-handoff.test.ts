@@ -582,6 +582,53 @@ describe('Telegram handoff integration', () => {
     expect(gateway.sent[1]?.text).toBe('Приходите за 10 минут до начала.');
   });
 
+  it('recovers from renamed and deleted menu buttons without a handoff', async () => {
+    information.replace({
+      customSections: [{ label: 'Расписание группы', text: 'В понедельник.' }],
+    });
+    information.replace({
+      customSections: [{ label: 'Расписание занятий', text: 'В понедельник.' }],
+    });
+
+    const renamedEvent = createPrivateUpdate(1, 501, 'Расписание группы');
+    await router.route(renamedEvent);
+    await router.route(renamedEvent);
+
+    expect(repository.findActiveRequest('telegram', '101')).toBeUndefined();
+    expect(gateway.sent).toHaveLength(1);
+    expect(gateway.sent[0]?.text).toBe(
+      'Меню обновилось. Выберите нужный раздел ниже.',
+    );
+    const renamedKeyboard = gateway.sent[0]?.replyMarkup;
+    if (!renamedKeyboard || !('keyboard' in renamedKeyboard)) {
+      throw new Error('Expected a refreshed Telegram keyboard');
+    }
+    expect(
+      renamedKeyboard.keyboard.flat().map((button) => button.text),
+    ).toContain('Расписание занятий');
+
+    information.replace({ customSections: [] });
+    await router.route(createPrivateUpdate(2, 502, 'Расписание занятий'));
+
+    expect(repository.findActiveRequest('telegram', '101')).toBeUndefined();
+    expect(gateway.sent[1]?.text).toBe(
+      'Меню обновилось. Выберите нужный раздел ниже.',
+    );
+  });
+
+  it('still sends unknown customer text to the operator after a menu change', async () => {
+    information.replace({
+      customSections: [{ label: 'Старая кнопка', text: 'Ответ.' }],
+    });
+    information.replace({
+      customSections: [{ label: 'Новая кнопка', text: 'Ответ.' }],
+    });
+
+    await router.route(createPrivateUpdate(1, 501, 'У меня другой вопрос'));
+
+    expect(repository.findActiveRequest('telegram', '101')).toBeDefined();
+  });
+
   it('replaces a deleted topic when the customer sends another message', async () => {
     await router.route(createPrivateUpdate(1, 501, 'Первый вопрос'));
     gateway.unavailableTopics.add(900);

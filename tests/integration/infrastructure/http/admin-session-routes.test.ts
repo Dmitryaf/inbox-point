@@ -43,9 +43,15 @@ describe('admin session routes', () => {
       payload: {},
       url: '/api/admin/logout',
     });
+    const revoke = await app.inject({
+      method: 'POST',
+      payload: {},
+      url: '/api/admin/sessions/revoke-all',
+    });
 
     expect(session.json()).toEqual({ authenticated: true, mode: 'bypass' });
     expect(logout.json()).toEqual({ authenticated: true, mode: 'bypass' });
+    expect(revoke.json()).toEqual({ authenticated: true, mode: 'bypass' });
   });
 
   it('requires a real session in development when a password is configured', async () => {
@@ -150,6 +156,7 @@ describe('admin session routes', () => {
     expect(login.headers['set-cookie']).toContain(
       '__Host-inbox-point-admin-session=admin-session-1',
     );
+    expect(login.headers['set-cookie']).toContain('Max-Age=43200');
     await expectSurfaceAccess(app, firstCookie, 200);
 
     now += 12 * 60 * 60 * 1_000 + 1;
@@ -163,11 +170,18 @@ describe('admin session routes', () => {
         'x-forwarded-proto': 'https',
       },
       method: 'POST',
-      payload: { password: 'correct-admin-password' },
+      payload: {
+        password: 'correct-admin-password',
+        rememberDevice: true,
+      },
       remoteAddress: '127.0.0.1',
       url: '/api/admin/login',
     });
     const secondCookie = readSessionCookie(secondLogin.headers['set-cookie']);
+    expect(secondLogin.headers['set-cookie']).toContain('Max-Age=2592000');
+    expect(secondLogin.headers['set-cookie']).toContain('HttpOnly');
+    expect(secondLogin.headers['set-cookie']).toContain('SameSite=Strict');
+    expect(secondLogin.headers['set-cookie']).toContain('Secure');
     const logout = await app.inject({
       headers: {
         cookie: secondCookie,
@@ -228,6 +242,110 @@ describe('admin session routes', () => {
     expect(login.headers['set-cookie']).toContain(
       '__Host-inbox-point-admin-session=production-session',
     );
+  });
+
+  it('revokes sessions on every device and clears the current cookie', async () => {
+    const app = createApp(config);
+    apps.add(app);
+    const tokens = ['first-admin-session', 'second-admin-session'];
+    const access = new PasswordSessionAccess('correct-admin-password', {
+      createToken: () => tokens.shift()!,
+    });
+    const routeAccess = createAdminRouteAccess(app, access, {
+      allowLocalBypass: false,
+      secureCookies: true,
+    });
+    registerAdminSessionRoutes(app, access, routeAccess, true);
+    app.get(
+      '/api/manage/probe',
+      { preHandler: routeAccess.requireAuthorization },
+      () => ({ ok: true }),
+    );
+
+    const firstLogin = await app.inject({
+      method: 'POST',
+      payload: { password: 'correct-admin-password' },
+      url: '/api/admin/login',
+    });
+    const secondLogin = await app.inject({
+      method: 'POST',
+      payload: {
+        password: 'correct-admin-password',
+        rememberDevice: true,
+      },
+      url: '/api/admin/login',
+    });
+    const firstCookie = readSessionCookie(firstLogin.headers['set-cookie']);
+    const secondCookie = readSessionCookie(secondLogin.headers['set-cookie']);
+
+    const crossOriginRevoke = await app.inject({
+      headers: {
+        cookie: secondCookie,
+        host: 'example.test',
+        origin: 'https://other.test',
+      },
+      method: 'POST',
+      payload: {},
+      url: '/api/admin/sessions/revoke-all',
+    });
+    expect(crossOriginRevoke.statusCode).toBe(403);
+
+    const revoke = await app.inject({
+      headers: { cookie: secondCookie },
+      method: 'POST',
+      payload: {},
+      url: '/api/admin/sessions/revoke-all',
+    });
+
+    expect(revoke.statusCode).toBe(200);
+    expect(revoke.json()).toEqual({
+      authenticated: false,
+      mode: 'password',
+    });
+    expect(revoke.headers['set-cookie']).toContain(
+      '__Host-inbox-point-admin-session=; Path=/; Max-Age=0',
+    );
+    for (const cookie of [firstCookie, secondCookie]) {
+      await expect(
+        app.inject({
+          headers: { cookie },
+          method: 'GET',
+          url: '/api/manage/probe',
+        }),
+      ).resolves.toMatchObject({ statusCode: 401 });
+    }
+  });
+
+  it('keeps login rate limiting for remembered login attempts', async () => {
+    const app = createApp(config);
+    apps.add(app);
+    const access = new PasswordSessionAccess('correct-admin-password', {
+      now: () => 1_000,
+    });
+    const routeAccess = createAdminRouteAccess(app, access, {
+      allowLocalBypass: false,
+      secureCookies: true,
+    });
+    registerAdminSessionRoutes(app, access, routeAccess, true);
+
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      const response = await app.inject({
+        method: 'POST',
+        payload: { password: 'wrong-password', rememberDevice: true },
+        remoteAddress: '192.0.2.10',
+        url: '/api/admin/login',
+      });
+      expect(response.statusCode).toBe(401);
+    }
+    const blocked = await app.inject({
+      method: 'POST',
+      payload: { password: 'wrong-password', rememberDevice: true },
+      remoteAddress: '192.0.2.10',
+      url: '/api/admin/login',
+    });
+
+    expect(blocked.statusCode).toBe(429);
+    expect(blocked.headers['retry-after']).toBe('900');
   });
 });
 

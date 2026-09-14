@@ -489,7 +489,7 @@ describe('SqliteSupportRepository', () => {
     database.close();
 
     expect(() => new SqliteSupportRepository(databasePath)).toThrow(
-      'Unsupported SQLite schema version 2; expected 6',
+      'Unsupported SQLite schema version 2; expected 7',
     );
   });
 
@@ -531,7 +531,7 @@ describe('SqliteSupportRepository', () => {
 
     const verified = new DatabaseSync(databasePath, { readOnly: true });
     expect(verified.prepare('PRAGMA user_version').get()).toEqual({
-      user_version: 6,
+      user_version: 7,
     });
     expect(
       verified
@@ -624,7 +624,7 @@ describe('SqliteSupportRepository', () => {
 
     const verified = new DatabaseSync(databasePath, { readOnly: true });
     expect(verified.prepare('PRAGMA user_version').get()).toEqual({
-      user_version: 6,
+      user_version: 7,
     });
     verified.close();
   });

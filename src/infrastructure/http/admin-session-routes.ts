@@ -10,8 +10,8 @@ import type { PasswordSessionAccess } from '@/infrastructure/security/password-s
 
 const passwordSchema = z.object({
   password: z.string().min(1).max(200),
+  rememberDevice: z.boolean().optional().default(false),
 });
-const sessionMaxAgeSeconds = 12 * 60 * 60;
 
 export function registerAdminSessionRoutes(
   app: FastifyInstance,
@@ -33,17 +33,22 @@ export function registerAdminSessionRoutes(
       preHandler: [routeAccess.requireAvailable, routeAccess.requireSameOrigin],
     },
     async (request, reply) => {
-      if (routeAccess.isAuthorized(request)) {
+      if (routeAccess.isBypassActive(request)) {
         return {
           authenticated: true,
-          mode: routeAccess.isBypassActive(request) ? 'bypass' : 'password',
+          mode: 'bypass',
         };
       }
       const parsed = passwordSchema.safeParse(request.body);
       if (!parsed.success) {
         return reply.code(401).send({ message: 'Неверный пароль.' });
       }
-      const result = access.login(parsed.data.password, request.ip);
+      const result = access.login(
+        parsed.data.password,
+        request.ip,
+        parsed.data.rememberDevice,
+        readCookie(request.headers.cookie, routeAccess.cookieName),
+      );
       if (result.kind === 'invalid') {
         return reply.code(401).send({ message: 'Неверный пароль.' });
       }
@@ -58,11 +63,31 @@ export function registerAdminSessionRoutes(
         createSessionCookie(
           routeAccess.cookieName,
           result.token,
-          sessionMaxAgeSeconds,
+          result.maxAgeSeconds,
           secureCookies,
         ),
       );
       return { authenticated: true, mode: 'password' };
+    },
+  );
+  app.post(
+    '/api/admin/sessions/revoke-all',
+    {
+      preHandler: [
+        routeAccess.requireAuthorization,
+        routeAccess.requireSameOrigin,
+      ],
+    },
+    (request, reply) => {
+      if (routeAccess.isBypassActive(request)) {
+        return { authenticated: true, mode: 'bypass' };
+      }
+      access.revokeAllSessions();
+      void reply.header(
+        'set-cookie',
+        createSessionCookie(routeAccess.cookieName, '', 0, secureCookies),
+      );
+      return { authenticated: false, mode: 'password' };
     },
   );
   app.post(

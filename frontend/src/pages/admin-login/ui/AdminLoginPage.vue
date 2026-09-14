@@ -25,8 +25,11 @@ watch(
   { immediate: true },
 );
 
-async function authenticate(password: string): Promise<void> {
-  await session.authenticate(password);
+async function authenticate(
+  password: string,
+  rememberDevice: boolean,
+): Promise<void> {
+  await session.authenticate(password, rememberDevice);
 }
 </script>
 

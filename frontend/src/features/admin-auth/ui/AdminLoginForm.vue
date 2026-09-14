@@ -2,14 +2,17 @@
 import { ref } from 'vue';
 
 const props = defineProps<{ pending: boolean }>();
-const emit = defineEmits<{ submit: [password: string] }>();
+const emit = defineEmits<{
+  submit: [password: string, rememberDevice: boolean];
+}>();
 const password = ref('');
+const rememberDevice = ref(false);
 
 function submit(): void {
   if (!password.value || props.pending) {
     return;
   }
-  emit('submit', password.value);
+  emit('submit', password.value, rememberDevice.value);
   password.value = '';
 }
 </script>
@@ -26,6 +29,10 @@ function submit(): void {
       required
       type="password"
     />
+    <label class="remember-device">
+      <input v-model="rememberDevice" type="checkbox" />
+      <span>Запомнить это устройство на 30 дней</span>
+    </label>
     <button :disabled="pending" type="submit">
       {{ pending ? 'Проверяем…' : 'Войти' }}
     </button>

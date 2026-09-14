@@ -98,7 +98,7 @@ describe('ServiceSnapshotService', () => {
       formatVersion: 1,
       instanceId: 'default',
       secretsIncluded: false,
-      sqliteSchemaVersion: 6,
+      sqliteSchemaVersion: 7,
     });
     expect(manifest.files.map((file) => file.name)).toEqual([
       'database.sqlite',

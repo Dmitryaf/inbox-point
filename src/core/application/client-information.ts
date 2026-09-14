@@ -53,14 +53,20 @@ export interface FaqItem {
 export interface ClientInformationResolver {
   getInformationButtons(): readonly string[];
   getCustomSections(): readonly CustomInformationSection[];
+  isStaleMenuAction(text: string): boolean;
   resolve(text: string): string | undefined;
 }
 
 export class ClientInformationCatalog implements ClientInformationResolver {
   private content: ClientInformationContent;
+  private previousMenuActions: readonly string[];
 
-  public constructor(content: ClientInformationContent = {}) {
+  public constructor(
+    content: ClientInformationContent = {},
+    previousMenuActions: readonly string[] = [],
+  ) {
     this.content = copyClientInformationContent(content);
+    this.previousMenuActions = [...previousMenuActions];
   }
 
   public getContent(): ClientInformationContent {
@@ -74,36 +80,33 @@ export class ClientInformationCatalog implements ClientInformationResolver {
   }
 
   public getInformationButtons(): readonly string[] {
-    const buttons: string[] = [];
-    if (
-      this.content.schedule?.trim() &&
-      isInformationSectionVisible(this.content, 'schedule')
-    ) {
-      buttons.push(scheduleButton);
-    }
-    if (
-      this.content.prices?.trim() &&
-      isInformationSectionVisible(this.content, 'prices')
-    ) {
-      buttons.push(pricesButton);
-    }
-    if (
-      this.content.address?.trim() &&
-      isInformationSectionVisible(this.content, 'address')
-    ) {
-      buttons.push(addressButton);
-    }
-    if (
-      this.content.faq?.length &&
-      isInformationSectionVisible(this.content, 'faq')
-    ) {
-      buttons.push(faqButton);
-    }
-    return buttons;
+    return getInformationButtonValues(this.content);
+  }
+
+  public initialize(
+    content: ClientInformationContent,
+    previousMenuActions: readonly string[] = [],
+  ): void {
+    this.content = copyClientInformationContent(content);
+    this.previousMenuActions = [...previousMenuActions];
   }
 
   public replace(content: ClientInformationContent): void {
-    this.content = copyClientInformationContent(content);
+    const next = copyClientInformationContent(content);
+    const currentMenuActions = getMenuActionValues(this.content);
+    const nextMenuActions = getMenuActionValues(next);
+    if (!haveSameValues(currentMenuActions, nextMenuActions)) {
+      this.previousMenuActions = currentMenuActions;
+    }
+    this.content = next;
+  }
+
+  public isStaleMenuAction(text: string): boolean {
+    const normalized = text.trim();
+    return (
+      this.previousMenuActions.includes(normalized) &&
+      !getMenuActionValues(this.content).includes(normalized)
+    );
   }
 
   public resolve(text: string): string | undefined {
@@ -136,6 +139,53 @@ export class ClientInformationCatalog implements ClientInformationResolver {
     }
     return section.text;
   }
+}
+
+export function getMenuActionValues(
+  content: ClientInformationContent,
+): readonly string[] {
+  return [
+    ...getInformationButtonValues(content),
+    ...(content.customSections?.map((section) => section.label) ?? []),
+  ];
+}
+
+function getInformationButtonValues(
+  content: ClientInformationContent,
+): readonly string[] {
+  const buttons: string[] = [];
+  if (
+    content.schedule?.trim() &&
+    isInformationSectionVisible(content, 'schedule')
+  ) {
+    buttons.push(scheduleButton);
+  }
+  if (
+    content.prices?.trim() &&
+    isInformationSectionVisible(content, 'prices')
+  ) {
+    buttons.push(pricesButton);
+  }
+  if (
+    content.address?.trim() &&
+    isInformationSectionVisible(content, 'address')
+  ) {
+    buttons.push(addressButton);
+  }
+  if (content.faq?.length && isInformationSectionVisible(content, 'faq')) {
+    buttons.push(faqButton);
+  }
+  return buttons;
+}
+
+function haveSameValues(
+  first: readonly string[],
+  second: readonly string[],
+): boolean {
+  return (
+    first.length === second.length &&
+    first.every((value, index) => value === second[index])
+  );
 }
 
 export function isHandoffRequest(text: string): boolean {

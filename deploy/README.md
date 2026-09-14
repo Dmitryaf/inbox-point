@@ -173,6 +173,12 @@ confirm the saved value, and sign out. A `403` from login, save, or logout fails
 this reverse-proxy smoke test. Do not accept a deployment based only on the two
 GET health checks above.
 
+An ordinary admin session lasts 12 hours and ends on application restart. The
+optional remembered-device session lasts 30 days and keeps only an HMAC token
+hash in SQLite; the raw token remains in the secure browser cookie. Test both
+current-session logout and “logout everywhere”. Restart after changing
+`ADMIN_PASSWORD`; tokens issued with the previous password then become invalid.
+
 ## 6. Configure monitoring
 
 Build the same pinned source on an independent host. Copy

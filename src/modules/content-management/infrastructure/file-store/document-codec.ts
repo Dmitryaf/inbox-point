@@ -32,6 +32,9 @@ export function parseContentDocument(
       revision: entry.revision,
       sections: [...entry.sections],
     })),
+    ...(result.data.previousMenuActions
+      ? { previousMenuActions: [...result.data.previousMenuActions] }
+      : {}),
   };
 }
 
@@ -41,6 +44,9 @@ export function serializeContentDocument(
   const validated = storedContentSchema.parse({
     content: document.content,
     history: document.history,
+    ...(document.previousMenuActions
+      ? { previousMenuActions: document.previousMenuActions }
+      : {}),
   });
   return JSON.stringify(validated, undefined, 2) + '\n';
 }
