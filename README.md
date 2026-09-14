@@ -1,60 +1,67 @@
 # Inbox Point
 
-Inbox Point is a small self-hosted service that connects customer
-conversations from Telegram and VK with an operator workspace in Telegram.
-It is intended for organizations that want to keep people in their original
-messaging channel without adopting a full helpdesk platform.
+Inbox Point is a self-hosted service that brings customer conversations from
+Telegram and VK into a private Telegram workspace for operators. Customers stay
+in their messenger; your team answers in Telegram.
+
+![Content management with synthetic schedule, FAQ and custom sections](docs/screenshots/inbox-point-content.png)
 
 ## How it works
 
-1. A person writes to a Telegram bot or VK community.
-2. The service can return configured information such as a schedule, prices,
-   address, FAQs, or custom sections.
-3. A question that needs an operator becomes a separate topic in a private
-   Telegram group.
+1. A customer writes to your Telegram bot or VK community.
+2. Inbox Point answers configured questions about schedules, prices, addresses,
+   FAQs, or custom sections.
+3. A question needing a person opens an operator request in the customer's
+   Telegram Topic, creating the topic on first contact.
 4. An operator replies in that topic.
-5. The reply is delivered to the same Telegram or VK conversation.
+5. Inbox Point sends the answer back to the customer's original conversation.
 
-Telegram Topics keep each active request in a separate thread while allowing
-operators to stay in a familiar interface. If Telegram is unavailable, the
-request can be moved to a protected emergency web inbox. An active conversation
-is handled either in Telegram or in the web inbox, never in both at once.
+Operators close finished requests. Later conversations open a new request and
+reuse the customer's topic when available.
 
-## Supported scope
+## What it supports
 
-- text conversations from Telegram bots and VK communities;
-- configurable information sections;
-- durable SQLite delivery queue with bounded retries;
-- explicit handling of uncertain delivery outcomes;
-- crash-safe operator relay state with manual resolution for uncertain Telegram
-  outcomes;
-- bounded VK event retries with quarantine and operator retry/skip controls;
-- protected channel setup, content management, and operations pages with one
-  administrator sign-in;
-- emergency web inbox;
-- verified snapshots for the database, content, and service-control state, plus
-  an external backup job and daily systemd timer template.
+- Text conversations from Telegram bots and VK communities.
+- Configurable schedules, prices, addresses, FAQs, and custom menu sections.
+- A protected emergency web inbox when Telegram is unavailable.
+- Saved outbound messages with retries and controls for delivery incidents.
+- Channel setup, content editing, preview, and revision history.
+- Service monitoring, verified snapshots, and external backups.
 
-Message attachments, voice messages, AI-generated replies, CRM entities,
-operator assignment, multi-tenancy, and SaaS billing are outside the first
-release. Unsupported attachments receive a request to resend the question as
-text.
+Attachments, voice messages, AI-generated replies, CRM entities, operator
+assignment, multi-tenant SaaS, and billing are outside the current release.
+Unsupported attachments prompt the customer to resend their question as text.
 
-Telegram and VK cannot remotely replace a persistent keyboard already shown on
-a person's device. Inbox Point attaches the current keyboard to later bot
-responses. If a person uses a button found in the retained history of the last
-20 content revisions but absent from the current menu, the service shows the
-current choices instead of opening an operator request.
+## Engineering highlights
 
-## Data
+- **Durable delivery.** Replies are saved in SQLite before sending and retried
+  within set limits; pending work survives a restart.
+- **Uncertain outcomes.** A confirmed failure differs from a lost confirmation:
+  when Telegram may have accepted an action, the service asks for resolution
+  instead of blindly repeating it.
+- **Duplicate protection.** Stored event IDs and operation keys prevent duplicate
+  requests and side effects. Repeatedly failing VK events are isolated for review.
+- **Emergency fallback.** An active request can move to the protected web inbox.
+  A request uses one workspace at a time.
+- **Verified recovery.** Snapshots are checked before restore. Restored admin
+  sessions are invalidated; devices must sign in again.
+- **Useful monitoring.** Readiness checks channel and delivery-worker activity,
+  queue delays, and unresolved inbound or operator-relay incidents.
 
-Requests, message routing, delivery state, minimal usage events, and hashed
-remembered-session records are stored locally in SQLite. Configured information
-and service-control state are stored next to the database. Usage events do not
-contain message text. Service snapshots exclude Telegram and VK credentials,
-passwords, raw session tokens, and `.env` files.
+## Screenshots
 
-## Local development
+Actual Russian-language UI with synthetic data: fictional **North Side Dance**
+content above; a failed VK reply, retry action, and service state below.
+
+![Operations dashboard showing a failed VK reply and service monitoring](docs/screenshots/inbox-point-operations.png)
+
+[Reproduce the screenshots](tests/e2e/docs-screenshots.spec.ts) without real accounts.
+
+## Stack
+
+TypeScript · Node.js · Fastify · SQLite · Vue 3 · Playwright
+
+## Run locally
 
 Requires Node.js 24.20.x and npm 11.
 
@@ -63,128 +70,31 @@ npm ci
 npm run dev
 ```
 
-The service uses safe local defaults. To override them, copy `.env.example` to
-an untracked `.env`; both `npm run dev` and `npm start` load it automatically.
+At `http://127.0.0.1:3000`, use `/setup` for channels, `/manage` for content,
+and `/ops` for monitoring and emergency requests. Local loopback access needs no
+password. Set `ADMIN_PASSWORD` for `/login` and optional remembered sessions;
+production requires it. `dev` and `start` load an untracked `.env`;
+see [`.env.example`](.env.example).
 
-Local routes:
+Run `npm run check` for formatting, lint, types, tests, and builds. For browser
+checks, run `npx playwright install chromium`, then `npm run check:e2e`.
 
-- `http://127.0.0.1:3000/login` — administrator sign-in when a password is set;
-- `http://127.0.0.1:3000/setup` — connect Telegram and VK;
-- `http://127.0.0.1:3000/manage` — edit information shown in Telegram and VK;
-- `http://127.0.0.1:3000/ops` — inspect service state, delivery incidents, and
-  emergency requests;
-- `http://127.0.0.1:3000/health` and `/ready` — health and readiness checks.
+## Documentation
 
-The administration frontend is one Vue Router application. Direct reloads and
-browser back/forward navigation work for all routes; unknown frontend paths show
-the application 404 page, while unknown `/api/*` paths return HTTP 404.
-
-Authentication depends on the environment:
-
-- development without `ADMIN_PASSWORD` allows loopback access without a login
-  and does not show logout;
-- development with `ADMIN_PASSWORD` uses the real login, session, and logout
-  flow;
-- production exposes the administration UI only when `ADMIN_PASSWORD` is set.
-
-An ordinary password session lasts 12 hours and is kept in process memory, so a
-restart ends it. The optional “remember this device” session lasts 30 days and
-stores an HMAC token hash in SQLite; the raw token is kept only in the browser's
-cookie. Changing `ADMIN_PASSWORD` invalidates existing sessions. Logout revokes
-the current session, while “logout everywhere” revokes all ordinary and
-remembered sessions.
-
-Both cookie variants are HTTP-only, `SameSite=Strict`, use `Path=/`, and are
-`Secure` with the `__Host-` prefix in production. Run the normal code, test, and
-build gate with:
-
-```bash
-npm run check
-```
-
-Browser end-to-end checks are separate:
-
-```bash
-npx playwright install chromium
-npm run check:e2e
-```
-
-CI runs both gates and uses Playwright Chromium for routing, authentication,
-logout, reload, back/forward navigation, responsive layout, and layout-stability
-checks.
-
-## Channel lifecycle
-
-The Channels page shows whether each connection comes from `environment` or
-`local` settings. Environment-managed connections are changed on the server and
-cannot be disconnected in the UI or setup API. Locally managed connections can
-be connected, disconnected, and connected again without deleting request
-history. VK must be disconnected before Telegram because its operator handoff
-depends on Telegram. The backend enforces this order.
-
-A disconnect stops the channel before deleting its local settings. If stopping
-fails, settings remain untouched. If deleting the settings fails, the runtime is
-already stopped but the settings remain available for a retry or the next
-service start.
-
-## Operations and backups
-
-`/health` only confirms that the HTTP process responds. `/ready` returns 503
-when a configured Telegram or VK poller is failed, stopped, or stale; when the
-delivery worker is stopped or stalled; when deliveries are backlogged or stale;
-or when unresolved inbound/operator-relay incidents exist. A channel that has
-not been configured is not by itself a readiness failure.
-
-The Docker healthcheck uses `/health`. Run the separate availability monitor
-from an independent host with `.env.monitor`; it must check the HTTPS `/ready`
-URL and alert through a webhook independent of Telegram.
-
-After a production build, `npm run snapshot:create` creates a verified service
-snapshot and `npm run snapshot:restore -- <snapshot> <new-data-directory>`
-restores it only into a new directory. A snapshot contains SQLite, saved content,
-service-control state, checksums, and metadata. It excludes channel credentials,
-passwords, and `.env` files. Admin sessions are not restorable state: snapshot
-restore invalidates remembered sessions, so trusted devices must sign in again.
-
-The `operations` Compose profile runs a one-shot verified external backup:
-
-```bash
-docker compose --env-file .env --profile operations run --rm backup
-```
-
-Its `BACKUP_HOST_PATH` bind mount must be outside the application volume and,
-preferably, off the application VPS. The job verifies the result, rotates old
-generations, returns a non-zero exit code on failure, and sends an independent
-webhook alert. Daily systemd service and timer templates are in `deploy/systemd`.
-
-## Production deployment
-
-The supported topology is one isolated instance per organization. The RU server
-runs the application, data, administration UI, VK integration, Caddy, and
-backups. A small foreign VPS provides only a WireGuard-restricted HTTP CONNECT
-path for Telegram; bot credentials remain on the application server and other
-traffic is not proxied.
-
-See the [production deployment guide](deploy/README.md) for WireGuard,
-Tinyproxy, firewall, Caddy, instance-aware Compose, backup/restore, independent
-monitoring, scaling, and acceptance procedures. The guide and templates use
-`INSTANCE_ID` only as an operational label; the application remains
-single-organization and has no multi-tenant data model.
-
-Additional organizations are deployed as additional isolated instances. If
-manual deployment later becomes the limiting factor, provisioning and aggregate
-health reporting can be automated around those instances without sharing their
-conversation data. A shared multi-tenant runtime is a separate future product
-decision, not the default scaling path.
+- [Deployment](deploy/README.md) — one isolated instance per organization.
+- [Administration and channels](deploy/README.md#administration-and-channel-lifecycle)
+  — authentication, connections, and content behavior.
+- [Monitoring](deploy/README.md#6-configure-monitoring) and
+  [backups / restore](deploy/README.md#7-back-up-and-restore).
+- [Acceptance and failure drills](deploy/README.md#8-acceptance-and-failure-drills).
 
 ## Status
 
-The release-blocking dependency, operator-relay, VK quarantine, readiness
-monitoring, external-backup, instance labeling, and Telegram-only proxy
-mechanisms are implemented and covered by automated checks. Production remains
-unaccepted until the target servers, real channels, restart/failure drills,
-restore, rollback, and operator workflow pass the deployment guide.
+Core flows and reliability mechanisms are implemented and covered by automated
+checks. Production acceptance still requires verification on the target
+deployment: real channels, restart and failure drills, restore, rollback, and
+the operator workflow.
 
 ## License
 
-MIT
+[MIT](LICENSE)
