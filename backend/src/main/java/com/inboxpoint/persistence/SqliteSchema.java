@@ -17,7 +17,7 @@ public final class SqliteSchema {
             int previous;
             try (var version = statement.executeQuery("PRAGMA user_version")) {
                 previous = version.next() ? version.getInt(1) : 0;
-                if (previous > 6) {
+                if (previous > 7) {
                     throw new SQLException("Unsupported SQLite schema version");
                 }
             }
@@ -59,7 +59,7 @@ public final class SqliteSchema {
             statement.execute("CREATE INDEX IF NOT EXISTS support_requests_by_operator_topic ON support_requests(operator_topic_id, status, created_at)");
             statement.execute(topicTrigger("insert", "INSERT", ""));
             statement.execute(topicTrigger("update", "UPDATE OF operator_topic_id, channel, external_conversation_id", " AND id <> NEW.id"));
-            statement.execute("PRAGMA user_version = 6");
+            statement.execute("PRAGMA user_version = 7");
         }
     }
 

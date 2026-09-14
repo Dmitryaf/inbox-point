@@ -45,15 +45,17 @@ public final class ClientInformation {
         file = Path.of(database).toAbsolutePath().resolveSibling("content-settings.json");
         try {
             var json = JsonMapper.shared().readTree(Files.readString(file));
-            if (!json.isObject() || json.size() != 2 || !json.path("content").isObject() || !json.path("history").isArray()) {
+            if (!json.isObject() || json.size() > 3 || !json.path("content").isObject() || !json.path("history").isArray()) {
                 throw new IllegalArgumentException("Invalid stored content document");
             }
-            state = new State(normalize(json.path("content")), history(json.path("history")));
+            var content = normalize(json.path("content"));
+            var entries = history(json.path("history"));
+            state = new State(content, entries, previousMenuActions(json, content, entries));
         } catch (NoSuchFileException missing) {
-            state = new State(new Snapshot(Map.of(), List.of(), List.of(), null), List.of());
+            state = new State(new Snapshot(Map.of(), List.of(), List.of(), null), List.of(), List.of());
         } catch (IOException | RuntimeException invalid) {
             LoggerFactory.getLogger(ClientInformation.class).warn("Saved client information could not be read");
-            state = new State(new Snapshot(Map.of(), List.of(), List.of(), null), List.of());
+            state = new State(new Snapshot(Map.of(), List.of(), List.of(), null), List.of(), List.of());
         }
     }
 
@@ -134,7 +136,13 @@ public final class ClientInformation {
                 .mapToInt(change -> change.revision() == null ? 0 : change.revision()).max().orElse(0);
         revisions.add(new Change(Instant.now().toString(), changed, newest + 1, next.jsonFields()));
         revisions.addAll(previous.history().stream().limit(19).toList());
+        var previousActions = menuActions(previous.content()).equals(menuActions(next))
+                ? previous.previousMenuActions() : menuActions(previous.content());
         var output = JsonMapper.shared().createObjectNode();
+        if (!previousActions.isEmpty()) {
+            var actions = output.putArray("previousMenuActions");
+            previousActions.forEach(actions::add);
+        }
         var payload = output.putObject("content");
         serialize(payload, next);
         var entries = output.putArray("history");
@@ -148,7 +156,7 @@ public final class ClientInformation {
             revision.sections().forEach(fields::add);
         }
         LocalJsonFile.write(file, output);
-        state = new State(next, List.copyOf(revisions));
+        state = new State(next, List.copyOf(revisions), previousActions);
         return next.jsonFields();
     }
 
@@ -181,8 +189,38 @@ public final class ClientInformation {
         return informationButtons().contains(label) || sections().stream().anyMatch(section -> section.label().equals(label));
     }
 
+    public boolean isStaleMenuAction(String label) {
+        var snapshot = state;
+        return snapshot.previousMenuActions().contains(label.strip()) && !menuActions(snapshot.content()).contains(label.strip());
+    }
+
+    private static List<String> previousMenuActions(JsonNode input, Snapshot current, List<Change> history) {
+        if (input.path("previousMenuActions").isArray()) {
+            var result = new ArrayList<String>();
+            for (var action : input.path("previousMenuActions")) {
+                if (action.isString()) {
+                    result.add(action.asString());
+                }
+            }
+            return List.copyOf(result);
+        }
+        var active = menuActions(current);
+        return history.stream().filter(change -> change.content() != null)
+                .map(change -> menuActions(normalize(JsonMapper.shared().valueToTree(change.content()))))
+                .filter(actions -> !actions.equals(active)).findFirst().orElse(List.of());
+    }
+
+    private static List<String> menuActions(Snapshot content) {
+        var actions = new ArrayList<>(informationButtons(content));
+        content.custom().forEach(section -> actions.add(section.label()));
+        return List.copyOf(actions);
+    }
+
     public List<String> informationButtons() {
-        var current = state.content();
+        return informationButtons(state.content());
+    }
+
+    private static List<String> informationButtons(Snapshot current) {
         var buttons = new ArrayList<String>();
         if (current.standard().containsKey("schedule") && current.includes("schedule")) {
             buttons.add(SCHEDULE);
@@ -237,7 +275,7 @@ public final class ClientInformation {
         return false;
     }
 
-    private record State(Snapshot content, List<Change> history) { }
+    private record State(Snapshot content, List<Change> history, List<String> previousMenuActions) { }
 
     public List<Change> history() {
         return state.history();

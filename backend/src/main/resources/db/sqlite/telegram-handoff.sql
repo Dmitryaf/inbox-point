@@ -37,6 +37,14 @@ CREATE TABLE IF NOT EXISTS conversation_messages (
 CREATE INDEX IF NOT EXISTS conversation_messages_by_request
   ON conversation_messages(request_id, created_at);
 
+CREATE TABLE IF NOT EXISTS remembered_admin_sessions (
+  token_hash TEXT PRIMARY KEY,
+  created_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS remembered_admin_sessions_by_expiry ON remembered_admin_sessions(expires_at);
+
 CREATE TABLE IF NOT EXISTS operator_actions (
   id TEXT PRIMARY KEY,
   request_id TEXT NOT NULL REFERENCES support_requests(id),

@@ -5,6 +5,8 @@ import { unref as $unref } from '@frontend/shared/lib/model-state';
 import ProductLogo from '@frontend/shared/ui/ProductLogo';
 import { RouterLink } from '@frontend/shared/lib/router';
 
+import { renderAdminPageHeaderPart2 } from './AdminPageHeader.part2';
+
 import type { WithDefaults } from '@frontend/shared/lib/component-model';
 import type {
   createComponentModel,
@@ -15,7 +17,6 @@ export function renderAdminPageHeaderPart1(
   $state: ReturnType<typeof createComponentModel>,
   $props: WithDefaults<ComponentProps, typeof componentDefaults>,
 ) {
-  const { $emit } = $state;
   const sections = $unref($state.sections);
 
   return (
@@ -45,16 +46,7 @@ export function renderAdminPageHeaderPart1(
             </RouterLink>
           ))}
         </nav>
-        {$props.showLogout ? (
-          <button
-            type="button"
-            onClick={() => void $emit('logout')}
-            className="quiet admin-logout"
-            data-r-e15afcb7=""
-          >
-            {' Выйти '}
-          </button>
-        ) : null}
+        {renderAdminPageHeaderPart2($state, $props)}
       </div>
     </>
   );

@@ -39,7 +39,8 @@ final class TelegramClientMenu {
         var trimmed = text.strip();
         var blocked = active == null && paused.test("telegram");
         var published = information.isPublishedInformation(trimmed);
-        var response = blocked && !published ? ClientInformation.INTAKE_PAUSED : response(trimmed, active != null);
+        var response = information.isStaleMenuAction(trimmed) ? "Меню обновилось. Выберите нужный раздел ниже."
+                : blocked && !published ? ClientInformation.INTAKE_PAUSED : response(trimmed, active != null);
         if (response == null) {
             return false;
         }

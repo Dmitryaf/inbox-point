@@ -6,7 +6,10 @@ import {
 import { classNames as $class } from '@frontend/shared/lib/component-view';
 import { nativeHandler as $nativeHandler } from '@frontend/shared/lib/component-events';
 
-import { textModel as $textModel } from '@frontend/shared/lib/component-inputs';
+import {
+  textModel as $textModel,
+  checkboxModel as $checkboxModel,
+} from '@frontend/shared/lib/component-inputs';
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
 import {
@@ -27,6 +30,7 @@ export default function AdminLoginForm($incomingProps: ComponentProps) {
   );
   const { submit } = $state;
   const password = $state.password.value;
+  const rememberDevice = $state.rememberDevice.value;
   const $attributes = inheritedAttributes($props);
   return (
     <ModelScopeProvider scope={$scope}>
@@ -50,6 +54,17 @@ export default function AdminLoginForm($incomingProps: ComponentProps) {
           onChange={$textModel($state, 'password')}
           data-r-2e9199db=""
         />
+        <label className="remember-device" data-r-2e9199db="">
+          <input
+            type="checkbox"
+            checked={rememberDevice}
+            onChange={$checkboxModel($state, 'rememberDevice')}
+            data-r-2e9199db=""
+          />
+          <span data-r-2e9199db="">
+            {'Запомнить это устройство на 30 дней'}
+          </span>
+        </label>
         <button disabled={$props.pending} type="submit" data-r-2e9199db="">
           {$props.pending ? 'Проверяем…' : 'Войти'}
         </button>

@@ -27,6 +27,27 @@ class AdminSessionsTest {
     }
 
     @Test
+    void remembersOnlyOptedInDevicesAcrossTheProcessAndRevokesThemOnDemand(@org.junit.jupiter.api.io.TempDir java.nio.file.Path directory)
+            throws Exception {
+        var database = directory.resolve("remembered.sqlite");
+        try (var connection = java.sql.DriverManager.getConnection("jdbc:sqlite:" + database)) {
+            com.inboxpoint.persistence.SqliteSchema.initialize(connection);
+        }
+        var store = new RememberedSessions(database);
+        var first = new PasswordSessions("synthetic-editor-password", true, "test", Clock.systemUTC(), "", store);
+        var transientLogin = first.login("synthetic-editor-password", "one");
+        var remembered = first.login("synthetic-editor-password", "two", true, null);
+        assertThat(remembered.maxAgeSeconds()).isEqualTo(30 * 86400L);
+        var restarted = new PasswordSessions("synthetic-editor-password", true, "test", Clock.systemUTC(), "", store);
+        assertThat(restarted.accepted(transientLogin.token())).isFalse();
+        assertThat(restarted.accepted(remembered.token())).isTrue();
+        var changed = new PasswordSessions("replacement-editor-password", true, "test", Clock.systemUTC(), "", store);
+        assertThat(changed.accepted(remembered.token())).isFalse();
+        restarted.revokeAll();
+        assertThat(first.accepted(remembered.token())).isFalse();
+    }
+
+    @Test
     void protectsContentWithAnExpiringAndRevocableCookie() {
         var admin = new AdminSessions("synthetic-editor-password", true, Clock.systemUTC());
         var request = new MockHttpServletRequest();

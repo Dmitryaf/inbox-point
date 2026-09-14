@@ -60,4 +60,52 @@ describe('SetupPage logout', () => {
     window.history.replaceState(null, '', '/');
     window.sessionStorage.clear();
   });
+
+  it('confirms and revokes sessions on all devices', async () => {
+    window.sessionStorage.clear();
+    window.history.replaceState(null, '', '/setup');
+    let authenticated = true;
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL, options?: RequestInit) => {
+        const url = requestUrl(input);
+        if (url.endsWith('/admin/session')) {
+          return Promise.resolve(response({ authenticated, mode: 'password' }));
+        }
+        if (url.endsWith('/setup/status')) {
+          return Promise.resolve(response(disconnectedStatus));
+        }
+        if (
+          url.endsWith('/admin/sessions/revoke-all') &&
+          options?.method === 'POST'
+        ) {
+          authenticated = false;
+          return Promise.resolve(
+            response({ authenticated: false, mode: 'password' }),
+          );
+        }
+        return Promise.reject(new Error(`Unexpected request: ${url}`));
+      }),
+    );
+
+    const { router, wrapper } = await mountAppAt('/setup');
+    await flushPromises();
+    const revokeButton = wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Выйти везде');
+
+    await revokeButton?.trigger('click');
+    await flushPromises();
+
+    expect(confirm).toHaveBeenCalledWith(
+      'Выйти из управления на всех устройствах?',
+    );
+    expect(router.currentRoute.value.path).toBe('/login');
+
+    confirm.mockRestore();
+    wrapper.unmount();
+    window.history.replaceState(null, '', '/');
+    window.sessionStorage.clear();
+  });
 });

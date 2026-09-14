@@ -34,7 +34,7 @@ public final class ServiceSnapshot {
     private static final String DATABASE = "database.sqlite";
     private static final List<String> FILES = List.of(DATABASE, "content-settings.json", "service-control.json");
     private static final Set<String> TABLES = Set.of("support_requests", "conversation_messages",
-            "processed_events", "message_links", "deliveries", "inbound_events", "usage_events", "operator_actions");
+            "processed_events", "message_links", "deliveries", "inbound_events", "usage_events", "operator_actions", "remembered_admin_sessions");
     private final Path database;
     private final Path directory;
     private final int days;
@@ -87,7 +87,7 @@ public final class ServiceSnapshot {
                 }
             }
             var manifest = new Manifest(days, created.toString(), expires.toString(),
-                    entries, 1, instance, false, 6);
+                    entries, 1, instance, false, 7);
             var path = staging.resolve(MANIFEST);
             Files.writeString(path, JSON.writerWithDefaultPrettyPrinter().writeValueAsString(manifest) + "\n");
             privateFile(path);
@@ -115,7 +115,7 @@ public final class ServiceSnapshot {
             throw new IOException("Service snapshot manifest is invalid");
         }
         var manifest = JSON.treeToValue(json, Manifest.class);
-        if (manifest.formatVersion() != 1 || manifest.secretsIncluded() || manifest.sqliteSchemaVersion() != 6 || manifest.closedRequestRetentionDays() < 1
+        if (manifest.formatVersion() != 1 || manifest.secretsIncluded() || manifest.sqliteSchemaVersion() != 7 || manifest.closedRequestRetentionDays() < 1
                 || manifest.closedRequestRetentionDays() > 365
                 || manifest.files().isEmpty() || manifest.files().getFirst() == null
                 || !DATABASE.equals(manifest.files().getFirst().name())) {
@@ -164,7 +164,7 @@ public final class ServiceSnapshot {
                 checkFingerprint(path, entry);
             }
             try (var copy = openArchive(database, true)) {
-                verifyDatabase(copy, 6);
+                verifyDatabase(copy, 7);
             }
             return database;
         } catch (IOException | SQLException | RuntimeException failure) {

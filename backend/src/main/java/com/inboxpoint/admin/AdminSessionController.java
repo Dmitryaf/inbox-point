@@ -37,14 +37,18 @@ final class AdminSessionController {
         if (!admin.sameOrigin(request)) {
             return error(403, "Запрос отклонён.");
         }
-        if (admin.authorized(request, response)) {
+        if (admin.local(request, response)) {
             return ResponseEntity.ok(Map.of("authenticated", true, "mode", mode(request, response)));
         }
         var password = input == null ? "" : input.path("password").asString("");
         if (password.isEmpty() || password.length() > 200) {
             return error(401, "Неверный пароль.");
         }
-        var result = admin.login(password, admin.clientAddress(request));
+        var remember = input.path("rememberDevice");
+        if (!remember.isMissingNode() && !remember.isBoolean()) {
+            return error(401, "Неверный пароль.");
+        }
+        var result = admin.login(password, admin.clientAddress(request), remember.asBoolean(false), request);
         if (result.retryAfter() > 0) {
             return ResponseEntity.status(429).header(HttpHeaders.RETRY_AFTER, Long.toString(result.retryAfter()))
                     .body(Map.of("message", "Слишком много попыток. Попробуйте позже."));
@@ -52,8 +56,27 @@ final class AdminSessionController {
         if (result.token() == null) {
             return error(401, "Неверный пароль.");
         }
-        return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, admin.cookie(result.token(), true))
+        return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, admin.cookie(result.token(), java.time.Duration.ofSeconds(result.maxAgeSeconds())))
                 .body(Map.of("authenticated", true, "mode", "password"));
+    }
+
+    @PostMapping("/sessions/revoke-all")
+    ResponseEntity<?> revokeAll(HttpServletRequest request, HttpServletResponse response) {
+        if (!admin.available(request, response)) {
+            return error(404, "Not found");
+        }
+        if (!admin.authorized(request, response)) {
+            return error(401, "Войдите, чтобы продолжить.");
+        }
+        if (!admin.sameOrigin(request)) {
+            return error(403, "Запрос отклонён.");
+        }
+        if (admin.local(request, response)) {
+            return ResponseEntity.ok(Map.of("authenticated", true, "mode", "bypass"));
+        }
+        admin.revokeAll();
+        return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, admin.cookie("", false))
+                .body(Map.of("authenticated", false, "mode", "password"));
     }
 
     @PostMapping("/logout")

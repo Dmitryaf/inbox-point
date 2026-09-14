@@ -14,6 +14,19 @@ class ClientInformationTest {
     Path directory;
 
     @Test
+    void recognisesAButtonRemovedFromThePreviousMenuEvenAfterRestart() throws Exception {
+        var database = directory.resolve("stale-menu.sqlite").toString();
+        var info = new ClientInformation(database);
+        info.save(JsonMapper.shared().createObjectNode().put("schedule", "Monday"));
+        info.save(JsonMapper.shared().createObjectNode().put("address", "First"));
+        info.save(JsonMapper.shared().createObjectNode().put("address", "Second"));
+        var restored = new ClientInformation(database);
+        assertThat(restored.isStaleMenuAction("Расписание")).isTrue();
+        assertThat(restored.isStaleMenuAction("Адрес")).isFalse();
+        assertThat(restored.isStaleMenuAction("Other customer question")).isFalse();
+    }
+
+    @Test
     void restoresCustomSectionsAndRejectsConflictingLabels() throws Exception {
         var database = directory.resolve("custom.sqlite").toString();
         var information = new ClientInformation(database);

@@ -65,7 +65,7 @@ export function useContentWorkspace(options: ContentWorkspaceOptions) {
         Object.assign(state.draft, savedContent);
       }
       state.notice.value =
-        'Информация сохранена. Новые ответы доступны сразу. Кнопки обновятся, когда бот отправит клиенту следующее сообщение; для немедленного обновления клиент может отправить /start в Telegram или нажать «Начать» в VK.';
+        'Информация сохранена. Новые ответы доступны сразу. Открытые у клиентов кнопки обновятся со следующим ответом бота. Если клиент нажмёт старую кнопку, бот покажет актуальные варианты без создания обращения.';
       saved = true;
     } catch (cause: unknown) {
       const message = state.reportFailure(cause);

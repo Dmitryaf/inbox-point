@@ -55,5 +55,15 @@ export function createComponentModel() {
     dirty.value = false;
     await session.endSession();
   }
-  return { session, dirty, current, title, intro, logOut };
+  async function revokeAll(): Promise<void> {
+    if (dirty.value && !window.confirm('Выйти без сохранения изменений?')) {
+      return;
+    }
+    if (!window.confirm('Выйти из управления на всех устройствах?')) {
+      return;
+    }
+    dirty.value = false;
+    await session.endAllSessions();
+  }
+  return { session, dirty, current, title, intro, logOut, revokeAll };
 }

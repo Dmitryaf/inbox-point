@@ -31,14 +31,15 @@ final class VkClientMenu {
         var active = store.activeRequest("vk", peer);
         var label = text.strip();
         var blocked = active == null && paused.test("vk");
-        if (blocked && !information.isPublishedInformation(label)) {
+        var stale = information.isStaleMenuAction(label);
+        if (blocked && !information.isPublishedInformation(label) && !stale) {
             var now = Instant.now();
             if (store.claim("vk:menu", event, now)) {
                 store.completeEvent("vk:menu", event, now);
             }
             return true;
         }
-        var answer = response(label, active != null);
+        var answer = stale ? "Меню обновилось. Выберите нужный раздел ниже." : response(label, active != null);
         if (answer == null) {
             return false;
         }

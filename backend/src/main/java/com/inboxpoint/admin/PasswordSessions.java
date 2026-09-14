@@ -15,6 +15,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.ResponseCookie;
 
 public class PasswordSessions {
+    private static final Duration REMEMBERED = Duration.ofDays(30);
     private static final Duration SESSION = Duration.ofHours(12);
     private static final Duration ATTEMPT_WINDOW = Duration.ofMinutes(15);
     private static final SecureRandom RANDOM = new SecureRandom();
@@ -22,11 +23,13 @@ public class PasswordSessions {
     private final boolean secure;
     private final Clock clock;
     private final AdminRequestOrigin origin;
+    private final RememberedSessions remembered;
     private final String cookieLabel;
     private final HashMap<String, Instant> sessions = new HashMap<>();
     private final HashMap<String, Attempts> attempts = new HashMap<>();
 
-    PasswordSessions(String password, boolean secure, String cookieLabel, Clock clock, String trustedProxies) {
+    PasswordSessions(String password, boolean secure, String cookieLabel, Clock clock, String trustedProxies, RememberedSessions remembered) {
+        this.remembered = remembered;
         origin = new AdminRequestOrigin(trustedProxies);
         if (!password.isEmpty() && (password.length() < 12 || password.length() > 200)) {
             throw new IllegalArgumentException("Invalid administration password length");
@@ -61,7 +64,11 @@ public class PasswordSessions {
         return origin.inspect(request).client();
     }
 
-    public synchronized Login login(String password, String client) {
+    public Login login(String password, String client) {
+        return login(password, client, false, null);
+    }
+
+    public synchronized Login login(String password, String client, boolean remember, HttpServletRequest request) {
         var now = clock.instant();
         attempts.entrySet().removeIf(entry -> !entry.getValue().expires().isAfter(now));
         var previous = attempts.get(client);
@@ -79,29 +86,67 @@ public class PasswordSessions {
         byte[] value = new byte[32];
         RANDOM.nextBytes(value);
         var token = Base64.getUrlEncoder().withoutPadding().encodeToString(value);
-        sessions.put(token, now.plus(SESSION));
-        return new Login(token, 0);
+        if (request != null) {
+            logout(request);
+        }
+        var duration = remember ? REMEMBERED : SESSION;
+        var key = sessionKey(token);
+        if (remember && remembered != null) {
+            remembered.save(key, now, now.plus(duration));
+        } else {
+            sessions.put(key, now.plus(duration));
+        }
+        return new Login(token, 0, duration.toSeconds());
     }
 
     public synchronized boolean accepted(String token) {
-        if (token == null) {
+        if (secret == null || token == null || !token.matches("[A-Za-z0-9_-]{12,128}")) {
             return false;
         }
-        var expires = sessions.get(token);
+        var key = sessionKey(token);
+        var expires = sessions.get(key);
         if (expires != null && expires.isAfter(clock.instant())) {
             return true;
         }
-        sessions.remove(token);
-        return false;
+        sessions.remove(key);
+        return remembered != null && remembered.active(key, clock.instant());
     }
 
     public synchronized void logout(HttpServletRequest request) {
-        sessions.remove(token(request));
+        var value = token(request);
+        if (secret != null && value != null && value.matches("[A-Za-z0-9_-]{12,128}")) {
+            var key = sessionKey(value);
+            sessions.remove(key);
+            if (remembered != null) {
+                remembered.delete(key);
+            }
+        }
+    }
+
+    public synchronized void revokeAll() {
+        if (remembered != null) {
+            remembered.clear();
+        }
+        sessions.clear();
+    }
+
+    private String sessionKey(String value) {
+        try {
+            var mac = javax.crypto.Mac.getInstance("HmacSHA256");
+            mac.init(new javax.crypto.spec.SecretKeySpec(secret, "HmacSHA256"));
+            return java.util.HexFormat.of().formatHex(mac.doFinal(value.getBytes(StandardCharsets.UTF_8)));
+        } catch (java.security.GeneralSecurityException unavailable) {
+            throw new IllegalStateException("Administrator session hash is unavailable", unavailable);
+        }
     }
 
     public String cookie(String value, boolean active) {
+        return cookie(value, active ? SESSION : Duration.ZERO);
+    }
+
+    String cookie(String value, Duration maxAge) {
         return ResponseCookie.from(cookieName(), value).path("/").httpOnly(true)
-                .sameSite("Strict").secure(secure).maxAge(active ? SESSION : Duration.ZERO).build().toString();
+                .sameSite("Strict").secure(secure).maxAge(maxAge).build().toString();
     }
 
     private String token(HttpServletRequest request) {
@@ -128,7 +173,11 @@ public class PasswordSessions {
         }
     }
 
-    public record Login(String token, long retryAfter) { }
+    public record Login(String token, long retryAfter, long maxAgeSeconds) {
+        Login(String token, long retryAfter) {
+            this(token, retryAfter, 0);
+        }
+    }
 
     private record Attempts(int count, Instant expires) { }
 }
