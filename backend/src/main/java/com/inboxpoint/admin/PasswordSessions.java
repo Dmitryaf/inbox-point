@@ -60,6 +60,10 @@ public class PasswordSessions {
         return AdminRequestOrigin.sameOrigin(request, origin.inspect(request));
     }
 
+    public String baseUrl(HttpServletRequest request) {
+        return origin.inspect(request).baseUrl();
+    }
+
     String clientAddress(HttpServletRequest request) {
         return origin.inspect(request).client();
     }

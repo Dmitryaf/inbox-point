@@ -20,6 +20,7 @@ final class StaticFrontend {
     private static final Map<String, Asset> ASSETS = Map.of(
             "/app.js", new Asset("app.js", "text/javascript;charset=UTF-8"),
             "/style.css", new Asset("style.css", "text/css;charset=UTF-8"),
+            "/inbox-point-social-preview.png", new Asset("inbox-point-social-preview.png", "image/png"),
             "/favicon.svg", new Asset("favicon.svg", "image/svg+xml;charset=UTF-8"));
     private final Path frontend;
     private final AdminSessions admin;
@@ -47,7 +48,11 @@ final class StaticFrontend {
         if (!Files.isRegularFile(file)) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok().contentType(MediaType.parseMediaType(asset.contentType())).body(Files.readAllBytes(file));
+        var bytes = asset == PAGE
+                ? Files.readString(file).replace("__INBOX_POINT_ORIGIN__", org.springframework.web.util.HtmlUtils.htmlEscape(admin.baseUrl(request)))
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8)
+                : Files.readAllBytes(file);
+        return ResponseEntity.ok().contentType(MediaType.parseMediaType(asset.contentType())).body(bytes);
     }
 
     private record Asset(String file, String contentType) { }
