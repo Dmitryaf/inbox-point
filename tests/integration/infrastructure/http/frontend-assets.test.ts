@@ -28,6 +28,10 @@ describe('loadFrontendAssets', () => {
         '<script src="./app.js"></script><link href="./style.css"><link rel="icon" href="./favicon.svg">',
       ),
       writeFile(join(directory, 'favicon.svg'), '<svg>icon</svg>'),
+      writeFile(
+        join(directory, 'inbox-point-social-preview.png'),
+        Buffer.from('social-preview'),
+      ),
       writeFile(join(directory, 'app.js'), 'globalThis.app = true;'),
       writeFile(join(directory, 'style.css'), ':root { color: black; }'),
     ]);
@@ -38,5 +42,6 @@ describe('loadFrontendAssets', () => {
     expect(assets.html).toContain('href="./style.css"');
     expect(assets.html).toContain('href="./favicon.svg"');
     expect(assets.icon).toBe('<svg>icon</svg>');
+    expect(assets.socialPreview).toEqual(Buffer.from('social-preview'));
   });
 });

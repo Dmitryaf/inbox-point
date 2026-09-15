@@ -1,4 +1,4 @@
-import type { FastifyInstance, FastifyReply } from 'fastify';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
 import type { AdminRouteAccess } from '@/infrastructure/http/admin-route-access.js';
 import type { FrontendAssets } from '@/infrastructure/http/frontend-assets.js';
@@ -24,7 +24,7 @@ export function registerFrontendRoutes(
     app.get(
       path,
       { preHandler: access.requireAvailable },
-      async (_request, reply) => sendFrontendPage(reply, assets),
+      async (request, reply) => sendFrontendPage(request, reply, assets),
     );
   }
 
@@ -34,6 +34,13 @@ export function registerFrontendRoutes(
     '/favicon.svg',
     'image/svg+xml; charset=utf-8',
     assets.icon,
+  );
+  registerAsset(
+    app,
+    access,
+    '/inbox-point-social-preview.png',
+    'image/png',
+    assets.socialPreview,
   );
   registerAsset(
     app,
@@ -58,12 +65,13 @@ export function registerFrontendRoutes(
       if (path === '/api' || path.startsWith('/api/')) {
         return reply.code(404).send({ message: 'Not found' });
       }
-      return sendFrontendPage(reply, assets);
+      return sendFrontendPage(request, reply, assets);
     },
   );
 }
 
 function sendFrontendPage(
+  request: FastifyRequest,
   reply: FastifyReply,
   assets: FrontendAssets,
 ): unknown {
@@ -72,7 +80,34 @@ function sendFrontendPage(
   void reply.header('referrer-policy', 'no-referrer');
   void reply.header('x-content-type-options', 'nosniff');
   void reply.header('x-frame-options', 'DENY');
-  return reply.type('text/html; charset=utf-8').send(assets.html);
+  return reply
+    .type('text/html; charset=utf-8')
+    .send(renderFrontendHtml(request, assets.html));
+}
+
+function renderFrontendHtml(request: FastifyRequest, html: string): string {
+  return html.replaceAll('__INBOX_POINT_ORIGIN__', requestOrigin(request));
+}
+
+function requestOrigin(request: FastifyRequest): string {
+  try {
+    const origin = new URL(`${request.protocol}://${request.host}`);
+    if (origin.protocol !== 'http:' && origin.protocol !== 'https:') {
+      return '';
+    }
+    return escapeHtmlAttribute(origin.origin);
+  } catch {
+    return '';
+  }
+}
+
+function escapeHtmlAttribute(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;');
 }
 
 function registerAsset(
@@ -80,7 +115,7 @@ function registerAsset(
   access: AdminRouteAccess,
   path: string,
   contentType: string,
-  contents: string,
+  contents: string | Buffer,
 ): void {
   app.get(
     path,
