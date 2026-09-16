@@ -889,8 +889,9 @@ describe('Telegram handoff integration', () => {
       }
       return Promise.resolve(updates);
     };
-    const poller = new TelegramPoller(gateway, router, 30, {
+    const poller = new TelegramPoller(gateway, router, 30, repository, {
       retryDelay: () => Promise.resolve(),
+      retryDelayMs: 0,
     });
 
     await poller.run(abortController.signal);
@@ -978,6 +979,35 @@ describe('Telegram handoff integration', () => {
         .filter((message) => message.direction === 'operator_to_client')
         .map((message) => message.text),
     ).toEqual(['Первый ответ', 'Второй ответ']);
+  });
+
+  it('supersedes historical relay uncertainty when the client starts a newer request', async () => {
+    await router.route(createPrivateUpdate(1, 501, 'First question'));
+    const firstRequest = repository.findActiveRequest('telegram', '101');
+    if (!firstRequest) {
+      throw new Error('Expected the first request');
+    }
+    gateway.unknownOnSendNumber = gateway.sent.length + 1;
+    await router.route(createPrivateUpdate(2, 502, 'Uncertain follow-up'));
+    const incident = repository
+      .findOperatorActionIncidents(10)
+      .find((candidate) => candidate.kind === 'relay_message');
+    if (!incident) {
+      throw new Error('Expected an uncertain relay action');
+    }
+    await router.route(createOperatorUpdate(3, 601, 900, '/close'));
+
+    await router.route(createPrivateUpdate(4, 503, handoffButton));
+    await router.route(createPrivateUpdate(5, 504, 'Next question'));
+
+    const nextRequest = repository.findActiveRequest('telegram', '101');
+    expect(repository.findRequestById(firstRequest.id)?.status).toBe('closed');
+    expect(nextRequest?.id).not.toBe(firstRequest.id);
+    expect(repository.prepareOperatorAction(incident).status).toBe(
+      'superseded',
+    );
+    expect(repository.findOperatorActionIncidents(10)).toEqual([]);
+    expect(repository.getOperatorActionSummary()).toEqual({ uncertain: 0 });
   });
 
   it('delivers held replies when the client starts a newer request', async () => {

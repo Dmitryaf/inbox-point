@@ -523,7 +523,7 @@ describe('SqliteSupportRepository', () => {
     database.close();
 
     expect(() => new SqliteSupportRepository(databasePath)).toThrow(
-      'Unsupported SQLite schema version 2; expected 9',
+      'Unsupported SQLite schema version 2; expected 10',
     );
   });
 
@@ -565,7 +565,7 @@ describe('SqliteSupportRepository', () => {
 
     const verified = new DatabaseSync(databasePath, { readOnly: true });
     expect(verified.prepare('PRAGMA user_version').get()).toEqual({
-      user_version: 9,
+      user_version: 10,
     });
     expect(
       verified
@@ -658,7 +658,7 @@ describe('SqliteSupportRepository', () => {
 
     const verified = new DatabaseSync(databasePath, { readOnly: true });
     expect(verified.prepare('PRAGMA user_version').get()).toEqual({
-      user_version: 9,
+      user_version: 10,
     });
     verified.close();
   });
@@ -717,7 +717,7 @@ describe('SqliteSupportRepository', () => {
 
     const verified = new DatabaseSync(databasePath, { readOnly: true });
     expect(verified.prepare('PRAGMA user_version').get()).toEqual({
-      user_version: 9,
+      user_version: 10,
     });
     expect(
       verified
@@ -730,6 +730,128 @@ describe('SqliteSupportRepository', () => {
       prerequisite_action_id: null,
       processing_state: 'accepted',
     });
+    verified.close();
+  });
+
+  it('migrates version 9 operator actions and adds durable inbound cursors', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'inbox-point-test-'));
+    temporaryDirectories.push(directory);
+    const databasePath = join(directory, 'handoff.sqlite');
+    const action = {
+      clientMessageId: 'client-message-1',
+      createdAt: new Date('2026-09-16T12:00:00.000Z'),
+      id: 'operator-reopen:request-old:client-message-1',
+      initial: false,
+      kind: 'reopen_request' as const,
+      operatorTopicId: 'topic-1',
+      requestId: 'request-old',
+      sequence: 0,
+    };
+    const current = new SqliteSupportRepository(databasePath);
+    current.createRequest({
+      channel: 'telegram',
+      closedAt: action.createdAt,
+      conversationId: '101',
+      createdAt: action.createdAt,
+      id: 'request-old',
+      operatorTopicId: 'topic-1',
+      status: 'closed',
+    });
+    current.holdOperatorReply(
+      {
+        createdAt: action.createdAt,
+        eventSource: 'operator:telegram',
+        externalEventId: 'operator-update-1',
+        externalMessageId: 'operator-message-1',
+        id: 'held-message-1',
+        requestId: 'request-old',
+        text: 'Historical held reply',
+      },
+      action,
+    );
+    current.createRequest({
+      channel: 'telegram',
+      closedAt: new Date('2026-09-16T12:00:30.000Z'),
+      conversationId: '101',
+      createdAt: new Date('2026-09-16T12:00:30.000Z'),
+      id: 'request-middle',
+      operatorTopicId: 'topic-1',
+      status: 'closed',
+    });
+    current.close();
+
+    const oldDatabase = new DatabaseSync(databasePath);
+    oldDatabase.exec(`
+      DROP INDEX operator_actions_by_status;
+      ALTER TABLE operator_actions RENAME TO operator_actions_v10;
+      CREATE TABLE operator_actions (
+        id TEXT PRIMARY KEY,
+        request_id TEXT NOT NULL REFERENCES support_requests(id),
+        kind TEXT NOT NULL CHECK (kind IN (
+          'close_request', 'open_request', 'relay_message', 'reopen_request'
+        )),
+        client_message_id TEXT NOT NULL,
+        operator_topic_id TEXT NOT NULL,
+        sequence INTEGER NOT NULL,
+        initial INTEGER NOT NULL CHECK (initial IN (0, 1)),
+        status TEXT NOT NULL CHECK (status IN (
+          'pending', 'sending', 'sent', 'failed', 'outcome_unknown', 'abandoned'
+        )),
+        external_result_id TEXT,
+        last_error TEXT,
+        created_at TEXT NOT NULL,
+        attempt_started_at TEXT,
+        completed_at TEXT,
+        manual_resolution TEXT CHECK (manual_resolution IN (
+          'confirmed_completed', 'confirmed_not_completed',
+          'confirmed_received', 'use_web'
+        )),
+        resolved_at TEXT
+      ) STRICT;
+      INSERT INTO operator_actions SELECT * FROM operator_actions_v10;
+      DROP TABLE operator_actions_v10;
+      CREATE INDEX operator_actions_by_status
+        ON operator_actions(status, created_at, id);
+      DROP TABLE inbound_event_cursors;
+      PRAGMA user_version = 9;
+    `);
+    oldDatabase.close();
+
+    const migrated = new SqliteSupportRepository(databasePath);
+    expect(migrated.prepareOperatorAction(action).status).toBe('superseded');
+    expect(migrated.findConversationMessages('request-old', 10)).toEqual([
+      expect.objectContaining({ text: 'Historical held reply' }),
+    ]);
+    expect(migrated.findPendingDeliveries(new Date(), 10)).toEqual([
+      expect.objectContaining({ text: 'Historical held reply' }),
+    ]);
+    expect(
+      migrated.createNextRequest({
+        channel: 'telegram',
+        conversationId: '101',
+        createdAt: new Date('2026-09-16T12:01:00.000Z'),
+        id: 'request-new',
+        operatorTopicId: 'topic-1',
+        status: 'active',
+      }),
+    ).toBe(true);
+    expect(migrated.prepareOperatorAction(action).status).toBe('superseded');
+    expect(
+      migrated.findInboundEventCursor('telegram:get-updates'),
+    ).toBeUndefined();
+    migrated.close();
+
+    const verified = new DatabaseSync(databasePath, { readOnly: true });
+    expect(verified.prepare('PRAGMA user_version').get()).toEqual({
+      user_version: 10,
+    });
+    expect(
+      verified
+        .prepare(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'inbound_event_cursors'",
+        )
+        .get(),
+    ).toEqual({ name: 'inbound_event_cursors' });
     verified.close();
   });
 
@@ -1014,6 +1136,92 @@ describe('SqliteSupportRepository', () => {
     repository.close();
   });
 
+  it('supersedes historical operator uncertainty when a new request begins', () => {
+    const repository = new SqliteSupportRepository(':memory:');
+    const createdAt = new Date('2026-09-16T08:00:00.000Z');
+    repository.createRequest({
+      channel: 'telegram',
+      conversationId: '101',
+      createdAt,
+      id: 'request-old',
+      operatorTopicId: 'topic-1',
+      status: 'active',
+    });
+    const relayAction = {
+      clientMessageId: 'client-message-1',
+      createdAt,
+      id: 'operator-relay:request-old:client-message-1:0',
+      initial: false,
+      kind: 'relay_message' as const,
+      operatorTopicId: 'topic-1',
+      requestId: 'request-old',
+      sequence: 0,
+    };
+    repository.prepareOperatorAction(relayAction);
+    expect(repository.claimOperatorAction(relayAction.id, createdAt)).toBe(
+      true,
+    );
+    repository.markOperatorActionOutcomeUnknown(
+      relayAction.id,
+      'Telegram message outcome is unknown',
+    );
+    repository.closeRequest(
+      'request-old',
+      new Date('2026-09-16T08:01:00.000Z'),
+    );
+    const reopenAction = {
+      clientMessageId: 'operator-message-1',
+      createdAt: new Date('2026-09-16T08:02:00.000Z'),
+      id: 'operator-reopen:request-old:operator-message-1',
+      initial: false,
+      kind: 'reopen_request' as const,
+      operatorTopicId: 'topic-1',
+      requestId: 'request-old',
+      sequence: 0,
+    };
+    repository.prepareOperatorAction(reopenAction);
+    expect(
+      repository.claimOperatorAction(reopenAction.id, reopenAction.createdAt),
+    ).toBe(true);
+    repository.markOperatorActionOutcomeUnknown(
+      reopenAction.id,
+      'Telegram reopen outcome is unknown',
+    );
+    repository.createRequest({
+      channel: 'telegram',
+      closedAt: new Date('2026-09-16T08:02:30.000Z'),
+      conversationId: '101',
+      createdAt: new Date('2026-09-16T08:02:30.000Z'),
+      id: 'request-middle',
+      operatorTopicId: 'topic-1',
+      status: 'closed',
+    });
+    expect(repository.getOperatorActionSummary()).toEqual({ uncertain: 2 });
+
+    expect(
+      repository.createNextRequest({
+        channel: 'telegram',
+        conversationId: '101',
+        createdAt: new Date('2026-09-16T08:03:00.000Z'),
+        id: 'request-new',
+        operatorTopicId: 'topic-1',
+        status: 'active',
+      }),
+    ).toBe(true);
+
+    expect(repository.prepareOperatorAction(relayAction).status).toBe(
+      'superseded',
+    );
+    expect(repository.prepareOperatorAction(reopenAction).status).toBe(
+      'superseded',
+    );
+    expect(repository.findRequestById('request-old')?.status).toBe('closed');
+    expect(repository.findRequestById('request-new')?.status).toBe('active');
+    expect(repository.findOperatorActionIncidents(10)).toEqual([]);
+    expect(repository.getOperatorActionSummary()).toEqual({ uncertain: 0 });
+    repository.close();
+  });
+
   it('releases an interrupted event claim when the process restarts', () => {
     const directory = mkdtempSync(join(tmpdir(), 'inbox-point-test-'));
     temporaryDirectories.push(directory);
@@ -1077,6 +1285,29 @@ describe('SqliteSupportRepository', () => {
     const third = new SqliteSupportRepository(databasePath);
     expect(third.findPendingInboundEvents('vk:long-poll', 10)).toEqual([]);
     third.close();
+  });
+
+  it('persists inbound events and their cursor atomically across restart', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'inbox-point-test-'));
+    temporaryDirectories.push(directory);
+    const databasePath = join(directory, 'handoff.sqlite');
+    const event = {
+      externalEventId: 'telegram-update-41',
+      payload: '{"update_id":41}',
+      receivedAt: new Date('2026-09-16T12:00:00.000Z'),
+      source: 'telegram:get-updates',
+    };
+
+    const first = new SqliteSupportRepository(databasePath);
+    first.enqueueInboundEventsAndAdvanceCursor(event.source, [event], '42');
+    first.close();
+
+    const restored = new SqliteSupportRepository(databasePath);
+    expect(restored.findInboundEventCursor(event.source)).toBe('42');
+    expect(restored.findPendingInboundEvents(event.source, 10)).toEqual([
+      { ...event, attempts: 0 },
+    ]);
+    restored.close();
   });
 
   it('quarantines, retries, and skips failed inbound events', () => {

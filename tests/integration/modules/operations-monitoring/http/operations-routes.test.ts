@@ -197,6 +197,17 @@ describe('operations monitoring routes', () => {
       remoteAddress: '192.0.2.10',
       url: '/api/ops/inbound-events/vk-event-1/resolve',
     });
+    const resolveTelegramInboundEvent = await app.inject({
+      headers: {
+        cookie,
+        host: 'example.test',
+        origin: 'http://example.test',
+      },
+      method: 'POST',
+      payload: { resolution: 'skip', source: 'telegram:get-updates' },
+      remoteAddress: '192.0.2.10',
+      url: '/api/ops/inbound-events/telegram-update-1/resolve',
+    });
     const unauthorizedInboundEvent = await app.inject({
       method: 'POST',
       payload: { resolution: 'skip', source: 'vk:long-poll' },
@@ -251,9 +262,13 @@ describe('operations monitoring routes', () => {
     expect(crossOriginOperatorAction.statusCode).toBe(403);
     expect(resolvedOperatorActions).toEqual(['use_web:operator-relay-1']);
     expect(resolveInboundEvent.statusCode).toBe(200);
+    expect(resolveTelegramInboundEvent.statusCode).toBe(200);
     expect(unauthorizedInboundEvent.statusCode).toBe(401);
     expect(crossOriginInboundEvent.statusCode).toBe(403);
-    expect(resolvedInboundEvents).toEqual(['retry:vk:long-poll:vk-event-1']);
+    expect(resolvedInboundEvents).toEqual([
+      'retry:vk:long-poll:vk-event-1',
+      'skip:telegram:get-updates:telegram-update-1',
+    ]);
     expect(serviceControl.json()).toMatchObject({
       channels: {
         telegram: { mode: 'active' },

@@ -47,6 +47,12 @@ export interface RetentionCleanupResult {
 export interface InboundEventStore {
   completeInboundEvent(source: string, externalEventId: string): void;
   enqueueInboundEvents(events: readonly PendingInboundEvent[]): void;
+  enqueueInboundEventsAndAdvanceCursor(
+    source: string,
+    events: readonly PendingInboundEvent[],
+    nextCursor: string,
+  ): void;
+  findInboundEventCursor(source: string): string | undefined;
   findPendingInboundEvents(
     source: string,
     limit: number,

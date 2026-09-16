@@ -9,7 +9,7 @@ defineProps<{
 <template>
   <article class="status-card delivery-card">
     <div class="status-card-heading">
-      <h3>Сообщения VK</h3>
+      <h3>Входящие сообщения</h3>
       <span
         class="status-pill"
         :class="

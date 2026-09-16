@@ -17,20 +17,24 @@ defineEmits<{
     class="delivery-incidents"
     aria-labelledby="inbound-event-incidents-title"
   >
-    <h3 id="inbound-event-incidents-title">Необработанные сообщения VK</h3>
+    <h3 id="inbound-event-incidents-title">Необработанные сообщения</h3>
     <p>
-      Некоторые события VK не удалось обработать автоматически. Сначала
-      попробуйте обработать их ещё раз.
+      Некоторые входящие события не удалось обработать автоматически. Проверьте
+      сведения и выберите подходящее действие.
     </p>
     <ol>
       <li v-for="incident in incidents" :key="incident.eventId">
         <div class="delivery-incident-heading">
-          <strong>Сообщение VK требует решения</strong>
+          <strong>Сообщение {{ incident.channel }} требует решения</strong>
           <time :datetime="incident.receivedAt">
             {{ formatShortDateTime(incident.receivedAt) }}
           </time>
         </div>
-        <p>
+        <p v-if="incident.channel === 'Telegram'">
+          Перед повтором проверьте чат: предыдущий ответ бота мог быть
+          отправлен. Если он уже есть, пропустите событие.
+        </p>
+        <p v-else>
           После повторной обработки сообщение может появиться у оператора. Если
           событие точно не нужно, его можно пропустить.
         </p>

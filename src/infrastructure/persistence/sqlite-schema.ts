@@ -1,11 +1,12 @@
 import type { DatabaseSync } from 'node:sqlite';
 
-export const sqliteSchemaVersion = 9;
+export const sqliteSchemaVersion = 10;
 
 export const requiredSqliteTables = [
   'client_conversation_states',
   'conversation_messages',
   'deliveries',
+  'inbound_event_cursors',
   'inbound_events',
   'message_links',
   'operator_actions',
@@ -46,6 +47,10 @@ export function initializeSqliteSchema(database: DatabaseSync): void {
   }
   if (hasTables !== undefined && version === 8) {
     migrateConversationMessagesForHeldReplies(database);
+    version = 9;
+  }
+  if (hasTables !== undefined && version === 9) {
+    migrateSchemaNine(database);
     version = sqliteSchemaVersion;
   }
   if (hasTables !== undefined && version !== sqliteSchemaVersion) {
@@ -185,6 +190,91 @@ function migrateConversationMessagesForHeldReplies(
   }
 }
 
+function migrateSchemaNine(database: DatabaseSync): void {
+  database.exec(operatorActionsTableSql);
+  database.exec('BEGIN IMMEDIATE');
+  try {
+    database.exec(`
+      ALTER TABLE operator_actions RENAME TO operator_actions_v9;
+      DROP INDEX IF EXISTS operator_actions_by_status;
+      ${operatorActionsTableSql}
+
+      INSERT INTO operator_actions (
+        id,
+        request_id,
+        kind,
+        client_message_id,
+        operator_topic_id,
+        sequence,
+        initial,
+        status,
+        external_result_id,
+        last_error,
+        created_at,
+        attempt_started_at,
+        completed_at,
+        manual_resolution,
+        resolved_at
+      )
+      SELECT
+        id,
+        request_id,
+        kind,
+        client_message_id,
+        operator_topic_id,
+        sequence,
+        initial,
+        status,
+        external_result_id,
+        last_error,
+        created_at,
+        attempt_started_at,
+        completed_at,
+        manual_resolution,
+        resolved_at
+      FROM operator_actions_v9;
+
+      DROP TABLE operator_actions_v9;
+      UPDATE operator_actions AS action
+      SET status = 'superseded',
+          attempt_started_at = NULL,
+          manual_resolution = NULL,
+          resolved_at = COALESCE(
+            resolved_at,
+            (
+              SELECT MIN(newer.created_at)
+              FROM support_requests AS current_request
+              JOIN support_requests AS newer
+                ON newer.channel = current_request.channel
+               AND newer.external_conversation_id =
+                 current_request.external_conversation_id
+               AND newer.rowid > current_request.rowid
+              WHERE current_request.id = action.request_id
+                AND current_request.status = 'closed'
+            )
+          )
+      WHERE status IN ('pending', 'sending', 'failed', 'outcome_unknown')
+        AND EXISTS (
+          SELECT 1
+          FROM support_requests AS current_request
+          JOIN support_requests AS newer
+            ON newer.channel = current_request.channel
+           AND newer.external_conversation_id =
+             current_request.external_conversation_id
+           AND newer.rowid > current_request.rowid
+          WHERE current_request.id = action.request_id
+            AND current_request.status = 'closed'
+        );
+      ${inboundEventCursorTableSql}
+      PRAGMA user_version = 10;
+    `);
+    database.exec('COMMIT');
+  } catch (error: unknown) {
+    database.exec('ROLLBACK');
+    throw error;
+  }
+}
+
 const inboundEventRetryMigrationSql = `
   ALTER TABLE inbound_events
     ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0;
@@ -218,7 +308,8 @@ const operatorActionsTableSql = `
       'sent',
       'failed',
       'outcome_unknown',
-      'abandoned'
+      'abandoned',
+      'superseded'
     )),
     external_result_id TEXT,
     last_error TEXT,
@@ -249,6 +340,13 @@ const rememberedAdminSessionsTableSql = `
 
   CREATE INDEX IF NOT EXISTS remembered_admin_sessions_by_expiry
     ON remembered_admin_sessions(expires_at);
+`;
+
+const inboundEventCursorTableSql = `
+  CREATE TABLE IF NOT EXISTS inbound_event_cursors (
+    source TEXT PRIMARY KEY,
+    cursor TEXT NOT NULL
+  ) STRICT;
 `;
 
 const clientConversationStateTableSql = `
@@ -455,6 +553,8 @@ const initialSchemaSql = `
 
   CREATE INDEX IF NOT EXISTS inbound_events_by_status
     ON inbound_events(source, status, received_at);
+
+  ${inboundEventCursorTableSql}
 
   CREATE TABLE IF NOT EXISTS usage_events (
     id TEXT PRIMARY KEY,
