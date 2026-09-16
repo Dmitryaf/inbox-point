@@ -8,7 +8,13 @@ const actionParamsSchema = z.object({
   actionId: z.string().min(1).max(500),
 });
 const resolutionSchema = z.object({
-  resolution: z.enum(['completed', 'not_completed', 'received', 'use_web']),
+  resolution: z.enum([
+    'completed',
+    'not_completed',
+    'received',
+    'retry',
+    'use_web',
+  ]),
 });
 
 export function registerOperatorActionRoutes(
@@ -37,7 +43,7 @@ export function registerOperatorActionRoutes(
           .code(400)
           .send({ message: 'Не удалось уточнить передачу обращения.' });
       }
-      const resolved = actions.resolve(
+      const resolved = await actions.resolve(
         params.data.actionId,
         body.data.resolution,
       );

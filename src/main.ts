@@ -214,6 +214,8 @@ async function start(): Promise<void> {
     const operatorInbox = new OperatorInboxService(repository, handoffRuntime);
     const operatorActionIncidents = new OperatorActionIncidentService(
       repository,
+      undefined,
+      (actionId) => handoffRuntime.retryHeldOperatorReply(actionId),
     );
     const inboundEventIncidents = new InboundEventIncidentService(repository);
     registerOperationsRoutes(app, adminRouteAccess, {

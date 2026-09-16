@@ -11,7 +11,10 @@ import {
 } from '@/core/contracts/operator-inbox.js';
 import type { DeliveryIncidentNotifier } from '@/core/contracts/delivery-incident-notifier.js';
 import type { OperatorActionStore } from '@/core/contracts/support-repository.js';
-import type { PendingOperatorAction } from '@/core/model/operator-action.js';
+import {
+  createOperatorLifecycleAction,
+  type PendingOperatorAction,
+} from '@/core/model/operator-action.js';
 import type { FailedDelivery } from '@/core/model/support-request.js';
 import type { SupportMessage } from '@/core/model/support-message.js';
 import { createWebOperatorTopicId } from '@/core/model/operator-topic.js';
@@ -277,17 +280,12 @@ function createLifecycleAction(
   options: OperatorLifecycleActionOptions,
   createdAt: Date,
 ): PendingOperatorAction {
-  const operation = kind === 'close_request' ? 'close' : 'reopen';
-  return {
-    clientMessageId: options.externalEventId,
-    createdAt,
-    id: `operator-${operation}:${options.requestId}:${options.externalEventId}`,
-    initial: false,
+  return createOperatorLifecycleAction(
     kind,
     operatorTopicId,
-    requestId: options.requestId,
-    sequence: 0,
-  };
+    options,
+    createdAt,
+  );
 }
 
 function createRelayActionId(

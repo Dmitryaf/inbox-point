@@ -9,7 +9,6 @@ import { EmergencyOperatorInbox } from '@/core/application/emergency-operator-in
 import { HandoffService } from '@/core/application/handoff-service.js';
 import { SwitchableOperatorInbox } from '@/core/application/switchable-operator-inbox.js';
 import { DeliveryOutcomeUnknownError } from '@/core/contracts/client-channel.js';
-import { OperatorActionOutcomeUnknownError } from '@/core/contracts/operator-inbox.js';
 import {
   ClientInformationCatalog,
   faqButton,
@@ -26,6 +25,7 @@ import type {
 } from '@/infrastructure/telegram/telegram-api-client.js';
 import { TelegramClientChannel } from '@/infrastructure/telegram/telegram-client-channel.js';
 import { TelegramClientMenu } from '@/infrastructure/telegram/telegram-client-menu.js';
+import { TelegramPoller } from '@/infrastructure/telegram/telegram-poller.js';
 import { TelegramTopicsInbox } from '@/infrastructure/telegram/telegram-topics-inbox.js';
 import type { TelegramUpdate } from '@/infrastructure/telegram/telegram-types.js';
 import { TelegramUpdateRouter } from '@/infrastructure/telegram/telegram-update-router.js';
@@ -44,6 +44,7 @@ class FakeTelegramGateway implements TelegramGateway {
   public unknownNextReopen = false;
   public unknownOnSendNumber: number | undefined;
   public readonly reopened: number[] = [];
+  public reopenAttempts = 0;
   public readonly sent: SendMessageOptions[] = [];
   public readonly unavailableTopics = new Set<number>();
   private nextTopicId = 900;
@@ -108,6 +109,7 @@ class FakeTelegramGateway implements TelegramGateway {
     messageThreadId: number,
   ): Promise<void> {
     void chatId;
+    this.reopenAttempts += 1;
     if (this.failNextReopen) {
       this.failNextReopen = false;
       return Promise.reject(new Error('Temporary Telegram reopen failure'));
@@ -807,9 +809,7 @@ describe('Telegram handoff integration', () => {
     gateway.failNextReopen = true;
     const reply = createOperatorUpdate(3, 602, 900, 'Ответ после закрытия');
 
-    await expect(router.route(reply)).rejects.toThrow(
-      'Temporary Telegram reopen failure',
-    );
+    await router.route(reply);
     expect(repository.findRequestById(request.id)?.status).toBe('closed');
     expect(
       repository.findConversationMessages(request.id, 10),
@@ -817,7 +817,13 @@ describe('Telegram handoff integration', () => {
       expect.objectContaining({ text: 'Ответ после закрытия' }),
     );
 
-    await router.route(reply);
+    const incident = repository.findOperatorActionIncidents(10)[0];
+    expect(incident).toMatchObject({ heldReplyCount: 1, status: 'failed' });
+    if (!incident) {
+      throw new Error('Expected a failed reopen incident');
+    }
+
+    await handoff.retryHeldOperatorReply(incident.id);
     expect(gateway.reopened).toEqual([900]);
     expect(repository.findRequestById(request.id)?.status).toBe('active');
     expect(repository.findConversationMessages(request.id, 10)).toContainEqual(
@@ -835,9 +841,7 @@ describe('Telegram handoff integration', () => {
     gateway.unknownNextReopen = true;
     const reply = createOperatorUpdate(3, 602, 900, 'Ответ после закрытия');
 
-    await expect(router.route(reply)).rejects.toBeInstanceOf(
-      OperatorActionOutcomeUnknownError,
-    );
+    await router.route(reply);
     expect(repository.findRequestById(request.id)?.status).toBe('closed');
     expect(
       repository.findConversationMessages(request.id, 10),
@@ -856,12 +860,164 @@ describe('Telegram handoff integration', () => {
         new Date('2026-08-31T12:01:00.000Z'),
       ),
     ).toBe(true);
-    await router.route(reply);
 
     expect(repository.findRequestById(request.id)?.status).toBe('active');
     expect(repository.findConversationMessages(request.id, 10)).toContainEqual(
       expect.objectContaining({ text: 'Ответ после закрытия' }),
     );
+  });
+
+  it('advances the poller past a held reply with an uncertain reopen', async () => {
+    await router.route(createPrivateUpdate(1, 501, 'Вопрос'));
+    const request = repository.findActiveRequest('telegram', '101');
+    if (!request) {
+      throw new Error('Expected an active request');
+    }
+    await router.route(createOperatorUpdate(2, 601, 900, '/close'));
+    gateway.unknownNextReopen = true;
+    const updates = [
+      createOperatorUpdate(100, 602, 900, 'Сохранённый ответ'),
+      createPrivateUpdate(101, 701, 'Новый вопрос', 202),
+    ];
+    const offsets: (number | undefined)[] = [];
+    const abortController = new AbortController();
+    gateway.getUpdates = (options) => {
+      offsets.push(options.offset);
+      if (options.offset === 102) {
+        abortController.abort();
+        return Promise.resolve([]);
+      }
+      return Promise.resolve(updates);
+    };
+    const poller = new TelegramPoller(gateway, router, 30, {
+      retryDelay: () => Promise.resolve(),
+    });
+
+    await poller.run(abortController.signal);
+
+    expect(offsets).toEqual([undefined, 102]);
+    expect(repository.findRequestById(request.id)?.status).toBe('closed');
+    expect(repository.findOperatorActionIncidents(10)[0]).toMatchObject({
+      heldReplyCount: 1,
+      status: 'outcome_unknown',
+    });
+    expect(repository.findActiveRequest('telegram', '202')).toBeDefined();
+  });
+
+  it('deduplicates a repeated held-reply update', async () => {
+    await router.route(createPrivateUpdate(1, 501, 'Вопрос'));
+    const request = repository.findActiveRequest('telegram', '101');
+    if (!request) {
+      throw new Error('Expected an active request');
+    }
+    await deliveryWorker.processPending();
+    await router.route(createOperatorUpdate(2, 601, 900, '/close'));
+    gateway.unknownNextReopen = true;
+    const reply = createOperatorUpdate(3, 602, 900, 'Сохранённый ответ');
+
+    await router.route(reply);
+    await router.route(reply);
+
+    const incident = repository.findOperatorActionIncidents(10)[0];
+    expect(incident).toMatchObject({ heldReplyCount: 1 });
+    expect(gateway.reopenAttempts).toBe(1);
+    if (!incident) {
+      throw new Error('Expected an uncertain reopen incident');
+    }
+    expect(
+      repository.resolveOperatorLifecycleAction(
+        incident.id,
+        'completed',
+        new Date('2026-08-31T12:01:00.000Z'),
+      ),
+    ).toBe(true);
+    expect(
+      repository
+        .findConversationMessages(request.id, 10)
+        .filter((message) => message.text === 'Сохранённый ответ'),
+    ).toHaveLength(1);
+    expect(repository.getDeliverySummary()).toMatchObject({ pending: 1 });
+  });
+
+  it('releases two held replies in their original order', async () => {
+    await router.route(createPrivateUpdate(1, 501, 'Вопрос'));
+    const request = repository.findActiveRequest('telegram', '101');
+    if (!request) {
+      throw new Error('Expected an active request');
+    }
+    await deliveryWorker.processPending();
+    await router.route(createOperatorUpdate(2, 601, 900, '/close'));
+    gateway.unknownNextReopen = true;
+
+    await router.route(createOperatorUpdate(3, 602, 900, 'Первый ответ'));
+    await router.route(createOperatorUpdate(4, 603, 900, 'Второй ответ'));
+
+    const incident = repository.findOperatorActionIncidents(10)[0];
+    expect(incident).toMatchObject({ heldReplyCount: 2 });
+    expect(gateway.reopenAttempts).toBe(1);
+    if (!incident) {
+      throw new Error('Expected an uncertain reopen incident');
+    }
+    repository.resolveOperatorLifecycleAction(
+      incident.id,
+      'completed',
+      new Date('2026-08-31T12:01:00.000Z'),
+    );
+    await deliveryWorker.processPending();
+    await deliveryWorker.processPending();
+
+    expect(
+      gateway.sent
+        .filter((message) => message.chatId === 101)
+        .map((message) => message.text)
+        .slice(-2),
+    ).toEqual(['Первый ответ', 'Второй ответ']);
+    expect(
+      repository
+        .findConversationMessages(request.id, 10)
+        .filter((message) => message.direction === 'operator_to_client')
+        .map((message) => message.text),
+    ).toEqual(['Первый ответ', 'Второй ответ']);
+  });
+
+  it('holds a reply when the closed Telegram topic is missing', async () => {
+    await router.route(createPrivateUpdate(1, 501, 'Вопрос'));
+    const request = repository.findActiveRequest('telegram', '101');
+    if (!request) {
+      throw new Error('Expected an active request');
+    }
+    await router.route(createOperatorUpdate(2, 601, 900, '/close'));
+    gateway.unavailableTopics.add(900);
+
+    await router.route(
+      createOperatorUpdate(3, 602, 900, 'Ответ в удалённой теме'),
+    );
+    await router.route(createPrivateUpdate(4, 701, 'Новый вопрос', 202));
+
+    expect(repository.findRequestById(request.id)?.status).toBe('closed');
+    const incident = repository.findOperatorActionIncidents(10)[0];
+    expect(incident).toMatchObject({
+      heldReplyCount: 1,
+      status: 'failed',
+    });
+    expect(repository.findActiveRequest('telegram', '202')).toBeDefined();
+    if (!incident) {
+      throw new Error('Expected a failed reopen incident');
+    }
+    expect(
+      repository.moveHeldOperatorReplyToWeb(
+        incident.id,
+        new Date('2026-08-31T12:01:00.000Z'),
+      ),
+    ).toBe(true);
+    expect(repository.findRequestById(request.id)).toMatchObject({
+      operatorTopicId: `web:${request.id}`,
+      status: 'active',
+    });
+    expect(repository.findConversationMessages(request.id, 10)).toContainEqual(
+      expect.objectContaining({ text: 'Ответ в удалённой теме' }),
+    );
+    expect(repository.findOperatorActionIncident(incident.id)).toBeUndefined();
   });
 
   it('retries a held reply when uncertain reopen did not complete', async () => {
@@ -874,9 +1030,7 @@ describe('Telegram handoff integration', () => {
     gateway.unknownNextReopen = true;
     const reply = createOperatorUpdate(3, 602, 900, 'Ответ после закрытия');
 
-    await expect(router.route(reply)).rejects.toBeInstanceOf(
-      OperatorActionOutcomeUnknownError,
-    );
+    await router.route(reply);
     const incident = repository.findOperatorActionIncidents(10)[0];
     if (!incident) {
       throw new Error('Expected an uncertain reopen incident');
@@ -889,7 +1043,11 @@ describe('Telegram handoff integration', () => {
       ),
     ).toBe(true);
 
-    await router.route(reply);
+    expect(repository.findOperatorActionIncident(incident.id)).toMatchObject({
+      heldReplyCount: 1,
+      status: 'abandoned',
+    });
+    await handoff.retryHeldOperatorReply(incident.id);
 
     expect(gateway.reopened).toEqual([900]);
     expect(repository.findRequestById(request.id)?.status).toBe('active');

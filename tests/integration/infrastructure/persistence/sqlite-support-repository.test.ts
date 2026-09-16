@@ -523,7 +523,7 @@ describe('SqliteSupportRepository', () => {
     database.close();
 
     expect(() => new SqliteSupportRepository(databasePath)).toThrow(
-      'Unsupported SQLite schema version 2; expected 8',
+      'Unsupported SQLite schema version 2; expected 9',
     );
   });
 
@@ -565,7 +565,7 @@ describe('SqliteSupportRepository', () => {
 
     const verified = new DatabaseSync(databasePath, { readOnly: true });
     expect(verified.prepare('PRAGMA user_version').get()).toEqual({
-      user_version: 8,
+      user_version: 9,
     });
     expect(
       verified
@@ -658,7 +658,77 @@ describe('SqliteSupportRepository', () => {
 
     const verified = new DatabaseSync(databasePath, { readOnly: true });
     expect(verified.prepare('PRAGMA user_version').get()).toEqual({
-      user_version: 8,
+      user_version: 9,
+    });
+    verified.close();
+  });
+
+  it('migrates version 8 messages without treating them as held replies', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'inbox-point-test-'));
+    temporaryDirectories.push(directory);
+    const databasePath = join(directory, 'handoff.sqlite');
+    const oldDatabase = new DatabaseSync(databasePath);
+    oldDatabase.exec(`
+      CREATE TABLE support_requests (
+        id TEXT PRIMARY KEY,
+        channel TEXT NOT NULL CHECK (channel IN ('telegram', 'vk')),
+        external_conversation_id TEXT NOT NULL,
+        client_display_name TEXT,
+        operator_topic_id TEXT NOT NULL,
+        web_owned_at TEXT,
+        status TEXT NOT NULL CHECK (status IN ('active', 'closed')),
+        created_at TEXT NOT NULL,
+        closed_at TEXT
+      ) STRICT;
+      CREATE TABLE conversation_messages (
+        id TEXT PRIMARY KEY,
+        request_id TEXT NOT NULL REFERENCES support_requests(id),
+        direction TEXT NOT NULL CHECK (
+          direction IN ('client_to_operator', 'operator_to_client')
+        ),
+        external_message_id TEXT NOT NULL,
+        sender_name TEXT,
+        text TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        UNIQUE (request_id, direction, external_message_id)
+      ) STRICT;
+      INSERT INTO support_requests (
+        id, channel, external_conversation_id, operator_topic_id, status,
+        created_at
+      ) VALUES (
+        'request-1', 'telegram', '101', '900', 'active',
+        '2026-09-16T12:00:00.000Z'
+      );
+      INSERT INTO conversation_messages (
+        id, request_id, direction, external_message_id, text, created_at
+      ) VALUES (
+        'message-1', 'request-1', 'operator_to_client', '600',
+        'Старый ответ', '2026-09-16T12:00:01.000Z'
+      );
+      PRAGMA user_version = 8;
+    `);
+    oldDatabase.close();
+
+    const migrated = new SqliteSupportRepository(databasePath);
+    expect(migrated.findConversationMessages('request-1', 10)).toEqual([
+      expect.objectContaining({ id: 'message-1', text: 'Старый ответ' }),
+    ]);
+    migrated.close();
+
+    const verified = new DatabaseSync(databasePath, { readOnly: true });
+    expect(verified.prepare('PRAGMA user_version').get()).toEqual({
+      user_version: 9,
+    });
+    expect(
+      verified
+        .prepare(
+          `SELECT processing_state, prerequisite_action_id
+           FROM conversation_messages WHERE id = 'message-1'`,
+        )
+        .get(),
+    ).toEqual({
+      prerequisite_action_id: null,
+      processing_state: 'accepted',
     });
     verified.close();
   });

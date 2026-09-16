@@ -5,6 +5,7 @@ import { DatabaseSync } from 'node:sqlite';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { createOperatorLifecycleAction } from '@/core/model/operator-action.js';
 import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-support-repository.js';
 
 const temporaryDirectories: string[] = [];
@@ -78,13 +79,31 @@ describe('SQLite closed-request retention', () => {
     createRequest(repository, 'recent', 'closed', '2026-09-05', 'Recent');
     createRequest(repository, 'pending', 'closed', '2026-08-20', 'Pending');
     createRequest(repository, 'failed', 'closed', '2026-08-20', 'Failed');
+    createRequest(repository, 'held', 'closed', '2026-08-20', 'Held');
 
-    for (const requestId of ['active', 'recent', 'pending', 'failed']) {
+    for (const requestId of ['active', 'recent', 'pending', 'failed', 'held']) {
       recordMessage(repository, requestId, 'client', `Message ${requestId}`);
     }
     enqueueDelivery(repository, 'pending', 'Pending answer');
     enqueueDelivery(repository, 'failed', 'Failed answer');
     repository.markDeliveryFailed('delivery-failed', 'Permanent failure');
+    repository.holdOperatorReply(
+      {
+        createdAt: new Date('2026-08-20T12:03:00.000Z'),
+        eventSource: 'operator:telegram',
+        externalEventId: 'held-update',
+        externalMessageId: 'held-message',
+        id: 'held-record',
+        requestId: 'held',
+        text: 'Held answer',
+      },
+      createOperatorLifecycleAction(
+        'reopen_request',
+        'topic-held',
+        { externalEventId: 'held-update', requestId: 'held' },
+        new Date('2026-08-20T12:03:00.000Z'),
+      ),
+    );
 
     expect(
       repository.purgeClosedConversationContent(
@@ -95,7 +114,7 @@ describe('SQLite closed-request retention', () => {
       eligibleRequests: 0,
       messagesDeleted: 0,
       requestsAnonymized: 0,
-      skippedRequests: 2,
+      skippedRequests: 3,
     });
 
     for (const requestId of ['active', 'recent', 'pending', 'failed']) {
@@ -106,6 +125,7 @@ describe('SQLite closed-request retention', () => {
         'displayName',
       );
     }
+    expect(repository.findRequestById('held')).toHaveProperty('displayName');
     repository.close();
   });
 });

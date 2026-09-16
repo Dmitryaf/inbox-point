@@ -47,6 +47,11 @@ function confirmResolution(resolution: OperatorActionResolution): boolean {
       'Открыть обращение на этой странице? Ответы из прежней темы Telegram больше не будут приниматься.',
     );
   }
+  if (resolution === 'retry') {
+    return window.confirm(
+      'Повторить открытие Telegram-темы? Сохранённый ответ будет отправлен автоматически после успешного открытия.',
+    );
+  }
   return window.confirm(
     resolution === 'completed'
       ? 'Подтвердить, что состояние темы в Telegram изменилось? Состояние обращения будет синхронизировано.'
@@ -60,6 +65,9 @@ function resolutionNotice(resolution: OperatorActionResolution): string {
   }
   if (resolution === 'use_web') {
     return 'Обращение открыто на этой странице.';
+  }
+  if (resolution === 'retry') {
+    return 'Повторное открытие темы запущено. Сохранённый ответ не нужно отправлять ещё раз.';
   }
   return resolution === 'completed'
     ? 'Состояние обращения синхронизировано с Telegram.'

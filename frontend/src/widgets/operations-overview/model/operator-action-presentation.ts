@@ -13,12 +13,24 @@ export interface OperatorRelayIncidentListProps {
 }
 
 export function actionButtonLabel(isPending: boolean, label: string): string {
-  return isPending ? 'Сохраняем…' : label;
+  return isPending ? 'Выполняем…' : label;
+}
+
+export function canRetryHeldReply(incident: OperatorRelayIncident): boolean {
+  return (
+    incident.action === 'reopen_request' &&
+    incident.heldReplyCount > 0 &&
+    (incident.status === 'failed' || incident.status === 'abandoned')
+  );
 }
 
 export function canUseWeb(incident: OperatorRelayIncident): boolean {
   return (
-    incident.action === 'open_request' || incident.action === 'relay_message'
+    incident.action === 'open_request' ||
+    incident.action === 'relay_message' ||
+    (incident.action === 'reopen_request' &&
+      incident.heldReplyCount > 0 &&
+      (incident.status === 'failed' || incident.status === 'abandoned'))
   );
 }
 

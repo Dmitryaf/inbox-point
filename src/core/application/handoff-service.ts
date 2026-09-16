@@ -10,6 +10,7 @@ import {
 } from '@/core/contracts/operator-inbox.js';
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
 import type { OperatorMessage } from '@/core/model/operator-message.js';
+import { createOperatorLifecycleAction } from '@/core/model/operator-action.js';
 import {
   createWebOperatorTopicId,
   isWebOperatorTopic,
@@ -493,9 +494,7 @@ export class HandoffService {
     message: OperatorMessage,
     source: string,
   ): Promise<void> {
-    const request = this.repository.findRequestByTopicId(
-      message.operatorTopicId,
-    );
+    let request = this.repository.findRequestByTopicId(message.operatorTopicId);
 
     if (!request) {
       if (source === 'operator:web') {
@@ -558,17 +557,68 @@ export class HandoffService {
       if (!this.canReopenRequest(request)) {
         return;
       }
-      await this.operatorInbox.reopenRequest(request.operatorTopicId, {
-        externalEventId,
-        requestId: request.id,
-      });
-      this.repository.reopenRequest(request.id);
-      this.repository.confirmOperatorLifecycleAction(
-        request.id,
+      const reopenAction = createOperatorLifecycleAction(
         'reopen_request',
         request.operatorTopicId,
-        this.clock(),
+        { externalEventId, requestId: request.id },
+        occurredAt,
       );
+      const heldBy = this.repository.holdOperatorReply(
+        {
+          createdAt: message.receivedAt,
+          eventSource: source,
+          externalEventId,
+          externalMessageId: message.externalMessageId,
+          id: `held-operator-message:${source}:${externalEventId}`,
+          requestId: request.id,
+          text: message.text,
+        },
+        reopenAction,
+      );
+      if (!heldBy) {
+        const current = this.repository.findRequestById(request.id);
+        if (current?.status !== 'active') {
+          return;
+        }
+        request = current;
+      } else {
+        if (heldBy.status === 'sent') {
+          if (
+            !this.repository.completeHeldOperatorReopen(heldBy.id, this.clock())
+          ) {
+            throw new Error('Held operator reply could not be completed');
+          }
+          return;
+        }
+        if (
+          heldBy.id !== reopenAction.id ||
+          heldBy.status === 'outcome_unknown' ||
+          heldBy.status === 'sending' ||
+          heldBy.status === 'abandoned'
+        ) {
+          return;
+        }
+        try {
+          await this.operatorInbox.reopenRequest(request.operatorTopicId, {
+            externalEventId,
+            requestId: request.id,
+          });
+        } catch (error: unknown) {
+          if (!(error instanceof OperatorActionOutcomeUnknownError)) {
+            this.repository.markOperatorActionFailed(
+              heldBy.id,
+              safeErrorMessage(error),
+            );
+          }
+          return;
+        }
+        if (
+          !this.repository.completeHeldOperatorReopen(heldBy.id, this.clock())
+        ) {
+          throw new Error('Held operator reply could not be completed');
+        }
+        return;
+      }
     } else {
       this.repository.rejectOperatorLifecycleActionOutcome(
         request.id,
@@ -603,6 +653,63 @@ export class HandoffService {
       requestId: request.id,
       text: message.text,
     });
+  }
+
+  public async retryHeldOperatorReply(actionId: string): Promise<boolean> {
+    const incident = this.repository.findOperatorActionIncident(actionId);
+    if (
+      incident?.kind !== 'reopen_request' ||
+      incident.heldReplyCount === 0 ||
+      (incident.status !== 'failed' && incident.status !== 'abandoned')
+    ) {
+      return false;
+    }
+    const request = this.repository.findRequestById(incident.requestId);
+    if (!request) {
+      return false;
+    }
+
+    return this.conversationMutationQueue.run(
+      createConversationKey(request),
+      async () => {
+        const currentIncident =
+          this.repository.findOperatorActionIncident(actionId);
+        const currentRequest = this.repository.findRequestById(
+          incident.requestId,
+        );
+        if (
+          currentIncident?.kind !== 'reopen_request' ||
+          currentRequest?.status !== 'closed' ||
+          currentIncident.heldReplyCount === 0 ||
+          (currentIncident.status !== 'failed' &&
+            currentIncident.status !== 'abandoned') ||
+          !this.canReopenRequest(currentRequest)
+        ) {
+          return false;
+        }
+        try {
+          await this.operatorInbox.reopenRequest(
+            currentIncident.operatorTopicId,
+            {
+              externalEventId: currentIncident.clientMessageId,
+              requestId: currentIncident.requestId,
+            },
+          );
+        } catch (error: unknown) {
+          if (!(error instanceof OperatorActionOutcomeUnknownError)) {
+            this.repository.markOperatorActionFailed(
+              currentIncident.id,
+              safeErrorMessage(error),
+            );
+          }
+          return true;
+        }
+        return this.repository.completeHeldOperatorReopen(
+          currentIncident.id,
+          this.clock(),
+        );
+      },
+    );
   }
 
   private recordWebTakeover(
@@ -802,4 +909,10 @@ function parseOperatorCommand(text: string): 'close' | 'reopen' | undefined {
     return 'reopen';
   }
   return undefined;
+}
+
+function safeErrorMessage(error: unknown): string {
+  return error instanceof Error
+    ? error.message
+    : 'Unknown operator action error';
 }

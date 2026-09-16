@@ -7,30 +7,31 @@ import OperationsDashboardPage from '@frontend/pages/operations-dashboard/ui/Ope
 import { requestUrl, response } from '@test/frontend/support/fake-response';
 import { attentionOperationsStatus } from './operations-status-fixture';
 
-describe('OperationsDashboardPage operator relay resolution', () => {
-  it('offers manual verification without an automatic Telegram retry', async () => {
+describe('OperationsDashboardPage held operator reply', () => {
+  it('explains the saved reply and offers a safe topic retry', async () => {
     const status = attentionOperationsStatus();
     status.deliveries.incidents = [];
     status.operatorRelays = {
       incidents: [
         {
-          action: 'relay_message',
+          action: 'reopen_request',
           channel: 'Telegram',
-          clientMessageId: 'client-message-1',
+          clientMessageId: 'update-held',
           confirmable: true,
-          createdAt: '2026-09-06T12:00:00.000Z',
-          heldReplyCount: 0,
-          id: 'operator-relay-1',
-          initial: true,
+          createdAt: '2026-09-16T12:00:00.000Z',
+          heldReplyCount: 1,
+          id: 'operator-reopen:request-1:update-held',
+          initial: false,
           operatorTopicId: '900',
-          reason: 'Telegram мог принять сообщение клиента.',
+          reason:
+            'Открыть Telegram-тему не удалось. Ответ сохранён, повторно отправлять его не нужно. Можно повторить открытие или продолжить обращение здесь.',
           requestId: 'request-1',
-          sequence: 1,
-          status: 'outcome_unknown',
+          sequence: 0,
+          status: 'failed',
         },
       ],
       state: 'uncertain',
-      uncertain: 1,
+      uncertain: 0,
     };
     const fetchMock = vi.fn((input: RequestInfo | URL) => {
       const url = requestUrl(input);
@@ -48,7 +49,11 @@ describe('OperationsDashboardPage operator relay resolution', () => {
           }),
         );
       }
-      if (url.endsWith('/operator-actions/operator-relay-1/resolve')) {
+      if (
+        url.endsWith(
+          '/operator-actions/operator-reopen%3Arequest-1%3Aupdate-held/resolve',
+        )
+      ) {
         return Promise.resolve(response({ resolved: true }));
       }
       return Promise.resolve(response(status));
@@ -61,23 +66,25 @@ describe('OperationsDashboardPage operator relay resolution', () => {
     });
     await flushPromises();
 
-    expect(wrapper.text()).toContain('Новые обращения');
-    expect(wrapper.text()).not.toContain('Повторить отправку');
+    expect(wrapper.text()).toContain('Ответ сохранён');
+    expect(wrapper.text()).toContain('повторно отправлять его не нужно');
+    expect(wrapper.text()).toContain('продолжить обращение здесь');
+    expect(wrapper.text()).toContain('Открыть обращение здесь');
     await wrapper
       .findAll('button')
-      .find((button) => button.text() === 'Сообщение есть в Telegram')
+      .find((button) => button.text() === 'Повторить открытие темы')
       ?.trigger('click');
     await flushPromises();
 
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/ops/operator-actions/operator-relay-1/resolve',
+      '/api/ops/operator-actions/operator-reopen%3Arequest-1%3Aupdate-held/resolve',
       expect.objectContaining({
-        body: JSON.stringify({ resolution: 'received' }),
+        body: JSON.stringify({ resolution: 'retry' }),
         method: 'POST',
       }),
     );
     expect(wrapper.text()).toContain(
-      'Подтверждено: сообщение есть в Telegram.',
+      'Сохранённый ответ не нужно отправлять ещё раз.',
     );
     wrapper.unmount();
   });

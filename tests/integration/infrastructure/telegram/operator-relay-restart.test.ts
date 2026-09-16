@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { HandoffService } from '@/core/application/handoff-service.js';
+import { DeliveryOutcomeUnknownError } from '@/core/contracts/client-channel.js';
 import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-support-repository.js';
 import type { TelegramGateway } from '@/infrastructure/telegram/telegram-api-client.js';
 import { TelegramTopicsInbox } from '@/infrastructure/telegram/telegram-topics-inbox.js';
@@ -72,6 +73,61 @@ describe('operator relay restart recovery', () => {
       '900',
     );
     expect(afterRestart.getOperatorActionSummary()).toEqual({ uncertain: 1 });
+    afterRestart.close();
+  });
+
+  it('keeps a held operator reply across restart until reopen is resolved', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'inbox-point-test-'));
+    temporaryDirectories.push(directory);
+    const databasePath = join(directory, 'handoff.sqlite');
+    const createdAt = new Date('2026-09-16T12:00:00.000Z');
+    const beforeRestart = new SqliteSupportRepository(databasePath);
+    beforeRestart.createRequest({
+      channel: 'telegram',
+      closedAt: createdAt,
+      conversationId: '101',
+      createdAt,
+      id: 'request-held',
+      operatorTopicId: '900',
+      status: 'closed',
+    });
+    const gateway = createGateway(() => Promise.resolve({ messageId: 701 }));
+    gateway.reopenForumTopic = () =>
+      Promise.reject(new DeliveryOutcomeUnknownError('telegram'));
+    const handoff = new HandoffService({
+      operatorInbox: new TelegramTopicsInbox(gateway, -1_001, beforeRestart),
+      repository: beforeRestart,
+    });
+
+    await handoff.handleOperatorMessage('update-held', {
+      externalMessageId: 'operator-message-held',
+      operatorTopicId: '900',
+      receivedAt: createdAt,
+      text: 'Сохранённый ответ',
+    });
+    expect(beforeRestart.findOperatorActionIncidents(10)[0]).toMatchObject({
+      heldReplyCount: 1,
+      status: 'outcome_unknown',
+    });
+    beforeRestart.close();
+
+    const afterRestart = new SqliteSupportRepository(databasePath);
+    const incident = afterRestart.findOperatorActionIncidents(10)[0];
+    if (!incident) {
+      throw new Error('Expected the held reply incident after restart');
+    }
+    expect(
+      afterRestart.resolveOperatorLifecycleAction(
+        incident.id,
+        'completed',
+        new Date('2026-09-16T12:01:00.000Z'),
+      ),
+    ).toBe(true);
+    expect(afterRestart.findRequestById('request-held')?.status).toBe('active');
+    expect(afterRestart.findConversationMessages('request-held', 10)).toEqual([
+      expect.objectContaining({ text: 'Сохранённый ответ' }),
+    ]);
+    expect(afterRestart.getDeliverySummary()).toMatchObject({ pending: 1 });
     afterRestart.close();
   });
 });

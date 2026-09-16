@@ -29,6 +29,8 @@ class FakeOperatorInbox implements OperatorInbox {
     operatorTopicId: string;
   }[] = [];
 
+  public constructor(private readonly actions: SqliteSupportRepository) {}
+
   public async closeRequest(
     operatorTopicId: string,
     options: OperatorLifecycleActionOptions,
@@ -89,6 +91,15 @@ class FakeOperatorInbox implements OperatorInbox {
     if (this.reopenError) {
       return Promise.reject(this.reopenError);
     }
+    const actionId = `operator-reopen:${options.requestId}:${options.externalEventId}`;
+    const completedAt = new Date('2026-08-31T12:00:00.000Z');
+    if (this.actions.claimOperatorAction(actionId, completedAt)) {
+      this.actions.completeOperatorAction(
+        actionId,
+        operatorTopicId,
+        completedAt,
+      );
+    }
     return Promise.resolve();
   }
 }
@@ -100,8 +111,8 @@ describe('HandoffService', () => {
 
   beforeEach(() => {
     let nextId = 1;
-    inbox = new FakeOperatorInbox();
     repository = new SqliteSupportRepository(':memory:');
+    inbox = new FakeOperatorInbox(repository);
     service = new HandoffService({
       clock: () => new Date('2026-08-31T12:00:00.000Z'),
       createId: () => `id-${nextId++}`,

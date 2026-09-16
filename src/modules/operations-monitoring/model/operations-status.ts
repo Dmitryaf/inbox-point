@@ -68,12 +68,15 @@ export interface OperatorRelayIncident {
   clientMessageId: string;
   confirmable: boolean;
   createdAt: string;
+  heldReplyCount: number;
   id: string;
   initial: boolean;
   operatorTopicId: string;
   reason: string;
   requestId: string;
   sequence: number;
+  status:
+    'abandoned' | 'failed' | 'outcome_unknown' | 'pending' | 'sending' | 'sent';
 }
 
 export interface OutboundDeliveryOperationsStatus {

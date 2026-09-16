@@ -76,7 +76,7 @@ export interface OperatorRelayOperationsStatus {
 }
 
 export type OperatorActionResolution =
-  'completed' | 'not_completed' | 'received' | 'use_web';
+  'completed' | 'not_completed' | 'received' | 'retry' | 'use_web';
 
 export interface OperatorRelayIncident {
   action: 'close_request' | 'open_request' | 'relay_message' | 'reopen_request';
@@ -84,12 +84,15 @@ export interface OperatorRelayIncident {
   clientMessageId: string;
   confirmable: boolean;
   createdAt: string;
+  heldReplyCount: number;
   id: string;
   initial: boolean;
   operatorTopicId: string;
   reason: string;
   requestId: string;
   sequence: number;
+  status:
+    'abandoned' | 'failed' | 'outcome_unknown' | 'pending' | 'sending' | 'sent';
 }
 
 export interface OutboundDeliveryOperationsStatus {

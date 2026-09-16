@@ -4,6 +4,7 @@ export function recoverInterruptedSqliteWork(database: DatabaseSync): void {
   releaseInterruptedEvents(database);
   markInterruptedDeliveriesUnknown(database);
   markInterruptedOperatorActionsUnknown(database);
+  markUnattemptedHeldReopensRetryable(database);
 }
 
 function releaseInterruptedEvents(database: DatabaseSync): void {
@@ -36,6 +37,24 @@ function markInterruptedOperatorActionsUnknown(database: DatabaseSync): void {
            last_error = 'Operator action was interrupted after the attempt started',
            attempt_started_at = NULL
        WHERE status = 'sending'`,
+    )
+    .run();
+}
+
+function markUnattemptedHeldReopensRetryable(database: DatabaseSync): void {
+  database
+    .prepare(
+      `UPDATE operator_actions
+       SET status = 'failed',
+           last_error = 'Opening the Telegram topic was interrupted before the attempt started'
+       WHERE kind = 'reopen_request'
+         AND status = 'pending'
+         AND EXISTS (
+           SELECT 1
+           FROM conversation_messages AS held
+           WHERE held.prerequisite_action_id = operator_actions.id
+             AND held.processing_state = 'held'
+         )`,
     )
     .run();
 }

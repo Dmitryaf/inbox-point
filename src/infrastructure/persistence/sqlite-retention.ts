@@ -10,6 +10,12 @@ const eligibleRequestWhere = `request.status = 'closed'
     FROM deliveries AS unfinished
     WHERE unfinished.request_id = request.id
       AND unfinished.status != 'sent'
+  )
+  AND NOT EXISTS (
+    SELECT 1
+    FROM conversation_messages AS held
+    WHERE held.request_id = request.id
+      AND held.processing_state = 'held'
   )`;
 
 export function purgeClosedConversationContent(
@@ -32,7 +38,19 @@ export function purgeClosedConversationContent(
        FROM deliveries AS unfinished
        WHERE unfinished.request_id = request.id
          AND unfinished.status != 'sent'
+     )
+     OR (
+       request.status = 'closed'
+       AND request.closed_at IS NOT NULL
+       AND request.closed_at <= ?
+       AND EXISTS (
+         SELECT 1
+         FROM conversation_messages AS held
+         WHERE held.request_id = request.id
+           AND held.processing_state = 'held'
+       )
      )`,
+    cutoff,
     cutoff,
   );
 
@@ -87,7 +105,7 @@ export function purgeClosedConversationContent(
 function countRequests(
   database: DatabaseSync,
   whereClause: string,
-  cutoff: string,
+  ...parameters: readonly string[]
 ): number {
   const row = database
     .prepare(
@@ -95,7 +113,7 @@ function countRequests(
        FROM support_requests AS request
        WHERE ${whereClause}`,
     )
-    .get(cutoff) as { count: number };
+    .get(...parameters) as { count: number };
 
   return row.count;
 }

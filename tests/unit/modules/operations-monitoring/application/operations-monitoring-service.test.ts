@@ -193,6 +193,7 @@ describe('OperationsMonitoringService', () => {
           confirmable: true,
           conversationId: 'private-conversation',
           createdAt: new Date('2026-09-04T12:01:00.000Z'),
+          heldReplyCount: 0,
           id: 'operator-relay:request-1:client-message-1:1',
           initial: true,
           kind: 'relay_message',

@@ -29,6 +29,16 @@ export interface ConversationMessage {
   text: string;
 }
 
+export interface HeldOperatorReply {
+  createdAt: Date;
+  eventSource: string;
+  externalEventId: string;
+  externalMessageId: string;
+  id: string;
+  requestId: string;
+  text: string;
+}
+
 export type MessageDirection = 'client_to_operator' | 'operator_to_client';
 
 export interface MessageLink {
