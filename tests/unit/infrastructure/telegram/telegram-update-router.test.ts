@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { clientMessages } from '@/core/application/client-messages.js';
 import type { OperatorMessage } from '@/core/model/operator-message.js';
 import type { SupportMessage } from '@/core/model/support-message.js';
 
@@ -245,12 +246,12 @@ describe('TelegramUpdateRouter', () => {
     expect(notifier.messages).toEqual([
       {
         chatId: 101,
-        text: 'Сейчас можно отправить только текст. Напишите вопрос отдельным текстовым сообщением.',
+        text: clientMessages.unsupportedContent,
       },
       {
         chatId: -1_001,
         messageThreadId: 900,
-        text: 'Это сообщение не отправлено: сейчас поддерживаются только текстовые ответы.',
+        text: 'Клиент не получил это сообщение. Отправьте ответ обычным текстом.',
       },
     ]);
   });

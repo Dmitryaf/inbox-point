@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { DeliveryWorker } from '@/core/application/delivery-worker.js';
 import { HandoffService } from '@/core/application/handoff-service.js';
+import { clientMessages } from '@/core/application/client-messages.js';
 import {
   ClientInformationCatalog,
   faqButton,
@@ -187,7 +188,7 @@ describe('VK handoff integration', () => {
 
     expect(gateway.sent).toHaveLength(2);
     expect(gateway.sent[0]?.peerId).toBe(101);
-    expect(gateway.sent[0]?.text).toBe('Вопрос отправлен.');
+    expect(gateway.sent[0]?.text).toBe(clientMessages.handoffSent);
     expect(gateway.sent[0]?.randomId).toBeGreaterThan(0);
     expect(gateway.sent[0]?.keyboard).toMatchObject({
       inline: false,
@@ -303,9 +304,7 @@ describe('VK handoff integration', () => {
     );
 
     expect(repository.isAwaitingClientQuestion('vk', '101')).toBe(false);
-    expect(gateway.sent.at(-1)?.text).toContain(
-      'Здесь можно посмотреть основную информацию',
-    );
+    expect(gateway.sent.at(-1)?.text).toBe(clientMessages.menuOpened);
     expect(
       gateway.sent
         .at(-1)
@@ -359,9 +358,7 @@ describe('VK handoff integration', () => {
 
     expect(inbox.opened).toHaveLength(0);
     expect(gateway.sent).toHaveLength(1);
-    expect(gateway.sent[0]?.text).toContain(
-      'бот временно не принимает новые обращения',
-    );
+    expect(gateway.sent[0]?.text).toBe(clientMessages.pausedIntake);
   });
 
   it('keeps configured VK information available while intake is paused', async () => {
@@ -480,9 +477,7 @@ describe('VK handoff integration', () => {
     expect(inbox.relayed.map((message) => message.text)).toEqual([
       'Первый вопрос',
     ]);
-    expect(gateway.sent.at(-1)?.text).toBe(
-      'Просто напишите сообщение, чтобы продолжить разговор.',
-    );
+    expect(gateway.sent.at(-1)?.text).toBe(clientMessages.questionPrompt);
     expect(
       gateway.sent
         .at(-1)
@@ -490,6 +485,26 @@ describe('VK handoff integration', () => {
         .map((button) => button.action.label),
     ).toContain(handoffButton);
   });
+
+  it.each(['/start', '/menu', 'Начать'])(
+    'opens the active menu for %s without forwarding the command',
+    async (command) => {
+      await router.route(createMessageEvent({ text: 'Первый вопрос' }));
+
+      await router.route(
+        createMessageEvent({
+          conversation_message_id: 8,
+          id: 502,
+          text: command,
+        }),
+      );
+
+      expect(inbox.relayed.map((message) => message.text)).toEqual([
+        'Первый вопрос',
+      ]);
+      expect(gateway.sent.at(-1)?.text).toBe(clientMessages.activeMenu);
+    },
+  );
 
   it('does not open a request from post-dialog VK text', async () => {
     await router.route(createMessageEvent({ text: 'Первый вопрос' }));
@@ -557,7 +572,7 @@ describe('VK handoff integration', () => {
     information.replace({
       faq: [
         {
-          answer: 'Напишите оператору.',
+          answer: 'Напишите нам.',
           question: 'Как записаться?',
         },
       ],
@@ -628,9 +643,7 @@ describe('VK handoff integration', () => {
     expect(repository.findActiveRequest('vk', '101')).toBeUndefined();
     expect(inbox.opened).toHaveLength(0);
     expect(gateway.sent).toHaveLength(1);
-    expect(gateway.sent[0]?.text).toBe(
-      'Меню обновилось. Выберите нужный раздел ниже.',
-    );
+    expect(gateway.sent[0]?.text).toBe(clientMessages.menuUpdated);
     expect(
       gateway.sent[0]?.keyboard?.buttons
         .flat()
@@ -693,7 +706,7 @@ describe('VK handoff integration', () => {
     expect(gateway.sent).toHaveLength(1);
     expect(gateway.sent[0]).toMatchObject({
       peerId: 101,
-      text: 'Сейчас можно отправить только текст. Напишите вопрос отдельным текстовым сообщением.',
+      text: clientMessages.unsupportedContent,
     });
   });
 });

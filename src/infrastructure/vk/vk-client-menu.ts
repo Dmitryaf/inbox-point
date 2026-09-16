@@ -6,10 +6,10 @@ import {
   newQuestionButton,
 } from '@/core/application/client-information.js';
 import { resolveClientConversationState } from '@/core/application/client-conversation-state.js';
+import { clientMessages } from '@/core/application/client-messages.js';
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
 import {
   acceptingClientIntakePolicy,
-  pausedClientIntakeMessage,
   type ClientIntakePolicy,
 } from '@/core/contracts/client-intake-policy.js';
 import type { ClientConversationState } from '@/core/model/client-conversation.js';
@@ -181,16 +181,16 @@ function resolveMenuResponse(
       return resolveStructuredInformation(normalized, informationResolver);
     }
     if (menuAction === 'handoff') {
-      return { text: 'Просто напишите сообщение, чтобы продолжить разговор.' };
+      return { text: clientMessages.questionPrompt };
     }
     if (command === '/start' || command === '/menu' || command === 'начать') {
       return {
-        text: 'Разговор уже начат. Напишите сообщение, чтобы продолжить.',
+        text: clientMessages.activeMenu,
       };
     }
     if (command.startsWith('/')) {
       return {
-        text: 'Эта команда недоступна во время разговора. Просто напишите сообщение.',
+        text: clientMessages.activeCommandUnavailable,
       };
     }
     return undefined;
@@ -203,8 +203,10 @@ function resolveMenuResponse(
     return {
       cancelAwaitingQuestion: true,
       text: state.intakePaused
-        ? pausedClientIntakeMessage
-        : 'Здравствуйте! Здесь можно посмотреть основную информацию или задать вопрос.',
+        ? clientMessages.pausedIntake
+        : command === '/start' || command === 'начать'
+          ? clientMessages.greeting
+          : clientMessages.menuOpened,
     };
   }
 
@@ -222,7 +224,7 @@ function resolveMenuResponse(
   }
 
   if (state.intakePaused) {
-    return { text: pausedClientIntakeMessage };
+    return { text: clientMessages.pausedIntake };
   }
 
   if (state.stage === 'awaiting_question') {
@@ -247,15 +249,18 @@ function resolveMenuResponse(
   }
   if (command === '/start' || command === '/menu' || command === 'начать') {
     return {
-      text: 'Здравствуйте! Здесь можно посмотреть основную информацию или задать вопрос.',
+      text:
+        command === '/start' || command === 'начать'
+          ? clientMessages.greeting
+          : clientMessages.menuOpened,
     };
   }
   if (command.startsWith('/')) {
-    return { text: 'Открытого обращения нет. Выберите нужный раздел в меню.' };
+    return { text: clientMessages.noOpenRequest };
   }
   if (state.stage === 'closed') {
     return {
-      text: 'Предыдущий разговор завершён. Если хотите задать новый вопрос, нажмите «Задать вопрос».',
+      text: clientMessages.closedConversation,
     };
   }
   return undefined;
@@ -264,7 +269,7 @@ function resolveMenuResponse(
 function createQuestionPrompt(): VkMenuResponse {
   return {
     beginQuestion: true,
-    text: 'Напишите свой вопрос. Мы ответим здесь.',
+    text: clientMessages.questionPrompt,
   };
 }
 
@@ -277,7 +282,7 @@ function resolveStructuredInformation(
     return { informationRequested: true, text: resolved };
   }
   if (information.isStaleMenuAction(text)) {
-    return { text: 'Меню обновилось. Выберите нужный раздел ниже.' };
+    return { text: clientMessages.menuUpdated };
   }
   return undefined;
 }

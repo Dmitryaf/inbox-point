@@ -1,5 +1,6 @@
 import type { OperatorMessage } from '@/core/model/operator-message.js';
 import type { SupportMessage } from '@/core/model/support-message.js';
+import { clientMessages } from '@/core/application/client-messages.js';
 
 import type { TelegramUpdate } from './telegram-types.js';
 import type { TelegramClientMenuHandler } from './telegram-client-menu.js';
@@ -87,7 +88,7 @@ export class TelegramUpdateRouter {
       } else if (message.chat.type === 'private') {
         await this.notifier?.sendMessage({
           chatId: message.chat.id,
-          text: clientUnsupportedMessage,
+          text: clientMessages.unsupportedContent,
         });
       }
       return;
@@ -97,7 +98,7 @@ export class TelegramUpdateRouter {
       if (message.chat.type === 'private') {
         await this.notifier?.sendMessage({
           chatId: message.chat.id,
-          text: clientUnsupportedMessage,
+          text: clientMessages.unsupportedContent,
         });
       }
       return;
@@ -141,10 +142,8 @@ export class TelegramUpdateRouter {
   }
 }
 
-const clientUnsupportedMessage =
-  'Сейчас можно отправить только текст. Напишите вопрос отдельным текстовым сообщением.';
 const operatorUnsupportedMessage =
-  'Это сообщение не отправлено: сейчас поддерживаются только текстовые ответы.';
+  'Клиент не получил это сообщение. Отправьте ответ обычным текстом.';
 
 const unsupportedContentFields = [
   'animation',

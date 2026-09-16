@@ -1,10 +1,10 @@
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
 import {
   acceptingClientIntakePolicy,
-  pausedClientIntakeMessage,
   type ClientIntakePolicy,
 } from '@/core/contracts/client-intake-policy.js';
 import { resolveClientConversationState } from '@/core/application/client-conversation-state.js';
+import { clientMessages } from '@/core/application/client-messages.js';
 import {
   ClientInformationCatalog,
   handoffButton,
@@ -135,25 +135,31 @@ function resolveMenuResponse(
     if (information.isStaleMenuAction(normalized)) {
       return {
         replyMarkup: mainMenu,
-        text: 'Меню обновилось. Выберите нужный раздел ниже.',
+        text: clientMessages.menuUpdated,
       };
     }
-    if (normalized === newQuestionButton || isHandoffRequest(normalized)) {
+    if (isHandoffRequest(normalized)) {
       return {
         replyMarkup: mainMenu,
-        text: 'Разговор уже начат. Напишите сообщение, чтобы продолжить.',
+        text: clientMessages.questionPrompt,
+      };
+    }
+    if (normalized === newQuestionButton) {
+      return {
+        replyMarkup: mainMenu,
+        text: clientMessages.questionPrompt,
       };
     }
     if (command === '/start' || command === '/menu') {
       return {
         replyMarkup: mainMenu,
-        text: 'Разговор уже начат. Напишите сообщение, чтобы продолжить.',
+        text: clientMessages.activeMenu,
       };
     }
     if (command?.startsWith('/')) {
       return {
         replyMarkup: mainMenu,
-        text: 'Эта команда недоступна во время разговора. Просто напишите сообщение.',
+        text: clientMessages.activeCommandUnavailable,
       };
     }
     return undefined;
@@ -167,8 +173,10 @@ function resolveMenuResponse(
       cancelAwaitingQuestion: true,
       replyMarkup: mainMenu,
       text: state.intakePaused
-        ? pausedClientIntakeMessage
-        : 'Здравствуйте! Здесь можно посмотреть основную информацию или задать вопрос.',
+        ? clientMessages.pausedIntake
+        : command === '/start'
+          ? clientMessages.greeting
+          : clientMessages.menuOpened,
     };
   }
 
@@ -183,12 +191,12 @@ function resolveMenuResponse(
     if (information.isStaleMenuAction(normalized)) {
       return {
         replyMarkup: mainMenu,
-        text: 'Меню обновилось. Выберите нужный раздел ниже.',
+        text: clientMessages.menuUpdated,
       };
     }
     return {
       replyMarkup: mainMenu,
-      text: pausedClientIntakeMessage,
+      text: clientMessages.pausedIntake,
     };
   }
 
@@ -212,7 +220,7 @@ function resolveMenuResponse(
   if (information.isStaleMenuAction(normalized)) {
     return {
       replyMarkup: mainMenu,
-      text: 'Меню обновилось. Выберите нужный раздел ниже.',
+      text: clientMessages.menuUpdated,
     };
   }
 
@@ -222,19 +230,22 @@ function resolveMenuResponse(
   if (command === '/start' || command === '/menu') {
     return {
       replyMarkup: mainMenu,
-      text: 'Здравствуйте! Здесь можно посмотреть основную информацию или задать вопрос.',
+      text:
+        command === '/start'
+          ? clientMessages.greeting
+          : clientMessages.menuOpened,
     };
   }
   if (command?.startsWith('/')) {
     return {
       replyMarkup: mainMenu,
-      text: 'Открытого обращения нет. Выберите нужный раздел в меню.',
+      text: clientMessages.noOpenRequest,
     };
   }
   if (state.stage === 'closed') {
     return {
       replyMarkup: mainMenu,
-      text: 'Предыдущий разговор завершён. Если хотите задать новый вопрос, нажмите «Задать вопрос».',
+      text: clientMessages.closedConversation,
     };
   }
   return undefined;
@@ -249,7 +260,7 @@ function createQuestionPrompt(
       intakePaused: false,
       stage: 'awaiting_question',
     }),
-    text: 'Напишите свой вопрос. Мы ответим здесь.',
+    text: clientMessages.questionPrompt,
   };
 }
 

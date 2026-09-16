@@ -112,22 +112,22 @@ export class ClientInformationCatalog implements ClientInformationResolver {
     if (normalized === scheduleButton) {
       return this.content.schedule
         ? formatListResponse('Расписание', this.content.schedule)
-        : 'Расписание пока не добавлено. Задайте вопрос, чтобы уточнить время.';
+        : 'Расписание пока не указано.';
     }
     if (normalized === pricesButton) {
       return this.content.prices
         ? formatListResponse('Цены', this.content.prices)
-        : 'Информация о ценах пока не добавлена. Задайте вопрос, чтобы уточнить стоимость.';
+        : 'Цены пока не указаны.';
     }
     if (normalized === addressButton) {
       return this.content.address
         ? `Адрес\n\n${this.content.address}`
-        : 'Адрес пока не добавлен. Задайте вопрос, чтобы уточнить детали.';
+        : 'Адрес пока не указан.';
     }
     if (normalized === faqButton) {
       return this.content.faq?.length
         ? formatFaqResponse(this.content.faq)
-        : 'Частые вопросы пока не добавлены. Задайте вопрос, если нужна помощь.';
+        : 'Раздел с частыми вопросами пока пуст.';
     }
     const section = this.content.customSections?.find(
       (section) => section.label === normalized,

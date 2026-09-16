@@ -16,7 +16,7 @@ describe('client information', () => {
       address: 'Main street, 1',
       faq: [
         {
-          answer: 'Напишите оператору.',
+          answer: 'Напишите нам.',
           question: 'Как записаться?',
         },
       ],
@@ -42,13 +42,13 @@ describe('client information', () => {
   });
 
   it.each([
-    [scheduleButton, 'Расписание'],
-    [pricesButton, 'ценах'],
-    [addressButton, 'Адрес пока не добавлен'],
-    [faqButton, 'пока не добавлены'],
+    [scheduleButton, 'Расписание пока не указано.'],
+    [pricesButton, 'Цены пока не указаны.'],
+    [addressButton, 'Адрес пока не указан.'],
+    [faqButton, 'Раздел с частыми вопросами пока пуст.'],
   ])('resolves %s from the canonical catalog', (button, expected) => {
     const catalog = new ClientInformationCatalog();
-    expect(catalog.resolve(button)).toContain(expected);
+    expect(catalog.resolve(button)).toBe(expected);
   });
 
   it('does not treat unknown customer text as reference information', () => {
@@ -128,7 +128,7 @@ describe('client information', () => {
     const catalog = new ClientInformationCatalog({
       faq: [
         {
-          answer: 'Напишите оператору.',
+          answer: 'Напишите нам.',
           question: 'Как записаться?',
         },
         {
@@ -139,13 +139,13 @@ describe('client information', () => {
     });
 
     expect(catalog.resolve(faqButton)).toBe(
-      'Частые вопросы\n\n❓ Как записаться?\nНапишите оператору.\n\n────────\n\n❓ Что взять?\nСменную обувь.',
+      'Частые вопросы\n\n❓ Как записаться?\nНапишите нам.\n\n────────\n\n❓ Что взять?\nСменную обувь.',
     );
   });
 
   it('accepts only the current FAQ label', () => {
     const catalog = new ClientInformationCatalog({
-      faq: [{ answer: 'Напишите оператору.', question: 'Как записаться?' }],
+      faq: [{ answer: 'Напишите нам.', question: 'Как записаться?' }],
     });
 
     expect(catalog.resolve('FAQ')).toBeUndefined();

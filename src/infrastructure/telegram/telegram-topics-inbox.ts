@@ -342,7 +342,8 @@ function formatDeliveryFailureNotification(delivery: FailedDelivery): string {
       '',
       `Канал: ${channelName}${messageReference}`,
       '',
-      'Не отправляйте ответ повторно вслепую. Владелец должен уточнить получение и разрешить инцидент в /ops.',
+      'Не отправляйте тот же ответ повторно, пока не проверите, получил ли его клиент.',
+      'После проверки откройте раздел «Состояние» в Inbox Point и укажите результат.',
     ].join('\n');
   }
 
@@ -351,7 +352,7 @@ function formatDeliveryFailureNotification(delivery: FailedDelivery): string {
     '',
     `Канал: ${channelName}${messageReference}`,
     '',
-    'Владелец может повторить доставку в /ops.',
+    'Откройте раздел «Состояние» в Inbox Point, чтобы повторить отправку.',
   ].join('\n');
 }
 
@@ -368,11 +369,11 @@ function formatCustomerMessages(
         'Ответьте сообщением в этой теме.',
         'Чтобы закрыть обращение, отправьте /close.',
         '',
-        'Вопрос:',
+        'Первое сообщение:',
         '',
       ].join('\n')
     : 'Сообщение:\n\n';
-  const continuationPrefix = 'Новое сообщение:\n\n';
+  const continuationPrefix = 'Продолжение сообщения:\n\n';
   const characters = Array.from(message.text);
   const messages: string[] = [];
   let offset = 0;

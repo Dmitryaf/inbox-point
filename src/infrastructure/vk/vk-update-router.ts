@@ -1,4 +1,5 @@
 import type { SupportMessage } from '@/core/model/support-message.js';
+import { clientMessages } from '@/core/application/client-messages.js';
 
 import type { VkGateway } from './vk-api-client.js';
 import type { VkClientMenuHandler } from './vk-client-menu.js';
@@ -47,7 +48,7 @@ export class VkUpdateRouter {
     if ((message.attachments?.length ?? 0) > 0) {
       await this.gateway.sendMessage(
         message.peer_id,
-        'Сейчас можно отправить только текст. Напишите вопрос отдельным текстовым сообщением.',
+        clientMessages.unsupportedContent,
         createVkRandomId(`unsupported:${externalEventId}`),
       );
       return;
