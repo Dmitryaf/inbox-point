@@ -489,7 +489,7 @@ describe('HandoffRuntime', () => {
     expect(repository.getDeliverySummary().pending).toBe(1);
   });
 
-  it('orders a Telegram reply before a concurrent web takeover without duplication', async () => {
+  it('orders a concurrent web takeover before a stale Telegram reply', async () => {
     const repository = new SqliteSupportRepository(':memory:');
     repositories.push(repository);
     const runtime = new HandoffRuntime({
@@ -523,19 +523,22 @@ describe('HandoffRuntime', () => {
       status: 'active',
     });
 
-    await runtime.handleOperatorMessage('telegram-reply-before-takeover', {
-      externalMessageId: 'telegram-operator-message-1',
-      operatorTopicId: 'topic-1',
-      receivedAt: new Date('2026-09-07T10:01:00.000Z'),
-      text: 'Answer accepted before takeover',
-    });
-    expect(repository.getDeliverySummary().pending).toBe(2);
+    const reply = runtime.handleOperatorMessage(
+      'telegram-reply-during-takeover',
+      {
+        externalMessageId: 'telegram-operator-message-1',
+        operatorTopicId: 'topic-1',
+        receivedAt: new Date('2026-09-07T10:01:00.000Z'),
+        text: 'Stale answer during takeover',
+      },
+    );
     allowRelayFailure.resolve();
     await takeover;
+    await reply;
 
     const request = repository.findActiveRequest('telegram', '101');
     expect(request?.operatorTopicId).toBe(`web:${request?.id}`);
-    expect(repository.getDeliverySummary().pending).toBe(3);
+    expect(repository.getDeliverySummary().pending).toBe(2);
     expect(
       repository
         .findPendingDeliveries(new Date('2100-01-01T00:00:00.000Z'), 10)
@@ -543,8 +546,8 @@ describe('HandoffRuntime', () => {
     ).toEqual(['Вопрос отправлен.']);
     expect(
       repository.findConversationMessages(request?.id ?? '', 10),
-    ).toContainEqual(
-      expect.objectContaining({ text: 'Answer accepted before takeover' }),
+    ).not.toContainEqual(
+      expect.objectContaining({ text: 'Stale answer during takeover' }),
     );
   });
 });

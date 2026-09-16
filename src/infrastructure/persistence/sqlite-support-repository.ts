@@ -1323,13 +1323,23 @@ export class SqliteSupportRepository implements SupportRepository {
   }
 
   public reopenRequest(requestId: string): void {
-    this.database
-      .prepare(
-        `UPDATE support_requests
-         SET status = 'active', closed_at = NULL
-         WHERE id = ?`,
-      )
-      .run(requestId);
+    this.database.exec('BEGIN IMMEDIATE');
+    try {
+      const result = this.database
+        .prepare(
+          `UPDATE support_requests
+           SET status = 'active', closed_at = NULL
+           WHERE id = ?`,
+        )
+        .run(requestId);
+      if (Number(result.changes) === 1) {
+        this.clearAwaitingClientQuestionForRequest(requestId);
+      }
+      this.database.exec('COMMIT');
+    } catch (error: unknown) {
+      this.database.exec('ROLLBACK');
+      throw error;
+    }
   }
 
   public recordConversationMessage(message: ConversationMessage): void {
@@ -1547,17 +1557,24 @@ export class SqliteSupportRepository implements SupportRepository {
             .prepare(
               `UPDATE support_requests
                SET status = 'closed', closed_at = ?
-               WHERE id = ?`,
+               WHERE id = ? AND operator_topic_id = ?`,
             )
-            .run(resolvedAt.toISOString(), incident.requestId);
+            .run(
+              resolvedAt.toISOString(),
+              incident.requestId,
+              incident.operatorTopicId,
+            );
         } else {
-          this.database
+          const result = this.database
             .prepare(
               `UPDATE support_requests
                SET status = 'active', closed_at = NULL
-               WHERE id = ?`,
+               WHERE id = ? AND operator_topic_id = ?`,
             )
-            .run(incident.requestId);
+            .run(incident.requestId, incident.operatorTopicId);
+          if (Number(result.changes) === 1) {
+            this.clearAwaitingClientQuestionForRequest(incident.requestId);
+          }
         }
       }
 
@@ -1601,6 +1618,21 @@ export class SqliteSupportRepository implements SupportRepository {
       this.database.exec('ROLLBACK');
       throw error;
     }
+  }
+
+  private clearAwaitingClientQuestionForRequest(requestId: string): void {
+    this.database
+      .prepare(
+        `DELETE FROM client_conversation_states
+         WHERE EXISTS (
+           SELECT 1
+           FROM support_requests AS request
+           WHERE request.id = ?
+             AND request.channel = client_conversation_states.channel
+             AND request.external_conversation_id = client_conversation_states.external_conversation_id
+         )`,
+      )
+      .run(requestId);
   }
 
   public switchOperatorTopic(

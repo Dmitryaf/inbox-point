@@ -859,6 +859,91 @@ describe('SqliteSupportRepository', () => {
     repository.close();
   });
 
+  it('resolves a detached topic close without closing the web request', () => {
+    const repository = new SqliteSupportRepository(':memory:');
+    const createdAt = new Date('2026-09-16T08:00:00.000Z');
+    const actionId = 'operator-close:request-1:recovery-conflict:topic-1';
+    repository.createRequest({
+      channel: 'vk',
+      conversationId: '101',
+      createdAt,
+      id: 'request-1',
+      operatorTopicId: 'web:request-1',
+      status: 'active',
+    });
+    repository.prepareOperatorAction({
+      clientMessageId: 'recovery-conflict:topic-1',
+      createdAt,
+      id: actionId,
+      initial: false,
+      kind: 'close_request',
+      operatorTopicId: 'topic-1',
+      requestId: 'request-1',
+      sequence: 0,
+    });
+    expect(repository.claimOperatorAction(actionId, createdAt)).toBe(true);
+    repository.markOperatorActionOutcomeUnknown(
+      actionId,
+      'Telegram outcome is unknown',
+    );
+
+    expect(
+      repository.resolveOperatorLifecycleAction(
+        actionId,
+        'completed',
+        new Date('2026-09-16T08:01:00.000Z'),
+      ),
+    ).toBe(true);
+    expect(repository.findRequestById('request-1')).toMatchObject({
+      operatorTopicId: 'web:request-1',
+      status: 'active',
+    });
+    expect(repository.findOperatorActionIncident(actionId)).toBeUndefined();
+    repository.close();
+  });
+
+  it('clears a pending question when an uncertain reopen is confirmed', () => {
+    const repository = new SqliteSupportRepository(':memory:');
+    const createdAt = new Date('2026-09-16T08:00:00.000Z');
+    const actionId = 'operator-reopen:request-1:update-reopen';
+    repository.createRequest({
+      channel: 'telegram',
+      closedAt: createdAt,
+      conversationId: '101',
+      createdAt,
+      id: 'request-1',
+      operatorTopicId: 'topic-1',
+      status: 'closed',
+    });
+    repository.setAwaitingClientQuestion('telegram', '101', createdAt);
+    repository.prepareOperatorAction({
+      clientMessageId: 'update-reopen',
+      createdAt,
+      id: actionId,
+      initial: false,
+      kind: 'reopen_request',
+      operatorTopicId: 'topic-1',
+      requestId: 'request-1',
+      sequence: 0,
+    });
+    expect(repository.claimOperatorAction(actionId, createdAt)).toBe(true);
+    repository.markOperatorActionOutcomeUnknown(
+      actionId,
+      'Telegram outcome is unknown',
+    );
+
+    expect(
+      repository.resolveOperatorLifecycleAction(
+        actionId,
+        'completed',
+        new Date('2026-09-16T08:01:00.000Z'),
+      ),
+    ).toBe(true);
+    expect(repository.findRequestById('request-1')?.status).toBe('active');
+    expect(repository.isAwaitingClientQuestion('telegram', '101')).toBe(false);
+    repository.close();
+  });
+
   it('releases an interrupted event claim when the process restarts', () => {
     const directory = mkdtempSync(join(tmpdir(), 'inbox-point-test-'));
     temporaryDirectories.push(directory);
