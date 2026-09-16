@@ -238,7 +238,7 @@ final class HandoffService {
                 lifecycle(request, event, false);
             } else {
                 if (request.active() != active) {
-                    store.changeStatus(request.id(), active, occurred);
+                    store.changeStatus(request, active, occurred);
                 }
                 store.operatorActions().observeLifecycle(request.id(), request.topic(), active, occurred);
             }
@@ -280,7 +280,7 @@ final class HandoffService {
             default -> {
                 if (request.active() || store.canReopen(request)) {
                     if (!request.active()) {
-                        store.changeStatus(request.id(), true, clock.instant());
+                        store.changeStatus(request, true, clock.instant());
                         store.operatorActions().observeLifecycle(request.id(), request.topic(), true, clock.instant());
                     }
                     store.usageEvent("first-reply:" + request.id(), "first_reply", request.channel(), request.id(), clock.instant());
@@ -297,7 +297,9 @@ final class HandoffService {
         } catch (DurableTelegramInbox.UnknownOutcome uncertain) {
             return;
         }
-        store.changeStatus(request.id(), open, clock.instant());
-        store.operatorActions().observeLifecycle(request.id(), request.topic(), open, clock.instant());
+        var now = clock.instant();
+        if (store.changeStatus(request, open, now)) {
+            store.operatorActions().observeLifecycle(request.id(), request.topic(), open, now);
+        }
     }
 }

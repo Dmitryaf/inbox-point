@@ -70,6 +70,13 @@ public final class SqliteSchema {
                             AND external_conversation_id = NEW.external_conversation_id;
                     END
                     """);
+            statement.execute("""
+                    CREATE TRIGGER IF NOT EXISTS clear_client_question_on_reopen
+                    AFTER UPDATE OF status ON support_requests WHEN OLD.status = 'closed' AND NEW.status = 'active' BEGIN
+                        DELETE FROM client_conversation_states WHERE channel = NEW.channel
+                            AND external_conversation_id = NEW.external_conversation_id;
+                    END
+                    """);
             statement.execute("PRAGMA user_version = 8");
         }
     }

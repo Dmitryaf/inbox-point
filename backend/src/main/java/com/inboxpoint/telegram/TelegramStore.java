@@ -133,8 +133,24 @@ final class TelegramStore implements AutoCloseable {
     }
 
     void changeStatus(String id, boolean active, Instant now) throws SQLException {
-        update("UPDATE support_requests SET status = ?, closed_at = ? WHERE id = ?",
-                active ? "active" : "closed", active ? null : now.toString(), id);
+        var request = byId(id);
+        if (request != null) {
+            changeStatus(request, active, now);
+        }
+    }
+
+    boolean changeStatus(Request request, boolean active, Instant now) throws SQLException {
+        return update("""
+                UPDATE support_requests SET status = ?, closed_at = ?
+                WHERE id = ? AND operator_topic_id = ?
+                    AND (? = 'closed' OR NOT EXISTS (
+                        SELECT 1 FROM support_requests current
+                        WHERE current.channel = support_requests.channel
+                          AND current.external_conversation_id = support_requests.external_conversation_id
+                          AND current.id != support_requests.id AND current.status = 'active'
+                    ))
+                """, active ? "active" : "closed", active ? null : now.toString(), request.id(),
+                request.topic(), active ? "active" : "closed") == 1;
     }
 
     boolean claim(String source, String event, Instant now) throws SQLException {
@@ -327,7 +343,7 @@ final class TelegramStore implements AutoCloseable {
                 return false;
             }
             if (completed) {
-                changeStatus(request.id(), open, now);
+                changeStatus(request, open, now);
             }
             return true;
         }
