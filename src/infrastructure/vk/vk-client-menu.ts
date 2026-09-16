@@ -68,6 +68,9 @@ export class VkClientMenu implements VkClientMenuHandler {
     }
 
     try {
+      if (response.cancelAwaitingQuestion) {
+        this.repository.clearAwaitingClientQuestion('vk', conversationId);
+      }
       if (response.beginQuestion) {
         this.repository.setAwaitingClientQuestion(
           'vk',
@@ -77,7 +80,14 @@ export class VkClientMenu implements VkClientMenuHandler {
       }
       const responseState: ClientConversationState = response.beginQuestion
         ? { intakePaused: false, stage: 'awaiting_question' }
-        : state;
+        : response.cancelAwaitingQuestion
+          ? resolveClientConversationState(
+              this.repository,
+              this.intakePolicy,
+              'vk',
+              conversationId,
+            )
+          : state;
       const keyboard = createVkMainKeyboard(this.information, responseState);
       await this.gateway.sendMessage(
         message.peerId,
@@ -148,6 +158,7 @@ function createButtonRows(
 
 interface VkMenuResponse {
   beginQuestion?: true;
+  cancelAwaitingQuestion?: true;
   informationRequested?: true;
   text: string;
 }
@@ -186,6 +197,18 @@ function resolveMenuResponse(
   }
 
   if (
+    state.stage === 'awaiting_question' &&
+    (command === '/start' || command === '/menu' || command === 'начать')
+  ) {
+    return {
+      cancelAwaitingQuestion: true,
+      text: state.intakePaused
+        ? pausedClientIntakeMessage
+        : 'Здравствуйте! Здесь можно посмотреть основную информацию или задать вопрос.',
+    };
+  }
+
+  if (
     menuAction?.startsWith('information-') ||
     menuAction?.startsWith('custom-')
   ) {
@@ -202,8 +225,17 @@ function resolveMenuResponse(
     return { text: pausedClientIntakeMessage };
   }
 
-  if (state.stage === 'awaiting_question' && !command.startsWith('/')) {
-    return undefined;
+  if (state.stage === 'awaiting_question') {
+    if (
+      menuAction === 'handoff' ||
+      isHandoffRequest(normalized) ||
+      normalized === newQuestionButton
+    ) {
+      return createQuestionPrompt();
+    }
+    if (!command.startsWith('/')) {
+      return undefined;
+    }
   }
 
   if (
@@ -211,10 +243,7 @@ function resolveMenuResponse(
     isHandoffRequest(normalized) ||
     normalized === newQuestionButton
   ) {
-    return {
-      beginQuestion: true,
-      text: 'Напишите свой вопрос. Мы ответим здесь.',
-    };
+    return createQuestionPrompt();
   }
   if (command === '/start' || command === '/menu' || command === 'начать') {
     return {
@@ -230,6 +259,13 @@ function resolveMenuResponse(
     };
   }
   return undefined;
+}
+
+function createQuestionPrompt(): VkMenuResponse {
+  return {
+    beginQuestion: true,
+    text: 'Напишите свой вопрос. Мы ответим здесь.',
+  };
 }
 
 function resolveStructuredInformation(

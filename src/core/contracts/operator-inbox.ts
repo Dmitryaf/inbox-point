@@ -14,6 +14,13 @@ export class OperatorInboxUnavailableError extends Error {
   }
 }
 
+export class OperatorConversationOwnershipConflictError extends Error {
+  public constructor() {
+    super('The operator conversation moved to another surface');
+    this.name = 'OperatorConversationOwnershipConflictError';
+  }
+}
+
 export class OperatorActionOutcomeUnknownError extends Error {
   public constructor(
     public readonly actionId: string,

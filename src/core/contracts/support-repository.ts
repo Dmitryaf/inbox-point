@@ -84,6 +84,10 @@ export interface SupportRepository
   ensureMessageLink(link: MessageLink): void;
   claimDeliveryAttempt(deliveryId: string, startedAt: Date): boolean;
   claimEvent(source: string, externalEventId: string, claimedAt: Date): boolean;
+  clearAwaitingClientQuestion(
+    channel: ClientChannelKind,
+    conversationId: string,
+  ): void;
   confirmUnknownDeliveryNotReceived(deliveryId: string, retryAt: Date): boolean;
   confirmUnknownDeliveryReceived(
     deliveryId: string,
@@ -157,7 +161,11 @@ export interface SupportRepository
   ): void;
   markDeliveryFailureNotified(deliveryId: string, notifiedAt: Date): void;
   markDeliveryOutcomeUnknown(deliveryId: string, error: string): void;
-  markWebOperatorOwned(requestId: string, claimedAt: Date): void;
+  markWebOperatorOwned(
+    requestId: string,
+    expectedTopicId: string,
+    claimedAt: Date,
+  ): boolean;
   markDeliveryRetry(
     deliveryId: string,
     error: string,
@@ -174,6 +182,11 @@ export interface SupportRepository
   purgeClosedConversationContent(closedBefore: Date): RetentionCleanupResult;
   releaseEvent(source: string, externalEventId: string): void;
   reopenRequest(requestId: string): void;
+  recoverWebOperatorRequest(
+    requestId: string,
+    expectedTopicId: string,
+    nextTopicId: string,
+  ): boolean;
   recordUsageEvent(event: UsageEvent): void;
   recordConversationMessage(message: ConversationMessage): void;
   rejectOperatorLifecycleActionOutcome(

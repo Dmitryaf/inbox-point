@@ -40,6 +40,13 @@ describe('SqliteSupportRepository', () => {
       status: 'active',
     });
     expect(second.isAwaitingClientQuestion('telegram', 'client-1')).toBe(false);
+    second.setAwaitingClientQuestion(
+      'telegram',
+      'client-1',
+      new Date('2026-09-16T10:02:00.000Z'),
+    );
+    second.clearAwaitingClientQuestion('telegram', 'client-1');
+    expect(second.isAwaitingClientQuestion('telegram', 'client-1')).toBe(false);
     second.close();
   });
 
@@ -775,6 +782,7 @@ describe('SqliteSupportRepository', () => {
     });
     repository.markWebOperatorOwned(
       'answered',
+      'web:answered',
       new Date(createdAt.getTime() + 1_000),
     );
 
@@ -800,6 +808,54 @@ describe('SqliteSupportRepository', () => {
       recoverable: 1,
       webOwned: 1,
     });
+    repository.close();
+  });
+
+  it('atomically assigns a web request to one operator surface', () => {
+    const repository = new SqliteSupportRepository(':memory:');
+    const createdAt = new Date('2026-09-16T07:00:00.000Z');
+    for (const requestId of ['web-wins', 'recovery-wins']) {
+      repository.createRequest({
+        channel: 'vk',
+        conversationId: requestId,
+        createdAt,
+        id: requestId,
+        operatorTopicId: `web:${requestId}`,
+        status: 'active',
+      });
+    }
+
+    expect(
+      repository.markWebOperatorOwned('web-wins', 'web:web-wins', createdAt),
+    ).toBe(true);
+    expect(
+      repository.recoverWebOperatorRequest(
+        'web-wins',
+        'web:web-wins',
+        'topic-1',
+      ),
+    ).toBe(false);
+
+    expect(
+      repository.recoverWebOperatorRequest(
+        'recovery-wins',
+        'web:recovery-wins',
+        'topic-2',
+      ),
+    ).toBe(true);
+    expect(
+      repository.markWebOperatorOwned(
+        'recovery-wins',
+        'web:recovery-wins',
+        createdAt,
+      ),
+    ).toBe(false);
+    expect(repository.findRequestById('web-wins')?.operatorTopicId).toBe(
+      'web:web-wins',
+    );
+    expect(repository.findRequestById('recovery-wins')?.operatorTopicId).toBe(
+      'topic-2',
+    );
     repository.close();
   });
 

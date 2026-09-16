@@ -4,6 +4,7 @@ import { KeyedTaskQueue } from '@/core/application/keyed-task-queue.js';
 import { enqueueHandoffAcknowledgement } from '@/core/application/handoff-acknowledgement.js';
 import {
   OperatorActionOutcomeUnknownError,
+  OperatorConversationOwnershipConflictError,
   OperatorConversationUnavailableError,
   type OperatorInbox,
 } from '@/core/contracts/operator-inbox.js';
@@ -12,6 +13,7 @@ import type { OperatorMessage } from '@/core/model/operator-message.js';
 import {
   createWebOperatorTopicId,
   isWebOperatorTopic,
+  requestIdFromWebOperatorTopic,
 } from '@/core/model/operator-topic.js';
 import type { SupportMessage } from '@/core/model/support-message.js';
 import type {
@@ -27,7 +29,7 @@ export interface HandoffServiceDependencies {
 }
 
 export class HandoffService {
-  private readonly clientMessageQueue = new KeyedTaskQueue();
+  private readonly conversationMutationQueue = new KeyedTaskQueue();
   private readonly clock: () => Date;
   private readonly createId: () => string;
   private readonly operatorInbox: OperatorInbox;
@@ -46,7 +48,7 @@ export class HandoffService {
   ): Promise<void> {
     const conversationKey = createConversationKey(message);
 
-    await this.clientMessageQueue.run(conversationKey, async () => {
+    await this.conversationMutationQueue.run(conversationKey, async () => {
       await this.handleEvent(
         `client:${message.channel}`,
         externalEventId,
@@ -67,7 +69,7 @@ export class HandoffService {
     for (const request of requests) {
       const conversationKey = createConversationKey(request);
       try {
-        await this.clientMessageQueue.run(conversationKey, async () => {
+        await this.conversationMutationQueue.run(conversationKey, async () => {
           await this.recoverWebRequest(request.id, operatorInbox);
         });
       } catch (error: unknown) {
@@ -123,6 +125,11 @@ export class HandoffService {
           opened.topicId,
         ))
       ) {
+        await this.closeAbandonedRecoveryTopic(
+          request.id,
+          opened.topicId,
+          operatorInbox,
+        );
         return;
       }
     } catch (error: unknown) {
@@ -147,6 +154,11 @@ export class HandoffService {
           opened.topicId,
         ))
       ) {
+        await this.closeAbandonedRecoveryTopic(
+          request.id,
+          opened.topicId,
+          operatorInbox,
+        );
         return;
       }
     }
@@ -171,13 +183,13 @@ export class HandoffService {
       return false;
     }
     if (current.operatorTopicId === request.operatorTopicId) {
-      const switched = this.repository.switchOperatorTopic(
+      const switched = this.repository.recoverWebOperatorRequest(
         request.id,
         request.operatorTopicId,
         operatorTopicId,
       );
       if (!switched) {
-        throw new Error('The operator surface changed concurrently');
+        return false;
       }
     } else if (current.operatorTopicId !== operatorTopicId) {
       return false;
@@ -222,6 +234,23 @@ export class HandoffService {
         );
       }
       throw error;
+    }
+  }
+
+  private async closeAbandonedRecoveryTopic(
+    requestId: string,
+    operatorTopicId: string,
+    operatorInbox: OperatorInbox,
+  ): Promise<void> {
+    try {
+      await operatorInbox.closeRequest(operatorTopicId, {
+        externalEventId: `recovery-conflict:${operatorTopicId}`,
+        requestId,
+      });
+    } catch (error: unknown) {
+      if (!(error instanceof OperatorActionOutcomeUnknownError)) {
+        throw error;
+      }
     }
   }
 
@@ -428,104 +457,148 @@ export class HandoffService {
     message: OperatorMessage,
     source = 'operator:telegram',
   ): Promise<void> {
-    await this.handleEvent(source, externalEventId, async () => {
-      const request = this.repository.findRequestByTopicId(
-        message.operatorTopicId,
-      );
+    const command = parseOperatorCommand(message.text);
+    const request = this.findRequestForOperatorMessage(message, source);
+    const operation = () =>
+      this.handleEvent(source, externalEventId, async () => {
+        await this.processOperatorMessage(externalEventId, message, source);
+      });
 
-      if (!request) {
-        return;
+    if (!request || (source !== 'operator:web' && command === undefined)) {
+      await operation();
+      return;
+    }
+
+    await this.conversationMutationQueue.run(
+      createConversationKey(request),
+      operation,
+    );
+  }
+
+  private findRequestForOperatorMessage(
+    message: OperatorMessage,
+    source: string,
+  ): SupportRequest | undefined {
+    const request = this.repository.findRequestByTopicId(
+      message.operatorTopicId,
+    );
+    if (request || source !== 'operator:web') {
+      return request;
+    }
+    const requestId = requestIdFromWebOperatorTopic(message.operatorTopicId);
+    return requestId ? this.repository.findRequestById(requestId) : undefined;
+  }
+
+  private async processOperatorMessage(
+    externalEventId: string,
+    message: OperatorMessage,
+    source: string,
+  ): Promise<void> {
+    const request = this.repository.findRequestByTopicId(
+      message.operatorTopicId,
+    );
+
+    if (!request) {
+      if (source === 'operator:web') {
+        throw new OperatorConversationOwnershipConflictError();
       }
+      return;
+    }
 
-      const command = parseOperatorCommand(message.text);
-      if (command === 'close') {
-        try {
-          await this.operatorInbox.closeRequest(request.operatorTopicId, {
-            externalEventId,
-            requestId: request.id,
-          });
-        } catch (error: unknown) {
-          if (error instanceof OperatorActionOutcomeUnknownError) {
-            return;
-          }
-          throw error;
-        }
-        this.repository.closeRequest(request.id, this.clock());
-        return;
-      }
-
-      if (command === 'reopen') {
-        if (!this.canReopenRequest(request)) {
-          await this.closeUnexpectedlyOpenTopic(request, externalEventId);
-          return;
-        }
-        try {
-          await this.operatorInbox.reopenRequest(request.operatorTopicId, {
-            externalEventId,
-            requestId: request.id,
-          });
-        } catch (error: unknown) {
-          if (error instanceof OperatorActionOutcomeUnknownError) {
-            return;
-          }
-          throw error;
-        }
-        this.repository.reopenRequest(request.id);
-        return;
-      }
-
-      if (request.status === 'closed') {
-        if (!this.canReopenRequest(request)) {
-          return;
-        }
-        this.repository.reopenRequest(request.id);
-        this.repository.confirmOperatorLifecycleAction(
+    const occurredAt = this.clock();
+    if (
+      source === 'operator:web' &&
+      (!isWebOperatorTopic(request.operatorTopicId) ||
+        !this.repository.markWebOperatorOwned(
           request.id,
-          'reopen_request',
           request.operatorTopicId,
-          this.clock(),
-        );
-      } else {
-        this.repository.rejectOperatorLifecycleActionOutcome(
-          request.id,
-          'close_request',
-          this.clock(),
-        );
-      }
+          occurredAt,
+        ))
+    ) {
+      throw new OperatorConversationOwnershipConflictError();
+    }
 
-      const idempotencyKey = `operator:${externalEventId}`;
-      const occurredAt = this.clock();
-      if (
-        source === 'operator:web' &&
-        isWebOperatorTopic(request.operatorTopicId)
-      ) {
-        this.repository.markWebOperatorOwned(request.id, occurredAt);
+    const command = parseOperatorCommand(message.text);
+    if (command === 'close') {
+      try {
+        await this.operatorInbox.closeRequest(request.operatorTopicId, {
+          externalEventId,
+          requestId: request.id,
+        });
+      } catch (error: unknown) {
+        if (error instanceof OperatorActionOutcomeUnknownError) {
+          return;
+        }
+        throw error;
       }
-      this.repository.recordUsageEvent({
-        channel: request.channel,
-        id: `first-reply:${request.id}`,
-        occurredAt,
-        requestId: request.id,
-        type: 'first_reply',
-      });
-      this.repository.recordConversationMessage({
-        createdAt: message.receivedAt,
-        direction: 'operator_to_client',
-        externalMessageId: message.externalMessageId,
-        id: this.createId(),
-        requestId: request.id,
-        text: message.text,
-      });
-      this.repository.enqueueDelivery({
-        channel: request.channel,
-        conversationId: request.conversationId,
-        createdAt: occurredAt,
-        id: this.createId(),
-        idempotencyKey,
-        operatorMessageId: message.externalMessageId,
-        requestId: request.id,
-        text: message.text,
-      });
+      this.repository.closeRequest(request.id, this.clock());
+      return;
+    }
+
+    if (command === 'reopen') {
+      if (!this.canReopenRequest(request)) {
+        await this.closeUnexpectedlyOpenTopic(request, externalEventId);
+        return;
+      }
+      try {
+        await this.operatorInbox.reopenRequest(request.operatorTopicId, {
+          externalEventId,
+          requestId: request.id,
+        });
+      } catch (error: unknown) {
+        if (error instanceof OperatorActionOutcomeUnknownError) {
+          return;
+        }
+        throw error;
+      }
+      this.repository.reopenRequest(request.id);
+      return;
+    }
+
+    if (request.status === 'closed') {
+      if (!this.canReopenRequest(request)) {
+        return;
+      }
+      this.repository.reopenRequest(request.id);
+      this.repository.confirmOperatorLifecycleAction(
+        request.id,
+        'reopen_request',
+        request.operatorTopicId,
+        this.clock(),
+      );
+    } else {
+      this.repository.rejectOperatorLifecycleActionOutcome(
+        request.id,
+        'close_request',
+        this.clock(),
+      );
+    }
+
+    const idempotencyKey = `operator:${externalEventId}`;
+    this.repository.recordUsageEvent({
+      channel: request.channel,
+      id: `first-reply:${request.id}`,
+      occurredAt,
+      requestId: request.id,
+      type: 'first_reply',
+    });
+    this.repository.recordConversationMessage({
+      createdAt: message.receivedAt,
+      direction: 'operator_to_client',
+      externalMessageId: message.externalMessageId,
+      id: this.createId(),
+      requestId: request.id,
+      text: message.text,
+    });
+    this.repository.enqueueDelivery({
+      channel: request.channel,
+      conversationId: request.conversationId,
+      createdAt: occurredAt,
+      id: this.createId(),
+      idempotencyKey,
+      operatorMessageId: message.externalMessageId,
+      requestId: request.id,
+      text: message.text,
     });
   }
 
@@ -547,54 +620,74 @@ export class HandoffService {
     operatorTopicId: string,
     occurredAt: Date,
   ): Promise<void> {
-    await this.handleEvent('operator:telegram', externalEventId, () => {
-      const request = this.repository.findRequestByTopicId(operatorTopicId);
-      if (
-        request &&
-        topicEventCanAffectRequest(request.createdAt, occurredAt)
-      ) {
-        this.repository.closeRequest(request.id, occurredAt);
-        this.repository.confirmOperatorLifecycleAction(
-          request.id,
-          'close_request',
-          operatorTopicId,
-          occurredAt,
-        );
-        this.repository.rejectOperatorLifecycleActionOutcome(
-          request.id,
-          'reopen_request',
-          occurredAt,
-        );
-      }
-      return Promise.resolve();
-    });
+    const request = this.repository.findRequestByTopicId(operatorTopicId);
+    const operation = () =>
+      this.handleEvent('operator:telegram', externalEventId, () => {
+        const request = this.repository.findRequestByTopicId(operatorTopicId);
+        if (
+          request &&
+          topicEventCanAffectRequest(request.createdAt, occurredAt)
+        ) {
+          this.repository.closeRequest(request.id, occurredAt);
+          this.repository.confirmOperatorLifecycleAction(
+            request.id,
+            'close_request',
+            operatorTopicId,
+            occurredAt,
+          );
+          this.repository.rejectOperatorLifecycleActionOutcome(
+            request.id,
+            'reopen_request',
+            occurredAt,
+          );
+        }
+        return Promise.resolve();
+      });
+    if (!request) {
+      await operation();
+      return;
+    }
+    await this.conversationMutationQueue.run(
+      createConversationKey(request),
+      operation,
+    );
   }
 
   public async handleOperatorTopicReopened(
     externalEventId: string,
     operatorTopicId: string,
   ): Promise<void> {
-    await this.handleEvent('operator:telegram', externalEventId, async () => {
-      const request = this.repository.findRequestByTopicId(operatorTopicId);
-      if (request) {
-        if (this.canReopenRequest(request)) {
-          this.repository.reopenRequest(request.id);
-          this.repository.confirmOperatorLifecycleAction(
-            request.id,
-            'reopen_request',
-            operatorTopicId,
-            this.clock(),
-          );
-          this.repository.rejectOperatorLifecycleActionOutcome(
-            request.id,
-            'close_request',
-            this.clock(),
-          );
-        } else {
-          await this.closeUnexpectedlyOpenTopic(request, externalEventId);
+    const request = this.repository.findRequestByTopicId(operatorTopicId);
+    const operation = () =>
+      this.handleEvent('operator:telegram', externalEventId, async () => {
+        const request = this.repository.findRequestByTopicId(operatorTopicId);
+        if (request) {
+          if (this.canReopenRequest(request)) {
+            this.repository.reopenRequest(request.id);
+            this.repository.confirmOperatorLifecycleAction(
+              request.id,
+              'reopen_request',
+              operatorTopicId,
+              this.clock(),
+            );
+            this.repository.rejectOperatorLifecycleActionOutcome(
+              request.id,
+              'close_request',
+              this.clock(),
+            );
+          } else {
+            await this.closeUnexpectedlyOpenTopic(request, externalEventId);
+          }
         }
-      }
-    });
+      });
+    if (!request) {
+      await operation();
+      return;
+    }
+    await this.conversationMutationQueue.run(
+      createConversationKey(request),
+      operation,
+    );
   }
 
   private async closeUnexpectedlyOpenTopic(

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import type { RuntimeConfig } from '@/config/runtime-config.js';
 import { HandoffRuntime } from '@/core/application/handoff-runtime.js';
+import { OperatorConversationOwnershipConflictError } from '@/core/contracts/operator-inbox.js';
 import { createAdminRouteAccess } from '@/infrastructure/http/admin-route-access.js';
 import { registerAdminSessionRoutes } from '@/infrastructure/http/admin-session-routes.js';
 import { createApp } from '@/infrastructure/http/app.js';
@@ -218,6 +219,61 @@ describe('operator inbox routes', () => {
     });
     expect(close.json()).toEqual({ closed: true });
     expect(afterClose.json()).toEqual({ requests: [] });
+  });
+
+  it('reports a conflict when recovery already moved the conversation', async () => {
+    const app = createApp(config);
+    const repository = new SqliteSupportRepository(':memory:');
+    apps.add(app);
+    repositories.add(repository);
+    repository.createRequest({
+      channel: 'vk',
+      conversationId: '101',
+      createdAt: new Date('2026-09-06T12:00:00.000Z'),
+      id: 'request-1',
+      operatorTopicId: 'web:request-1',
+      status: 'active',
+    });
+    const access = new PasswordSessionAccess('correct-admin-password', {
+      createToken: () => 'synthetic-admin-session',
+    });
+    const routeAccess = createAdminRouteAccess(app, access, {
+      allowLocalBypass: false,
+      secureCookies: true,
+    });
+    registerAdminSessionRoutes(app, access, routeAccess, true);
+    registerOperationsRoutes(app, routeAccess, {
+      monitoring: createMonitoringService(),
+      operatorInbox: new OperatorInboxService(repository, {
+        handleWebOperatorMessage: () =>
+          Promise.reject(new OperatorConversationOwnershipConflictError()),
+      }),
+    });
+    const login = await app.inject({
+      headers: { host: 'example.test', origin: 'http://example.test' },
+      method: 'POST',
+      payload: { password: 'correct-admin-password' },
+      remoteAddress: '192.0.2.10',
+      url: '/api/admin/login',
+    });
+    const cookie = readSessionCookie(login.headers['set-cookie']);
+
+    const reply = await app.inject({
+      headers: {
+        cookie,
+        host: 'example.test',
+        origin: 'http://example.test',
+      },
+      method: 'POST',
+      payload: { idempotencyKey: 'reply-1', text: 'Answer' },
+      remoteAddress: '192.0.2.10',
+      url: '/api/ops/inbox/requests/request-1/replies',
+    });
+
+    expect(reply.statusCode).toBe(409);
+    expect(reply.json()).toEqual({
+      message: 'Обращение уже перенесено в Telegram. Список обновлён.',
+    });
   });
 });
 
