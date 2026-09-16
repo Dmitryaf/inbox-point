@@ -16,6 +16,33 @@ afterEach(() => {
 });
 
 describe('SqliteSupportRepository', () => {
+  it('persists awaiting-question intent across restart and clears it on request creation', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'inbox-point-test-'));
+    temporaryDirectories.push(directory);
+    const databasePath = join(directory, 'handoff.sqlite');
+    const first = new SqliteSupportRepository(databasePath);
+
+    first.setAwaitingClientQuestion(
+      'telegram',
+      'client-1',
+      new Date('2026-09-16T10:00:00.000Z'),
+    );
+    first.close();
+
+    const second = new SqliteSupportRepository(databasePath);
+    expect(second.isAwaitingClientQuestion('telegram', 'client-1')).toBe(true);
+    second.createRequest({
+      channel: 'telegram',
+      conversationId: 'client-1',
+      createdAt: new Date('2026-09-16T10:01:00.000Z'),
+      id: 'request-1',
+      operatorTopicId: 'web:request-1',
+      status: 'active',
+    });
+    expect(second.isAwaitingClientQuestion('telegram', 'client-1')).toBe(false);
+    second.close();
+  });
+
   it('stores idempotent usage counters without message text', () => {
     const directory = mkdtempSync(join(tmpdir(), 'inbox-point-test-'));
     temporaryDirectories.push(directory);
@@ -489,7 +516,7 @@ describe('SqliteSupportRepository', () => {
     database.close();
 
     expect(() => new SqliteSupportRepository(databasePath)).toThrow(
-      'Unsupported SQLite schema version 2; expected 7',
+      'Unsupported SQLite schema version 2; expected 8',
     );
   });
 
@@ -531,7 +558,7 @@ describe('SqliteSupportRepository', () => {
 
     const verified = new DatabaseSync(databasePath, { readOnly: true });
     expect(verified.prepare('PRAGMA user_version').get()).toEqual({
-      user_version: 7,
+      user_version: 8,
     });
     expect(
       verified
@@ -624,7 +651,7 @@ describe('SqliteSupportRepository', () => {
 
     const verified = new DatabaseSync(databasePath, { readOnly: true });
     expect(verified.prepare('PRAGMA user_version').get()).toEqual({
-      user_version: 7,
+      user_version: 8,
     });
     verified.close();
   });
@@ -712,7 +739,7 @@ describe('SqliteSupportRepository', () => {
   it('selects only unanswered active web requests for Telegram recovery', () => {
     const repository = new SqliteSupportRepository(':memory:');
     const createdAt = new Date('2026-09-16T06:48:00.000Z');
-    for (const requestId of ['unanswered', 'answered']) {
+    for (const requestId of ['unanswered', 'answered', 'historical-reply']) {
       repository.createRequest({
         channel: 'vk',
         conversationId: requestId,
@@ -738,18 +765,41 @@ describe('SqliteSupportRepository', () => {
       requestId: 'answered',
       text: 'Answer',
     });
+    repository.recordConversationMessage({
+      createdAt: new Date(createdAt.getTime() + 1_000),
+      direction: 'operator_to_client',
+      externalMessageId: 'telegram:historical-answer',
+      id: 'telegram:historical-answer',
+      requestId: 'historical-reply',
+      text: 'Earlier Telegram answer',
+    });
+    repository.markWebOperatorOwned(
+      'answered',
+      new Date(createdAt.getTime() + 1_000),
+    );
 
-    expect(repository.countActiveWebOperatorRequests()).toBe(2);
+    expect(repository.countActiveWebOperatorRequests()).toBe(3);
     expect(repository.findRecoverableWebOperatorRequests(10)).toEqual([
       expect.objectContaining({ id: 'unanswered' }),
+      expect.objectContaining({ id: 'historical-reply' }),
     ]);
+    expect(repository.getWebOperatorRequestSummary()).toEqual({
+      recoverable: 2,
+      webOwned: 1,
+    });
 
     repository.closeRequest(
       'unanswered',
       new Date(createdAt.getTime() + 2_000),
     );
-    expect(repository.countActiveWebOperatorRequests()).toBe(1);
-    expect(repository.findRecoverableWebOperatorRequests(10)).toEqual([]);
+    expect(repository.countActiveWebOperatorRequests()).toBe(2);
+    expect(repository.findRecoverableWebOperatorRequests(10)).toEqual([
+      expect.objectContaining({ id: 'historical-reply' }),
+    ]);
+    expect(repository.getWebOperatorRequestSummary()).toEqual({
+      recoverable: 1,
+      webOwned: 1,
+    });
     repository.close();
   });
 

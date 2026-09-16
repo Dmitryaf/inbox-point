@@ -30,6 +30,11 @@ export interface DeliverySummary {
   uncertain?: number;
 }
 
+export interface WebOperatorRequestSummary {
+  recoverable: number;
+  webOwned: number;
+}
+
 export interface RetentionCleanupResult {
   deliveriesRedacted: number;
   eligibleRequests: number;
@@ -137,9 +142,14 @@ export interface SupportRepository
     availableBefore: Date,
     limit: number,
   ): readonly QueuedDelivery[];
+  isAwaitingClientQuestion(
+    channel: ClientChannelKind,
+    conversationId: string,
+  ): boolean;
   getUsageEventCounts(since: Date): UsageEventCounts;
   getDeliverySummary(): DeliverySummary;
   getOperatorActionSummary(): OperatorActionSummary;
+  getWebOperatorRequestSummary(): WebOperatorRequestSummary;
   markDeliveryFailed(deliveryId: string, error: string): void;
   markDeliveryFailureNotificationRetry(
     deliveryId: string,
@@ -147,20 +157,42 @@ export interface SupportRepository
   ): void;
   markDeliveryFailureNotified(deliveryId: string, notifiedAt: Date): void;
   markDeliveryOutcomeUnknown(deliveryId: string, error: string): void;
+  markWebOperatorOwned(requestId: string, claimedAt: Date): void;
   markDeliveryRetry(
     deliveryId: string,
     error: string,
     nextAttemptAt: Date,
   ): void;
   confirmOperatorActionReceived(actionId: string, confirmedAt: Date): boolean;
+  confirmOperatorLifecycleAction(
+    requestId: string,
+    kind: 'close_request' | 'reopen_request',
+    externalResultId: string,
+    confirmedAt: Date,
+  ): void;
   moveOperatorActionRequestToWeb(actionId: string): boolean;
   purgeClosedConversationContent(closedBefore: Date): RetentionCleanupResult;
   releaseEvent(source: string, externalEventId: string): void;
   reopenRequest(requestId: string): void;
   recordUsageEvent(event: UsageEvent): void;
   recordConversationMessage(message: ConversationMessage): void;
+  rejectOperatorLifecycleActionOutcome(
+    requestId: string,
+    kind: 'close_request' | 'reopen_request',
+    resolvedAt: Date,
+  ): void;
+  setAwaitingClientQuestion(
+    channel: ClientChannelKind,
+    conversationId: string,
+    updatedAt: Date,
+  ): void;
   retryFailedDelivery(deliveryId: string, retryAt: Date): boolean;
   resolveOperatorActionAsWeb(actionId: string, resolvedAt: Date): boolean;
+  resolveOperatorLifecycleAction(
+    actionId: string,
+    resolution: 'completed' | 'not_completed',
+    resolvedAt: Date,
+  ): boolean;
   switchOperatorTopic(
     requestId: string,
     expectedTopicId: string,

@@ -92,6 +92,40 @@ describe('OperatorActionIncidentService', () => {
     expect(repository.getOperatorActionSummary()).toEqual({ uncertain: 1 });
     expect(repository.getDeliverySummary()).toMatchObject({ pending: 0 });
   });
+
+  it('closes the request only when an uncertain close is confirmed completed', () => {
+    createUnknownLifecycle(repository, 'close_request');
+
+    expect(
+      service.resolve('operator-close:request-1:event-1', 'completed'),
+    ).toBe(true);
+
+    expect(repository.findRequestById('request-1')?.status).toBe('closed');
+    expect(repository.getOperatorActionSummary()).toEqual({ uncertain: 0 });
+  });
+
+  it('leaves the request active when an uncertain close is confirmed incomplete', () => {
+    createUnknownLifecycle(repository, 'close_request');
+
+    expect(
+      service.resolve('operator-close:request-1:event-1', 'not_completed'),
+    ).toBe(true);
+
+    expect(repository.findRequestById('request-1')?.status).toBe('active');
+    expect(repository.getOperatorActionSummary()).toEqual({ uncertain: 0 });
+  });
+
+  it('reopens the latest request when an uncertain reopen is confirmed completed', () => {
+    repository.closeRequest('request-1', new Date('2026-09-06T12:00:30.000Z'));
+    createUnknownLifecycle(repository, 'reopen_request');
+
+    expect(
+      service.resolve('operator-reopen:request-1:event-1', 'completed'),
+    ).toBe(true);
+
+    expect(repository.findRequestById('request-1')?.status).toBe('active');
+    expect(repository.getOperatorActionSummary()).toEqual({ uncertain: 0 });
+  });
 });
 
 function createUnknownRelay(
@@ -107,6 +141,29 @@ function createUnknownRelay(
     operatorTopicId: '900',
     requestId: 'request-1',
     sequence,
+  };
+  repository.prepareOperatorAction(action);
+  repository.claimOperatorAction(action.id, action.createdAt);
+  repository.markOperatorActionOutcomeUnknown(
+    action.id,
+    'network response lost',
+  );
+}
+
+function createUnknownLifecycle(
+  repository: SqliteSupportRepository,
+  kind: 'close_request' | 'reopen_request',
+): void {
+  const operation = kind === 'close_request' ? 'close' : 'reopen';
+  const action = {
+    clientMessageId: 'event-1',
+    createdAt: new Date('2026-09-06T12:00:00.000Z'),
+    id: `operator-${operation}:request-1:event-1`,
+    initial: false,
+    kind,
+    operatorTopicId: '900',
+    requestId: 'request-1',
+    sequence: 0,
   };
   repository.prepareOperatorAction(action);
   repository.claimOperatorAction(action.id, action.createdAt);

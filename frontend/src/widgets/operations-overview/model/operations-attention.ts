@@ -1,4 +1,24 @@
-import type { ChannelOperationsStatus } from '@frontend/entities/operations/model/types';
+import type {
+  ChannelOperationsStatus,
+  OperatorActionResolution,
+} from '@frontend/entities/operations/model/types';
+
+export interface OperationsAttentionEmits {
+  resolveDelivery: [
+    deliveryId: string,
+    resolution: 'not_received' | 'received',
+  ];
+  retryDelivery: [deliveryId: string];
+  resolveOperatorAction: [
+    actionId: string,
+    resolution: OperatorActionResolution,
+  ];
+  resolveInboundEvent: [
+    eventId: string,
+    source: string,
+    resolution: 'retry' | 'skip',
+  ];
+}
 
 export interface ChannelProblem {
   action: string;

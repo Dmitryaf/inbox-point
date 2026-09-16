@@ -49,8 +49,9 @@ export interface OperationsStatus {
 }
 
 export interface OperatorInboxOperationsStatus {
-  activeWebRequests: number;
+  recoverableWebRequests: number;
   state: 'attention' | 'healthy';
+  webOwnedRequests: number;
 }
 
 export interface InboundEventOperationsStatus {
@@ -74,8 +75,11 @@ export interface OperatorRelayOperationsStatus {
   uncertain: number;
 }
 
+export type OperatorActionResolution =
+  'completed' | 'not_completed' | 'received' | 'use_web';
+
 export interface OperatorRelayIncident {
-  action: 'open_request' | 'relay_message';
+  action: 'close_request' | 'open_request' | 'relay_message' | 'reopen_request';
   channel: 'Telegram' | 'VK';
   clientMessageId: string;
   confirmable: boolean;

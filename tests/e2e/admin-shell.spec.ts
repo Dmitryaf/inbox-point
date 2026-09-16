@@ -325,7 +325,11 @@ test('opening channel details does not resize the other channel card', async ({
         inboundEvents: { incidents: [], quarantined: 0, state: 'healthy' },
         intake: { telegram: { mode: 'active' }, vk: { mode: 'active' } },
         observedAt: '2026-09-14T16:15:00.000Z',
-        operatorInbox: { activeWebRequests: 0, state: 'healthy' },
+        operatorInbox: {
+          recoverableWebRequests: 0,
+          state: 'healthy',
+          webOwnedRequests: 0,
+        },
         operatorRelays: { incidents: [], state: 'healthy', uncertain: 0 },
         outbound: { mode: 'active' },
         startedAt: '2026-09-14T12:15:00.000Z',

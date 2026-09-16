@@ -30,7 +30,7 @@ export default function OperatorInboxAttention($incomingProps: ComponentProps) {
         <h3 data-r-21a2123f="">{'Обращения ждут доставки в Telegram'}</h3>
         <p data-r-21a2123f="">
           {' Сохранено обращений: '}
-          {$props.activeRequests}
+          {$props.recoverableRequests}
           {'. Система повторит доставку автоматически. '}
         </p>
         <p data-r-21a2123f="">{'Пока проверьте входящие обращения ниже.'}</p>

@@ -34,6 +34,9 @@ export class TelegramUpdateRouter {
   ) {}
 
   public async route(update: TelegramUpdate): Promise<void> {
+    if (update.edited_message) {
+      return;
+    }
     const message = update.message;
     if (
       message?.chat.id === this.operatorChatId &&
@@ -90,7 +93,17 @@ export class TelegramUpdateRouter {
       return;
     }
 
-    if (!message.text || message.text.trim().length === 0) {
+    if (message.text === undefined) {
+      if (message.chat.type === 'private') {
+        await this.notifier?.sendMessage({
+          chatId: message.chat.id,
+          text: clientUnsupportedMessage,
+        });
+      }
+      return;
+    }
+
+    if (message.text.trim().length === 0) {
       return;
     }
 

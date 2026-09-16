@@ -7,6 +7,7 @@ const vkMessageSchema = z.object({
   from_id: z.number().int(),
   id: z.number().int().nonnegative(),
   out: z.number().int().optional(),
+  payload: z.string().optional(),
   peer_id: z.number().int(),
   text: z.string(),
 });

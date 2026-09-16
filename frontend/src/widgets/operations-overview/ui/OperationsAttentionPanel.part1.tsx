@@ -79,7 +79,9 @@ export function renderOperationsAttentionPanelPart1(
           ) : null}
           {$props.status.operatorInbox.state === 'attention' ? (
             <OperatorInboxAttention
-              activeRequests={$props.status.operatorInbox.activeWebRequests}
+              recoverableRequests={
+                $props.status.operatorInbox.recoverableWebRequests
+              }
               data-r-a910a991=""
             />
           ) : null}

@@ -96,11 +96,6 @@ export class HandoffService {
     }
 
     const messages = this.repository.findConversationMessages(request.id);
-    if (
-      messages.some((message) => message.direction === 'operator_to_client')
-    ) {
-      return;
-    }
     const clientMessages = messages.filter(
       (message) => message.direction === 'client_to_operator',
     );
@@ -110,7 +105,7 @@ export class HandoffService {
     }
 
     const source = createRecoveredSupportMessage(request, firstMessage);
-    const opened = await operatorInbox.openRequest({
+    let opened = await operatorInbox.openRequest({
       requestId: request.id,
       source,
       title: createTopicTitle(request.channel, source.displayName),
@@ -119,21 +114,73 @@ export class HandoffService {
       throw new Error('Emergency request recovery did not reach Telegram');
     }
 
+    try {
+      if (
+        !(await this.recoverMessagesIntoTopic(
+          request,
+          clientMessages,
+          operatorInbox,
+          opened.topicId,
+        ))
+      ) {
+        return;
+      }
+    } catch (error: unknown) {
+      if (!(error instanceof OperatorConversationUnavailableError)) {
+        throw error;
+      }
+      opened = await operatorInbox.openRequest({
+        requestId: request.id,
+        source,
+        title: createTopicTitle(request.channel, source.displayName),
+        unavailableTopicId: opened.topicId,
+      });
+      if (isWebOperatorTopic(opened.topicId)) {
+        throw new Error('Emergency request recovery did not reach Telegram');
+      }
+      if (
+        !(await this.recoverMessagesIntoTopic(
+          request,
+          clientMessages,
+          operatorInbox,
+          opened.topicId,
+          opened.topicId,
+        ))
+      ) {
+        return;
+      }
+    }
+
+    enqueueHandoffAcknowledgement(
+      this.repository,
+      request,
+      this.clock(),
+      'recovered',
+    );
+  }
+
+  private async recoverMessagesIntoTopic(
+    request: SupportRequest,
+    clientMessages: readonly ConversationMessage[],
+    operatorInbox: OperatorInbox,
+    operatorTopicId: string,
+    actionScope?: string,
+  ): Promise<boolean> {
     const current = this.repository.findRequestById(request.id);
     if (current?.status !== 'active') {
-      return;
+      return false;
     }
     if (current.operatorTopicId === request.operatorTopicId) {
       const switched = this.repository.switchOperatorTopic(
         request.id,
         request.operatorTopicId,
-        opened.topicId,
+        operatorTopicId,
       );
       if (!switched) {
         throw new Error('The operator surface changed concurrently');
       }
-    } else if (current.operatorTopicId !== opened.topicId) {
-      return;
+    } else if (current.operatorTopicId !== operatorTopicId) {
+      return false;
     }
 
     try {
@@ -143,11 +190,15 @@ export class HandoffService {
           message,
         );
         const relayed = await operatorInbox.relayCustomerMessage(
-          opened.topicId,
+          operatorTopicId,
           recoveredMessage,
-          { initial: index === 0, requestId: request.id },
+          {
+            ...(actionScope ? { actionScope } : {}),
+            initial: index === 0,
+            requestId: request.id,
+          },
         );
-        if (relayed.operatorTopicId !== opened.topicId) {
+        if (relayed.operatorTopicId !== operatorTopicId) {
           throw new Error('The recovered operator topic changed unexpectedly');
         }
         for (const operatorMessageId of relayed.operatorMessageIds) {
@@ -161,23 +212,17 @@ export class HandoffService {
           });
         }
       }
+      return true;
     } catch (error: unknown) {
       if (!(error instanceof OperatorActionOutcomeUnknownError)) {
         this.repository.switchOperatorTopic(
           request.id,
-          opened.topicId,
+          operatorTopicId,
           request.operatorTopicId,
         );
       }
       throw error;
     }
-
-    enqueueHandoffAcknowledgement(
-      this.repository,
-      request,
-      this.clock(),
-      'recovered',
-    );
   }
 
   private async processClientMessage(message: SupportMessage): Promise<void> {
@@ -201,7 +246,23 @@ export class HandoffService {
           throw error;
         }
         this.repository.closeRequest(existingRequest.id, this.clock());
+        await this.openClientRequest(message);
+        return;
       }
+    }
+
+    const latestRequest = this.repository.findLatestRequest(
+      message.channel,
+      message.conversationId,
+    );
+    if (
+      latestRequest &&
+      !this.repository.isAwaitingClientQuestion(
+        message.channel,
+        message.conversationId,
+      )
+    ) {
+      return;
     }
 
     await this.openClientRequest(message);
@@ -378,27 +439,68 @@ export class HandoffService {
 
       const command = parseOperatorCommand(message.text);
       if (command === 'close') {
+        try {
+          await this.operatorInbox.closeRequest(request.operatorTopicId, {
+            externalEventId,
+            requestId: request.id,
+          });
+        } catch (error: unknown) {
+          if (error instanceof OperatorActionOutcomeUnknownError) {
+            return;
+          }
+          throw error;
+        }
         this.repository.closeRequest(request.id, this.clock());
-        await this.operatorInbox.closeRequest(request.operatorTopicId);
         return;
       }
 
       if (command === 'reopen') {
         if (!this.canReopenRequest(request)) {
-          await this.operatorInbox.closeRequest(request.operatorTopicId);
+          await this.closeUnexpectedlyOpenTopic(request, externalEventId);
           return;
         }
-        await this.operatorInbox.reopenRequest(request.operatorTopicId);
+        try {
+          await this.operatorInbox.reopenRequest(request.operatorTopicId, {
+            externalEventId,
+            requestId: request.id,
+          });
+        } catch (error: unknown) {
+          if (error instanceof OperatorActionOutcomeUnknownError) {
+            return;
+          }
+          throw error;
+        }
         this.repository.reopenRequest(request.id);
         return;
       }
 
       if (request.status === 'closed') {
-        return;
+        if (!this.canReopenRequest(request)) {
+          return;
+        }
+        this.repository.reopenRequest(request.id);
+        this.repository.confirmOperatorLifecycleAction(
+          request.id,
+          'reopen_request',
+          request.operatorTopicId,
+          this.clock(),
+        );
+      } else {
+        this.repository.rejectOperatorLifecycleActionOutcome(
+          request.id,
+          'close_request',
+          this.clock(),
+        );
       }
 
       const idempotencyKey = `operator:${externalEventId}`;
       const occurredAt = this.clock();
+      if (
+        source === 'operator:web' &&
+        isWebOperatorTopic(request.operatorTopicId)
+      ) {
+        this.repository.markWebOperatorOwned(request.id, occurredAt);
+      }
       this.repository.recordUsageEvent({
         channel: request.channel,
         id: `first-reply:${request.id}`,
@@ -452,6 +554,17 @@ export class HandoffService {
         topicEventCanAffectRequest(request.createdAt, occurredAt)
       ) {
         this.repository.closeRequest(request.id, occurredAt);
+        this.repository.confirmOperatorLifecycleAction(
+          request.id,
+          'close_request',
+          operatorTopicId,
+          occurredAt,
+        );
+        this.repository.rejectOperatorLifecycleActionOutcome(
+          request.id,
+          'reopen_request',
+          occurredAt,
+        );
       }
       return Promise.resolve();
     });
@@ -466,11 +579,38 @@ export class HandoffService {
       if (request) {
         if (this.canReopenRequest(request)) {
           this.repository.reopenRequest(request.id);
+          this.repository.confirmOperatorLifecycleAction(
+            request.id,
+            'reopen_request',
+            operatorTopicId,
+            this.clock(),
+          );
+          this.repository.rejectOperatorLifecycleActionOutcome(
+            request.id,
+            'close_request',
+            this.clock(),
+          );
         } else {
-          await this.operatorInbox.closeRequest(request.operatorTopicId);
+          await this.closeUnexpectedlyOpenTopic(request, externalEventId);
         }
       }
     });
+  }
+
+  private async closeUnexpectedlyOpenTopic(
+    request: { id: string; operatorTopicId: string },
+    externalEventId: string,
+  ): Promise<void> {
+    try {
+      await this.operatorInbox.closeRequest(request.operatorTopicId, {
+        externalEventId,
+        requestId: request.id,
+      });
+    } catch (error: unknown) {
+      if (!(error instanceof OperatorActionOutcomeUnknownError)) {
+        throw error;
+      }
+    }
   }
 
   private canReopenRequest(request: {

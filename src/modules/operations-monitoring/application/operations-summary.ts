@@ -1,12 +1,17 @@
 export type OverallOperationsState = 'attention' | 'healthy' | 'maintenance';
 
-export function mapOperatorInboxStatus(activeWebRequests: number): {
-  activeWebRequests: number;
+export function mapOperatorInboxStatus(summary: {
+  recoverable: number;
+  webOwned: number;
+}): {
+  recoverableWebRequests: number;
   state: 'attention' | 'healthy';
+  webOwnedRequests: number;
 } {
   return {
-    activeWebRequests,
-    state: activeWebRequests > 0 ? 'attention' : 'healthy',
+    recoverableWebRequests: summary.recoverable,
+    state: summary.recoverable > 0 ? 'attention' : 'healthy',
+    webOwnedRequests: summary.webOwned,
   };
 }
 

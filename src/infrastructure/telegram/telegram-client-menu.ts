@@ -4,21 +4,20 @@ import {
   pausedClientIntakeMessage,
   type ClientIntakePolicy,
 } from '@/core/contracts/client-intake-policy.js';
+import { resolveClientConversationState } from '@/core/application/client-conversation-state.js';
 import {
   ClientInformationCatalog,
   handoffButton,
   type ClientInformationResolver,
-  isAvailableInformationRequest,
   isHandoffRequest,
   newQuestionButton,
 } from '@/core/application/client-information.js';
-import { isWebOperatorTopic } from '@/core/model/operator-topic.js';
+import type { ClientConversationState } from '@/core/model/client-conversation.js';
 
 import type {
   TelegramGateway,
   TelegramReplyMarkup,
 } from './telegram-api-client.js';
-import { isUnavailableForumTopicError } from './telegram-api-client.js';
 
 export interface TelegramMenuMessage {
   chatId: number;
@@ -34,27 +33,19 @@ export class TelegramClientMenu implements TelegramClientMenuHandler {
   public constructor(
     private readonly gateway: TelegramGateway,
     private readonly repository: SupportRepository,
-    private readonly operatorChatId: number,
     private readonly information: ClientInformationResolver = new ClientInformationCatalog(),
     private readonly intakePolicy: ClientIntakePolicy = acceptingClientIntakePolicy,
   ) {}
 
   public async handle(message: TelegramMenuMessage): Promise<boolean> {
     const conversationId = String(message.chatId);
-    const activeRequest = this.repository.findActiveRequest(
+    const state = resolveClientConversationState(
+      this.repository,
+      this.intakePolicy,
       'telegram',
       conversationId,
     );
-    const response = resolveMenuResponse(
-      message.text,
-      Boolean(activeRequest),
-      this.information,
-      this.intakePolicy,
-    );
-    const informationRequested = isAvailableInformationRequest(
-      this.information,
-      message.text,
-    );
+    const response = resolveMenuResponse(message.text, state, this.information);
     if (!response) {
       return false;
     }
@@ -69,27 +60,19 @@ export class TelegramClientMenu implements TelegramClientMenuHandler {
     }
 
     try {
-      if (response.resetActiveRequest && activeRequest) {
-        if (!isWebOperatorTopic(activeRequest.operatorTopicId)) {
-          try {
-            await this.gateway.closeForumTopic(
-              this.operatorChatId,
-              Number(activeRequest.operatorTopicId),
-            );
-          } catch (error: unknown) {
-            if (!isUnavailableForumTopicError(error)) {
-              throw error;
-            }
-          }
-        }
-        this.repository.closeRequest(activeRequest.id, new Date());
+      if (response.beginQuestion) {
+        this.repository.setAwaitingClientQuestion(
+          'telegram',
+          conversationId,
+          new Date(),
+        );
       }
       await this.gateway.sendMessage({
         chatId: message.chatId,
         replyMarkup: response.replyMarkup,
         text: response.text,
       });
-      if (informationRequested) {
+      if (response.informationRequested) {
         this.repository.recordUsageEvent({
           channel: 'telegram',
           id: `information:telegram:${message.externalEventId}`,
@@ -111,70 +94,26 @@ export class TelegramClientMenu implements TelegramClientMenuHandler {
 }
 
 interface MenuResponse {
+  beginQuestion?: true;
+  informationRequested?: true;
   replyMarkup: TelegramReplyMarkup;
-  resetActiveRequest?: true;
   text: string;
 }
 
 function resolveMenuResponse(
   text: string,
-  hasActiveRequest: boolean,
+  state: ClientConversationState,
   information: ClientInformationResolver,
-  intakePolicy: ClientIntakePolicy,
 ): MenuResponse | undefined {
   const normalized = text.trim();
   const command = parseCommand(normalized);
-  const paused = intakePolicy.isPaused('telegram');
-  const mainMenu = createTelegramMainKeyboard(
-    information,
-    hasActiveRequest,
-    paused,
-  );
-  const informationResponse = information.resolve(normalized);
-  if (
-    informationResponse &&
-    (!paused ||
-      hasActiveRequest ||
-      isAvailableInformationRequest(information, normalized))
-  ) {
-    return {
-      replyMarkup: mainMenu,
-      text: informationResponse,
-    };
-  }
+  const mainMenu = createTelegramMainKeyboard(information, state);
 
-  if (information.isStaleMenuAction(normalized)) {
-    return {
-      replyMarkup: mainMenu,
-      text: 'Меню обновилось. Выберите нужный раздел ниже.',
-    };
-  }
-
-  if (paused && !hasActiveRequest) {
-    return {
-      replyMarkup: mainMenu,
-      text: pausedClientIntakeMessage,
-    };
-  }
-
-  if (hasActiveRequest) {
+  if (state.stage === 'active') {
     if (command === '/start' || command === '/menu') {
       return {
         replyMarkup: mainMenu,
-        text: 'Разговор уже начат. Напишите сообщение, чтобы продолжить, или выберите нужный раздел.',
-      };
-    }
-    if (isHandoffRequest(normalized)) {
-      return {
-        replyMarkup: mainMenu,
-        text: 'Просто напишите сообщение, чтобы продолжить разговор.',
-      };
-    }
-    if (normalized === newQuestionButton) {
-      return {
-        replyMarkup: mainMenu,
-        resetActiveRequest: true,
-        text: 'Предыдущий разговор завершён. Выберите нужный раздел.',
+        text: 'Разговор уже начат. Напишите сообщение, чтобы продолжить.',
       };
     }
     if (command?.startsWith('/')) {
@@ -186,10 +125,54 @@ function resolveMenuResponse(
     return undefined;
   }
 
-  if (normalized === newQuestionButton) {
+  const informationResponse = information.resolve(normalized);
+  if (state.intakePaused) {
+    if (informationResponse) {
+      return {
+        replyMarkup: mainMenu,
+        informationRequested: true,
+        text: informationResponse,
+      };
+    }
+    if (information.isStaleMenuAction(normalized)) {
+      return {
+        replyMarkup: mainMenu,
+        text: 'Меню обновилось. Выберите нужный раздел ниже.',
+      };
+    }
     return {
       replyMarkup: mainMenu,
-      text: 'Выберите нужный раздел.',
+      text: pausedClientIntakeMessage,
+    };
+  }
+
+  if (state.stage === 'awaiting_question' && !command?.startsWith('/')) {
+    return undefined;
+  }
+
+  if (informationResponse) {
+    return {
+      replyMarkup: mainMenu,
+      informationRequested: true,
+      text: informationResponse,
+    };
+  }
+
+  if (information.isStaleMenuAction(normalized)) {
+    return {
+      replyMarkup: mainMenu,
+      text: 'Меню обновилось. Выберите нужный раздел ниже.',
+    };
+  }
+
+  if (normalized === newQuestionButton || isHandoffRequest(normalized)) {
+    return {
+      beginQuestion: true,
+      replyMarkup: createTelegramMainKeyboard(information, {
+        intakePaused: false,
+        stage: 'awaiting_question',
+      }),
+      text: 'Напишите свой вопрос. Мы ответим здесь.',
     };
   }
   if (command === '/start' || command === '/menu') {
@@ -204,10 +187,10 @@ function resolveMenuResponse(
       text: 'Открытого обращения нет. Выберите нужный раздел в меню.',
     };
   }
-  if (isHandoffRequest(normalized)) {
+  if (state.stage === 'closed') {
     return {
       replyMarkup: mainMenu,
-      text: 'Напишите свой вопрос. Мы ответим здесь.',
+      text: 'Предыдущий разговор завершён. Если хотите задать новый вопрос, нажмите «Задать вопрос».',
     };
   }
   return undefined;
@@ -215,9 +198,11 @@ function resolveMenuResponse(
 
 export function createTelegramMainKeyboard(
   information: ClientInformationResolver,
-  hasActiveRequest: boolean,
-  paused = false,
+  state: ClientConversationState,
 ): TelegramReplyMarkup {
+  if (state.stage === 'active' || state.stage === 'awaiting_question') {
+    return { remove_keyboard: true };
+  }
   const informationRows = createButtonRows(
     information.getInformationButtons().map((text) => ({ text })),
   );
@@ -225,12 +210,7 @@ export function createTelegramMainKeyboard(
     .getCustomSections()
     .map((section) => ({ text: section.label }));
   const customRows = createButtonRows(customButtons);
-  let actionRows: { text: string }[][] = [];
-  if (hasActiveRequest) {
-    actionRows = [[{ text: newQuestionButton }]];
-  } else if (!paused) {
-    actionRows = [[{ text: handoffButton }]];
-  }
+  const actionRows = state.intakePaused ? [] : [[{ text: handoffButton }]];
   const keyboard = [...informationRows, ...customRows, ...actionRows];
   if (keyboard.length === 0) {
     return { remove_keyboard: true };

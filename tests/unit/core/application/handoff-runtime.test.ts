@@ -275,6 +275,10 @@ describe('HandoffRuntime', () => {
       webTopicId,
     );
     expect(repository.getDeliverySummary().pending).toBe(2);
+    expect(repository.getWebOperatorRequestSummary()).toEqual({
+      recoverable: 0,
+      webOwned: 1,
+    });
     expect(repository.findConversationMessages(request.id, 20)).toContainEqual(
       expect.objectContaining({
         direction: 'operator_to_client',
@@ -288,6 +292,11 @@ describe('HandoffRuntime', () => {
       receivedAt: new Date('2026-09-06T12:04:00.000Z'),
       text: '/close',
     });
+    repository.setAwaitingClientQuestion(
+      'vk',
+      '101',
+      new Date('2026-09-06T12:04:30.000Z'),
+    );
     await runtime.handleClientMessage('vk-event-3', {
       channel: 'vk',
       conversationId: '101',

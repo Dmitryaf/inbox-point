@@ -17,7 +17,7 @@ export class OperatorInboxUnavailableError extends Error {
 export class OperatorActionOutcomeUnknownError extends Error {
   public constructor(
     public readonly actionId: string,
-    public readonly operation: 'open' | 'relay',
+    public readonly operation: 'close' | 'open' | 'relay' | 'reopen',
   ) {
     super(`Operator inbox ${operation} outcome is unknown`);
     this.name = 'OperatorActionOutcomeUnknownError';
@@ -29,9 +29,16 @@ export interface OpenOperatorRequest {
   reusableTopicId?: string;
   source: SupportMessage;
   title: string;
+  unavailableTopicId?: string;
+}
+
+export interface OperatorLifecycleActionOptions {
+  externalEventId: string;
+  requestId: string;
 }
 
 export interface RelayCustomerMessageOptions {
+  actionScope?: string;
   initial: boolean;
   requestId: string;
 }
@@ -42,9 +49,15 @@ export interface RelayedCustomerMessage {
 }
 
 export interface OperatorInbox {
-  closeRequest(operatorTopicId: string): Promise<void>;
+  closeRequest(
+    operatorTopicId: string,
+    options: OperatorLifecycleActionOptions,
+  ): Promise<void>;
   openRequest(request: OpenOperatorRequest): Promise<{ topicId: string }>;
-  reopenRequest(operatorTopicId: string): Promise<void>;
+  reopenRequest(
+    operatorTopicId: string,
+    options: OperatorLifecycleActionOptions,
+  ): Promise<void>;
   relayCustomerMessage(
     operatorTopicId: string,
     message: SupportMessage,

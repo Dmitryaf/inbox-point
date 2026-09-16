@@ -40,8 +40,9 @@ describe('OperationsDashboardPage', () => {
         }
         const status = attentionOperationsStatus();
         status.operatorInbox = {
-          activeWebRequests: 1,
+          recoverableWebRequests: 1,
           state: 'attention',
+          webOwnedRequests: 0,
         };
         return Promise.resolve(response(status));
       }),

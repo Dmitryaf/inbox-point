@@ -1,8 +1,13 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { DeliveryWorker } from '@/core/application/delivery-worker.js';
 import { EmergencyOperatorInbox } from '@/core/application/emergency-operator-inbox.js';
 import { HandoffService } from '@/core/application/handoff-service.js';
+import { SwitchableOperatorInbox } from '@/core/application/switchable-operator-inbox.js';
 import { DeliveryOutcomeUnknownError } from '@/core/contracts/client-channel.js';
 import {
   ClientInformationCatalog,
@@ -25,10 +30,16 @@ import type { TelegramUpdate } from '@/infrastructure/telegram/telegram-types.js
 import { TelegramUpdateRouter } from '@/infrastructure/telegram/telegram-update-router.js';
 
 class FakeTelegramGateway implements TelegramGateway {
+  public readonly alreadyClosedTopics = new Set<number>();
+  public readonly alreadyOpenTopics = new Set<number>();
+  public closeAttempts = 0;
   public readonly closedTopics: number[] = [];
   public readonly createdTopics: number[] = [];
+  public failNextClose = false;
+  public failNextReopen = false;
   public failNextSend = false;
   public unknownNextOpen = false;
+  public unknownNextClose = false;
   public unknownNextReopen = false;
   public unknownOnSendNumber: number | undefined;
   public readonly reopened: number[] = [];
@@ -41,6 +52,23 @@ class FakeTelegramGateway implements TelegramGateway {
     messageThreadId: number,
   ): Promise<void> {
     void chatId;
+    this.closeAttempts += 1;
+    if (this.failNextClose) {
+      this.failNextClose = false;
+      return Promise.reject(new Error('Temporary Telegram close failure'));
+    }
+    if (this.unknownNextClose) {
+      this.unknownNextClose = false;
+      this.closedTopics.push(messageThreadId);
+      return Promise.reject(new DeliveryOutcomeUnknownError('telegram'));
+    }
+    if (this.alreadyClosedTopics.has(messageThreadId)) {
+      return Promise.reject(
+        new Error(
+          'Telegram API closeForumTopic failed: Bad Request: TOPIC_CLOSED',
+        ),
+      );
+    }
     if (this.unavailableTopics.has(messageThreadId)) {
       return Promise.reject(
         new Error(
@@ -79,9 +107,20 @@ class FakeTelegramGateway implements TelegramGateway {
     messageThreadId: number,
   ): Promise<void> {
     void chatId;
+    if (this.failNextReopen) {
+      this.failNextReopen = false;
+      return Promise.reject(new Error('Temporary Telegram reopen failure'));
+    }
     if (this.unknownNextReopen) {
       this.unknownNextReopen = false;
       return Promise.reject(new DeliveryOutcomeUnknownError('telegram'));
+    }
+    if (this.alreadyOpenTopics.has(messageThreadId)) {
+      return Promise.reject(
+        new Error(
+          'Telegram API reopenForumTopic failed: Bad Request: TOPIC_NOT_MODIFIED',
+        ),
+      );
     }
     if (this.unavailableTopics.has(messageThreadId)) {
       return Promise.reject(
@@ -126,6 +165,7 @@ describe('Telegram handoff integration', () => {
   let gateway: FakeTelegramGateway;
   let information: ClientInformationCatalog;
   let deliveryWorker: DeliveryWorker;
+  let handoff: HandoffService;
   let repository: SqliteSupportRepository;
   let router: TelegramUpdateRouter;
   let telegramPaused: boolean;
@@ -138,7 +178,7 @@ describe('Telegram handoff integration', () => {
     const intakePolicy: ClientIntakePolicy = {
       isPaused: (channel) => channel === 'telegram' && telegramPaused,
     };
-    const handoff = new HandoffService({
+    handoff = new HandoffService({
       clock: () => new Date('2026-08-31T12:00:00.000Z'),
       createId: (() => {
         let nextId = 1;
@@ -148,19 +188,21 @@ describe('Telegram handoff integration', () => {
       repository,
     });
     deliveryWorker = new DeliveryWorker({
-      channels: [new TelegramClientChannel(gateway, information)],
+      channels: [
+        new TelegramClientChannel(
+          gateway,
+          repository,
+          information,
+          intakePolicy,
+        ),
+      ],
       repository,
     });
     router = new TelegramUpdateRouter(
       handoff,
       -1_001,
-      new TelegramClientMenu(
-        gateway,
-        repository,
-        -1_001,
-        information,
-        intakePolicy,
-      ),
+      new TelegramClientMenu(gateway, repository, information, intakePolicy),
+      gateway,
     );
   });
 
@@ -218,13 +260,7 @@ describe('Telegram handoff integration', () => {
       chatId: 101,
       text: 'Answer',
     });
-    const refreshedMenu = gateway.sent[2]?.replyMarkup;
-    if (!refreshedMenu || !('keyboard' in refreshedMenu)) {
-      throw new Error('Expected an updated reply keyboard');
-    }
-    expect(
-      refreshedMenu.keyboard.flat().map((button) => button.text),
-    ).toContain('Как добраться');
+    expect(gateway.sent[2]?.replyMarkup).toEqual({ remove_keyboard: true });
     expect(
       repository.getUsageEventCounts(new Date('2026-01-01')).new_request,
     ).toBe(1);
@@ -423,6 +459,50 @@ describe('Telegram handoff integration', () => {
     });
   });
 
+  it('replaces a permanently missing topic during web recovery exactly once', async () => {
+    const primaryInbox = new TelegramTopicsInbox(gateway, -1_001, repository);
+    const switchableInbox = new SwitchableOperatorInbox(
+      new EmergencyOperatorInbox(),
+    );
+    switchableInbox.register(primaryInbox);
+    const recoveringHandoff = new HandoffService({
+      operatorInbox: switchableInbox,
+      repository,
+    });
+    const recoveringRouter = new TelegramUpdateRouter(
+      recoveringHandoff,
+      -1_001,
+      new TelegramClientMenu(gateway, repository, information),
+      gateway,
+    );
+
+    await recoveringRouter.route(createPrivateUpdate(1, 501, 'Первый вопрос'));
+    await recoveringRouter.route(
+      createOperatorUpdate(2, 601, 900, 'Первый ответ'),
+    );
+    gateway.unavailableTopics.add(900);
+    await recoveringRouter.route(createPrivateUpdate(3, 502, 'Уточнение'));
+
+    expect(
+      repository.findActiveRequest('telegram', '101')?.operatorTopicId,
+    ).toMatch(/^web:/);
+    expect(repository.getWebOperatorRequestSummary()).toEqual({
+      recoverable: 1,
+      webOwned: 0,
+    });
+
+    await recoveringHandoff.recoverWebRequests(primaryInbox);
+    await recoveringHandoff.recoverWebRequests(primaryInbox);
+
+    expect(repository.findActiveRequest('telegram', '101')).toMatchObject({
+      operatorTopicId: '901',
+    });
+    expect(gateway.createdTopics).toEqual([900, 901]);
+    expect(
+      gateway.sent.filter((message) => message.messageThreadId === 901),
+    ).toHaveLength(2);
+  });
+
   it('shows the menu without opening a request and hands off the actual question', async () => {
     const startUpdate = createPrivateUpdate(1, 501, '/start');
 
@@ -448,9 +528,7 @@ describe('Telegram handoff integration', () => {
       handoffButton,
     ]);
     expect(gateway.sent[1]?.text).toContain('Напишите свой вопрос');
-    expect(gateway.sent[1]?.replyMarkup).toMatchObject({
-      is_persistent: true,
-    });
+    expect(gateway.sent[1]?.replyMarkup).toEqual({ remove_keyboard: true });
 
     await router.route(
       createPrivateUpdate(3, 503, 'Когда проходит занятие для начинающих?'),
@@ -536,9 +614,10 @@ describe('Telegram handoff integration', () => {
     expect(gateway.sent[1]?.messageThreadId).toBe(900);
     expect(gateway.sent[1]?.text).toContain('Уточнение');
     expect(gateway.sent[2]).toMatchObject({
-      chatId: 101,
-      text: 'Расписание пока не добавлено. Задайте вопрос, чтобы уточнить время.',
+      chatId: -1_001,
+      messageThreadId: 900,
     });
+    expect(gateway.sent[2]?.text).toContain('Расписание');
   });
 
   it('reports an active request instead of forwarding /start to operators', async () => {
@@ -548,28 +627,21 @@ describe('Telegram handoff integration', () => {
     expect(gateway.sent).toHaveLength(2);
     expect(gateway.sent[1]).toMatchObject({
       chatId: 101,
-      replyMarkup: { is_persistent: true },
-      text: 'Разговор уже начат. Напишите сообщение, чтобы продолжить, или выберите нужный раздел.',
+      replyMarkup: { remove_keyboard: true },
+      text: 'Разговор уже начат. Напишите сообщение, чтобы продолжить.',
     });
-    const activeMenu = gateway.sent[1]?.replyMarkup;
-    if (!activeMenu || !('keyboard' in activeMenu)) {
-      throw new Error('Expected an active-request keyboard');
-    }
-    expect(activeMenu.keyboard.flat().map((button) => button.text)).toEqual([
-      newQuestionButton,
-    ]);
   });
 
-  it('keeps reference buttons available during an active request', async () => {
+  it('forwards a reference label as normal text during an active request', async () => {
     await router.route(createPrivateUpdate(1, 501, 'Первый вопрос'));
     await router.route(createPrivateUpdate(2, 502, 'Расписание'));
 
     expect(gateway.sent).toHaveLength(2);
     expect(gateway.sent[1]).toMatchObject({
-      chatId: 101,
-      replyMarkup: { is_persistent: true },
-      text: 'Расписание пока не добавлено. Задайте вопрос, чтобы уточнить время.',
+      chatId: -1_001,
+      messageThreadId: 900,
     });
+    expect(gateway.sent[1]?.text).toContain('Расписание');
   });
 
   it('shows and resolves the built-in FAQ without opening a request', async () => {
@@ -669,6 +741,143 @@ describe('Telegram handoff integration', () => {
     expect(repository.findActiveRequest('telegram', '101')).toBeDefined();
   });
 
+  it.each(['Спасибо', 'Когда следующее занятие?'])(
+    'does not open a request from post-dialog text: %s',
+    async (text) => {
+      await router.route(createPrivateUpdate(1, 501, 'Первый вопрос'));
+      const firstRequest = repository.findActiveRequest('telegram', '101');
+      await router.route(createOperatorUpdate(2, 601, 900, '/close'));
+
+      await router.route(createPrivateUpdate(3, 502, text));
+
+      expect(repository.findActiveRequest('telegram', '101')).toBeUndefined();
+      expect(repository.findLatestRequest('telegram', '101')?.id).toBe(
+        firstRequest?.id,
+      );
+      expect(gateway.sent.at(-1)?.text).toContain(
+        'Предыдущий разговор завершён',
+      );
+      expect(gateway.sent.at(-1)?.replyMarkup).toMatchObject({
+        is_persistent: true,
+      });
+    },
+  );
+
+  it('closes and reopens a request only after Telegram confirms the action', async () => {
+    await router.route(createPrivateUpdate(1, 501, 'Вопрос'));
+
+    await router.route(createOperatorUpdate(2, 601, 900, '/close'));
+    expect(repository.findActiveRequest('telegram', '101')).toBeUndefined();
+    expect(gateway.closedTopics).toEqual([900]);
+
+    await router.route(createOperatorUpdate(3, 602, 900, '/reopen'));
+    expect(repository.findActiveRequest('telegram', '101')).toMatchObject({
+      operatorTopicId: '900',
+    });
+    expect(gateway.reopened).toEqual([900]);
+  });
+
+  it('keeps a request active and delivers a reply after a failed close', async () => {
+    await router.route(createPrivateUpdate(1, 501, 'Вопрос'));
+    gateway.failNextClose = true;
+
+    await expect(
+      router.route(createOperatorUpdate(2, 601, 900, '/close')),
+    ).rejects.toThrow('Temporary Telegram close failure');
+    expect(repository.findActiveRequest('telegram', '101')).toBeDefined();
+
+    await router.route(createOperatorUpdate(3, 602, 900, 'Ответ после ошибки'));
+    await deliveryWorker.processPending();
+    await deliveryWorker.processPending();
+
+    expect(
+      gateway.sent.some((message) => message.text === 'Ответ после ошибки'),
+    ).toBe(true);
+  });
+
+  it('does not retry an uncertain close and keeps the request active', async () => {
+    await router.route(createPrivateUpdate(1, 501, 'Вопрос'));
+    gateway.unknownNextClose = true;
+    const closeUpdate = createOperatorUpdate(2, 601, 900, '/close');
+
+    await router.route(closeUpdate);
+    await router.route(closeUpdate);
+
+    expect(gateway.closeAttempts).toBe(1);
+    expect(repository.findActiveRequest('telegram', '101')).toBeDefined();
+    expect(repository.getOperatorActionSummary()).toEqual({ uncertain: 1 });
+  });
+
+  it('treats an already closed topic as an idempotent close success', async () => {
+    await router.route(createPrivateUpdate(1, 501, 'Вопрос'));
+    gateway.alreadyClosedTopics.add(900);
+
+    await router.route(createOperatorUpdate(2, 601, 900, '/close'));
+
+    expect(repository.findActiveRequest('telegram', '101')).toBeUndefined();
+    expect(gateway.closeAttempts).toBe(1);
+  });
+
+  it('keeps a closed request closed when Telegram reopen fails', async () => {
+    await router.route(createPrivateUpdate(1, 501, 'Вопрос'));
+    await router.route(createOperatorUpdate(2, 601, 900, '/close'));
+    gateway.failNextReopen = true;
+
+    await expect(
+      router.route(createOperatorUpdate(3, 602, 900, '/reopen')),
+    ).rejects.toThrow('Temporary Telegram reopen failure');
+
+    expect(repository.findActiveRequest('telegram', '101')).toBeUndefined();
+  });
+
+  it('uses the current closed state for a delayed outgoing keyboard', async () => {
+    await router.route(createPrivateUpdate(1, 501, 'Вопрос'));
+    await deliveryWorker.processPending();
+    await router.route(createOperatorUpdate(2, 601, 900, 'Ответ'));
+    await router.route(createOperatorUpdate(3, 602, 900, '/close'));
+
+    await deliveryWorker.processPending();
+
+    const delivered = gateway.sent.at(-1);
+    expect(delivered?.text).toBe('Ответ');
+    expect(delivered?.replyMarkup).toMatchObject({ is_persistent: true });
+    if (!delivered?.replyMarkup || !('keyboard' in delivered.replyMarkup)) {
+      throw new Error('Expected an idle Telegram keyboard');
+    }
+    expect(
+      delivered.replyMarkup.keyboard.flat().map((button) => button.text),
+    ).toContain(handoffButton);
+  });
+
+  it('explains an unsupported private location message', async () => {
+    const update = createPrivateUpdate(1, 501, 'placeholder');
+    if (!update.message) {
+      throw new Error('Expected a Telegram message');
+    }
+    delete update.message.text;
+    update.message.location = { latitude: 55.75, longitude: 37.62 };
+
+    await router.route(update);
+
+    expect(repository.findActiveRequest('telegram', '101')).toBeUndefined();
+    expect(gateway.sent.at(-1)?.text).toBe(
+      'Сейчас можно отправить только текст. Напишите вопрос отдельным текстовым сообщением.',
+    );
+  });
+
+  it('ignores edited client messages without sending an unsupported reply', async () => {
+    const original = createPrivateUpdate(1, 501, 'Исправленный вопрос');
+    const update: TelegramUpdate = {
+      edited_message: original.message,
+      update_id: 2,
+    };
+
+    await router.route(update);
+
+    expect(repository.findActiveRequest('telegram', '101')).toBeUndefined();
+    expect(gateway.sent).toHaveLength(0);
+  });
+
   it('replaces a deleted topic when the customer sends another message', async () => {
     await router.route(createPrivateUpdate(1, 501, 'Первый вопрос'));
     gateway.unavailableTopics.add(900);
@@ -686,25 +895,85 @@ describe('Telegram handoff integration', () => {
     expect(gateway.sent[1]?.text).toContain('Второй вопрос');
   });
 
-  it('lets the customer abandon a stale request and return to the menu', async () => {
+  it('treats a former active-menu label as client text', async () => {
     await router.route(createPrivateUpdate(1, 501, 'Первый вопрос'));
     gateway.unavailableTopics.add(900);
 
     await router.route(createPrivateUpdate(2, 502, '/start'));
     await router.route(createPrivateUpdate(3, 503, 'Начать новый вопрос'));
 
-    expect(repository.findActiveRequest('telegram', '101')).toBeUndefined();
-    expect(gateway.sent[2]).toMatchObject({
-      chatId: 101,
-      text: 'Предыдущий разговор завершён. Выберите нужный раздел.',
+    expect(repository.findActiveRequest('telegram', '101')).toMatchObject({
+      operatorTopicId: '901',
     });
+    expect(gateway.sent[2]).toMatchObject({
+      chatId: -1_001,
+      messageThreadId: 901,
+    });
+    expect(gateway.sent[2]?.text).toContain(newQuestionButton);
   });
 
-  it('reopens one client topic after the new-question button', async () => {
+  it('keeps explicit question intent across a repository restart', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'inbox-point-handoff-'));
+    const databasePath = join(directory, 'handoff.sqlite');
+    const firstRepository = new SqliteSupportRepository(databasePath);
+    let firstRepositoryOpen = true;
+    try {
+      const firstMenu = new TelegramClientMenu(
+        gateway,
+        firstRepository,
+        information,
+      );
+      await firstMenu.handle({
+        chatId: 202,
+        externalEventId: 'question-button',
+        text: handoffButton,
+      });
+      firstRepository.close();
+      firstRepositoryOpen = false;
+
+      const restartedRepository = new SqliteSupportRepository(databasePath);
+      try {
+        const restartedHandoff = new HandoffService({
+          operatorInbox: new TelegramTopicsInbox(
+            gateway,
+            -1_001,
+            restartedRepository,
+          ),
+          repository: restartedRepository,
+        });
+        const restartedRouter = new TelegramUpdateRouter(
+          restartedHandoff,
+          -1_001,
+          new TelegramClientMenu(gateway, restartedRepository, information),
+          gateway,
+        );
+
+        await restartedRouter.route(
+          createPrivateUpdate(20, 520, 'Вопрос после рестарта', 202),
+        );
+
+        expect(
+          restartedRepository.findActiveRequest('telegram', '202'),
+        ).toBeDefined();
+        expect(
+          restartedRepository.isAwaitingClientQuestion('telegram', '202'),
+        ).toBe(false);
+      } finally {
+        restartedRepository.close();
+      }
+    } finally {
+      if (firstRepositoryOpen) {
+        firstRepository.close();
+      }
+      rmSync(directory, { force: true, recursive: true });
+    }
+  });
+
+  it('reopens one client topic after an explicit new-question action', async () => {
     await router.route(createPrivateUpdate(1, 501, 'Ого'));
     const firstRequest = repository.findActiveRequest('telegram', '101');
-    await router.route(createPrivateUpdate(2, 502, '/start'));
-    await router.route(createPrivateUpdate(3, 503, newQuestionButton));
+    await router.route(createTopicServiceUpdate(2, 'closed'));
+    await router.route(createPrivateUpdate(3, 503, handoffButton));
 
     await router.route(createPrivateUpdate(4, 504, 'Ты кто?'));
 
@@ -713,7 +982,7 @@ describe('Telegram handoff integration', () => {
     expect(nextRequest?.id).not.toBe(firstRequest?.id);
     expect(nextRequest?.operatorTopicId).toBe('900');
     expect(gateway.createdTopics).toEqual([900]);
-    expect(gateway.closedTopics).toEqual([900]);
+    expect(gateway.closedTopics).toEqual([]);
     expect(gateway.reopened).toEqual([900]);
   });
 
@@ -731,12 +1000,25 @@ describe('Telegram handoff integration', () => {
       ),
     ).toBe(true);
 
-    await router.route(createPrivateUpdate(2, 502, '/start'));
-    await router.route(createPrivateUpdate(3, 503, newQuestionButton));
+    const webHandoff = new HandoffService({
+      operatorInbox: new EmergencyOperatorInbox(),
+      repository,
+    });
+    await webHandoff.handleOperatorMessage(
+      'web-close',
+      {
+        externalMessageId: 'web-close-message',
+        operatorTopicId: `web:${firstRequest.id}`,
+        receivedAt: new Date('2026-09-16T10:00:00.000Z'),
+        text: '/close',
+      },
+      'operator:web',
+    );
 
     expect(gateway.closedTopics).toEqual([]);
     expect(repository.findRequestById(firstRequest.id)?.status).toBe('closed');
 
+    await router.route(createPrivateUpdate(3, 503, handoffButton));
     await router.route(createPrivateUpdate(4, 504, 'Следующий вопрос'));
 
     const nextRequest = repository.findActiveRequest('telegram', '101');
@@ -750,6 +1032,7 @@ describe('Telegram handoff integration', () => {
     await router.route(createTopicServiceUpdate(2, 'closed'));
     gateway.unavailableTopics.add(900);
 
+    await router.route(createPrivateUpdate(3, 502, handoffButton));
     await router.route(createPrivateUpdate(3, 502, 'Следующий вопрос'));
 
     const nextRequest = repository.findActiveRequest('telegram', '101');
@@ -758,11 +1041,26 @@ describe('Telegram handoff integration', () => {
     expect(nextRequest?.operatorTopicId).toBe('901');
   });
 
+  it('reuses a topic that Telegram reports as already open', async () => {
+    await router.route(createPrivateUpdate(1, 501, 'Первый вопрос'));
+    await router.route(createTopicServiceUpdate(2, 'closed'));
+    gateway.alreadyOpenTopics.add(900);
+
+    await router.route(createPrivateUpdate(3, 502, handoffButton));
+    await router.route(createPrivateUpdate(4, 503, 'Следующий вопрос'));
+
+    expect(gateway.createdTopics).toEqual([900]);
+    expect(repository.findActiveRequest('telegram', '101')).toMatchObject({
+      operatorTopicId: '900',
+    });
+  });
+
   it('does not create a duplicate when reopening has an unknown outcome', async () => {
     await router.route(createPrivateUpdate(1, 501, 'Первый вопрос'));
     await router.route(createTopicServiceUpdate(2, 'closed'));
     gateway.unknownNextReopen = true;
 
+    await router.route(createPrivateUpdate(3, 502, handoffButton));
     await router.route(createPrivateUpdate(3, 502, 'Следующий вопрос'));
 
     const nextRequest = repository.findActiveRequest('telegram', '101');
@@ -786,6 +1084,7 @@ describe('Telegram handoff integration', () => {
     const firstRequest = repository.findActiveRequest('telegram', '101');
     await router.route(createTopicServiceUpdate(2, 'closed'));
 
+    await router.route(createPrivateUpdate(3, 502, handoffButton));
     await router.route(createPrivateUpdate(3, 502, 'New question'));
 
     const nextRequest = repository.findActiveRequest('telegram', '101');
@@ -793,12 +1092,12 @@ describe('Telegram handoff integration', () => {
     expect(gateway.createdTopics).toEqual([900]);
     expect(nextRequest?.operatorTopicId).toBe('900');
     expect(nextRequest?.id).not.toBe(firstRequest?.id);
-    expect(gateway.sent).toHaveLength(2);
-    expect(gateway.sent[1]).toMatchObject({
+    expect(gateway.sent).toHaveLength(3);
+    expect(gateway.sent[2]).toMatchObject({
       chatId: -1_001,
       messageThreadId: 900,
     });
-    expect(gateway.sent[1]?.text).toContain('New question');
+    expect(gateway.sent[2]?.text).toContain('New question');
     expect(
       repository.getUsageEventCounts(new Date('2026-01-01')).new_request,
     ).toBe(2);
@@ -809,17 +1108,41 @@ function createPrivateUpdate(
   updateId: number,
   messageId: number,
   text: string,
+  chatId = 101,
 ): TelegramUpdate {
   return {
     message: {
-      chat: { id: 101, type: 'private' },
+      chat: { id: chatId, type: 'private' },
       date: 1_788_177_600,
       from: {
         first_name: 'Test',
-        id: 101,
+        id: chatId,
         is_bot: false,
       },
       message_id: messageId,
+      text,
+    },
+    update_id: updateId,
+  };
+}
+
+function createOperatorUpdate(
+  updateId: number,
+  messageId: number,
+  messageThreadId: number,
+  text: string,
+): TelegramUpdate {
+  return {
+    message: {
+      chat: { id: -1_001, type: 'supergroup' },
+      date: 1_788_177_600,
+      from: {
+        first_name: 'Operator',
+        id: 202,
+        is_bot: false,
+      },
+      message_id: messageId,
+      message_thread_id: messageThreadId,
       text,
     },
     update_id: updateId,

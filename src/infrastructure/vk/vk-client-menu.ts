@@ -2,14 +2,17 @@ import {
   ClientInformationCatalog,
   handoffButton,
   type ClientInformationResolver,
-  isAvailableInformationRequest,
   isHandoffRequest,
+  newQuestionButton,
 } from '@/core/application/client-information.js';
+import { resolveClientConversationState } from '@/core/application/client-conversation-state.js';
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
 import {
   acceptingClientIntakePolicy,
+  pausedClientIntakeMessage,
   type ClientIntakePolicy,
 } from '@/core/contracts/client-intake-policy.js';
+import type { ClientConversationState } from '@/core/model/client-conversation.js';
 
 import type {
   VkGateway,
@@ -20,6 +23,7 @@ import { createVkRandomId } from './vk-random-id.js';
 
 export interface VkMenuMessage {
   externalEventId: string;
+  payload?: string;
   peerId: number;
   text: string;
 }
@@ -37,22 +41,17 @@ export class VkClientMenu implements VkClientMenuHandler {
   ) {}
 
   public async handle(message: VkMenuMessage): Promise<boolean> {
-    const activeRequest = this.repository.findActiveRequest(
+    const conversationId = String(message.peerId);
+    const state = resolveClientConversationState(
+      this.repository,
+      this.intakePolicy,
       'vk',
-      String(message.peerId),
+      conversationId,
     );
-    const paused = this.intakePolicy.isPaused('vk') && !activeRequest;
-    const informationRequested = isAvailableInformationRequest(
-      this.information,
-      message.text,
-    );
-    const staleMenuAction = this.information.isStaleMenuAction(message.text);
-    if (paused && !informationRequested && !staleMenuAction) {
-      return this.completeWithoutResponse(message.externalEventId);
-    }
     const response = resolveMenuResponse(
       message.text,
-      Boolean(activeRequest),
+      message.payload,
+      state,
       this.information,
     );
     if (!response) {
@@ -69,14 +68,24 @@ export class VkClientMenu implements VkClientMenuHandler {
     }
 
     try {
-      const keyboard = createVkMainKeyboard(this.information, paused);
+      if (response.beginQuestion) {
+        this.repository.setAwaitingClientQuestion(
+          'vk',
+          conversationId,
+          new Date(),
+        );
+      }
+      const responseState: ClientConversationState = response.beginQuestion
+        ? { intakePaused: false, stage: 'awaiting_question' }
+        : state;
+      const keyboard = createVkMainKeyboard(this.information, responseState);
       await this.gateway.sendMessage(
         message.peerId,
-        response,
+        response.text,
         createVkRandomId('vk-menu:' + message.externalEventId),
-        keyboard.buttons.length > 0 ? keyboard : undefined,
+        keyboard,
       );
-      if (informationRequested) {
+      if (response.informationRequested) {
         this.repository.recordUsageEvent({
           channel: 'vk',
           id: `information:vk:${message.externalEventId}`,
@@ -95,24 +104,18 @@ export class VkClientMenu implements VkClientMenuHandler {
       throw error;
     }
   }
-
-  private completeWithoutResponse(externalEventId: string): boolean {
-    const claimed = this.repository.claimEvent(
-      'vk:menu',
-      externalEventId,
-      new Date(),
-    );
-    if (claimed) {
-      this.repository.completeEvent('vk:menu', externalEventId, new Date());
-    }
-    return true;
-  }
 }
 
 export function createVkMainKeyboard(
   information: ClientInformationResolver = new ClientInformationCatalog(),
-  paused = false,
+  state: ClientConversationState = {
+    intakePaused: false,
+    stage: 'first_contact',
+  },
 ): VkKeyboard {
+  if (state.stage === 'active' || state.stage === 'awaiting_question') {
+    return { buttons: [], inline: false, one_time: false };
+  }
   const informationButtons = information
     .getInformationButtons()
     .map((label, index) => createButton(label, 'information-' + index));
@@ -124,7 +127,9 @@ export function createVkMainKeyboard(
     buttons: [
       ...informationRows,
       ...customRows,
-      ...(paused ? [] : [[createButton(handoffButton, 'handoff', 'primary')]]),
+      ...(state.intakePaused
+        ? []
+        : [[createButton(handoffButton, 'handoff', 'primary')]]),
     ],
     inline: false,
     one_time: false,
@@ -141,36 +146,122 @@ function createButtonRows(
   return rows;
 }
 
+interface VkMenuResponse {
+  beginQuestion?: true;
+  informationRequested?: true;
+  text: string;
+}
+
 function resolveMenuResponse(
   text: string,
-  hasActiveRequest: boolean,
+  payload: string | undefined,
+  state: ClientConversationState,
   informationResolver: ClientInformationResolver,
-): string | undefined {
+): VkMenuResponse | undefined {
   const normalized = text.trim();
-  const information = informationResolver.resolve(normalized);
-  if (information) {
-    return information;
-  }
-
-  if (informationResolver.isStaleMenuAction(normalized)) {
-    return 'Меню обновилось. Выберите нужный раздел ниже.';
-  }
-
-  if (isHandoffRequest(normalized)) {
-    return hasActiveRequest
-      ? 'Просто напишите сообщение, чтобы продолжить разговор.'
-      : 'Напишите свой вопрос. Мы ответим здесь.';
-  }
+  const menuAction = parseMenuAction(payload);
   const command = normalized.toLowerCase();
+
+  if (state.stage === 'active') {
+    if (
+      menuAction?.startsWith('information-') ||
+      menuAction?.startsWith('custom-')
+    ) {
+      return resolveStructuredInformation(normalized, informationResolver);
+    }
+    if (menuAction === 'handoff') {
+      return { text: 'Просто напишите сообщение, чтобы продолжить разговор.' };
+    }
+    if (command === '/start' || command === '/menu' || command === 'начать') {
+      return {
+        text: 'Разговор уже начат. Напишите сообщение, чтобы продолжить.',
+      };
+    }
+    if (command.startsWith('/')) {
+      return {
+        text: 'Эта команда недоступна во время разговора. Просто напишите сообщение.',
+      };
+    }
+    return undefined;
+  }
+
+  if (
+    menuAction?.startsWith('information-') ||
+    menuAction?.startsWith('custom-')
+  ) {
+    const information = resolveStructuredInformation(
+      normalized,
+      informationResolver,
+    );
+    if (information) {
+      return information;
+    }
+  }
+
+  if (state.intakePaused) {
+    return { text: pausedClientIntakeMessage };
+  }
+
+  if (state.stage === 'awaiting_question' && !command.startsWith('/')) {
+    return undefined;
+  }
+
+  if (
+    menuAction === 'handoff' ||
+    isHandoffRequest(normalized) ||
+    normalized === newQuestionButton
+  ) {
+    return {
+      beginQuestion: true,
+      text: 'Напишите свой вопрос. Мы ответим здесь.',
+    };
+  }
   if (command === '/start' || command === '/menu' || command === 'начать') {
-    return hasActiveRequest
-      ? 'Разговор уже начат. Напишите сообщение, чтобы продолжить, или выберите нужный раздел.'
-      : 'Здравствуйте! Здесь можно посмотреть основную информацию или задать вопрос.';
+    return {
+      text: 'Здравствуйте! Здесь можно посмотреть основную информацию или задать вопрос.',
+    };
   }
   if (command.startsWith('/')) {
-    return hasActiveRequest
-      ? 'Просто напишите сообщение или выберите нужный раздел.'
-      : 'Выберите нужный раздел.';
+    return { text: 'Открытого обращения нет. Выберите нужный раздел в меню.' };
+  }
+  if (state.stage === 'closed') {
+    return {
+      text: 'Предыдущий разговор завершён. Если хотите задать новый вопрос, нажмите «Задать вопрос».',
+    };
+  }
+  return undefined;
+}
+
+function resolveStructuredInformation(
+  text: string,
+  information: ClientInformationResolver,
+): VkMenuResponse | undefined {
+  const resolved = information.resolve(text);
+  if (resolved) {
+    return { informationRequested: true, text: resolved };
+  }
+  if (information.isStaleMenuAction(text)) {
+    return { text: 'Меню обновилось. Выберите нужный раздел ниже.' };
+  }
+  return undefined;
+}
+
+function parseMenuAction(payload: string | undefined): string | undefined {
+  if (!payload) {
+    return undefined;
+  }
+  try {
+    const parsed: unknown = JSON.parse(payload);
+    if (
+      typeof parsed === 'object' &&
+      parsed !== null &&
+      'action' in parsed &&
+      typeof parsed.action === 'string'
+    ) {
+      return parsed.action;
+    }
+  } catch {
+    return undefined;
   }
   return undefined;
 }

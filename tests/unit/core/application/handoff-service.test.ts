@@ -4,8 +4,10 @@ import { HandoffService } from '@/core/application/handoff-service.js';
 import type {
   OpenOperatorRequest,
   OperatorInbox,
+  OperatorLifecycleActionOptions,
   RelayCustomerMessageOptions,
 } from '@/core/contracts/operator-inbox.js';
+import { OperatorActionOutcomeUnknownError } from '@/core/contracts/operator-inbox.js';
 import type { SupportMessage } from '@/core/model/support-message.js';
 import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-support-repository.js';
 
@@ -15,14 +17,23 @@ class FakeOperatorInbox implements OperatorInbox {
   public readonly closed: string[] = [];
   public readonly opened: OpenOperatorRequest[] = [];
   public readonly reopened: string[] = [];
+  public closeError: Error | undefined;
+  public reopenError: Error | undefined;
   public readonly relayed: {
     initial: boolean;
     message: SupportMessage;
     operatorTopicId: string;
   }[] = [];
 
-  public closeRequest(operatorTopicId: string): Promise<void> {
+  public closeRequest(
+    operatorTopicId: string,
+    options: OperatorLifecycleActionOptions,
+  ): Promise<void> {
+    void options;
     this.closed.push(operatorTopicId);
+    if (this.closeError) {
+      return Promise.reject(this.closeError);
+    }
     return Promise.resolve();
   }
 
@@ -62,8 +73,15 @@ class FakeOperatorInbox implements OperatorInbox {
     });
   }
 
-  public reopenRequest(operatorTopicId: string): Promise<void> {
+  public reopenRequest(
+    operatorTopicId: string,
+    options: OperatorLifecycleActionOptions,
+  ): Promise<void> {
+    void options;
     this.reopened.push(operatorTopicId);
+    if (this.reopenError) {
+      return Promise.reject(this.reopenError);
+    }
     return Promise.resolve();
   }
 }
@@ -188,6 +206,11 @@ describe('HandoffService', () => {
       receivedAt: new Date('2026-08-31T12:01:00.000Z'),
       text: '/close',
     });
+    repository.setAwaitingClientQuestion(
+      'telegram',
+      '101',
+      new Date('2026-08-31T12:01:30.000Z'),
+    );
 
     await service.handleClientMessage(
       'update-3',
@@ -336,7 +359,7 @@ describe('HandoffService', () => {
     ]);
   });
 
-  it('closes, blocks replies, and reopens a request', async () => {
+  it('closes and reopens a request only after the operator surface succeeds', async () => {
     await service.handleClientMessage(
       'update-1',
       createClientMessage('message-1', 'Question'),
@@ -361,13 +384,6 @@ describe('HandoffService', () => {
       receivedAt: new Date('2026-08-31T12:01:00.000Z'),
       text: '/close',
     });
-    await service.handleOperatorMessage('update-3', {
-      externalMessageId: 'operator-2',
-      operatorTopicId: 'topic-1',
-      receivedAt: new Date('2026-08-31T12:02:00.000Z'),
-      text: 'Blocked answer',
-    });
-
     expect(
       repository.findPendingDeliveries(
         new Date('2026-08-31T12:00:00.000Z'),
@@ -398,6 +414,112 @@ describe('HandoffService', () => {
       ),
     ).toEqual([expect.objectContaining({ text: 'Delivered answer' })]);
     expect(repository.findRequestByTopicId('topic-1')?.status).toBe('active');
+  });
+
+  it('keeps the request active and accepts replies after a failed close', async () => {
+    await service.handleClientMessage(
+      'update-1',
+      createClientMessage('message-1', 'Question'),
+    );
+    inbox.closeError = new Error('Telegram close failed');
+
+    await expect(
+      service.handleOperatorMessage('update-close', {
+        externalMessageId: 'operator-close',
+        operatorTopicId: 'topic-1',
+        receivedAt: new Date('2026-08-31T12:01:00.000Z'),
+        text: '/close',
+      }),
+    ).rejects.toThrow('Telegram close failed');
+    expect(repository.findRequestByTopicId('topic-1')?.status).toBe('active');
+
+    await service.handleOperatorMessage('update-answer', {
+      externalMessageId: 'operator-answer',
+      operatorTopicId: 'topic-1',
+      receivedAt: new Date('2026-08-31T12:02:00.000Z'),
+      text: 'Answer after failed close',
+    });
+    expect(repository.getDeliverySummary().pending).toBe(2);
+  });
+
+  it('does not retry an uncertain close and leaves the request active', async () => {
+    await service.handleClientMessage(
+      'update-1',
+      createClientMessage('message-1', 'Question'),
+    );
+    inbox.closeError = new OperatorActionOutcomeUnknownError(
+      'operator-close:request:update-close',
+      'close',
+    );
+    const command = {
+      externalMessageId: 'operator-close',
+      operatorTopicId: 'topic-1',
+      receivedAt: new Date('2026-08-31T12:01:00.000Z'),
+      text: '/close',
+    };
+
+    await service.handleOperatorMessage('update-close', command);
+    await service.handleOperatorMessage('update-close', command);
+
+    expect(inbox.closed).toEqual(['topic-1']);
+    expect(repository.findRequestByTopicId('topic-1')?.status).toBe('active');
+  });
+
+  it('keeps the request closed when reopen fails', async () => {
+    await service.handleClientMessage(
+      'update-1',
+      createClientMessage('message-1', 'Question'),
+    );
+    await service.handleOperatorMessage('update-close', {
+      externalMessageId: 'operator-close',
+      operatorTopicId: 'topic-1',
+      receivedAt: new Date('2026-08-31T12:01:00.000Z'),
+      text: '/close',
+    });
+    inbox.reopenError = new Error('Telegram reopen failed');
+
+    await expect(
+      service.handleOperatorMessage('update-reopen', {
+        externalMessageId: 'operator-reopen',
+        operatorTopicId: 'topic-1',
+        receivedAt: new Date('2026-08-31T12:02:00.000Z'),
+        text: '/reopen',
+      }),
+    ).rejects.toThrow('Telegram reopen failed');
+    expect(repository.findRequestByTopicId('topic-1')?.status).toBe('closed');
+  });
+
+  it('reconciles a reply after an uncertain reopen instead of dropping it', async () => {
+    await service.handleClientMessage(
+      'update-1',
+      createClientMessage('message-1', 'Question'),
+    );
+    await service.handleOperatorMessage('update-close', {
+      externalMessageId: 'operator-close',
+      operatorTopicId: 'topic-1',
+      receivedAt: new Date('2026-08-31T12:01:00.000Z'),
+      text: '/close',
+    });
+    inbox.reopenError = new OperatorActionOutcomeUnknownError(
+      'operator-reopen:request:update-reopen',
+      'reopen',
+    );
+    await service.handleOperatorMessage('update-reopen', {
+      externalMessageId: 'operator-reopen',
+      operatorTopicId: 'topic-1',
+      receivedAt: new Date('2026-08-31T12:02:00.000Z'),
+      text: '/reopen',
+    });
+    expect(repository.findRequestByTopicId('topic-1')?.status).toBe('closed');
+
+    await service.handleOperatorMessage('update-answer', {
+      externalMessageId: 'operator-answer',
+      operatorTopicId: 'topic-1',
+      receivedAt: new Date('2026-08-31T12:03:00.000Z'),
+      text: 'Answer after uncertain reopen',
+    });
+    expect(repository.findRequestByTopicId('topic-1')?.status).toBe('active');
+    expect(repository.getDeliverySummary().pending).toBe(2);
   });
 });
 

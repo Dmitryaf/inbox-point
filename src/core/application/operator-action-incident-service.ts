@@ -2,7 +2,8 @@ import { enqueueHandoffAcknowledgement } from '@/core/application/handoff-acknow
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
 import type { OperatorActionIncident } from '@/core/model/operator-action.js';
 
-export type OperatorActionResolution = 'received' | 'use_web';
+export type OperatorActionResolution =
+  'completed' | 'not_completed' | 'received' | 'use_web';
 
 export class OperatorActionIncidentService {
   private readonly clock: () => Date;
@@ -26,7 +27,44 @@ export class OperatorActionIncidentService {
     if (resolution === 'received') {
       return this.confirmReceived(incident);
     }
+    if (resolution === 'completed' || resolution === 'not_completed') {
+      return this.resolveLifecycle(incident, resolution);
+    }
     return this.moveToWeb(incident);
+  }
+
+  private resolveLifecycle(
+    incident: OperatorActionIncident,
+    resolution: 'completed' | 'not_completed',
+  ): boolean {
+    if (
+      incident.kind !== 'close_request' &&
+      incident.kind !== 'reopen_request'
+    ) {
+      return false;
+    }
+    if (incident.kind === 'reopen_request' && resolution === 'completed') {
+      const request = this.repository.findRequestById(incident.requestId);
+      if (!request) {
+        return false;
+      }
+      const latest = this.repository.findLatestRequest(
+        request.channel,
+        request.conversationId,
+      );
+      const active = this.repository.findActiveRequest(
+        request.channel,
+        request.conversationId,
+      );
+      if (latest?.id !== request.id || (active && active.id !== request.id)) {
+        return false;
+      }
+    }
+    return this.repository.resolveOperatorLifecycleAction(
+      incident.id,
+      resolution,
+      this.clock(),
+    );
   }
 
   private confirmReceived(incident: OperatorActionIncident): boolean {
@@ -62,6 +100,9 @@ export class OperatorActionIncidentService {
   }
 
   private moveToWeb(incident: OperatorActionIncident): boolean {
+    if (incident.kind !== 'open_request' && incident.kind !== 'relay_message') {
+      return false;
+    }
     const moved = this.repository.moveOperatorActionRequestToWeb(incident.id);
     if (!moved) {
       return false;

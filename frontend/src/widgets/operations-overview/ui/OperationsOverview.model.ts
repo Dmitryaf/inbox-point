@@ -6,7 +6,10 @@ import {
 
 import { computed } from '@frontend/shared/lib/model-state';
 
-import type { OperationsStatus } from '@frontend/entities/operations/model/types';
+import type {
+  OperationsStatus,
+  OperatorActionResolution,
+} from '@frontend/entities/operations/model/types';
 import { formatShortDateTimeWithSeconds } from '@frontend/shared/lib/format-date-time';
 
 export type ComponentProps = {
@@ -21,7 +24,10 @@ export type ComponentProps = {
     resolution: 'not_received' | 'received',
   ];
   retryDelivery: [deliveryId: string];
-  resolveOperatorAction: [actionId: string, resolution: 'received' | 'use_web'];
+  resolveOperatorAction: [
+    actionId: string,
+    resolution: OperatorActionResolution,
+  ];
   resolveInboundEvent: [
     eventId: string,
     source: string,
