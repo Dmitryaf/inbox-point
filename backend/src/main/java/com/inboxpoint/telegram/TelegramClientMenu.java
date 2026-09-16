@@ -48,7 +48,7 @@ final class TelegramClientMenu {
                 store.beginQuestion("telegram", chat, now);
             }
             var hidden = stage == ClientMenuPolicy.Stage.AWAITING || answer.begin();
-            api.sendMessage(chat, null, answer.text(), hidden ? removeKeyboard() : keyboard(information, pausedNow || stage == ClientMenuPolicy.Stage.ACTIVE));
+            api.sendMessage(chat, null, answer.text(), hidden ? removeKeyboard() : keyboard(information, pausedNow));
             if (answer.information()) {
                 store.usageEvent("information:telegram:" + event, "information_section", "telegram", null, now);
             }
