@@ -268,7 +268,7 @@ describe('Telegram handoff integration', () => {
     }
     expect(
       activeReplyMarkup.keyboard.flat().map((button) => button.text),
-    ).toEqual(['Как добраться']);
+    ).toEqual(['Как добраться', handoffButton]);
     expect(
       repository.getUsageEventCounts(new Date('2026-01-01')).new_request,
     ).toBe(1);
@@ -642,9 +642,39 @@ describe('Telegram handoff integration', () => {
     expect(gateway.sent).toHaveLength(2);
     expect(gateway.sent[1]).toMatchObject({
       chatId: 101,
-      replyMarkup: { remove_keyboard: true },
       text: 'Разговор уже начат. Напишите сообщение, чтобы продолжить.',
     });
+    const activeMenu = gateway.sent[1]?.replyMarkup;
+    if (!activeMenu || !('keyboard' in activeMenu)) {
+      throw new Error('Expected an active conversation keyboard');
+    }
+    expect(activeMenu.keyboard.flat().map((button) => button.text)).toEqual([
+      handoffButton,
+    ]);
+  });
+
+  it('keeps the handoff button without opening another active request', async () => {
+    await router.route(createPrivateUpdate(1, 501, 'Первый вопрос'));
+    const request = repository.findActiveRequest('telegram', '101');
+
+    await router.route(createPrivateUpdate(2, 502, handoffButton));
+
+    expect(repository.findActiveRequest('telegram', '101')?.id).toBe(
+      request?.id,
+    );
+    expect(gateway.createdTopics).toEqual([900]);
+    expect(gateway.sent).toHaveLength(2);
+    expect(gateway.sent[1]).toMatchObject({
+      chatId: 101,
+      text: 'Разговор уже начат. Напишите сообщение, чтобы продолжить.',
+    });
+    const activeMenu = gateway.sent[1]?.replyMarkup;
+    if (!activeMenu || !('keyboard' in activeMenu)) {
+      throw new Error('Expected an active conversation keyboard');
+    }
+    expect(activeMenu.keyboard.flat().map((button) => button.text)).toEqual([
+      handoffButton,
+    ]);
   });
 
   it('keeps information buttons available during an active request', async () => {
@@ -663,6 +693,7 @@ describe('Telegram handoff integration', () => {
     }
     expect(activeMenu.keyboard.flat().map((button) => button.text)).toEqual([
       'Расписание',
+      handoffButton,
     ]);
     expect(
       repository.getUsageEventCounts(new Date('2026-01-01'))

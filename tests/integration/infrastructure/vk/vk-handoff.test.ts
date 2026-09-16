@@ -459,7 +459,36 @@ describe('VK handoff integration', () => {
       .at(-1)
       ?.keyboard?.buttons.flat()
       .map((button) => button.action.label);
-    expect(labels).toEqual(['Расписание']);
+    expect(labels).toEqual(['Расписание', handoffButton]);
+  });
+
+  it('keeps the handoff button without opening another active request', async () => {
+    await router.route(createMessageEvent({ text: 'Первый вопрос' }));
+    const request = repository.findActiveRequest('vk', '101');
+
+    await router.route(
+      createMessageEvent({
+        conversation_message_id: 8,
+        id: 502,
+        payload: menuPayload('handoff'),
+        text: handoffButton,
+      }),
+    );
+
+    expect(repository.findActiveRequest('vk', '101')?.id).toBe(request?.id);
+    expect(inbox.opened).toHaveLength(1);
+    expect(inbox.relayed.map((message) => message.text)).toEqual([
+      'Первый вопрос',
+    ]);
+    expect(gateway.sent.at(-1)?.text).toBe(
+      'Просто напишите сообщение, чтобы продолжить разговор.',
+    );
+    expect(
+      gateway.sent
+        .at(-1)
+        ?.keyboard?.buttons.flat()
+        .map((button) => button.action.label),
+    ).toContain(handoffButton);
   });
 
   it('does not open a request from post-dialog VK text', async () => {
