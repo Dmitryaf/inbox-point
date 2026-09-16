@@ -263,6 +263,7 @@ describe('HandoffService', () => {
     await Promise.all([close, reply]);
 
     expect(repository.findRequestByTopicId('topic-1')?.status).toBe('active');
+    expect(inbox.reopened).toEqual(['topic-1']);
     expect(repository.findConversationMessages(request.id, 10)).toContainEqual(
       expect.objectContaining({ text: 'Answer after close' }),
     );
@@ -642,6 +643,7 @@ describe('HandoffService', () => {
     });
     expect(repository.findRequestByTopicId('topic-1')?.status).toBe('closed');
 
+    inbox.reopenError = undefined;
     await service.handleOperatorMessage('update-answer', {
       externalMessageId: 'operator-answer',
       operatorTopicId: 'topic-1',
@@ -649,6 +651,7 @@ describe('HandoffService', () => {
       text: 'Answer after uncertain reopen',
     });
     expect(repository.findRequestByTopicId('topic-1')?.status).toBe('active');
+    expect(inbox.reopened).toEqual(['topic-1', 'topic-1']);
     expect(repository.getDeliverySummary().pending).toBe(2);
   });
 });
