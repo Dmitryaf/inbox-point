@@ -39,6 +39,7 @@ export interface TelegramRuntimeControl {
 }
 
 export interface TelegramHandoffHost extends TelegramUpdateHandler {
+  recoverEmergencyRequests(): Promise<void>;
   registerClientChannel(channel: ClientChannel): () => void;
   registerOperatorInbox(
     inbox: OperatorInbox & DeliveryIncidentNotifier,
@@ -103,6 +104,12 @@ export class TelegramRuntime implements TelegramRuntimeControl {
         },
         onSuccess: () => {
           this.activity.recordPollSucceeded('telegram', new Date());
+          void this.handoffHost.recoverEmergencyRequests().catch((error) => {
+            this.logger.error(
+              error,
+              'Emergency web inbox recovery trigger failed',
+            );
+          });
         },
       },
     );
@@ -111,6 +118,13 @@ export class TelegramRuntime implements TelegramRuntimeControl {
       this.handoffHost.registerClientChannel(clientChannel);
     const unregisterOperatorInbox =
       this.handoffHost.registerOperatorInbox(operatorInbox);
+    try {
+      await this.handoffHost.recoverEmergencyRequests();
+    } catch (error: unknown) {
+      unregisterOperatorInbox();
+      unregisterClientChannel();
+      throw error;
+    }
     this.abortController = abortController;
     this.unregisterClientChannel = unregisterClientChannel;
     this.unregisterOperatorInbox = unregisterOperatorInbox;

@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { startChannelRuntime } from '@/infrastructure/runtime/start-channel-runtime.js';
+import {
+  startChannelRuntime,
+  startChannelRuntimes,
+} from '@/infrastructure/runtime/start-channel-runtime.js';
 
 describe('startChannelRuntime', () => {
   it('does nothing when the channel is not configured', async () => {
@@ -33,5 +36,29 @@ describe('startChannelRuntime', () => {
       error,
       'Telegram connection could not be started; HTTP operations remain available',
     );
+  });
+
+  it('finishes the Telegram startup attempt before starting VK', async () => {
+    const calls: string[] = [];
+    const telegramReady = Promise.withResolvers<void>();
+
+    const startup = startChannelRuntimes([
+      async () => {
+        calls.push('telegram-start');
+        await telegramReady.promise;
+        calls.push('telegram-finished');
+      },
+      () => {
+        calls.push('vk-start');
+        return Promise.resolve();
+      },
+    ]);
+
+    await Promise.resolve();
+    expect(calls).toEqual(['telegram-start']);
+    telegramReady.resolve();
+    await startup;
+
+    expect(calls).toEqual(['telegram-start', 'telegram-finished', 'vk-start']);
   });
 });

@@ -57,18 +57,14 @@ export function createComponentModel(
   const hasOperationalProblems = computed(
     () =>
       connectionProblems.value.length > 0 ||
+      props.status.operatorInbox.state === 'attention' ||
       deliveryStopped.value ||
       props.status.deliveries.incidents.length > 0 ||
       props.status.operatorRelays.incidents.length > 0 ||
       props.status.inboundEvents.incidents.length > 0,
   );
   const hasAttention = computed(
-    () =>
-      channelProblems.value.length > 0 ||
-      deliveryStopped.value ||
-      props.status.deliveries.incidents.length > 0 ||
-      props.status.operatorRelays.incidents.length > 0 ||
-      props.status.inboundEvents.incidents.length > 0,
+    () => channelProblems.value.length > 0 || hasOperationalProblems.value,
   );
   return {
     $emit,

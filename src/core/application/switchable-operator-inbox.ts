@@ -63,6 +63,16 @@ export class SwitchableOperatorInbox
     };
   }
 
+  public withRegisteredInbox<T>(
+    operation: (inbox: ActiveOperatorInbox) => Promise<T>,
+  ): Promise<T> {
+    const inbox = this.inbox;
+    if (!inbox) {
+      return Promise.reject(new OperatorInboxUnavailableError());
+    }
+    return operation(inbox);
+  }
+
   public async relayCustomerMessage(
     operatorTopicId: string,
     message: SupportMessage,

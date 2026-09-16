@@ -1,0 +1,17 @@
+.operator-inbox-attention {
+  background: var(--color-attention-soft);
+  border: 1px solid var(--color-attention-border);
+  border-radius: 0.85rem;
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.85rem;
+}
+
+h3,
+p {
+  margin: 0;
+}
+
+p {
+  color: var(--color-text-muted);
+}

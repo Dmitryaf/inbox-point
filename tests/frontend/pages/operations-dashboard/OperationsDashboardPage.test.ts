@@ -38,7 +38,12 @@ describe('OperationsDashboardPage', () => {
             }),
           );
         }
-        return Promise.resolve(response(attentionOperationsStatus()));
+        const status = attentionOperationsStatus();
+        status.operatorInbox = {
+          activeWebRequests: 1,
+          state: 'attention',
+        };
+        return Promise.resolve(response(status));
       }),
     );
 
@@ -52,6 +57,8 @@ describe('OperationsDashboardPage', () => {
       'Выше показано, что не работает и что нужно сделать.',
     );
     expect(wrapper.text()).toContain('Требует внимания');
+    expect(wrapper.text()).toContain('Обращения ждут доставки в Telegram');
+    expect(wrapper.text()).toContain('Сохранено обращений: 1');
     const attentionPanel = wrapper.get('.attention-panel').element;
     const summaryCard = wrapper.get('.service-summary').element;
     expect(

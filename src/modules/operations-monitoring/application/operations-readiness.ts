@@ -7,6 +7,7 @@ export function operationsAreReady(status: OperationsStatus): boolean {
     status.deliveries.state !== 'backlog' &&
     status.deliveries.state !== 'stalled' &&
     status.inboundEvents.state === 'healthy' &&
+    status.operatorInbox.state === 'healthy' &&
     status.operatorRelays.state === 'healthy' &&
     channelIsReady(status.channels.telegram) &&
     channelIsReady(status.channels.vk)

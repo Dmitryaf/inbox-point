@@ -435,6 +435,18 @@ export class SqliteSupportRepository implements SupportRepository {
     }
   }
 
+  public countActiveWebOperatorRequests(): number {
+    const row = this.database
+      .prepare(
+        `SELECT COUNT(*) AS count
+         FROM support_requests
+         WHERE status = 'active'
+           AND operator_topic_id LIKE ?`,
+      )
+      .get(`${webOperatorTopicPrefix}%`) as { count: number };
+    return row.count;
+  }
+
   public createRequest(request: SupportRequest): void {
     this.database
       .prepare(
@@ -634,9 +646,53 @@ export class SqliteSupportRepository implements SupportRepository {
     }));
   }
 
+  public findRecoverableWebOperatorRequests(
+    limit: number,
+  ): readonly OperatorRequestSummary[] {
+    const rows = this.database
+      .prepare(
+        `SELECT
+          request.id,
+          request.channel,
+          request.external_conversation_id,
+          request.client_display_name,
+          request.operator_topic_id,
+          request.status,
+          request.created_at,
+          request.closed_at,
+          MAX(message.created_at) AS latest_message_at
+        FROM support_requests AS request
+        LEFT JOIN conversation_messages AS message
+          ON message.request_id = request.id
+        WHERE request.status = 'active'
+          AND request.operator_topic_id LIKE ?
+          AND NOT EXISTS (
+            SELECT 1
+            FROM conversation_messages AS operator_message
+            WHERE operator_message.request_id = request.id
+              AND operator_message.direction = 'operator_to_client'
+          )
+        GROUP BY request.id
+        ORDER BY COALESCE(MAX(message.created_at), request.created_at),
+                 request.id
+        LIMIT ?`,
+      )
+      .all(
+        `${webOperatorTopicPrefix}%`,
+        limit,
+      ) as unknown as OperatorRequestSummaryRow[];
+
+    return rows.map((row) => ({
+      ...mapRequest(row),
+      ...(row.latest_message_at
+        ? { latestMessageAt: new Date(row.latest_message_at) }
+        : {}),
+    }));
+  }
+
   public findConversationMessages(
     requestId: string,
-    limit: number,
+    limit?: number,
   ): readonly ConversationMessage[] {
     const rows = this.database
       .prepare(
@@ -647,6 +703,7 @@ export class SqliteSupportRepository implements SupportRepository {
              message.request_id,
              message.direction,
              message.external_message_id,
+             message.rowid AS message_rowid,
              message.sender_name,
              message.text,
              message.created_at,
@@ -657,12 +714,12 @@ export class SqliteSupportRepository implements SupportRepository {
              ON delivery.request_id = message.request_id
             AND delivery.operator_message_id = message.external_message_id
            WHERE message.request_id = ?
-           ORDER BY message.created_at DESC, message.id DESC
+           ORDER BY message.created_at DESC, message.rowid DESC
            LIMIT ?
          )
-         ORDER BY created_at, id`,
+         ORDER BY created_at, message_rowid`,
       )
-      .all(requestId, limit) as unknown as ConversationMessageRow[];
+      .all(requestId, limit ?? -1) as unknown as ConversationMessageRow[];
 
     return rows.map((row) => ({
       createdAt: new Date(row.created_at),

@@ -97,6 +97,7 @@ export interface SupportRepository
     sentAt: Date,
     link: MessageLink,
   ): void;
+  countActiveWebOperatorRequests(): number;
   createRequest(request: SupportRequest): void;
   enqueueDelivery(delivery: PendingDelivery): string;
   findActiveRequest(
@@ -106,9 +107,12 @@ export interface SupportRepository
   findActiveWebOperatorRequests(
     limit: number,
   ): readonly OperatorRequestSummary[];
+  findRecoverableWebOperatorRequests(
+    limit: number,
+  ): readonly OperatorRequestSummary[];
   findConversationMessages(
     requestId: string,
-    limit: number,
+    limit?: number,
   ): readonly ConversationMessage[];
   findFailedDeliveries(limit: number): readonly FailedDelivery[];
   findUnnotifiedFailedDeliveries(

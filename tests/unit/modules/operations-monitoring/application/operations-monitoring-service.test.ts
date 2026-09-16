@@ -58,6 +58,10 @@ describe('OperationsMonitoringService', () => {
         state: 'healthy',
       },
       observedAt: '2026-09-04T12:01:05.000Z',
+      operatorInbox: {
+        activeWebRequests: 0,
+        state: 'healthy',
+      },
       operatorRelays: {
         incidents: [],
         state: 'healthy',
@@ -226,6 +230,30 @@ describe('OperationsMonitoringService', () => {
     expect(JSON.stringify(monitoring.getStatus())).not.toContain(
       'private-conversation',
     );
+    expect(monitoring.isReady()).toBe(false);
+  });
+
+  it('blocks readiness while an active request exists only in the web inbox', () => {
+    const monitoring = new OperationsMonitoringService({
+      activeWebRequests: () => 1,
+      channelActivity: () => ({
+        lastSuccessfulPollAt: new Date('2026-09-04T12:01:00.000Z'),
+      }),
+      clock: () => new Date('2026-09-04T12:01:05.000Z'),
+      deliveryActivity: () => ({ running: true }),
+      deliverySummary: () => ({ failed: 0, pending: 0 }),
+      startedAt: new Date('2026-09-04T12:00:00.000Z'),
+      telegramStatus: () => ({ connected: true, source: 'local' }),
+      vkStatus: () => ({ connected: true, source: 'local' }),
+    });
+
+    expect(monitoring.getStatus()).toMatchObject({
+      operatorInbox: {
+        activeWebRequests: 1,
+        state: 'attention',
+      },
+      state: 'attention',
+    });
     expect(monitoring.isReady()).toBe(false);
   });
 

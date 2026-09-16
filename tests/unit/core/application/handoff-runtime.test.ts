@@ -17,6 +17,7 @@ class FakeOperatorInbox implements OperatorInbox {
   public readonly opened: OpenOperatorRequest[] = [];
   public relayGate: Promise<void> | undefined;
   public relayCount = 0;
+  private readonly topicsByRequest = new Map<string, string>();
 
   public closeRequest(): Promise<void> {
     return Promise.resolve();
@@ -25,8 +26,14 @@ class FakeOperatorInbox implements OperatorInbox {
   public openRequest(
     request: OpenOperatorRequest,
   ): Promise<{ topicId: string }> {
+    const existing = this.topicsByRequest.get(request.requestId);
+    if (existing) {
+      return Promise.resolve({ topicId: existing });
+    }
     this.opened.push(request);
-    return Promise.resolve({ topicId: `topic-${this.opened.length}` });
+    const topicId = `topic-${this.opened.length}`;
+    this.topicsByRequest.set(request.requestId, topicId);
+    return Promise.resolve({ topicId });
   }
 
   public notifyDeliveryFailure(): Promise<void> {
@@ -74,7 +81,7 @@ describe('HandoffRuntime', () => {
     }
   });
 
-  it('stores an emergency web request while no Telegram inbox is available', async () => {
+  it('delivers an unanswered emergency request when Telegram becomes available', async () => {
     const repository = new SqliteSupportRepository(':memory:');
     repositories.push(repository);
     const runtime = new HandoffRuntime({
@@ -105,25 +112,47 @@ describe('HandoffRuntime', () => {
         text: 'Question',
       }),
     ]);
+    expect(
+      repository
+        .findPendingDeliveries(new Date('2100-01-01T00:00:00.000Z'), 10)
+        .map((delivery) => delivery.text),
+    ).toEqual(['Вопрос сохранён. Доставка оператору задерживается.']);
 
     const inbox = new FakeOperatorInbox();
     runtime.registerOperatorInbox(inbox);
+    await runtime.recoverEmergencyRequests();
+    expect(repository.findActiveRequest('vk', '101')).toMatchObject({
+      operatorTopicId: 'topic-1',
+    });
+    expect(inbox.opened).toHaveLength(1);
+    expect(inbox.relayCount).toBe(1);
+    expect(repository.getDeliverySummary().pending).toBe(2);
+    expect(
+      repository
+        .findPendingDeliveries(new Date('2100-01-01T00:00:00.000Z'), 10)
+        .map((delivery) => delivery.text),
+    ).toEqual(['Вопрос сохранён. Доставка оператору задерживается.']);
+
+    await runtime.recoverEmergencyRequests();
+    expect(inbox.opened).toHaveLength(1);
+    expect(inbox.relayCount).toBe(1);
+
     await runtime.handleClientMessage('vk-event-follow-up', {
       ...message,
       externalMessageId: 'vk-message-follow-up',
       text: 'Follow-up question',
     });
-    expect(inbox.relayCount).toBe(0);
+    expect(inbox.relayCount).toBe(2);
     await runtime.handleClientMessage('vk-event-2', {
       ...message,
       conversationId: '102',
       externalMessageId: 'vk-message-2',
     });
 
-    expect(inbox.opened).toHaveLength(1);
-    expect(inbox.relayCount).toBe(1);
+    expect(inbox.opened).toHaveLength(2);
+    expect(inbox.relayCount).toBe(3);
     expect(repository.findActiveRequest('vk', '102')).toMatchObject({
-      operatorTopicId: 'topic-1',
+      operatorTopicId: 'topic-2',
     });
   });
 
@@ -168,7 +197,7 @@ describe('HandoffRuntime', () => {
     expect(repository.getDeliverySummary()).toEqual({ failed: 0, pending: 0 });
   });
 
-  it('moves a failed Telegram conversation exclusively to web until it closes', async () => {
+  it('keeps a web conversation with an operator reply in the web inbox', async () => {
     const repository = new SqliteSupportRepository(':memory:');
     repositories.push(repository);
     const errors: string[] = [];
@@ -225,7 +254,7 @@ describe('HandoffRuntime', () => {
       ),
     ).toEqual([
       expect.objectContaining({
-        text: 'Вопрос отправлен.',
+        text: 'Вопрос сохранён. Доставка оператору задерживается.',
       }),
     ]);
 
@@ -241,6 +270,10 @@ describe('HandoffRuntime', () => {
     };
     await runtime.handleWebOperatorMessage('web-reply-event-1', webReply);
     await runtime.handleWebOperatorMessage('web-reply-event-1', webReply);
+    await runtime.recoverEmergencyRequests();
+    expect(repository.findActiveRequest('vk', '101')?.operatorTopicId).toBe(
+      webTopicId,
+    );
     expect(repository.getDeliverySummary().pending).toBe(2);
     expect(repository.findConversationMessages(request.id, 20)).toContainEqual(
       expect.objectContaining({
@@ -268,6 +301,42 @@ describe('HandoffRuntime', () => {
     expect(nextRequest).toMatchObject({ operatorTopicId: 'topic-2' });
     expect(nextRequest?.id).not.toBe(request.id);
     expect(inbox.opened).toHaveLength(2);
+    expect(inbox.relayCount).toBe(2);
+  });
+
+  it('retries an unanswered failed relay without creating another topic', async () => {
+    const repository = new SqliteSupportRepository(':memory:');
+    repositories.push(repository);
+    const runtime = new HandoffRuntime({
+      logger: { error: () => undefined },
+      repository,
+    });
+    const inbox = new FakeOperatorInbox();
+    inbox.failNextRelay = true;
+    runtime.registerOperatorInbox(inbox);
+
+    await runtime.handleClientMessage('vk-event-1', {
+      channel: 'vk',
+      conversationId: '101',
+      displayName: 'VK Customer',
+      externalMessageId: 'vk-message-1',
+      receivedAt: new Date('2026-09-06T12:00:00.000Z'),
+      text: 'Question during outage',
+    });
+
+    const request = repository.findActiveRequest('vk', '101');
+    expect(request?.operatorTopicId).toBe(`web:${request?.id}`);
+
+    await runtime.recoverEmergencyRequests();
+
+    expect(repository.findActiveRequest('vk', '101')).toMatchObject({
+      operatorTopicId: 'topic-1',
+    });
+    expect(inbox.opened).toHaveLength(1);
+    expect(inbox.relayCount).toBe(2);
+
+    await runtime.recoverEmergencyRequests();
+    expect(inbox.opened).toHaveLength(1);
     expect(inbox.relayCount).toBe(2);
   });
 
@@ -355,7 +424,7 @@ describe('HandoffRuntime', () => {
 
     const request = repository.findActiveRequest('telegram', '101');
     expect(request?.operatorTopicId).toBe(`web:${request?.id}`);
-    expect(repository.getDeliverySummary().pending).toBe(2);
+    expect(repository.getDeliverySummary().pending).toBe(3);
     expect(
       repository
         .findPendingDeliveries(new Date('2100-01-01T00:00:00.000Z'), 10)

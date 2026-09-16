@@ -25,3 +25,11 @@ export async function startChannelRuntime<Config>(options: {
     );
   }
 }
+
+export async function startChannelRuntimes(
+  starts: readonly (() => Promise<void>)[],
+): Promise<void> {
+  for (const start of starts) {
+    await start();
+  }
+}
