@@ -20,6 +20,8 @@ class FakeOperatorInbox implements OperatorInbox {
   public readonly opened: OpenOperatorRequest[] = [];
   public readonly reopened: string[] = [];
   public closeError: Error | undefined;
+  public closeGate: Promise<void> | undefined;
+  public onClose: (() => void) | undefined;
   public reopenError: Error | undefined;
   public readonly relayed: {
     initial: boolean;
@@ -27,16 +29,17 @@ class FakeOperatorInbox implements OperatorInbox {
     operatorTopicId: string;
   }[] = [];
 
-  public closeRequest(
+  public async closeRequest(
     operatorTopicId: string,
     options: OperatorLifecycleActionOptions,
   ): Promise<void> {
     void options;
     this.closed.push(operatorTopicId);
+    this.onClose?.();
+    await this.closeGate;
     if (this.closeError) {
-      return Promise.reject(this.closeError);
+      throw this.closeError;
     }
-    return Promise.resolve();
   }
 
   public async openRequest(
@@ -225,6 +228,46 @@ describe('HandoffService', () => {
     expect(repository.findRequestByTopicId('topic-1')?.status).toBe('closed');
   });
 
+  it('serializes an operator reply after an in-flight close', async () => {
+    await service.handleClientMessage(
+      'update-1',
+      createClientMessage('message-1', 'Question'),
+    );
+    const request = repository.findActiveRequest('telegram', '101');
+    if (!request) {
+      throw new Error('Expected an active request');
+    }
+    const closeStarted = Promise.withResolvers<void>();
+    const allowClose = Promise.withResolvers<void>();
+    inbox.onClose = closeStarted.resolve;
+    inbox.closeGate = allowClose.promise;
+
+    const close = service.handleOperatorMessage('update-close', {
+      externalMessageId: 'operator-close',
+      operatorTopicId: 'topic-1',
+      receivedAt: new Date('2026-08-31T12:01:00.000Z'),
+      text: '/close',
+    });
+    await closeStarted.promise;
+    const reply = service.handleOperatorMessage('update-reply', {
+      externalMessageId: 'operator-reply',
+      operatorTopicId: 'topic-1',
+      receivedAt: new Date('2026-08-31T12:02:00.000Z'),
+      text: 'Answer after close',
+    });
+
+    await Promise.resolve();
+    expect(repository.getDeliverySummary().pending).toBe(1);
+
+    allowClose.resolve();
+    await Promise.all([close, reply]);
+
+    expect(repository.findRequestByTopicId('topic-1')?.status).toBe('active');
+    expect(repository.findConversationMessages(request.id, 10)).toContainEqual(
+      expect.objectContaining({ text: 'Answer after close' }),
+    );
+  });
+
   it('creates a new request in the previous client topic after close', async () => {
     await service.handleClientMessage(
       'update-1',
@@ -285,6 +328,56 @@ describe('HandoffService', () => {
       repository.getUsageEventCounts(new Date('2026-08-31T00:00:00.000Z')),
     ).toMatchObject({ first_reply: 2, new_request: 2 });
     expect(repository.getDeliverySummary().pending).toBe(4);
+  });
+
+  it('clears a pending new-question state when the previous request reopens', async () => {
+    await service.handleClientMessage(
+      'update-1',
+      createClientMessage('message-1', 'First question'),
+    );
+    const request = repository.findActiveRequest('telegram', '101');
+    await service.handleOperatorMessage('update-close-1', {
+      externalMessageId: 'operator-close-1',
+      operatorTopicId: 'topic-1',
+      receivedAt: new Date('2026-08-31T12:01:00.000Z'),
+      text: '/close',
+    });
+    repository.setAwaitingClientQuestion(
+      'telegram',
+      '101',
+      new Date('2026-08-31T12:02:00.000Z'),
+    );
+
+    await service.handleOperatorMessage('update-reopen', {
+      externalMessageId: 'operator-reopen',
+      operatorTopicId: 'topic-1',
+      receivedAt: new Date('2026-08-31T12:03:00.000Z'),
+      text: '/reopen',
+    });
+    expect(repository.isAwaitingClientQuestion('telegram', '101')).toBe(false);
+    await service.handleClientMessage(
+      'update-2',
+      createClientMessage('message-2', 'Message after reopen'),
+    );
+    await service.handleOperatorMessage('update-close-2', {
+      externalMessageId: 'operator-close-2',
+      operatorTopicId: 'topic-1',
+      receivedAt: new Date('2026-08-31T12:04:00.000Z'),
+      text: '/close',
+    });
+    await service.handleClientMessage(
+      'update-3',
+      createClientMessage('message-3', 'Thanks'),
+    );
+
+    expect(repository.findLatestRequest('telegram', '101')?.id).toBe(
+      request?.id,
+    );
+    expect(inbox.opened).toHaveLength(1);
+    expect(inbox.relayed.map(({ message }) => message.text)).toEqual([
+      'First question',
+      'Message after reopen',
+    ]);
   });
 
   it('keeps an older duplicate topic closed', async () => {

@@ -457,14 +457,13 @@ export class HandoffService {
     message: OperatorMessage,
     source = 'operator:telegram',
   ): Promise<void> {
-    const command = parseOperatorCommand(message.text);
     const request = this.findRequestForOperatorMessage(message, source);
     const operation = () =>
       this.handleEvent(source, externalEventId, async () => {
         await this.processOperatorMessage(externalEventId, message, source);
       });
 
-    if (!request || (source !== 'operator:web' && command === undefined)) {
+    if (!request) {
       await operation();
       return;
     }
