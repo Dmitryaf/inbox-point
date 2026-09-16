@@ -48,8 +48,8 @@ final class VkClientMenu {
             } else if (answer.begin()) {
                 store.beginQuestion("vk", peer, now);
             }
-            var hidden = stage == ClientMenuPolicy.Stage.ACTIVE || stage == ClientMenuPolicy.Stage.AWAITING || answer.begin();
-            api.send(peer, answer.text(), "vk-menu:" + event, hidden ? hiddenKeyboard() : keyboard(pausedNow));
+            var hidden = stage == ClientMenuPolicy.Stage.AWAITING || answer.begin();
+            api.send(peer, answer.text(), "vk-menu:" + event, hidden ? hiddenKeyboard() : keyboard(pausedNow || stage == ClientMenuPolicy.Stage.ACTIVE));
             if (answer.information()) {
                 store.usageEvent("information:vk:" + event, "information_section", "vk", null, now);
             }

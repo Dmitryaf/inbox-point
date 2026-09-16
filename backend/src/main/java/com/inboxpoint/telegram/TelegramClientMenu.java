@@ -47,8 +47,8 @@ final class TelegramClientMenu {
             } else if (answer.begin()) {
                 store.beginQuestion("telegram", chat, now);
             }
-            var hidden = stage == ClientMenuPolicy.Stage.ACTIVE || stage == ClientMenuPolicy.Stage.AWAITING || answer.begin();
-            api.sendMessage(chat, null, answer.text(), hidden ? removeKeyboard() : keyboard(information, pausedNow));
+            var hidden = stage == ClientMenuPolicy.Stage.AWAITING || answer.begin();
+            api.sendMessage(chat, null, answer.text(), hidden ? removeKeyboard() : keyboard(information, pausedNow || stage == ClientMenuPolicy.Stage.ACTIVE));
             if (answer.information()) {
                 store.usageEvent("information:telegram:" + event, "information_section", "telegram", null, now);
             }

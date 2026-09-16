@@ -20,10 +20,15 @@ final class ClientMenuPolicy {
         var menu = "/start".equals(command) || "/menu".equals(command) || "начать".equals(command);
         var informationAction = action.startsWith("information-") || action.startsWith("custom-");
         if (stage == Stage.ACTIVE) {
-            if (informationAction) {
-                return resolveInformation(information, text);
+            var answer = resolveInformation(information, text);
+            if (answer != null) {
+                return answer;
             }
-            if (menu || "handoff".equals(action)) {
+            if (informationAction) {
+                return new Response("Меню обновилось. Выберите нужный раздел ниже.");
+            }
+            if (menu || "handoff".equals(action) || ClientInformation.isHandoffRequest(text)
+                    || ClientInformation.RESET.equals(text)) {
                 return new Response("Разговор уже начат. Напишите сообщение, чтобы продолжить.");
             }
             return command.startsWith("/")

@@ -54,7 +54,7 @@ class TelegramTextHandoffTest {
             assertThat(calls.get(1).body().path("message_thread_id").asLong()).isEqualTo(42);
             assertThat(calls.get(1).body().path("text").asString()).contains("Question");
             assertThat(calls.get(2).body().path("chat_id").asLong()).isEqualTo(123);
-            assertThat(calls.get(2).body().at("/reply_markup/remove_keyboard").asBoolean()).isTrue();
+            assertThat(calls.get(2).body().has("reply_markup")).isFalse();
             assertThat(calls.subList(2, 4)).extracting(call -> call.body().path("text").asString())
                     .containsExactlyInAnyOrder(HandoffService.ACKNOWLEDGEMENT, "Answer");
             assertThat(store.usageCounts(java.time.Instant.EPOCH)).containsEntry("new_request", 1L).containsEntry("first_reply", 1L);
