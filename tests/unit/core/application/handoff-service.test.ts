@@ -14,6 +14,8 @@ import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-sup
 class FakeOperatorInbox implements OperatorInbox {
   public firstOpenGate: Promise<void> | undefined;
   public onOpenRequest: (() => void) | undefined;
+  public onRelay: (() => void) | undefined;
+  public relayGate: Promise<void> | undefined;
   public readonly closed: string[] = [];
   public readonly opened: OpenOperatorRequest[] = [];
   public readonly reopened: string[] = [];
@@ -67,10 +69,12 @@ class FakeOperatorInbox implements OperatorInbox {
     operatorTopicId: string;
   }> {
     this.relayed.push({ initial: options.initial, message, operatorTopicId });
-    return Promise.resolve({
-      operatorMessageIds: [`relay-${this.relayed.length}`],
+    const relayNumber = this.relayed.length;
+    this.onRelay?.();
+    return Promise.resolve(this.relayGate).then(() => ({
+      operatorMessageIds: [`relay-${relayNumber}`],
       operatorTopicId,
-    });
+    }));
   }
 
   public reopenRequest(
@@ -186,6 +190,39 @@ describe('HandoffService', () => {
         operatorTopicId: 'topic-1',
       },
     ]);
+  });
+
+  it('serializes an operator close after an in-flight client message', async () => {
+    await service.handleClientMessage(
+      'update-1',
+      createClientMessage('message-1', 'First'),
+    );
+    const relayStarted = Promise.withResolvers<void>();
+    const allowRelay = Promise.withResolvers<void>();
+    inbox.onRelay = relayStarted.resolve;
+    inbox.relayGate = allowRelay.promise;
+
+    const clientMessage = service.handleClientMessage(
+      'update-2',
+      createClientMessage('message-2', 'Last question'),
+    );
+    await relayStarted.promise;
+    const close = service.handleOperatorMessage('update-close', {
+      externalMessageId: 'operator-close',
+      operatorTopicId: 'topic-1',
+      receivedAt: new Date('2026-08-31T12:01:00.000Z'),
+      text: '/close',
+    });
+
+    await Promise.resolve();
+    expect(inbox.closed).toEqual([]);
+
+    allowRelay.resolve();
+    await Promise.all([clientMessage, close]);
+
+    expect(inbox.relayed.at(-1)?.message.text).toBe('Last question');
+    expect(inbox.closed).toEqual(['topic-1']);
+    expect(repository.findRequestByTopicId('topic-1')?.status).toBe('closed');
   });
 
   it('creates a new request in the previous client topic after close', async () => {

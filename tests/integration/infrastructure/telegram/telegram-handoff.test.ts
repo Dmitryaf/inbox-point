@@ -969,6 +969,47 @@ describe('Telegram handoff integration', () => {
     }
   });
 
+  it('repeats the question prompt after its first delivery fails', async () => {
+    const update = createPrivateUpdate(1, 501, handoffButton);
+    gateway.failNextSend = true;
+
+    await expect(router.route(update)).rejects.toThrow(
+      'Temporary Telegram failure',
+    );
+    expect(repository.isAwaitingClientQuestion('telegram', '101')).toBe(true);
+
+    await router.route(update);
+
+    expect(repository.findActiveRequest('telegram', '101')).toBeUndefined();
+    expect(gateway.sent).toEqual([
+      expect.objectContaining({
+        chatId: 101,
+        text: 'Напишите свой вопрос. Мы ответим здесь.',
+      }),
+    ]);
+  });
+
+  it('cancels a pending new question when the client opens the menu', async () => {
+    await router.route(createPrivateUpdate(1, 501, 'Первый вопрос'));
+    await router.route(createOperatorUpdate(2, 601, 900, '/close'));
+    await router.route(createPrivateUpdate(3, 502, handoffButton));
+
+    await router.route(createPrivateUpdate(4, 503, '/menu'));
+
+    expect(repository.isAwaitingClientQuestion('telegram', '101')).toBe(false);
+    const menu = gateway.sent.at(-1);
+    expect(menu?.text).toContain('Здесь можно посмотреть основную информацию');
+    if (!menu?.replyMarkup || !('keyboard' in menu.replyMarkup)) {
+      throw new Error('Expected a restored Telegram menu');
+    }
+    expect(
+      menu.replyMarkup.keyboard.flat().map((button) => button.text),
+    ).toContain(handoffButton);
+
+    await router.route(createPrivateUpdate(5, 504, 'Спасибо'));
+    expect(repository.findActiveRequest('telegram', '101')).toBeUndefined();
+  });
+
   it('reopens one client topic after an explicit new-question action', async () => {
     await router.route(createPrivateUpdate(1, 501, 'Ого'));
     const firstRequest = repository.findActiveRequest('telegram', '101');

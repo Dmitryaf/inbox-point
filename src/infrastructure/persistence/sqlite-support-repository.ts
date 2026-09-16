@@ -1090,6 +1090,19 @@ export class SqliteSupportRepository implements SupportRepository {
     return row !== undefined;
   }
 
+  public clearAwaitingClientQuestion(
+    channel: ClientChannelKind,
+    conversationId: string,
+  ): void {
+    this.database
+      .prepare(
+        `DELETE FROM client_conversation_states
+         WHERE channel = ?
+           AND external_conversation_id = ?`,
+      )
+      .run(channel, conversationId);
+  }
+
   public getDeliverySummary(): DeliverySummary {
     const row = this.database
       .prepare(
@@ -1236,16 +1249,22 @@ export class SqliteSupportRepository implements SupportRepository {
       .run(error, deliveryId);
   }
 
-  public markWebOperatorOwned(requestId: string, claimedAt: Date): void {
-    this.database
+  public markWebOperatorOwned(
+    requestId: string,
+    expectedTopicId: string,
+    claimedAt: Date,
+  ): boolean {
+    const result = this.database
       .prepare(
         `UPDATE support_requests
-         SET web_owned_at = ?
+         SET web_owned_at = COALESCE(web_owned_at, ?)
          WHERE id = ?
            AND status = 'active'
-           AND operator_topic_id LIKE ?`,
+           AND operator_topic_id = ?`,
       )
-      .run(claimedAt.toISOString(), requestId, `${webOperatorTopicPrefix}%`);
+      .run(claimedAt.toISOString(), requestId, expectedTopicId);
+
+    return Number(result.changes) === 1;
   }
 
   public markOperatorActionFailed(actionId: string, error: string): void {
@@ -1598,6 +1617,31 @@ export class SqliteSupportRepository implements SupportRepository {
            AND status = 'active'`,
       )
       .run(nextTopicId, requestId, expectedTopicId);
+
+    return Number(result.changes) === 1;
+  }
+
+  public recoverWebOperatorRequest(
+    requestId: string,
+    expectedTopicId: string,
+    nextTopicId: string,
+  ): boolean {
+    const result = this.database
+      .prepare(
+        `UPDATE support_requests
+         SET operator_topic_id = ?, web_owned_at = NULL
+         WHERE id = ?
+           AND operator_topic_id = ?
+           AND operator_topic_id LIKE ?
+           AND status = 'active'
+           AND web_owned_at IS NULL`,
+      )
+      .run(
+        nextTopicId,
+        requestId,
+        expectedTopicId,
+        `${webOperatorTopicPrefix}%`,
+      );
 
     return Number(result.changes) === 1;
   }

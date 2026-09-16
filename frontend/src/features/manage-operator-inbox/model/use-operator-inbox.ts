@@ -11,12 +11,11 @@ import type {
   OperatorInboxRequest,
 } from '@frontend/entities/operations/model/types';
 import { requestErrorMessage } from '@frontend/shared/lib/request-error-message';
+import { resolveOperatorInboxActionError } from './operator-inbox-action-error';
 
-interface ReplyAttempt {
-  idempotencyKey: string;
+type ReplyAttempt = Parameters<typeof sendOperatorInboxReply>[1] & {
   requestId: string;
-  text: string;
-}
+};
 
 export function useOperatorInbox(onUnauthorized: () => void) {
   const actionPending = ref(false);
@@ -59,7 +58,7 @@ export function useOperatorInbox(onUnauthorized: () => void) {
     try {
       await refreshMessages();
     } catch (cause: unknown) {
-      handleActionError(cause);
+      await handleActionError(cause);
     }
   }
 
@@ -68,15 +67,13 @@ export function useOperatorInbox(onUnauthorized: () => void) {
     if (!requestId || actionPending.value) {
       return false;
     }
-    const normalizedText = text.trim();
     const attempt =
-      failedReply?.requestId === requestId &&
-      failedReply.text === normalizedText
+      failedReply?.requestId === requestId && failedReply.text === text.trim()
         ? failedReply
         : {
             idempotencyKey: crypto.randomUUID(),
             requestId,
-            text: normalizedText,
+            text: text.trim(),
           };
     actionPending.value = true;
     actionError.value = '';
@@ -93,7 +90,7 @@ export function useOperatorInbox(onUnauthorized: () => void) {
       return true;
     } catch (cause: unknown) {
       failedReply = attempt;
-      handleActionError(cause);
+      await handleActionError(cause);
       return false;
     } finally {
       actionPending.value = false;
@@ -113,7 +110,7 @@ export function useOperatorInbox(onUnauthorized: () => void) {
       notice.value = 'Обращение закрыто.';
       actionError.value = await refresh();
     } catch (cause: unknown) {
-      handleActionError(cause);
+      await handleActionError(cause);
     } finally {
       actionPending.value = false;
     }
@@ -128,8 +125,12 @@ export function useOperatorInbox(onUnauthorized: () => void) {
     messages.value = Array.isArray(result.messages) ? result.messages : [];
   }
 
-  function handleActionError(cause: unknown): void {
-    actionError.value = requestErrorMessage(cause, onUnauthorized);
+  async function handleActionError(cause: unknown): Promise<void> {
+    actionError.value = await resolveOperatorInboxActionError(
+      cause,
+      onUnauthorized,
+      refresh,
+    );
   }
 
   return {

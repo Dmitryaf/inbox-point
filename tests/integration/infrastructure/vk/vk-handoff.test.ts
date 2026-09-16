@@ -31,6 +31,7 @@ import type {
 import { VkUpdateRouter } from '@/infrastructure/vk/vk-update-router.js';
 
 class FakeVkGateway implements VkGateway {
+  public failNextSend = false;
   public readonly sent: {
     keyboard?: VkKeyboard;
     peerId: number;
@@ -60,6 +61,10 @@ class FakeVkGateway implements VkGateway {
     randomId: number,
     keyboard?: VkKeyboard,
   ): Promise<{ externalMessageId: string }> {
+    if (this.failNextSend) {
+      this.failNextSend = false;
+      return Promise.reject(new Error('Temporary VK failure'));
+    }
     this.sent.push({
       ...(keyboard ? { keyboard } : {}),
       peerId,
@@ -249,6 +254,73 @@ describe('VK handoff integration', () => {
     expect(
       repository.getUsageEventCounts(new Date('2026-01-01')).new_request,
     ).toBe(2);
+  });
+
+  it('repeats the question prompt after its first delivery fails', async () => {
+    const event = createMessageEvent({
+      payload: menuPayload('handoff'),
+      text: handoffButton,
+    });
+    gateway.failNextSend = true;
+
+    await expect(router.route(event)).rejects.toThrow('Temporary VK failure');
+    expect(repository.isAwaitingClientQuestion('vk', '101')).toBe(true);
+
+    await router.route(event);
+
+    expect(repository.findActiveRequest('vk', '101')).toBeUndefined();
+    expect(gateway.sent).toEqual([
+      expect.objectContaining({
+        peerId: 101,
+        text: 'Напишите свой вопрос. Мы ответим здесь.',
+      }),
+    ]);
+  });
+
+  it('cancels a pending new question when the client opens the menu', async () => {
+    await router.route(createMessageEvent({ text: 'Первый вопрос' }));
+    await service.handleOperatorMessage('telegram-close-1', {
+      externalMessageId: 'telegram-command-1',
+      operatorTopicId: 'topic-1',
+      receivedAt: new Date('2026-09-01T12:01:00.000Z'),
+      text: '/close',
+    });
+    await router.route(
+      createMessageEvent({
+        conversation_message_id: 8,
+        id: 502,
+        payload: menuPayload('handoff'),
+        text: handoffButton,
+      }),
+    );
+
+    await router.route(
+      createMessageEvent({
+        conversation_message_id: 9,
+        id: 503,
+        text: '/menu',
+      }),
+    );
+
+    expect(repository.isAwaitingClientQuestion('vk', '101')).toBe(false);
+    expect(gateway.sent.at(-1)?.text).toContain(
+      'Здесь можно посмотреть основную информацию',
+    );
+    expect(
+      gateway.sent
+        .at(-1)
+        ?.keyboard?.buttons.flat()
+        .map((button) => button.action.label),
+    ).toContain(handoffButton);
+
+    await router.route(
+      createMessageEvent({
+        conversation_message_id: 10,
+        id: 504,
+        text: 'Спасибо',
+      }),
+    );
+    expect(repository.findActiveRequest('vk', '101')).toBeUndefined();
   });
 
   it('hides empty information buttons without blocking typed labels', async () => {

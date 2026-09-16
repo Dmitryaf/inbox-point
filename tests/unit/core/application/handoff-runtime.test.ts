@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { HandoffRuntime } from '@/core/application/handoff-runtime.js';
 import {
   OperatorActionOutcomeUnknownError,
+  OperatorConversationOwnershipConflictError,
   type OpenOperatorRequest,
   type OperatorInbox,
   type RelayCustomerMessageOptions,
@@ -11,19 +12,24 @@ import type { SupportMessage } from '@/core/model/support-message.js';
 import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-support-repository.js';
 
 class FakeOperatorInbox implements OperatorInbox {
+  public readonly closed: string[] = [];
   public failNextRelay = false;
   public unknownNextRelay = false;
   public onRelay: (() => void) | undefined;
+  public onOpen:
+    ((request: OpenOperatorRequest, topicId: string) => void) | undefined;
+  public openGate: Promise<void> | undefined;
   public readonly opened: OpenOperatorRequest[] = [];
   public relayGate: Promise<void> | undefined;
   public relayCount = 0;
   private readonly topicsByRequest = new Map<string, string>();
 
-  public closeRequest(): Promise<void> {
+  public closeRequest(operatorTopicId: string): Promise<void> {
+    this.closed.push(operatorTopicId);
     return Promise.resolve();
   }
 
-  public openRequest(
+  public async openRequest(
     request: OpenOperatorRequest,
   ): Promise<{ topicId: string }> {
     const existing = this.topicsByRequest.get(request.requestId);
@@ -33,7 +39,9 @@ class FakeOperatorInbox implements OperatorInbox {
     this.opened.push(request);
     const topicId = `topic-${this.opened.length}`;
     this.topicsByRequest.set(request.requestId, topicId);
-    return Promise.resolve({ topicId });
+    this.onOpen?.(request, topicId);
+    await this.openGate;
+    return { topicId };
   }
 
   public notifyDeliveryFailure(): Promise<void> {
@@ -311,6 +319,100 @@ describe('HandoffRuntime', () => {
     expect(nextRequest?.id).not.toBe(request.id);
     expect(inbox.opened).toHaveLength(2);
     expect(inbox.relayCount).toBe(2);
+  });
+
+  it('keeps web ownership when it is claimed while recovery opens a topic', async () => {
+    const repository = new SqliteSupportRepository(':memory:');
+    repositories.push(repository);
+    const runtime = new HandoffRuntime({
+      logger: { error: () => undefined },
+      repository,
+    });
+    await runtime.handleClientMessage('vk-event-1', {
+      channel: 'vk',
+      conversationId: '101',
+      displayName: 'VK Customer',
+      externalMessageId: 'vk-message-1',
+      receivedAt: new Date('2026-09-06T12:00:00.000Z'),
+      text: 'Question during outage',
+    });
+    const request = repository.findActiveRequest('vk', '101');
+    if (!request) {
+      throw new Error('Expected an emergency request');
+    }
+    const inbox = new FakeOperatorInbox();
+    inbox.onOpen = (openedRequest) => {
+      expect(
+        repository.markWebOperatorOwned(
+          openedRequest.requestId,
+          request.operatorTopicId,
+          new Date('2026-09-06T12:01:00.000Z'),
+        ),
+      ).toBe(true);
+    };
+
+    runtime.registerOperatorInbox(inbox);
+    await runtime.recoverEmergencyRequests();
+
+    expect(repository.findRequestById(request.id)?.operatorTopicId).toBe(
+      request.operatorTopicId,
+    );
+    expect(inbox.closed).toEqual(['topic-1']);
+    expect(inbox.relayCount).toBe(0);
+    expect(repository.getWebOperatorRequestSummary()).toEqual({
+      recoverable: 0,
+      webOwned: 1,
+    });
+  });
+
+  it('rejects a web reply when recovery won the conversation', async () => {
+    const repository = new SqliteSupportRepository(':memory:');
+    repositories.push(repository);
+    const runtime = new HandoffRuntime({
+      logger: { error: () => undefined },
+      repository,
+    });
+    await runtime.handleClientMessage('vk-event-1', {
+      channel: 'vk',
+      conversationId: '101',
+      displayName: 'VK Customer',
+      externalMessageId: 'vk-message-1',
+      receivedAt: new Date('2026-09-06T12:00:00.000Z'),
+      text: 'Question during outage',
+    });
+    const request = repository.findActiveRequest('vk', '101');
+    if (!request) {
+      throw new Error('Expected an emergency request');
+    }
+    const openStarted = Promise.withResolvers<void>();
+    const allowOpen = Promise.withResolvers<void>();
+    const inbox = new FakeOperatorInbox();
+    inbox.onOpen = () => openStarted.resolve();
+    inbox.openGate = allowOpen.promise;
+
+    runtime.registerOperatorInbox(inbox);
+    const recovery = runtime.recoverEmergencyRequests();
+    await openStarted.promise;
+    const reply = runtime.handleWebOperatorMessage('web-reply-event-1', {
+      externalMessageId: 'web:reply-1',
+      operatorTopicId: request.operatorTopicId,
+      receivedAt: new Date('2026-09-06T12:01:00.000Z'),
+      text: 'Web answer',
+    });
+    const rejectedReply = expect(reply).rejects.toBeInstanceOf(
+      OperatorConversationOwnershipConflictError,
+    );
+
+    allowOpen.resolve();
+    await recovery;
+    await rejectedReply;
+
+    expect(repository.findRequestById(request.id)?.operatorTopicId).toBe(
+      'topic-1',
+    );
+    expect(
+      repository.findConversationMessages(request.id, 20),
+    ).not.toContainEqual(expect.objectContaining({ text: 'Web answer' }));
   });
 
   it('retries an unanswered failed relay without creating another topic', async () => {

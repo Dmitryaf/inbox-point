@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 
+import { OperatorConversationOwnershipConflictError } from '@/core/contracts/operator-inbox.js';
 import type { AdminRouteAccess } from '@/infrastructure/http/admin-route-access.js';
 import {
   OperatorRequestClosedError,
@@ -8,15 +9,14 @@ import {
 } from '@/modules/operator-inbox/application/operator-inbox-service.js';
 import type { OperatorInboxService } from '@/modules/operator-inbox/application/operator-inbox-service.js';
 
-const requestParamsSchema = z.object({
-  requestId: z.string().min(1).max(100),
-});
+const requestParamsSchema = z.object({ requestId: z.string().min(1).max(100) });
 const actionSchema = z.object({
   idempotencyKey: z.string().regex(/^[A-Za-z0-9_-]{1,100}$/),
 });
 const replySchema = actionSchema.extend({
   text: z.string().trim().min(1).max(4_000),
 });
+const movedMessage = 'Обращение уже перенесено в Telegram. Список обновлён.';
 
 export function registerOperatorInboxRoutes(
   app: FastifyInstance,
@@ -131,6 +131,9 @@ function handleActionError(
   }
   if (error instanceof OperatorRequestClosedError) {
     return reply.code(409).send({ message: 'Обращение уже закрыто.' });
+  }
+  if (error instanceof OperatorConversationOwnershipConflictError) {
+    return reply.code(409).send({ message: movedMessage });
   }
   app.log.error({ err: error }, 'Emergency operator inbox action failed');
   return reply.code(500).send({

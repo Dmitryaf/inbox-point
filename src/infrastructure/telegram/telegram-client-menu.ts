@@ -60,6 +60,19 @@ export class TelegramClientMenu implements TelegramClientMenuHandler {
     }
 
     try {
+      let replyMarkup = response.replyMarkup;
+      if (response.cancelAwaitingQuestion) {
+        this.repository.clearAwaitingClientQuestion('telegram', conversationId);
+        replyMarkup = createTelegramMainKeyboard(
+          this.information,
+          resolveClientConversationState(
+            this.repository,
+            this.intakePolicy,
+            'telegram',
+            conversationId,
+          ),
+        );
+      }
       if (response.beginQuestion) {
         this.repository.setAwaitingClientQuestion(
           'telegram',
@@ -69,7 +82,7 @@ export class TelegramClientMenu implements TelegramClientMenuHandler {
       }
       await this.gateway.sendMessage({
         chatId: message.chatId,
-        replyMarkup: response.replyMarkup,
+        replyMarkup,
         text: response.text,
       });
       if (response.informationRequested) {
@@ -95,6 +108,7 @@ export class TelegramClientMenu implements TelegramClientMenuHandler {
 
 interface MenuResponse {
   beginQuestion?: true;
+  cancelAwaitingQuestion?: true;
   informationRequested?: true;
   replyMarkup: TelegramReplyMarkup;
   text: string;
@@ -125,6 +139,19 @@ function resolveMenuResponse(
     return undefined;
   }
 
+  if (
+    state.stage === 'awaiting_question' &&
+    (command === '/start' || command === '/menu')
+  ) {
+    return {
+      cancelAwaitingQuestion: true,
+      replyMarkup: mainMenu,
+      text: state.intakePaused
+        ? pausedClientIntakeMessage
+        : 'Здравствуйте! Здесь можно посмотреть основную информацию или задать вопрос.',
+    };
+  }
+
   const informationResponse = information.resolve(normalized);
   if (state.intakePaused) {
     if (informationResponse) {
@@ -146,8 +173,13 @@ function resolveMenuResponse(
     };
   }
 
-  if (state.stage === 'awaiting_question' && !command?.startsWith('/')) {
-    return undefined;
+  if (state.stage === 'awaiting_question') {
+    if (normalized === newQuestionButton || isHandoffRequest(normalized)) {
+      return createQuestionPrompt(information);
+    }
+    if (!command?.startsWith('/')) {
+      return undefined;
+    }
   }
 
   if (informationResponse) {
@@ -166,14 +198,7 @@ function resolveMenuResponse(
   }
 
   if (normalized === newQuestionButton || isHandoffRequest(normalized)) {
-    return {
-      beginQuestion: true,
-      replyMarkup: createTelegramMainKeyboard(information, {
-        intakePaused: false,
-        stage: 'awaiting_question',
-      }),
-      text: 'Напишите свой вопрос. Мы ответим здесь.',
-    };
+    return createQuestionPrompt(information);
   }
   if (command === '/start' || command === '/menu') {
     return {
@@ -194,6 +219,19 @@ function resolveMenuResponse(
     };
   }
   return undefined;
+}
+
+function createQuestionPrompt(
+  information: ClientInformationResolver,
+): MenuResponse {
+  return {
+    beginQuestion: true,
+    replyMarkup: createTelegramMainKeyboard(information, {
+      intakePaused: false,
+      stage: 'awaiting_question',
+    }),
+    text: 'Напишите свой вопрос. Мы ответим здесь.',
+  };
 }
 
 export function createTelegramMainKeyboard(
