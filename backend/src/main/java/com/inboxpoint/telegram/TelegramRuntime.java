@@ -321,16 +321,35 @@ public final class TelegramRuntime {
         }
     }
 
-    public boolean resolveOperatorAction(String id, String resolution) throws IOException, SQLException {
+    public boolean resolveOperatorAction(String id, String resolution) throws IOException, SQLException, InterruptedException {
         try (var store = new TelegramStore(database)) {
-            return store.resolveOperatorAction(id, resolution, Instant.now());
+            var incident = store.operatorActions().incident(id);
+            if (incident == null) {
+                return false;
+            }
+            var initial = store.byId(incident.requestId());
+            var resolved = new java.util.concurrent.atomic.AtomicBoolean();
+            queue.run(initial.channel(), initial.conversation(), () -> {
+                if (!"retry".equals(resolution)) {
+                    resolved.set(store.resolveOperatorAction(id, resolution, Instant.now()));
+                    return;
+                }
+                var latest = store.operatorActions().incident(id);
+                var request = store.byId(incident.requestId());
+                if (latest != null && latest.heldReplyCount() > 0 && !"outcome_unknown".equals(latest.status())
+                        && !request.active() && store.canReopen(request) && request.topic().equals(latest.operatorTopicId())) {
+                    resolved.set(new HandoffService(store, handoff.routingInbox(), Clock.systemUTC(), queue)
+                            .retryHeldReply(request, latest.clientMessageId()));
+                }
+            });
+            return resolved.get();
         }
     }
 
     public record OperatorRelayStatus(String state, long uncertain, List<OperatorRelayIncident> incidents) { }
 
     public record OperatorRelayIncident(String id, String action, String channel, String clientMessageId, boolean confirmable,
-            String createdAt, boolean initial, String operatorTopicId, String reason, String requestId, int sequence) { }
+            String createdAt, boolean initial, String operatorTopicId, String reason, String requestId, int sequence, long heldReplyCount, String status) { }
 
     public Map<String, Long> usageCounts(Instant since) throws IOException, SQLException {
         try (var store = new TelegramStore(database)) {

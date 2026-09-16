@@ -79,8 +79,8 @@ final class OperatorActions {
                 var rows = statement.executeQuery("SELECT COUNT(*) FROM operator_actions WHERE status = 'outcome_unknown'")) {
             count = rows.next() ? rows.getLong(1) : 0;
         }
-        return new TelegramRuntime.OperatorRelayStatus(count == 0 ? "healthy" : "uncertain", count,
-                incidents("ORDER BY julianday(action.created_at) DESC, action.id LIMIT 20"));
+        var incidents = incidents("ORDER BY julianday(action.created_at) DESC, action.id LIMIT 20");
+        return new TelegramRuntime.OperatorRelayStatus(incidents.isEmpty() ? "healthy" : "uncertain", count, incidents);
     }
 
     TelegramRuntime.OperatorRelayIncident incident(String id) throws SQLException {
@@ -133,16 +133,25 @@ final class OperatorActions {
     private List<TelegramRuntime.OperatorRelayIncident> incidents(String where, Object... args) throws SQLException {
         var sql = """
                 SELECT action.id, action.kind, action.client_message_id, action.created_at, action.initial,
-                    action.operator_topic_id, action.request_id, action.sequence, request.channel,
+                    action.operator_topic_id, action.request_id, action.sequence, request.channel, action.status,
+                    (SELECT COUNT(*) FROM conversation_messages m WHERE m.prerequisite_action_id = action.id
+                        AND m.processing_state = 'held') AS held_count,
                 """ + "(" + CONFIRMABLE + ") AS confirmable " + """
                 FROM operator_actions action JOIN support_requests request ON request.id = action.request_id
-                WHERE action.status = 'outcome_unknown'
+                WHERE (action.status = 'outcome_unknown' OR (action.kind = 'reopen_request'
+                    AND action.status IN ('failed', 'abandoned') AND EXISTS (
+                        SELECT 1 FROM conversation_messages m WHERE m.prerequisite_action_id = action.id
+                            AND m.processing_state = 'held')))
                 """ + where;
         try (var statement = prepare(sql, args); var rows = statement.executeQuery()) {
             var incidents = new ArrayList<TelegramRuntime.OperatorRelayIncident>();
             while (rows.next()) {
                 var action = rows.getString("kind");
-                var reason = switch (action) {
+                var held = rows.getLong("held_count");
+                var status = rows.getString("status");
+                var reason = held > 0 && !"outcome_unknown".equals(status)
+                        ? "Открыть Telegram-тему не удалось. Ответ сохранён. Можно повторить открытие или продолжить обращение здесь."
+                        : switch (action) {
                     case "close_request" -> "Telegram мог закрыть тему, но подтверждение не получено. Обращение пока оставлено открытым в Inbox Point.";
                     case "reopen_request" -> "Telegram мог открыть тему, но подтверждение не получено. Обращение пока оставлено закрытым в Inbox Point.";
                     case "open_request" -> "Telegram мог создать тему, но подтверждение не получено. Обращение сохранено в web inbox; проверьте группу и закройте возможный дубль.";
@@ -152,7 +161,7 @@ final class OperatorActions {
                         "telegram".equals(rows.getString("channel")) ? "Telegram" : "VK",
                         rows.getString("client_message_id"), rows.getBoolean("confirmable"), rows.getString("created_at"),
                         rows.getBoolean("initial"), rows.getString("operator_topic_id"), reason,
-                        rows.getString("request_id"), rows.getInt("sequence")));
+                        rows.getString("request_id"), rows.getInt("sequence"), held, status));
             }
             return incidents;
         }

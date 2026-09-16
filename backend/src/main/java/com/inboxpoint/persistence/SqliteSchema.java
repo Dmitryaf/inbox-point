@@ -17,7 +17,7 @@ public final class SqliteSchema {
             int previous;
             try (var version = statement.executeQuery("PRAGMA user_version")) {
                 previous = version.next() ? version.getInt(1) : 0;
-                if (previous > 8) {
+                if (previous > 9) {
                     throw new SQLException("Unsupported SQLite schema version");
                 }
             }
@@ -77,7 +77,12 @@ public final class SqliteSchema {
                             AND external_conversation_id = NEW.external_conversation_id;
                     END
                     """);
-            statement.execute("PRAGMA user_version = 8");
+            ensureColumn(connection, "conversation_messages", "prerequisite_action_id", "TEXT REFERENCES operator_actions(id)");
+            ensureColumn(connection, "conversation_messages", "external_event_id", "TEXT");
+            ensureColumn(connection, "conversation_messages", "processing_state",
+                    "TEXT NOT NULL DEFAULT 'ready' CHECK (processing_state IN ('held', 'ready'))");
+            statement.execute("CREATE INDEX IF NOT EXISTS held_replies_by_action ON conversation_messages(prerequisite_action_id, processing_state)");
+            statement.execute("PRAGMA user_version = 9");
         }
     }
 

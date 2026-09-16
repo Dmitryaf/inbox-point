@@ -134,7 +134,7 @@ final class OperationsController {
             return denied;
         }
         var choice = input == null ? "" : input.path("resolution").asString("");
-        if (id.length() > 500 || !java.util.Set.of("received", "use_web", "completed", "not_completed").contains(choice)) {
+        if (id.length() > 500 || !java.util.Set.of("received", "use_web", "completed", "not_completed", "retry").contains(choice)) {
             return message(400, "Не удалось уточнить передачу обращения.");
         }
         try {
@@ -142,6 +142,9 @@ final class OperationsController {
                 return message(409, "Инцидент уже обработан или выбранное действие недоступно.");
             }
             return ResponseEntity.ok(Map.of("resolved", true));
+        } catch (InterruptedException stopping) {
+            Thread.currentThread().interrupt();
+            return message(503, "Приложение останавливается.");
         } catch (IOException | SQLException unavailable) {
             return message(503, "Управление передачей обращений недоступно.");
         }

@@ -84,13 +84,17 @@ final class DurableTelegramInbox implements OperatorInbox {
     @Override
     public void lifecycle(String topic, String request, String event, boolean open)
             throws TelegramBotApi.RequestFailed, InterruptedException {
-        var kind = open ? "reopen_request" : "close_request";
-        var key = new OperatorActions.Key("operator-" + kind + ":" + request + ":" + event,
-                request, kind, topic, event, 0, false);
+        var key = lifecycleKey(topic, request, event, open);
         perform(key, () -> {
             delegate.lifecycle(topic, request, event, open);
             return topic;
         });
+    }
+
+    static OperatorActions.Key lifecycleKey(String topic, String request, String event, boolean open) {
+        var kind = open ? "reopen_request" : "close_request";
+        return new OperatorActions.Key("operator-" + kind + ":" + request + ":" + event,
+                request, kind, topic, event, 0, false);
     }
 
     @Override

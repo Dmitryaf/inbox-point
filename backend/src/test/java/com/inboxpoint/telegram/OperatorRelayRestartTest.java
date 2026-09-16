@@ -18,6 +18,31 @@ class OperatorRelayRestartTest {
     Path directory;
 
     @Test
+    void releasesSavedLateRepliesOnceAfterAnUncertainReopen() throws Exception {
+        var now = Instant.parse("2026-09-16T09:00:00Z");
+        var database = directory.resolve("held-replies.sqlite");
+        var request = new TelegramStore.Request("late", 123, "42", true, "vk");
+        String action;
+        try (var store = new TelegramStore(database)) {
+            store.open(request, now.minusSeconds(10));
+            store.changeStatus(request, false, now);
+            var closed = store.byId(request.id());
+            action = store.holdReply(closed, "event-one", "501", "First reply", now).actionId();
+            assertThat(store.operatorActions().begin(action, now)).isTrue();
+        }
+        try (var store = new TelegramStore(database)) {
+            store.recoverInterrupted();
+            store.holdReply(store.byId(request.id()), "event-two", "502", "Second reply", now);
+            assertThat(store.operatorActions().incident(action).heldReplyCount()).isEqualTo(2);
+            assertThat(store.pending(now, false, true)).isEmpty();
+            assertThat(store.resolveOperatorAction(action, "completed", now)).isTrue();
+            assertThat(store.resolveOperatorAction(action, "completed", now)).isFalse();
+            assertThat(store.pending(now, false, true)).extracting(TelegramStore.Pending::text)
+                    .containsExactlyInAnyOrder("First reply", "Second reply");
+        }
+    }
+
+    @Test
     void movesOnlyUnclaimedActiveWebRequests() throws Exception {
         var now = Instant.parse("2026-09-16T09:00:00Z");
         try (var store = new TelegramStore(directory.resolve("ownership.sqlite"))) {

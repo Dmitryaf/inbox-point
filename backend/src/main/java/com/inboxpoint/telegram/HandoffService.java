@@ -238,7 +238,11 @@ final class HandoffService {
                 lifecycle(request, event, false);
             } else {
                 if (request.active() != active) {
-                    store.changeStatus(request, active, occurred);
+                    if (active) {
+                        store.completeReopen(request, occurred);
+                    } else {
+                        store.changeStatus(request, false, occurred);
+                    }
                 }
                 store.operatorActions().observeLifecycle(request.id(), request.topic(), active, occurred);
             }
@@ -279,13 +283,26 @@ final class HandoffService {
             }
             default -> {
                 if (request.active() || store.canReopen(request)) {
-                    if (!request.active() && !lifecycle(request, event, true)) {
+                    if (!request.active()) {
+                        var held = store.holdReply(request, event, message, text, clock.instant());
+                        if (held != null && (held.startReopen() || "sent".equals(held.status()))) {
+                            retryHeldReply(request, held.event());
+                        }
                         return;
                     }
                     store.usageEvent("first-reply:" + request.id(), "first_reply", request.channel(), request.id(), clock.instant());
                     store.queue(request, event, message, text, clock.instant());
                 }
             }
+        }
+    }
+
+    boolean retryHeldReply(TelegramStore.Request request, String event)
+            throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
+        try {
+            return lifecycle(request, event, true);
+        } catch (TelegramBotApi.RequestFailed failed) {
+            return false;
         }
     }
 
@@ -297,7 +314,7 @@ final class HandoffService {
             return false;
         }
         var now = clock.instant();
-        if (!store.changeStatus(request, open, now)) {
+        if (!(open ? store.completeReopen(request, now) : store.changeStatus(request, false, now))) {
             return false;
         }
         store.operatorActions().observeLifecycle(request.id(), request.topic(), open, now);

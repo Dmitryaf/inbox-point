@@ -270,6 +270,82 @@ final class TelegramStore implements AutoCloseable {
                 requestId, direction, customerMessage, operatorMessage);
     }
 
+    record HeldReply(String actionId, String event, String status, boolean startReopen) { }
+
+    HeldReply holdReply(Request request, String event, String message, String text, Instant now) throws SQLException {
+        connection.setAutoCommit(false);
+        try {
+            try (var current = prepare("SELECT status FROM support_requests WHERE id = ? AND operator_topic_id = ?",
+                    request.id(), request.topic()); var rows = current.executeQuery()) {
+                if (!rows.next() || !"closed".equals(rows.getString(1)) || !canReopen(request)) {
+                    connection.rollback();
+                    return null;
+                }
+            }
+            var action = DurableTelegramInbox.lifecycleKey(request.topic(), request.id(), event, true);
+            HeldReply blocker = null;
+            try (var statement = prepare("""
+                    SELECT action.id, action.client_message_id, action.status FROM operator_actions action
+                    WHERE action.kind = 'reopen_request' AND action.request_id = ? AND action.operator_topic_id = ?
+                        AND EXISTS (SELECT 1 FROM conversation_messages m
+                            WHERE m.prerequisite_action_id = action.id AND m.processing_state = 'held')
+                    ORDER BY action.rowid LIMIT 1
+                    """, request.id(), request.topic()); var rows = statement.executeQuery()) {
+                if (rows.next()) {
+                    var status = rows.getString(3);
+                    blocker = new HeldReply(rows.getString(1), rows.getString(2), status,
+                            action.id().equals(rows.getString(1)) && ("pending".equals(status) || "failed".equals(status)));
+                }
+            }
+            if (blocker == null) {
+                var attempt = operatorActions().prepare(action, now);
+                blocker = new HeldReply(action.id(), event, attempt.status(), true);
+            }
+            update("""
+                    INSERT OR IGNORE INTO conversation_messages (id, request_id, direction, external_message_id,
+                        text, created_at, processing_state, prerequisite_action_id, external_event_id)
+                    VALUES (?, ?, 'operator_to_client', ?, ?, ?, 'held', ?, ?)
+                    """, "held:" + event, request.id(), message, text, now.toString(), blocker.actionId(), event);
+            connection.commit();
+            return blocker;
+        } catch (SQLException | RuntimeException failure) {
+            connection.rollback();
+            throw failure;
+        } finally {
+            connection.setAutoCommit(true);
+        }
+    }
+
+    boolean completeReopen(Request request, Instant now) throws SQLException {
+        connection.setAutoCommit(false);
+        try {
+            var reopened = changeStatus(request, true, now);
+            if (reopened) {
+                releaseHeldReplies(request, now);
+            }
+            connection.commit();
+            return reopened;
+        } catch (SQLException | RuntimeException failure) {
+            connection.rollback();
+            throw failure;
+        } finally {
+            connection.setAutoCommit(true);
+        }
+    }
+
+    private void releaseHeldReplies(Request request, Instant now) throws SQLException {
+        try (var statement = prepare("""
+                SELECT external_event_id, external_message_id, text FROM conversation_messages
+                WHERE request_id = ? AND processing_state = 'held' ORDER BY rowid
+                """, request.id()); var rows = statement.executeQuery()) {
+            while (rows.next()) {
+                insertDelivery(request, rows.getString(1), rows.getString(2), rows.getString(3), now);
+            }
+        }
+        update("UPDATE conversation_messages SET processing_state = 'ready' WHERE request_id = ? AND processing_state = 'held'",
+                request.id());
+    }
+
     void queue(Request request, String event, long message, String text, Instant now) throws SQLException {
         queue(request, event, Long.toString(message), text, now);
     }
@@ -330,6 +406,18 @@ final class TelegramStore implements AutoCloseable {
         }
         var request = byId(incident.requestId());
         var lifecycle = incident.action().equals("close_request") || incident.action().equals("reopen_request");
+        if (lifecycle && "use_web".equals(resolution) && incident.heldReplyCount() > 0
+                && !"outcome_unknown".equals(incident.status()) && !request.active() && canReopen(request)) {
+            var web = "web:" + request.id();
+            if (!switchTopic(request.id(), request.topic(), web)
+                    || !changeStatus(byId(request.id()), true, now)) {
+                throw new SQLException("Could not transfer a closed request with held replies");
+            }
+            markWebOwned(request.id(), now);
+            releaseHeldReplies(request, now);
+            actions.abandon(incident, now);
+            return true;
+        }
         if (lifecycle) {
             var completed = "completed".equals(resolution);
             if (!completed && !"not_completed".equals(resolution)) {
@@ -343,7 +431,12 @@ final class TelegramStore implements AutoCloseable {
                 return false;
             }
             if (completed) {
-                changeStatus(request, open, now);
+                if (!changeStatus(request, open, now)) {
+                    throw new SQLException("Could not confirm the expected lifecycle change");
+                }
+                if (open) {
+                    releaseHeldReplies(request, now);
+                }
             }
             return true;
         }
@@ -523,7 +616,7 @@ final class TelegramStore implements AutoCloseable {
                         d.status AS delivery_status, d.outcome_unknown
                     FROM conversation_messages m LEFT JOIN deliveries d ON m.direction = 'operator_to_client'
                         AND m.request_id = d.request_id AND m.external_message_id = d.operator_message_id
-                    WHERE m.request_id = ? ORDER BY julianday(m.created_at) DESC, m.rowid DESC LIMIT 200
+                    WHERE m.request_id = ? AND m.processing_state = 'ready' ORDER BY julianday(m.created_at) DESC, m.rowid DESC LIMIT 200
                 ) ORDER BY julianday(created_at), id
                 """, request); var rows = statement.executeQuery()) {
             var result = new ArrayList<TelegramRuntime.InboxMessage>();
