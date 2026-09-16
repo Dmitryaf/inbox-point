@@ -305,9 +305,9 @@ public final class TelegramRuntime {
         }
     }
 
-    public boolean resolveInbound(String id, boolean retry) throws IOException, SQLException {
+    public boolean resolveInbound(String source, String id, boolean retry) throws IOException, SQLException {
         try (var store = new TelegramStore(database)) {
-            return store.resolveInbound(id, retry);
+            return store.resolveInbound(source, id, retry);
         }
     }
 
@@ -485,7 +485,7 @@ public final class TelegramRuntime {
             var unregisterInbox = handoff.registerOperatorInbox(inbox);
             try {
                 var handler = new TelegramTextHandoff(group, store, api, Clock.systemUTC(), information, queue, serviceControl::intakePaused, handoff.routingInbox());
-                new TelegramPoller(api, handler, timeout, activity,
+                new TelegramPoller(api, handler, timeout, activity, store,
                         () -> recoverFallback(store, inbox)).run();
             } finally {
                 unregisterInbox.run();

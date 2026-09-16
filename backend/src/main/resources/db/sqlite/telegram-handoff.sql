@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS operator_actions (
   operator_topic_id TEXT NOT NULL,
   sequence INTEGER NOT NULL,
   initial INTEGER NOT NULL CHECK (initial IN (0, 1)),
-  status TEXT NOT NULL CHECK (status IN ('pending', 'sending', 'sent', 'failed', 'outcome_unknown', 'abandoned')),
+  status TEXT NOT NULL CHECK (status IN ('pending', 'sending', 'sent', 'failed', 'outcome_unknown', 'abandoned', 'superseded')),
   external_result_id TEXT,
   last_error TEXT,
   attempt_started_at TEXT,
@@ -109,4 +109,9 @@ CREATE TABLE IF NOT EXISTS deliveries (
   last_error TEXT,
   created_at TEXT NOT NULL,
   sent_at TEXT
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS inbound_event_cursors (
+  source TEXT PRIMARY KEY,
+  cursor TEXT NOT NULL
 ) STRICT;

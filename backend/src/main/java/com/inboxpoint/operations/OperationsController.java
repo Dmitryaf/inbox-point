@@ -160,11 +160,11 @@ final class OperationsController {
         var source = input == null ? "" : input.path("source").asString("");
         var choice = input == null ? "" : input.path("resolution").asString("");
         var retry = "retry".equals(choice);
-        if (id.length() > 500 || !"vk:long-poll".equals(source) || !retry && !"skip".equals(choice)) {
+        if (id.length() > 500 || !java.util.Set.of("vk:long-poll", "telegram:get-updates").contains(source) || !retry && !"skip".equals(choice)) {
             return message(400, "Не удалось обработать входящее событие.");
         }
         try {
-            if (!runtime.resolveInbound(id, retry)) {
+            if (!runtime.resolveInbound(source, id, retry)) {
                 return message(409, "Инцидент уже обработан.");
             }
             return ResponseEntity.ok(Map.of("resolved", true));

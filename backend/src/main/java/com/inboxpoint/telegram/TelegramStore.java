@@ -167,7 +167,7 @@ final class TelegramStore implements AutoCloseable {
         }
         for (var old : previous) {
             update("""
-                    UPDATE operator_actions SET status = 'abandoned', last_error = NULL, attempt_started_at = NULL,
+                    UPDATE operator_actions SET status = 'superseded', last_error = NULL, attempt_started_at = NULL,
                         manual_resolution = NULL, resolved_at = ?
                     WHERE request_id = ? AND kind = 'reopen_request' AND status != 'sent'
                         AND EXISTS (SELECT 1 FROM conversation_messages m
@@ -235,6 +235,80 @@ final class TelegramStore implements AutoCloseable {
                 """, "Delivery was interrupted after the attempt started");
     }
 
+    private static final String TELEGRAM_INBOUND = "telegram:get-updates";
+
+    void saveTelegramBatch(List<tools.jackson.databind.JsonNode> updates, Instant now) throws SQLException {
+        if (updates.isEmpty()) {
+            return;
+        }
+        connection.setAutoCommit(false);
+        try {
+            long greatest = -1;
+            for (var item : updates) {
+                var update = item.path("update_id");
+                if (!update.isIntegralNumber() || update.asLong(-1) < 0 || update.asLong() == Long.MAX_VALUE) {
+                    continue;
+                }
+                var id = update.asLong();
+                update("""
+                        INSERT OR IGNORE INTO inbound_events (source, external_event_id, payload, received_at)
+                        VALUES (?, ?, ?, ?)
+                        """, TELEGRAM_INBOUND, Long.toString(id), item.toString(), now.toString());
+                greatest = Math.max(greatest, id);
+            }
+            if (greatest >= 0) {
+                update("""
+                        INSERT INTO inbound_event_cursors (source, cursor) VALUES (?, ?)
+                        ON CONFLICT(source) DO UPDATE SET cursor = excluded.cursor
+                        WHERE CAST(excluded.cursor AS INTEGER) > CAST(inbound_event_cursors.cursor AS INTEGER)
+                        """, TELEGRAM_INBOUND, Long.toString(greatest + 1));
+            }
+            connection.commit();
+        } catch (SQLException | RuntimeException failure) {
+            connection.rollback();
+            throw failure;
+        } finally {
+            connection.setAutoCommit(true);
+        }
+    }
+
+    Long telegramOffset() throws SQLException {
+        try (var query = prepare("SELECT cursor FROM inbound_event_cursors WHERE source = ?", TELEGRAM_INBOUND);
+                var row = query.executeQuery()) {
+            return row.next() ? row.getLong(1) : null;
+        }
+    }
+
+    record QueuedTelegram(String event, String payload, Instant nextAttemptAt) { }
+
+    QueuedTelegram nextTelegram() throws SQLException {
+        try (var query = prepare("""
+                SELECT external_event_id, payload, next_attempt_at FROM inbound_events
+                WHERE source = ? AND status = 'pending' ORDER BY CAST(external_event_id AS INTEGER), rowid LIMIT 1
+                """, TELEGRAM_INBOUND); var row = query.executeQuery()) {
+            if (!row.next()) {
+                return null;
+            }
+            var date = row.getString("next_attempt_at");
+            return new QueuedTelegram(row.getString("external_event_id"), row.getString("payload"),
+                    date == null ? null : Instant.parse(date));
+        }
+    }
+
+    void deleteTelegram(String event) throws SQLException {
+        update("DELETE FROM inbound_events WHERE source = ? AND external_event_id = ?", TELEGRAM_INBOUND, event);
+    }
+
+    void failTelegram(String event, Instant retryAt) throws SQLException {
+        update("""
+                UPDATE inbound_events SET attempts = attempts + 1,
+                    status = CASE WHEN attempts + 1 >= 3 THEN 'quarantined' ELSE 'pending' END,
+                    last_error = 'Не удалось обработать входящее событие Telegram.',
+                    next_attempt_at = CASE WHEN attempts + 1 >= 3 THEN NULL ELSE ? END
+                WHERE source = ? AND external_event_id = ? AND status = 'pending'
+                """, retryAt.toString(), TELEGRAM_INBOUND, event);
+    }
+
     void saveVkBatch(List<VkChannel.Inbound> batch, Instant now) throws SQLException {
         connection.setAutoCommit(false);
         try {
@@ -282,14 +356,15 @@ final class TelegramStore implements AutoCloseable {
     TelegramRuntime.InboundStatus inboundStatus() throws SQLException {
         try (var query = connection.createStatement(); var rows = query.executeQuery("""
                 SELECT external_event_id, attempts, source, received_at, last_error, COUNT(*) OVER () AS total
-                FROM inbound_events WHERE source = 'vk:long-poll' AND status = 'quarantined'
+                FROM inbound_events WHERE status = 'quarantined'
                 ORDER BY julianday(received_at), rowid LIMIT 20
                 """)) {
             var result = new ArrayList<TelegramRuntime.InboundIncident>();
             long total = 0;
             while (rows.next()) {
                 total = rows.getLong("total");
-                result.add(new TelegramRuntime.InboundIncident(rows.getString("external_event_id"), "VK",
+                result.add(new TelegramRuntime.InboundIncident(rows.getString("external_event_id"),
+                        TELEGRAM_INBOUND.equals(rows.getString("source")) ? "Telegram" : "VK",
                         rows.getString("source"), rows.getInt("attempts"), rows.getString("received_at"), rows.getString("last_error")));
             }
             return new TelegramRuntime.InboundStatus(total == 0 ? "healthy" : "quarantined", total, result);
@@ -297,10 +372,14 @@ final class TelegramStore implements AutoCloseable {
     }
 
     boolean resolveInbound(String event, boolean retry) throws SQLException {
-        var condition = "WHERE source = 'vk:long-poll' AND external_event_id = ? AND status = 'quarantined'";
+        return resolveInbound("vk:long-poll", event, retry);
+    }
+
+    boolean resolveInbound(String source, String event, boolean retry) throws SQLException {
+        var condition = "WHERE source = ? AND external_event_id = ? AND status = 'quarantined'";
         return update((retry
                 ? "UPDATE inbound_events SET status = 'pending', attempts = 0, next_attempt_at = NULL, last_error = NULL "
-                : "DELETE FROM inbound_events ") + condition, event) == 1;
+                : "DELETE FROM inbound_events ") + condition, source, event) == 1;
     }
 
     void deleteVk(String event) throws SQLException {

@@ -17,7 +17,7 @@ public final class SqliteSchema {
             int previous;
             try (var version = statement.executeQuery("PRAGMA user_version")) {
                 previous = version.next() ? version.getInt(1) : 0;
-                if (previous > 9) {
+                if (previous > 10) {
                     throw new SQLException("Unsupported SQLite schema version");
                 }
             }
@@ -82,7 +82,10 @@ public final class SqliteSchema {
             ensureColumn(connection, "conversation_messages", "processing_state",
                     "TEXT NOT NULL DEFAULT 'ready' CHECK (processing_state IN ('held', 'ready'))");
             statement.execute("CREATE INDEX IF NOT EXISTS held_replies_by_action ON conversation_messages(prerequisite_action_id, processing_state)");
-            statement.execute("PRAGMA user_version = 9");
+            if (previous > 0 && previous < 10) {
+                migrateSupersededActions(statement);
+            }
+            statement.execute("PRAGMA user_version = 10");
         }
     }
 
@@ -182,6 +185,70 @@ public final class SqliteSchema {
         } catch (SQLException | RuntimeException failure) {
             statement.execute("ROLLBACK");
             throw failure;
+        }
+    }
+
+    private static void migrateSupersededActions(java.sql.Statement statement) throws SQLException {
+        statement.execute("PRAGMA foreign_keys = OFF");
+        try {
+            statement.execute("BEGIN IMMEDIATE");
+            try {
+                boolean required;
+                try (var version = statement.executeQuery("PRAGMA user_version")) {
+                    required = version.next() && version.getInt(1) < 10;
+                }
+                if (required) {
+                    statement.execute("""
+                            CREATE TABLE operator_actions_v10 (
+                              id TEXT PRIMARY KEY,
+                              request_id TEXT NOT NULL REFERENCES support_requests(id),
+                              kind TEXT NOT NULL CHECK (kind IN ('open_request', 'relay_message', 'close_request', 'reopen_request')),
+                              client_message_id TEXT NOT NULL,
+                              operator_topic_id TEXT NOT NULL,
+                              sequence INTEGER NOT NULL,
+                              initial INTEGER NOT NULL CHECK (initial IN (0, 1)),
+                              status TEXT NOT NULL CHECK (status IN ('pending', 'sending', 'sent', 'failed', 'outcome_unknown', 'abandoned', 'superseded')),
+                              external_result_id TEXT,
+                              last_error TEXT,
+                              attempt_started_at TEXT,
+                              completed_at TEXT,
+                              manual_resolution TEXT CHECK (manual_resolution IN ('confirmed_received', 'use_web', 'completed', 'not_completed')),
+                              resolved_at TEXT,
+                              created_at TEXT NOT NULL
+                            ) STRICT
+                            """);
+                    statement.execute("INSERT INTO operator_actions_v10 SELECT * FROM operator_actions");
+                    statement.execute("DROP TABLE operator_actions");
+                    statement.execute("ALTER TABLE operator_actions_v10 RENAME TO operator_actions");
+                    statement.execute("CREATE INDEX operator_actions_by_request ON operator_actions(request_id, client_message_id, sequence)");
+                    statement.execute("CREATE INDEX operator_actions_by_status ON operator_actions(status, created_at)");
+                    statement.execute("""
+                            UPDATE operator_actions AS action SET status = 'superseded', attempt_started_at = NULL,
+                                last_error = NULL, manual_resolution = NULL, resolved_at = COALESCE(resolved_at, (
+                                    SELECT MIN(next.created_at) FROM support_requests request JOIN support_requests next
+                                      ON next.channel = request.channel AND next.external_conversation_id = request.external_conversation_id
+                                    WHERE request.id = action.request_id AND next.rowid > request.rowid
+                                ))
+                            WHERE status IN ('pending', 'sending', 'failed', 'outcome_unknown') AND EXISTS (
+                                SELECT 1 FROM support_requests request JOIN support_requests next
+                                  ON next.channel = request.channel AND next.external_conversation_id = request.external_conversation_id
+                                WHERE request.id = action.request_id AND request.status = 'closed' AND next.rowid > request.rowid
+                            )
+                            """);
+                    try (var violations = statement.executeQuery("PRAGMA foreign_key_check")) {
+                        if (violations.next()) {
+                            throw new SQLException("SQLite operator action migration violated foreign keys");
+                        }
+                    }
+                    statement.execute("PRAGMA user_version = 10");
+                }
+                statement.execute("COMMIT");
+            } catch (SQLException | RuntimeException failure) {
+                statement.execute("ROLLBACK");
+                throw failure;
+            }
+        } finally {
+            statement.execute("PRAGMA foreign_keys = ON");
         }
     }
 

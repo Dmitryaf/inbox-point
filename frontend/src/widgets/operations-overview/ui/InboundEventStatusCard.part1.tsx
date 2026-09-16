@@ -11,7 +11,7 @@ export function renderInboundEventStatusCardPart1(
   return (
     <>
       <div className="status-card-heading" data-r-df4e40d1="">
-        <h3 data-r-df4e40d1="">{'Сообщения VK'}</h3>
+        <h3 data-r-df4e40d1="">{'Входящие сообщения'}</h3>
         <span
           className={$class(
             'status-pill',

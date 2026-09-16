@@ -134,6 +134,32 @@ class VkBridgeTest {
     }
 
     @Test
+    void resumesTelegramCursorAndSkipsQuarantinedUpdates() throws Exception {
+        var database = directory.resolve("telegram-ingress.sqlite");
+        var now = java.time.Instant.parse("2026-09-16T10:00:00Z");
+        var mapper = JsonMapper.shared();
+        try (var store = new TelegramStore(database)) {
+            assertThat(store.telegramOffset()).isNull();
+            store.saveTelegramBatch(java.util.List.of(mapper.readTree("{\"update_id\":84}"),
+                    mapper.readTree("{\"update_id\":85}")), now);
+        }
+        try (var store = new TelegramStore(database)) {
+            assertThat(store.telegramOffset()).isEqualTo(86L);
+            assertThat(store.nextTelegram().event()).isEqualTo("84");
+            for (int attempt = 0; attempt < 3; attempt++) {
+                store.failTelegram("84", now.plusSeconds(1));
+            }
+            assertThat(store.nextTelegram().event()).isEqualTo("85");
+            assertThat(store.inboundStatus().incidents()).singleElement().satisfies(incident -> {
+                assertThat(incident.channel()).isEqualTo("Telegram");
+                assertThat(incident.attempts()).isEqualTo(3);
+            });
+            assertThat(store.resolveInbound("telegram:get-updates", "84", true)).isTrue();
+            assertThat(store.nextTelegram().event()).isEqualTo("84");
+        }
+    }
+
+    @Test
     void quarantinesAnEventAfterThreeAttemptsAndLetsTheNextOneProceed() throws Exception {
         var database = directory.resolve("quarantine.sqlite");
         var now = java.time.Instant.parse("2026-09-11T10:00:00Z");

@@ -32,11 +32,11 @@ export function renderInboundEventIncidentListPart1(
           data-r-4b17d194=""
         >
           <h3 id="inbound-event-incidents-title" data-r-4b17d194="">
-            {'Необработанные сообщения VK'}
+            {'Необработанные сообщения'}
           </h3>
           <p data-r-4b17d194="">
             {
-              ' Некоторые события VK не удалось обработать автоматически. Сначала попробуйте обработать их ещё раз. '
+              ' Некоторые входящие события не удалось обработать автоматически. Проверьте сведения и выберите подходящее действие. '
             }
           </p>
           <ol data-r-4b17d194="">
@@ -44,17 +44,27 @@ export function renderInboundEventIncidentListPart1(
               <li key={incident.eventId} data-r-4b17d194="">
                 <div className="delivery-incident-heading" data-r-4b17d194="">
                   <strong data-r-4b17d194="">
-                    {'Сообщение VK требует решения'}
+                    {'Сообщение '}
+                    {incident.channel}
+                    {' требует решения'}
                   </strong>
                   <time dateTime={incident.receivedAt} data-r-4b17d194="">
                     {$unref(formatShortDateTime)(incident.receivedAt)}
                   </time>
                 </div>
-                <p data-r-4b17d194="">
-                  {
-                    ' После повторной обработки сообщение может появиться у оператора. Если событие точно не нужно, его можно пропустить. '
-                  }
-                </p>
+                {incident.channel === 'Telegram' ? (
+                  <p data-r-4b17d194="">
+                    {
+                      ' Перед повтором проверьте чат: предыдущий ответ бота мог быть отправлен. Если он уже есть, пропустите событие. '
+                    }
+                  </p>
+                ) : (
+                  <p data-r-4b17d194="">
+                    {
+                      ' После повторной обработки сообщение может появиться у оператора. Если событие точно не нужно, его можно пропустить. '
+                    }
+                  </p>
+                )}
                 <details className="technical-details" data-r-4b17d194="">
                   <summary data-r-4b17d194="">{'Технические данные'}</summary>
                   <dl className="delivery-incident-context" data-r-4b17d194="">
