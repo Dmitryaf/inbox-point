@@ -296,14 +296,19 @@ final class TelegramStore implements AutoCloseable {
         }
         usageEvent("web-takeover:" + request.id(), "web_takeover", request.channel(), request.id(), now);
         if (incident.initial()) {
-            acknowledge(request, HandoffService.ACKNOWLEDGEMENT, now);
+            acknowledge(request, HandoffService.DELAYED, now);
         }
         actions.abandon(incident, now);
         return true;
     }
 
     void acknowledge(Request request, String text, Instant now) throws SQLException {
-        var key = "system:handoff-ack:" + request.id();
+        var kind = switch (text) {
+            case HandoffService.DELAYED -> "delayed";
+            case HandoffService.RECOVERED -> "recovered";
+            default -> "ack";
+        };
+        var key = "system:handoff-" + kind + ":" + request.id();
         update("""
                 INSERT OR IGNORE INTO deliveries
                     (id, request_id, idempotency_key, operator_message_id, channel,
@@ -341,6 +346,57 @@ final class TelegramStore implements AutoCloseable {
                     (id, request_id, direction, external_message_id, sender_name, text, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
                 """, UUID.randomUUID().toString(), request, direction, message, sender, text, now.toString());
+    }
+
+    long openWebRequests() throws SQLException {
+        try (var statement = connection.createStatement(); var rows = statement.executeQuery("""
+                SELECT COUNT(*) FROM support_requests WHERE status = 'active' AND operator_topic_id LIKE 'web:%'
+                """)) {
+            return rows.next() ? rows.getLong(1) : 0;
+        }
+    }
+
+    List<String> recoverableWebRequests() throws SQLException {
+        try (var statement = connection.createStatement(); var rows = statement.executeQuery("""
+                SELECT r.id FROM support_requests r
+                WHERE r.status = 'active' AND r.operator_topic_id LIKE 'web:%'
+                    AND NOT EXISTS (SELECT 1 FROM conversation_messages m WHERE m.request_id = r.id
+                        AND m.direction = 'operator_to_client')
+                    AND NOT EXISTS (SELECT 1 FROM operator_actions a WHERE a.request_id = r.id
+                        AND (a.status = 'outcome_unknown' OR a.manual_resolution = 'use_web'))
+                ORDER BY julianday(r.created_at), r.rowid LIMIT 50
+                """)) {
+            var requests = new ArrayList<String>();
+            while (rows.next()) {
+                requests.add(rows.getString(1));
+            }
+            return requests;
+        }
+    }
+
+    boolean hasWebReply(String request) throws SQLException {
+        try (var statement = prepare("""
+                SELECT 1 FROM conversation_messages WHERE request_id = ? AND direction = 'operator_to_client' LIMIT 1
+                """, request); var rows = statement.executeQuery()) {
+            return rows.next();
+        }
+    }
+
+    record RecoveryMessage(String event, String name, String text) { }
+
+    List<RecoveryMessage> recoveryMessages(String request) throws SQLException {
+        try (var statement = prepare("""
+                SELECT m.external_message_id, COALESCE(m.sender_name, r.client_display_name, 'Клиент'), m.text
+                FROM conversation_messages m JOIN support_requests r ON r.id = m.request_id
+                WHERE m.request_id = ? AND m.direction = 'client_to_operator'
+                ORDER BY julianday(m.created_at), m.rowid
+                """, request); var rows = statement.executeQuery()) {
+            var messages = new ArrayList<RecoveryMessage>();
+            while (rows.next()) {
+                messages.add(new RecoveryMessage(rows.getString(1), rows.getString(2), rows.getString(3)));
+            }
+            return messages;
+        }
     }
 
     List<TelegramRuntime.InboxRequest> activeOperatorRequests() throws SQLException {

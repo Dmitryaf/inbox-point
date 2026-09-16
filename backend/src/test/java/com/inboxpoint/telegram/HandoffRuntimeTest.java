@@ -27,7 +27,7 @@ class HandoffRuntimeTest {
             assertThat(store.activeOperatorRequests()).extracting(TelegramRuntime.InboxRequest::id).containsExactly("first");
             service.relayReply(42, 89, "Late Telegram reply", "telegram:late");
             assertThat(store.pending(now, false, true)).singleElement()
-                    .satisfies(item -> assertThat(item.text()).isEqualTo(HandoffService.ACKNOWLEDGEMENT));
+                    .satisfies(item -> assertThat(item.text()).isEqualTo(HandoffService.DELAYED));
             service.relayReply(store.byId("first"), "web:close", "/close", "web:close");
             service.processVk("after-close", 123, 58, "Customer", "New question");
             assertThat(store.activeRequest("vk", 123).id()).isNotEqualTo("first");

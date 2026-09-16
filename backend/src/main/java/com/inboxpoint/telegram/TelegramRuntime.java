@@ -293,6 +293,12 @@ public final class TelegramRuntime {
         }
     }
 
+    public long openWebRequests() throws IOException, SQLException {
+        try (var store = new TelegramStore(database)) {
+            return store.openWebRequests();
+        }
+    }
+
     public InboundStatus inboundStatus() throws IOException, SQLException {
         try (var store = new TelegramStore(database)) {
             return store.inboundStatus();
@@ -352,13 +358,22 @@ public final class TelegramRuntime {
             if (request == null || !EmergencyOperatorInbox.isWebTopic(request.topic())) {
                 return "missing";
             }
-            if (!request.active()) {
-                return close ? "ok" : "closed";
-            }
-            var event = "web:" + (close ? "close:" : "reply:") + id + ":" + key;
-            var service = new HandoffService(store, handoff.routingInbox(), Clock.systemUTC(), queue);
-            service.relayReply(request, event, close ? "/close" : text, event);
-            return "ok";
+            var result = new java.util.concurrent.atomic.AtomicReference<>("missing");
+            queue.run(request.channel(), request.conversation(), () -> {
+                var current = store.byId(id);
+                if (current == null || !EmergencyOperatorInbox.isWebTopic(current.topic())) {
+                    return;
+                }
+                if (!current.active()) {
+                    result.set(close ? "ok" : "closed");
+                    return;
+                }
+                var event = "web:" + (close ? "close:" : "reply:") + id + ":" + key;
+                new HandoffService(store, handoff.routingInbox(), Clock.systemUTC(), queue)
+                        .relayReply(current, event, close ? "/close" : text, event);
+                result.set("ok");
+            });
+            return result.get();
         }
     }
 
@@ -444,10 +459,12 @@ public final class TelegramRuntime {
         try (var store = new TelegramStore(database); var transport = TelegramHttpTransport.open(proxy, API_TIMEOUT)) {
             var api = new TelegramBotApi(transport, origin, token, API_TIMEOUT);
             var unregisterClient = handoff.registerTelegram(api);
-            var unregisterInbox = handoff.registerOperatorInbox(new DurableTelegramInbox(new TelegramTopicsInbox(api, group), database, Clock.systemUTC()));
+            var inbox = new DurableTelegramInbox(new TelegramTopicsInbox(api, group), database, Clock.systemUTC());
+            var unregisterInbox = handoff.registerOperatorInbox(inbox);
             try {
                 var handler = new TelegramTextHandoff(group, store, api, Clock.systemUTC(), information, queue, serviceControl::intakePaused, handoff.routingInbox());
-                new TelegramPoller(api, handler, timeout, activity).run();
+                new TelegramPoller(api, handler, timeout, activity,
+                        () -> recoverFallback(store, inbox)).run();
             } finally {
                 unregisterInbox.run();
                 unregisterClient.run();
@@ -456,6 +473,14 @@ public final class TelegramRuntime {
             Thread.currentThread().interrupt();
         } catch (IOException | SQLException failure) {
             LoggerFactory.getLogger(TelegramRuntime.class).warn("Telegram storage could not start or continue");
+        }
+    }
+
+    private void recoverFallback(TelegramStore store, OperatorInbox inbox) throws InterruptedException {
+        try {
+            new HandoffService(store, inbox, Clock.systemUTC(), queue).recoverWebRequests();
+        } catch (IOException | SQLException failure) {
+            LoggerFactory.getLogger(TelegramRuntime.class).warn("Emergency web inbox recovery will retry after polling");
         }
     }
 

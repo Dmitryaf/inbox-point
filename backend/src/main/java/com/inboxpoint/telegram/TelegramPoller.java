@@ -12,15 +12,23 @@ final class TelegramPoller {
     private final TelegramTextHandoff handoff;
     private final int timeout;
     private final ChannelActivity activity;
+    private final Recovery recovery;
 
-    TelegramPoller(TelegramBotApi api, TelegramTextHandoff handoff, int timeout, ChannelActivity activity) {
+    TelegramPoller(TelegramBotApi api, TelegramTextHandoff handoff, int timeout, ChannelActivity activity, Recovery recovery) {
+        this.recovery = recovery;
         this.activity = activity;
         this.api = api;
         this.handoff = handoff;
         this.timeout = timeout;
     }
 
+    @FunctionalInterface
+    interface Recovery {
+        void run() throws InterruptedException;
+    }
+
     void run() throws SQLException, InterruptedException {
+        recovery.run();
         Long next = null;
         while (!Thread.currentThread().isInterrupted()) {
             try {
@@ -30,6 +38,7 @@ final class TelegramPoller {
                     next = next == null ? offset : Math.max(next, offset);
                 }
                 activity.succeeded();
+                recovery.run();
                 Thread.sleep(Duration.ofMillis(100));
             } catch (TelegramBotApi.RequestFailed failure) {
                 activity.failed();

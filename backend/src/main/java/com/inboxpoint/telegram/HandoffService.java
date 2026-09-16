@@ -10,6 +10,8 @@ import java.util.UUID;
 
 final class HandoffService {
     static final String ACKNOWLEDGEMENT = "Вопрос отправлен.";
+    static final String DELAYED = "Вопрос сохранён. Доставка оператору задерживается.";
+    static final String RECOVERED = "Вопрос доставлен оператору.";
     private static final int MESSAGE_LIMIT = 4096;
     private final TelegramStore store;
     private final OperatorInbox inbox;
@@ -51,7 +53,7 @@ final class HandoffService {
         var request = store.activeRequest(channel, chat);
         if (request != null) {
             try {
-                relayChunks(request, message, name, text, false);
+                relayChunks(request, message, name, text, false, true);
                 return;
             } catch (TelegramBotApi.RequestFailed failure) {
                 if (failure.topicProblem() != TelegramBotApi.TopicProblem.MISSING
@@ -76,7 +78,7 @@ final class HandoffService {
             topic = inbox.open(requestId, message, title, reusable);
         } catch (DurableTelegramInbox.UnknownOutcome uncertain) {
             recordWebTakeover(request);
-            store.acknowledge(request, ACKNOWLEDGEMENT, clock.instant());
+            store.acknowledge(request, DELAYED, clock.instant());
             return;
         }
         if (!webTopic.equals(topic)) {
@@ -85,10 +87,10 @@ final class HandoffService {
         } else {
             recordWebTakeover(request);
         }
-        relayChunks(request, message, name, text, true);
+        relayChunks(request, message, name, text, true, true);
     }
 
-    private void relayChunks(TelegramStore.Request request, String message, String sender, String text, boolean initial)
+    private boolean relayChunks(TelegramStore.Request request, String message, String sender, String text, boolean initial, boolean notify)
             throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
         store.recordMessage(request.id(), "client_to_operator", message, sender, text, clock.instant());
         var topic = request.topic();
@@ -120,8 +122,67 @@ final class HandoffService {
             }
             store.link(request.id(), "client_to_operator", message, sent.messageId(), clock.instant());
         }
-        if (!uncertain) {
-            store.acknowledge(request, ACKNOWLEDGEMENT, clock.instant());
+        if (notify && !uncertain) {
+            store.acknowledge(request, EmergencyOperatorInbox.isWebTopic(topic) ? DELAYED : ACKNOWLEDGEMENT, clock.instant());
+        }
+        return !uncertain;
+    }
+
+    void recoverWebRequests() throws SQLException, InterruptedException, IOException {
+        IOException failure = null;
+        for (var id : store.recoverableWebRequests()) {
+            var request = store.byId(id);
+            try {
+                queue.run(request.channel(), request.conversation(), () -> recoverWebRequest(id));
+            } catch (IOException failed) {
+                if (failure == null) {
+                    failure = new IOException("One or more web requests could not be recovered");
+                }
+                failure.addSuppressed(failed);
+            }
+        }
+        if (failure != null) {
+            throw failure;
+        }
+    }
+
+    private void recoverWebRequest(String id) throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
+        var request = store.byId(id);
+        if (request == null || !request.active() || !EmergencyOperatorInbox.isWebTopic(request.topic()) || store.hasWebReply(id)) {
+            return;
+        }
+        var messages = store.recoveryMessages(id);
+        if (messages.isEmpty()) {
+            return;
+        }
+        var first = messages.getFirst();
+        var title = ("telegram".equals(request.channel()) ? "TG" : "VK") + " - " + first.name();
+        title = title.substring(0, title.offsetByCodePoints(0, Math.min(128, title.codePointCount(0, title.length()))));
+        String topic;
+        try {
+            topic = inbox.open(id, first.event(), title, null);
+        } catch (DurableTelegramInbox.UnknownOutcome uncertain) {
+            return;
+        }
+        if (EmergencyOperatorInbox.isWebTopic(topic) || store.hasWebReply(id)) {
+            return;
+        }
+        switchOperatorTopic(id, request.topic(), topic);
+        var target = new TelegramStore.Request(id, request.conversation(), topic, true, request.channel());
+        boolean complete = true;
+        try {
+            for (int index = 0; index < messages.size(); index++) {
+                var message = messages.get(index);
+                complete &= relayChunks(target, message.event(), message.name(), message.text(), index == 0, false);
+            }
+        } catch (TelegramBotApi.RequestFailed definiteFailure) {
+            if (complete) {
+                switchOperatorTopic(id, topic, request.topic());
+            }
+            throw definiteFailure;
+        }
+        if (complete) {
+            store.acknowledge(request, RECOVERED, clock.instant());
         }
     }
 

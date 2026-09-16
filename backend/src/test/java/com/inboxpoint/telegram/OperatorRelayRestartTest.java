@@ -18,6 +18,36 @@ class OperatorRelayRestartTest {
     Path directory;
 
     @Test
+    void recoversUnansweredWebRequestsOnceAndKeepsConversationsWithWebReplies() throws Exception {
+        var database = directory.resolve("web-recovery.sqlite");
+        var now = Instant.parse("2026-10-01T10:00:00Z");
+        var clock = Clock.fixed(now, ZoneOffset.UTC);
+        try (var bot = new TelegramTestServer(call -> switch (call.method()) {
+            case "createForumTopic" -> TelegramTestServer.Response.ok("{\"message_thread_id\":42}");
+            case "sendMessage" -> TelegramTestServer.Response.message(101);
+            default -> throw new AssertionError(call.method());
+        }); var client = HttpClient.newHttpClient(); var store = new TelegramStore(database)) {
+            var queue = new ClientMessageQueue();
+            var web = new HandoffService(store, new EmergencyOperatorInbox(), clock, queue);
+            web.processVk("incoming", 123, 5, "Synthetic", "Question");
+            web.processVk("already-replied", 124, 6, "Synthetic", "Question with a reply");
+            var responded = store.activeRequest("vk", 124);
+            web.relayReply(responded, "web:reply", "Answer in the browser", "web:reply");
+            assertThat(store.openWebRequests()).isEqualTo(2);
+            var api = new TelegramBotApi(client, bot.origin(), TelegramTestServer.TOKEN, Duration.ofSeconds(3));
+            var telegram = new HandoffService(store, new DurableTelegramInbox(new TelegramTopicsInbox(api, -100123), database, clock), clock, queue);
+            telegram.recoverWebRequests();
+            telegram.recoverWebRequests();
+            assertThat(store.openWebRequests()).isEqualTo(1);
+            assertThat(store.activeRequest("vk", 123).topic()).isEqualTo("42");
+            assertThat(store.activeRequest("vk", 124).topic()).isEqualTo(responded.topic());
+            assertThat(bot.requests()).extracting(TelegramTestServer.Request::method).containsExactly("createForumTopic", "sendMessage");
+            assertThat(store.pending(now, false, true)).extracting(TelegramStore.Pending::text)
+                    .contains(HandoffService.DELAYED, HandoffService.RECOVERED);
+        }
+    }
+
+    @Test
     void reusesTheClosedRequestTopicWithoutReopeningTheOldRequestRecord() throws Exception {
         var database = directory.resolve("topic.sqlite");
         var now = Instant.parse("2026-10-01T10:00:00Z");

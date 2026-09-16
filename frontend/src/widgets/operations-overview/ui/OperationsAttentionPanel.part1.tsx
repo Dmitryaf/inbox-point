@@ -5,6 +5,7 @@ import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 import ConnectionSetupGuide from './ConnectionSetupGuide';
 import DeliveryIncidentList from './DeliveryIncidentList';
 import InboundEventIncidentList from './InboundEventIncidentList';
+import OperatorInboxAttention from './OperatorInboxAttention';
 import OperatorRelayIncidentList from './OperatorRelayIncidentList';
 
 import { renderOperationsAttentionPanelPart2 } from './OperationsAttentionPanel.part2';
@@ -75,6 +76,12 @@ export function renderOperationsAttentionPanelPart1(
                 </p>
               </article>
             </div>
+          ) : null}
+          {$props.status.operatorInbox.state === 'attention' ? (
+            <OperatorInboxAttention
+              activeRequests={$props.status.operatorInbox.activeWebRequests}
+              data-r-a910a991=""
+            />
           ) : null}
           <DeliveryIncidentList
             incidents={$props.status.deliveries.incidents}

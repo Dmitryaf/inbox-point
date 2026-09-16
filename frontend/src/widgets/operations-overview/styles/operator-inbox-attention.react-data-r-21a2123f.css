@@ -1,0 +1,15 @@
+.operator-inbox-attention[data-r-21a2123f] {
+  background: var(--color-attention-soft);
+  border: 1px solid var(--color-attention-border);
+  border-radius: 0.85rem;
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.85rem;
+}
+h3[data-r-21a2123f],
+p[data-r-21a2123f] {
+  margin: 0;
+}
+p[data-r-21a2123f] {
+  color: var(--color-text-muted);
+}
