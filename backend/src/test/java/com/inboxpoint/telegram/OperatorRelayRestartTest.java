@@ -18,6 +18,24 @@ class OperatorRelayRestartTest {
     Path directory;
 
     @Test
+    void newRequestReleasesHeldRepliesUnderTheirOriginalRequest() throws Exception {
+        var now = Instant.parse("2026-09-16T09:00:00Z");
+        try (var store = new TelegramStore(directory.resolve("superseded-replies.sqlite"))) {
+            var previous = new TelegramStore.Request("previous", 123, "42", true, "vk");
+            store.open(previous, now.minusSeconds(5));
+            store.changeStatus(previous, false, now);
+            var late = store.holdReply(store.byId(previous.id()), "event", "501", "Earlier reply", now);
+            var next = new TelegramStore.Request("next", 123, "web:next", true, "vk");
+            assertThat(store.openNext(next, "Synthetic", now.plusSeconds(1))).isTrue();
+            assertThat(store.activeRequest("vk", 123).id()).isEqualTo(next.id());
+            assertThat(store.byId(previous.id()).active()).isFalse();
+            assertThat(store.operatorActions().incident(late.actionId())).isNull();
+            assertThat(store.pending(now.plusSeconds(1), false, true)).singleElement()
+                    .satisfies(reply -> assertThat(reply.request()).isEqualTo(previous.id()));
+        }
+    }
+
+    @Test
     void releasesSavedLateRepliesOnceAfterAnUncertainReopen() throws Exception {
         var now = Instant.parse("2026-09-16T09:00:00Z");
         var database = directory.resolve("held-replies.sqlite");

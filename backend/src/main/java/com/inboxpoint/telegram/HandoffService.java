@@ -70,7 +70,14 @@ final class HandoffService {
         var prior = store.latestRequest(channel, chat);
         var reusable = prior == null || EmergencyOperatorInbox.isWebTopic(prior.topic()) ? null : prior.topic();
         request = new TelegramStore.Request(requestId, chat, webTopic, true, channel);
-        store.open(request, name, clock.instant());
+        if (!store.openNext(request, name, clock.instant())) {
+            var current = store.activeRequest(channel, chat);
+            if (current != null) {
+                relayChunks(current, message, name, text, false, true);
+                return;
+            }
+            throw new SQLException("Concurrent request creation requires retry");
+        }
         store.recordMessage(requestId, "client_to_operator", message, name, text, clock.instant());
         store.usageEvent("new-request:" + requestId, "new_request", channel, requestId, clock.instant());
         String topic;

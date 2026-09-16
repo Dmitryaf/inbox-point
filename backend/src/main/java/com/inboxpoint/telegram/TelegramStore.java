@@ -127,6 +127,56 @@ final class TelegramStore implements AutoCloseable {
         }
     }
 
+    boolean openNext(Request request, String name, Instant now) throws SQLException {
+        connection.setAutoCommit(false);
+        try {
+            if (update("""
+                    INSERT INTO support_requests (id, channel, external_conversation_id, operator_topic_id, status,
+                        created_at, client_display_name)
+                    SELECT ?, ?, ?, ?, 'active', ?, ? WHERE NOT EXISTS (
+                        SELECT 1 FROM support_requests WHERE channel = ? AND external_conversation_id = ? AND status = 'active'
+                    )
+                    """, request.id(), request.channel(), Long.toString(request.conversation()), request.topic(),
+                    now.toString(), name, request.channel(), Long.toString(request.conversation())) == 0) {
+                connection.rollback();
+                return false;
+            }
+            supersedeHeldReplies(request, now);
+            connection.commit();
+            return true;
+        } catch (SQLException | RuntimeException failure) {
+            connection.rollback();
+            throw failure;
+        } finally {
+            connection.setAutoCommit(true);
+        }
+    }
+
+    private void supersedeHeldReplies(Request request, Instant now) throws SQLException {
+        var previous = new ArrayList<Request>();
+        try (var query = prepare("""
+                SELECT id, operator_topic_id FROM support_requests old
+                WHERE channel = ? AND external_conversation_id = ? AND status = 'closed'
+                    AND EXISTS (SELECT 1 FROM conversation_messages m
+                        WHERE m.request_id = old.id AND m.processing_state = 'held')
+                ORDER BY julianday(created_at), rowid
+                """, request.channel(), Long.toString(request.conversation())); var rows = query.executeQuery()) {
+            while (rows.next()) {
+                previous.add(new Request(rows.getString(1), request.conversation(), rows.getString(2), false, request.channel()));
+            }
+        }
+        for (var old : previous) {
+            update("""
+                    UPDATE operator_actions SET status = 'abandoned', last_error = NULL, attempt_started_at = NULL,
+                        manual_resolution = NULL, resolved_at = ?
+                    WHERE request_id = ? AND kind = 'reopen_request' AND status != 'sent'
+                        AND EXISTS (SELECT 1 FROM conversation_messages m
+                            WHERE m.prerequisite_action_id = operator_actions.id AND m.processing_state = 'held')
+                    """, now.toString(), old.id());
+            releaseHeldReplies(old, now);
+        }
+    }
+
     boolean switchTopic(String id, String current, String replacement) throws SQLException {
         return update("UPDATE support_requests SET operator_topic_id = ? WHERE id = ? AND operator_topic_id = ?",
                 replacement, id, current) == 1;
