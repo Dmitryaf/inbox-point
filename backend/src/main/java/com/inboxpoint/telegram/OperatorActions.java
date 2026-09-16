@@ -43,8 +43,10 @@ final class OperatorActions {
 
     boolean begin(String id, Instant now) throws SQLException {
         return update("""
-                UPDATE operator_actions SET status = 'sending', attempt_started_at = ?
-                WHERE id = ? AND status IN ('pending', 'failed')
+                UPDATE operator_actions SET status = 'sending', attempt_started_at = ?,
+                    manual_resolution = NULL, resolved_at = NULL
+                WHERE id = ? AND (status IN ('pending', 'failed') OR
+                    (status = 'abandoned' AND kind = 'reopen_request' AND manual_resolution = 'not_completed'))
                 """, now.toString(), id) == 1;
     }
 

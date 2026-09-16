@@ -279,9 +279,8 @@ final class HandoffService {
             }
             default -> {
                 if (request.active() || store.canReopen(request)) {
-                    if (!request.active()) {
-                        store.changeStatus(request, true, clock.instant());
-                        store.operatorActions().observeLifecycle(request.id(), request.topic(), true, clock.instant());
+                    if (!request.active() && !lifecycle(request, event, true)) {
+                        return;
                     }
                     store.usageEvent("first-reply:" + request.id(), "first_reply", request.channel(), request.id(), clock.instant());
                     store.queue(request, event, message, text, clock.instant());
@@ -290,16 +289,18 @@ final class HandoffService {
         }
     }
 
-    private void lifecycle(TelegramStore.Request request, String event, boolean open)
+    private boolean lifecycle(TelegramStore.Request request, String event, boolean open)
             throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
         try {
             inbox.lifecycle(request.topic(), request.id(), event, open);
         } catch (DurableTelegramInbox.UnknownOutcome uncertain) {
-            return;
+            return false;
         }
         var now = clock.instant();
-        if (store.changeStatus(request, open, now)) {
-            store.operatorActions().observeLifecycle(request.id(), request.topic(), open, now);
+        if (!store.changeStatus(request, open, now)) {
+            return false;
         }
+        store.operatorActions().observeLifecycle(request.id(), request.topic(), open, now);
+        return true;
     }
 }
