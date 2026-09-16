@@ -374,7 +374,7 @@ export class HandoffService {
         ? latestRequest.operatorTopicId
         : undefined;
 
-    this.repository.createRequest({
+    const created = this.repository.createNextRequest({
       channel: message.channel,
       conversationId: message.conversationId,
       createdAt,
@@ -383,6 +383,10 @@ export class HandoffService {
       operatorTopicId: webTopicId,
       status: 'active',
     });
+    if (!created) {
+      await this.processClientMessage(message);
+      return;
+    }
     this.repository.recordConversationMessage({
       createdAt: message.receivedAt,
       direction: 'client_to_operator',

@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { HandoffService } from '@/core/application/handoff-service.js';
 import { DeliveryOutcomeUnknownError } from '@/core/contracts/client-channel.js';
+import { createOperatorLifecycleAction } from '@/core/model/operator-action.js';
 import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-support-repository.js';
 import type { TelegramGateway } from '@/infrastructure/telegram/telegram-api-client.js';
 import { TelegramTopicsInbox } from '@/infrastructure/telegram/telegram-topics-inbox.js';
@@ -128,6 +129,73 @@ describe('operator relay restart recovery', () => {
       expect.objectContaining({ text: 'Сохранённый ответ' }),
     ]);
     expect(afterRestart.getDeliverySummary()).toMatchObject({ pending: 1 });
+    afterRestart.close();
+  });
+
+  it('keeps a superseded held reply deliverable after restart', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'inbox-point-test-'));
+    temporaryDirectories.push(directory);
+    const databasePath = join(directory, 'handoff.sqlite');
+    const createdAt = new Date('2026-09-16T12:00:00.000Z');
+    const beforeRestart = new SqliteSupportRepository(databasePath);
+    beforeRestart.createRequest({
+      channel: 'telegram',
+      closedAt: createdAt,
+      conversationId: '101',
+      createdAt,
+      id: 'request-old',
+      operatorTopicId: '900',
+      status: 'closed',
+    });
+    const action = createOperatorLifecycleAction(
+      'reopen_request',
+      '900',
+      { externalEventId: 'update-held', requestId: 'request-old' },
+      createdAt,
+    );
+    beforeRestart.holdOperatorReply(
+      {
+        createdAt,
+        eventSource: 'operator:telegram',
+        externalEventId: 'update-held',
+        externalMessageId: 'operator-message-held',
+        id: 'held-message',
+        requestId: 'request-old',
+        text: 'Late answer',
+      },
+      action,
+    );
+    expect(beforeRestart.claimOperatorAction(action.id, createdAt)).toBe(true);
+    beforeRestart.markOperatorActionOutcomeUnknown(
+      action.id,
+      'Telegram outcome is unknown',
+    );
+
+    expect(
+      beforeRestart.createNextRequest({
+        channel: 'telegram',
+        conversationId: '101',
+        createdAt: new Date('2026-09-16T12:01:00.000Z'),
+        id: 'request-new',
+        operatorTopicId: 'web:request-new',
+        status: 'active',
+      }),
+    ).toBe(true);
+    beforeRestart.close();
+
+    const afterRestart = new SqliteSupportRepository(databasePath);
+    expect(afterRestart.findRequestById('request-old')?.status).toBe('closed');
+    expect(afterRestart.findRequestById('request-new')?.status).toBe('active');
+    expect(afterRestart.findOperatorActionIncidents(10)).toEqual([]);
+    expect(afterRestart.findConversationMessages('request-old', 10)).toEqual([
+      expect.objectContaining({ text: 'Late answer' }),
+    ]);
+    expect(
+      afterRestart.findPendingDeliveries(
+        new Date('2026-09-16T12:02:00.000Z'),
+        10,
+      ),
+    ).toEqual([expect.objectContaining({ text: 'Late answer' })]);
     afterRestart.close();
   });
 });

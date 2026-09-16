@@ -980,6 +980,78 @@ describe('Telegram handoff integration', () => {
     ).toEqual(['Первый ответ', 'Второй ответ']);
   });
 
+  it('delivers held replies when the client starts a newer request', async () => {
+    await router.route(createPrivateUpdate(1, 501, 'First question'));
+    const firstRequest = repository.findActiveRequest('telegram', '101');
+    if (!firstRequest) {
+      throw new Error('Expected the first request');
+    }
+    await deliveryWorker.processPending();
+    await router.route(createOperatorUpdate(2, 601, 900, '/close'));
+    gateway.unknownNextReopen = true;
+    await router.route(createOperatorUpdate(3, 602, 900, 'Late answer'));
+
+    await router.route(createPrivateUpdate(4, 502, handoffButton));
+    await router.route(createPrivateUpdate(5, 503, 'Next question'));
+
+    const nextRequest = repository.findActiveRequest('telegram', '101');
+    expect(repository.findRequestById(firstRequest.id)?.status).toBe('closed');
+    expect(nextRequest).toMatchObject({ operatorTopicId: '900' });
+    expect(nextRequest?.id).not.toBe(firstRequest.id);
+    expect(repository.findOperatorActionIncidents(10)).toEqual([]);
+    expect(
+      repository.findConversationMessages(firstRequest.id, 10),
+    ).toContainEqual(expect.objectContaining({ text: 'Late answer' }));
+    expect(gateway.reopenAttempts).toBe(2);
+
+    const sentBeforeDelivery = gateway.sent.length;
+    await deliveryWorker.processPending();
+    await deliveryWorker.processPending();
+
+    expect(
+      gateway.sent
+        .slice(sentBeforeDelivery)
+        .find((message) => message.chatId === 101)?.text,
+    ).toBe('Late answer');
+    expect(
+      gateway.sent.filter(
+        (message) => message.chatId === 101 && message.text === 'Late answer',
+      ),
+    ).toHaveLength(1);
+    expect(repository.findActiveRequest('telegram', '101')?.id).toBe(
+      nextRequest?.id,
+    );
+  });
+
+  it('does not reuse a failed reopen action after its held reply is released', async () => {
+    await router.route(createPrivateUpdate(1, 501, 'Question'));
+    const request = repository.findActiveRequest('telegram', '101');
+    if (!request) {
+      throw new Error('Expected an active request');
+    }
+    await deliveryWorker.processPending();
+    await router.route(createOperatorUpdate(2, 601, 900, '/close'));
+    gateway.failNextReopen = true;
+    await router.route(createOperatorUpdate(3, 602, 900, 'First late answer'));
+    expect(repository.findOperatorActionIncidents(10)[0]).toMatchObject({
+      status: 'failed',
+    });
+
+    await router.route(createTopicServiceUpdate(4, 'reopened'));
+    expect(repository.findOperatorActionIncidents(10)).toEqual([]);
+    await router.route(createOperatorUpdate(5, 603, 900, '/close'));
+    await router.route(createOperatorUpdate(6, 604, 900, 'Second late answer'));
+
+    expect(gateway.reopenAttempts).toBe(2);
+    expect(repository.findRequestById(request.id)?.status).toBe('active');
+    expect(
+      repository
+        .findConversationMessages(request.id, 10)
+        .filter((message) => message.direction === 'operator_to_client')
+        .map((message) => message.text),
+    ).toEqual(['First late answer', 'Second late answer']);
+  });
+
   it('holds a reply when the closed Telegram topic is missing', async () => {
     await router.route(createPrivateUpdate(1, 501, 'Вопрос'));
     const request = repository.findActiveRequest('telegram', '101');
