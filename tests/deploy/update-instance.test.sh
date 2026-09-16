@@ -114,6 +114,12 @@ printf 'docker %s\n' "$*" >>"$FAKE_COMMAND_LOG"
 if [[ ${1:-} == compose ]]; then
   case " $* " in
     *' version '*) exit 0 ;;
+    *' --profile operations build backup '*)
+      if [[ ${FAKE_BACKUP_BUILD_FAILURE:-0} == 1 ]]; then
+        printf '%s\n' 'synthetic backup build failure' >&2
+        exit 78
+      fi
+      ;;
     *' exec -T app java -jar /app/inbox-point.jar snapshot-create '*)
       printf '%s\n' '/app/data/snapshots/inbox-point.instance.snapshot-test'
       ;;
@@ -143,7 +149,7 @@ if [[ ${1:-} == compose ]]; then
       elif [[ ${FAKE_MISSING_LISTED_FILE:-0} == 1 ]]; then
         manifest_files+=",{\"name\":\"service-control.json\",\"sha256\":\"$empty_sha\",\"size\":0}"
       fi
-      printf '{"closedRequestRetentionDays":7,"createdAt":"2026-09-14T12:00:00.000Z","expiresAt":"2026-09-21T12:00:00.000Z","files":[%s],"formatVersion":1,"instanceId":"test","secretsIncluded":false,"sqliteSchemaVersion":7}\n' \
+      printf '{"closedRequestRetentionDays":7,"createdAt":"2026-09-14T12:00:00.000Z","expiresAt":"2026-09-21T12:00:00.000Z","files":[%s],"formatVersion":1,"instanceId":"test","secretsIncluded":false,"sqliteSchemaVersion":10}\n' \
         "$manifest_files" >"$snapshot/manifest.json"
       if [[ ${FAKE_MISSING_LISTED_FILE:-0} == 1 ]]; then
         printf '%s\n' 'synthetic manifest verification failure' >&2
@@ -243,6 +249,10 @@ test_successful_update() {
     sed 's/^/  /' "$fixture/output.log" >&2
   fi
   assert_before "$fixture/commands.log" \
+    '--profile operations build backup' \
+    'exec -T app java -jar /app/inbox-point.jar snapshot-create' \
+    'snapshot helper is built from the current source before snapshot verification'
+  assert_before "$fixture/commands.log" \
     'exec -T app java -jar /app/inbox-point.jar snapshot-create' \
     "git merge --ff-only $NEW_COMMIT" \
     'snapshot is created before source changes'
@@ -293,6 +303,26 @@ test_successful_update() {
   else
     fail 'snapshot without optional service control is accepted'
   fi
+}
+
+test_backup_helper_build_failure() {
+  local fixture
+  new_fixture
+  fixture=$fixture_result
+  if run_update "$fixture" env FAKE_BACKUP_BUILD_FAILURE=1 \
+    >"$fixture/output.log" 2>&1; then
+    fail 'backup helper build failure stops the update'
+  else
+    pass 'backup helper build failure stops the update'
+  fi
+  assert_contains "$fixture/output.log" \
+    'Failure stage: build snapshot helper for the current source' \
+    'backup helper build failure identifies its stage'
+  assert_not_contains "$fixture/commands.log" \
+    'exec -T app java -jar /app/inbox-point.jar snapshot-create' \
+    'backup helper build failure occurs before snapshot creation'
+  assert_not_contains "$fixture/commands.log" "git merge --ff-only $NEW_COMMIT" \
+    'source stays unchanged when the backup helper build fails'
 }
 
 test_dirty_tree_refusal() {
@@ -441,6 +471,7 @@ test_health_failure_report() {
 }
 
 test_successful_update
+test_backup_helper_build_failure
 test_unique_copy_container_names
 test_dirty_tree_refusal
 test_current_commit_is_not_rebuilt
