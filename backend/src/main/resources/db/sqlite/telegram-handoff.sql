@@ -23,6 +23,14 @@ CREATE TABLE IF NOT EXISTS message_links (
   created_at TEXT NOT NULL
 ) STRICT;
 
+CREATE TABLE IF NOT EXISTS client_conversation_states (
+  channel TEXT NOT NULL CHECK (channel IN ('telegram', 'vk')),
+  external_conversation_id TEXT NOT NULL,
+  state TEXT NOT NULL CHECK (state = 'awaiting_question'),
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (channel, external_conversation_id)
+) STRICT;
+
 CREATE TABLE IF NOT EXISTS conversation_messages (
   id TEXT PRIMARY KEY,
   request_id TEXT NOT NULL REFERENCES support_requests(id),
@@ -48,7 +56,7 @@ CREATE INDEX IF NOT EXISTS remembered_admin_sessions_by_expiry ON remembered_adm
 CREATE TABLE IF NOT EXISTS operator_actions (
   id TEXT PRIMARY KEY,
   request_id TEXT NOT NULL REFERENCES support_requests(id),
-  kind TEXT NOT NULL CHECK (kind IN ('open_request', 'relay_message')),
+  kind TEXT NOT NULL CHECK (kind IN ('open_request', 'relay_message', 'close_request', 'reopen_request')),
   client_message_id TEXT NOT NULL,
   operator_topic_id TEXT NOT NULL,
   sequence INTEGER NOT NULL,
@@ -58,7 +66,7 @@ CREATE TABLE IF NOT EXISTS operator_actions (
   last_error TEXT,
   attempt_started_at TEXT,
   completed_at TEXT,
-  manual_resolution TEXT CHECK (manual_resolution IN ('confirmed_received', 'use_web')),
+  manual_resolution TEXT CHECK (manual_resolution IN ('confirmed_received', 'use_web', 'completed', 'not_completed')),
   resolved_at TEXT,
   created_at TEXT NOT NULL
 ) STRICT;

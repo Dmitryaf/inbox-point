@@ -1,7 +1,7 @@
 import { type ComponentAttributes } from '@frontend/shared/lib/component-model';
 
 export type ComponentProps = {
-  activeRequests: number;
+  recoverableRequests: number;
 } & ComponentAttributes;
 export const componentDefaults = {};
 

@@ -26,6 +26,16 @@ final class SwitchableOperatorInbox implements OperatorInbox {
         return route(topic, target -> target.relay(request, topic, message, offset, initial, text));
     }
 
+    @Override
+    public void lifecycle(String topic, String request, String event, boolean open)
+            throws TelegramBotApi.RequestFailed, InterruptedException {
+        var target = EmergencyOperatorInbox.isWebTopic(topic) ? fallback : primary.get();
+        if (target == null) {
+            throw new TelegramBotApi.RequestFailed("Operator Telegram topics are unavailable", false);
+        }
+        target.lifecycle(topic, request, event, open);
+    }
+
     public void close(String topic) throws InterruptedException {
         route(topic, target -> { target.close(topic); return null; });
     }

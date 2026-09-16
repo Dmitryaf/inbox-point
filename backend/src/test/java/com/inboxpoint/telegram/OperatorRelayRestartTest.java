@@ -18,6 +18,25 @@ class OperatorRelayRestartTest {
     Path directory;
 
     @Test
+    void keepsTheRequestOpenAfterAnUncertainCloseUntilAnOperatorConfirmsIt() throws Exception {
+        var now = Instant.parse("2026-10-01T10:00:00Z");
+        try (var store = new TelegramStore(directory.resolve("lifecycle.sqlite"))) {
+            var request = new TelegramStore.Request("case-1", 123, 42, true, "vk");
+            store.open(request, now);
+            var actions = store.operatorActions();
+            actions.prepare(new OperatorActions.Key("close-case", request.id(), "close_request", "42", "event", 0, false), now);
+            assertThat(actions.begin("close-case", now)).isTrue();
+            store.recoverInterrupted();
+            assertThat(store.byId(request.id()).active()).isTrue();
+            assertThat(store.resolveOperatorAction("close-case", "completed", now)).isTrue();
+            assertThat(store.byId(request.id()).active()).isFalse();
+            assertThat(store.clientStage("vk", 123)).isEqualTo(ClientMenuPolicy.Stage.CLOSED);
+            store.beginQuestion("vk", 123, now);
+            assertThat(store.clientStage("vk", 123)).isEqualTo(ClientMenuPolicy.Stage.AWAITING);
+        }
+    }
+
+    @Test
     void recoversUnansweredWebRequestsOnceAndKeepsConversationsWithWebReplies() throws Exception {
         var database = directory.resolve("web-recovery.sqlite");
         var now = Instant.parse("2026-10-01T10:00:00Z");

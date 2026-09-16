@@ -56,8 +56,9 @@ export function attentionOperationsStatus(): OperationsStatus {
     },
     observedAt: '2026-09-04T12:01:00.000Z',
     operatorInbox: {
-      activeWebRequests: 0,
+      recoverableWebRequests: 0,
       state: 'healthy',
+      webOwnedRequests: 0,
     },
     operatorRelays: {
       incidents: [],

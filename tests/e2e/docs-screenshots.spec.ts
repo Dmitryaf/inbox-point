@@ -88,7 +88,11 @@ const operations: OperationsStatus = {
   inboundEvents: { incidents: [], quarantined: 0, state: 'healthy' },
   intake: { telegram: { mode: 'active' }, vk: { mode: 'active' } },
   observedAt: '2026-09-14T12:01:00.000Z',
-  operatorInbox: { activeWebRequests: 0, state: 'healthy' },
+  operatorInbox: {
+    recoverableWebRequests: 0,
+    state: 'healthy',
+    webOwnedRequests: 0,
+  },
   operatorRelays: { incidents: [], state: 'healthy', uncertain: 0 },
   outbound: { mode: 'active' },
   startedAt: '2026-09-14T08:01:00.000Z',

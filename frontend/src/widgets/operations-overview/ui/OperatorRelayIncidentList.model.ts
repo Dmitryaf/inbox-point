@@ -4,14 +4,13 @@ import {
   type WithDefaults,
 } from '@frontend/shared/lib/component-model';
 
-import type { OperatorRelayIncident } from '@frontend/entities/operations/model/types';
+import {
+  type OperatorRelayIncidentListEmits,
+  type OperatorRelayIncidentListProps,
+} from '@frontend/widgets/operations-overview/model/operator-action-presentation';
 
-export type ComponentProps = {
-  incidents: readonly OperatorRelayIncident[];
-  pendingActionId: string | undefined;
-} & EventProps<{
-  resolve: [actionId: string, resolution: 'received' | 'use_web'];
-}> &
+export type ComponentProps = OperatorRelayIncidentListProps &
+  EventProps<OperatorRelayIncidentListEmits> &
   ComponentAttributes;
 export const componentDefaults = {};
 type ResolvedProps = WithDefaults<ComponentProps, typeof componentDefaults>;

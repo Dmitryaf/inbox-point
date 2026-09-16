@@ -41,7 +41,7 @@ class TelegramTextHandoffTest {
             new TelegramDeliveryWorker(store, () -> api, Clock.systemUTC(), () -> null, () -> false,
                     () -> TelegramClientMenu.keyboard(fresh, false)).runOnce();
             handoff.process(update(4, -100123, "supergroup", 42, "/close"));
-            handoff.process(update(5, -100123, "supergroup", 42, "Closed reply"));
+            handoff.process(update(5, -100123, "supergroup", 42, "/close"));
             assertThat(store.activeRequest(123)).isNull();
             handoff.process(update(6, -100123, "supergroup", 42, "/reopen"));
             assertThat(store.activeRequest(123).topic()).isEqualTo("42");
@@ -54,7 +54,7 @@ class TelegramTextHandoffTest {
             assertThat(calls.get(1).body().path("message_thread_id").asLong()).isEqualTo(42);
             assertThat(calls.get(1).body().path("text").asString()).contains("Question");
             assertThat(calls.get(2).body().path("chat_id").asLong()).isEqualTo(123);
-            assertThat(calls.get(2).body().at("/reply_markup/keyboard/0/0/text").asString()).isEqualTo("Расписание");
+            assertThat(calls.get(2).body().at("/reply_markup/remove_keyboard").asBoolean()).isTrue();
             assertThat(calls.subList(2, 4)).extracting(call -> call.body().path("text").asString())
                     .containsExactlyInAnyOrder(HandoffService.ACKNOWLEDGEMENT, "Answer");
             assertThat(store.usageCounts(java.time.Instant.EPOCH)).containsEntry("new_request", 1L).containsEntry("first_reply", 1L);

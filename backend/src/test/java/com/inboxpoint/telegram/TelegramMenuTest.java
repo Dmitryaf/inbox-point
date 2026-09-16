@@ -51,7 +51,7 @@ class TelegramMenuTest {
             assertThat(store.activeRequest(123).topic()).isEqualTo("42");
             assertThat(store.byTopic(41).active()).isFalse();
             handoff.process(update(4, "Начать новый вопрос"));
-            assertThat(store.activeRequest(123)).isNull();
+            assertThat(store.activeRequest(123)).isNotNull();
         }
     }
 

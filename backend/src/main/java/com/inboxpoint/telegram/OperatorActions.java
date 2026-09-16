@@ -93,6 +93,24 @@ final class OperatorActions {
                 """ + CONFIRMABLE, now.toString(), now.toString(), id) == 1;
     }
 
+    boolean resolveLifecycle(String id, boolean completed, Instant now) throws SQLException {
+        return update("""
+                UPDATE operator_actions SET status = ?, last_error = NULL, attempt_started_at = NULL,
+                    manual_resolution = ?, resolved_at = ?, completed_at = ?
+                WHERE id = ? AND status = 'outcome_unknown' AND kind IN ('close_request', 'reopen_request')
+                """, completed ? "sent" : "abandoned", completed ? "completed" : "not_completed", now.toString(),
+                completed ? now.toString() : null, id) == 1;
+    }
+
+    void observeLifecycle(String request, String topic, boolean open, Instant now) throws SQLException {
+        update("""
+                UPDATE operator_actions SET status = CASE WHEN kind = ? THEN 'sent' ELSE 'abandoned' END,
+                    last_error = NULL, attempt_started_at = NULL, resolved_at = ?
+                WHERE request_id = ? AND operator_topic_id = ? AND kind IN ('close_request', 'reopen_request')
+                    AND status = 'outcome_unknown'
+                """, open ? "reopen_request" : "close_request", now.toString(), request, topic);
+    }
+
     boolean unresolved(String request, String message) throws SQLException {
         try (var statement = prepare("""
                 SELECT 1 FROM operator_actions WHERE request_id = ? AND client_message_id = ? AND status = 'outcome_unknown'
@@ -122,9 +140,12 @@ final class OperatorActions {
             var incidents = new ArrayList<TelegramRuntime.OperatorRelayIncident>();
             while (rows.next()) {
                 var action = rows.getString("kind");
-                var reason = "open_request".equals(action)
-                        ? "Telegram мог создать тему, но подтверждение не получено. Обращение сохранено в web inbox; проверьте группу и закройте возможный дубль."
-                        : "Telegram мог принять сообщение клиента. Не отправляйте его повторно: проверьте тему или переведите обращение в web inbox.";
+                var reason = switch (action) {
+                    case "close_request" -> "Telegram мог закрыть тему, но подтверждение не получено. Обращение пока оставлено открытым в Inbox Point.";
+                    case "reopen_request" -> "Telegram мог открыть тему, но подтверждение не получено. Обращение пока оставлено закрытым в Inbox Point.";
+                    case "open_request" -> "Telegram мог создать тему, но подтверждение не получено. Обращение сохранено в web inbox; проверьте группу и закройте возможный дубль.";
+                    default -> "Telegram мог принять сообщение клиента. Не отправляйте его повторно: проверьте тему или переведите обращение в web inbox.";
+                };
                 incidents.add(new TelegramRuntime.OperatorRelayIncident(rows.getString("id"), action,
                         "telegram".equals(rows.getString("channel")) ? "Telegram" : "VK",
                         rows.getString("client_message_id"), rows.getBoolean("confirmable"), rows.getString("created_at"),

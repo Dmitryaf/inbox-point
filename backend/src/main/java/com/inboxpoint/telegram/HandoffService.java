@@ -215,14 +215,21 @@ final class HandoffService {
         store.usageEvent("web-takeover:" + request.id(), "web_takeover", request.channel(), request.id(), clock.instant());
     }
 
-    void reconcileTopic(long topic, String event, boolean active, java.time.Instant occurred) throws SQLException {
+    void reconcileTopic(long topic, String event, boolean active, java.time.Instant occurred)
+            throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
         if (!store.claim("operator:telegram", event, clock.instant())) {
             return;
         }
         var request = store.byTopic(topic);
-        if (request != null && store.topicEventIsCurrent(request.id(), occurred) && request.active() != active
-                && (!active || store.activeRequest(request.channel(), request.conversation()) == null)) {
-            store.changeStatus(request.id(), active, occurred);
+        if (request != null && store.topicEventIsCurrent(request.id(), occurred)) {
+            if (active && !store.canReopen(request)) {
+                lifecycle(request, event, false);
+            } else {
+                if (request.active() != active) {
+                    store.changeStatus(request.id(), active, occurred);
+                }
+                store.operatorActions().observeLifecycle(request.id(), request.topic(), active, occurred);
+            }
         }
         store.completeEvent("operator:telegram", event, clock.instant());
     }
@@ -244,22 +251,37 @@ final class HandoffService {
         switch (command) {
             case "/close" -> {
                 if (request.active()) {
-                    inbox.close(request.topic());
-                    store.changeStatus(request.id(), false, clock.instant());
+                    lifecycle(request, event, false);
                 }
             }
             case "/reopen" -> {
-                if (!request.active() && store.activeRequest(request.channel(), request.conversation()) == null) {
-                    inbox.reopen(request.topic());
-                    store.changeStatus(request.id(), true, clock.instant());
+                if (store.canReopen(request)) {
+                    lifecycle(request, event, true);
+                } else {
+                    lifecycle(request, event, false);
                 }
             }
             default -> {
-                if (request.active()) {
+                if (request.active() || store.canReopen(request)) {
+                    if (!request.active()) {
+                        store.changeStatus(request.id(), true, clock.instant());
+                        store.operatorActions().observeLifecycle(request.id(), request.topic(), true, clock.instant());
+                    }
                     store.usageEvent("first-reply:" + request.id(), "first_reply", request.channel(), request.id(), clock.instant());
                     store.queue(request, event, message, text, clock.instant());
                 }
             }
         }
+    }
+
+    private void lifecycle(TelegramStore.Request request, String event, boolean open)
+            throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
+        try {
+            inbox.lifecycle(request.topic(), request.id(), event, open);
+        } catch (DurableTelegramInbox.UnknownOutcome uncertain) {
+            return;
+        }
+        store.changeStatus(request.id(), open, clock.instant());
+        store.operatorActions().observeLifecycle(request.id(), request.topic(), open, clock.instant());
     }
 }

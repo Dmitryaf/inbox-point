@@ -2,7 +2,6 @@ package com.inboxpoint.telegram;
 
 import java.sql.SQLException;
 import java.time.Instant;
-import java.util.Locale;
 import java.util.function.Predicate;
 
 import com.inboxpoint.content.ClientInformation;
@@ -10,14 +9,12 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 import static com.inboxpoint.content.ClientInformation.ASK;
-import static com.inboxpoint.content.ClientInformation.RESET;
 
 final class TelegramClientMenu {
     private static final String SOURCE = "telegram:menu";
 
     private final TelegramStore store;
     private final TelegramBotApi api;
-    private final OperatorInbox inbox;
     private final ClientInformation information;
     private final Predicate<String> paused;
 
@@ -30,31 +27,27 @@ final class TelegramClientMenu {
         this.information = information;
         this.store = store;
         this.api = api;
-        this.inbox = inbox;
     }
 
     boolean handle(long chat, String event, String text, Instant now)
             throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
-        var active = store.activeRequest(chat);
-        var trimmed = text.strip();
-        var blocked = active == null && paused.test("telegram");
-        var published = information.isPublishedInformation(trimmed);
-        var response = information.isStaleMenuAction(trimmed) ? "Меню обновилось. Выберите нужный раздел ниже."
-                : blocked && !published ? ClientInformation.INTAKE_PAUSED : response(trimmed, active != null);
-        if (response == null) {
+        var stage = store.clientStage("telegram", chat);
+        var pausedNow = paused.test("telegram");
+        var answer = ClientMenuPolicy.resolve(information, stage, text, pausedNow, "");
+        if (answer == null) {
             return false;
         }
         if (!store.claim(SOURCE, event, now)) {
             return true;
         }
         try {
-            if (RESET.equals(trimmed) && active != null) {
-                inbox.close(active.topic());
-                store.changeStatus(active.id(), false, now);
+            var hidden = stage == ClientMenuPolicy.Stage.ACTIVE || stage == ClientMenuPolicy.Stage.AWAITING || answer.begin();
+            api.sendMessage(chat, null, answer.text(), hidden ? removeKeyboard() : keyboard(information, pausedNow));
+            if (answer.begin()) {
+                store.beginQuestion("telegram", chat, now);
             }
-            api.sendMessage(chat, null, response, keyboard(information, blocked, active != null && !RESET.equals(trimmed)));
-            if (information.isPublishedInformation(trimmed)) {
-                store.usageEvent("information:telegram:" + event, "information_section", "telegram", null, Instant.now());
+            if (answer.information()) {
+                store.usageEvent("information:telegram:" + event, "information_section", "telegram", null, now);
             }
             store.completeEvent(SOURCE, event, now);
         } catch (TelegramBotApi.RequestFailed failure) {
@@ -68,37 +61,11 @@ final class TelegramClientMenu {
         return true;
     }
 
-    private String response(String text, boolean active) {
-        var answer = information.resolve(text);
-        if (answer != null) {
-            return answer;
-        }
-        if (RESET.equals(text)) {
-            return active ? "Предыдущий разговор завершён. Выберите нужный раздел." : "Выберите нужный раздел.";
-        }
-        if (ClientInformation.isHandoffRequest(text)) {
-            return active ? "Напишите сообщение, и оператор получит его в текущем разговоре."
-                    : "Напишите свой вопрос одним сообщением. Оператор ответит вам в этом чате.";
-        }
-        var command = text.split("[\\s@]", 2)[0].toLowerCase(Locale.ROOT);
-        if ("/start".equals(command) || "/menu".equals(command)) {
-            return active
-                    ? "У вас уже есть открытый вопрос. Напишите сообщение, чтобы продолжить разговор, или выберите нужный раздел."
-                    : "Здравствуйте! Я помогу быстро найти основную информацию.\n\n"
-                            + "Выберите нужный раздел или напишите оператору.";
-        }
-        if (command.startsWith("/")) {
-            return active ? "Эта команда недоступна во время разговора. Просто напишите сообщение оператору."
-                    : "Открытого обращения нет. Выберите нужный раздел в меню.";
-        }
-        return null;
+    static JsonNode removeKeyboard() {
+        return JsonMapper.shared().createObjectNode().put("remove_keyboard", true);
     }
 
     static JsonNode keyboard(ClientInformation information, boolean blocked) {
-        return keyboard(information, blocked, false);
-    }
-
-    private static JsonNode keyboard(ClientInformation information, boolean blocked, boolean active) {
         var markup = JsonMapper.shared().createObjectNode().put("resize_keyboard", true)
                 .put("is_persistent", true).put("input_field_placeholder", "Выберите действие");
         var rows = markup.putArray("keyboard");
@@ -116,9 +83,9 @@ final class TelegramClientMenu {
                 row.addObject().put("text", section.label());
             }
         }
-        if (active || !blocked) {
-            rows.addArray().addObject().put("text", active ? RESET : ASK);
+        if (!blocked) {
+            rows.addArray().addObject().put("text", ASK);
         }
-        return rows.isEmpty() ? JsonMapper.shared().createObjectNode().put("remove_keyboard", true) : markup;
+        return rows.isEmpty() ? removeKeyboard() : markup;
     }
 }

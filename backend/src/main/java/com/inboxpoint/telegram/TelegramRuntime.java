@@ -163,7 +163,7 @@ public final class TelegramRuntime {
     private void processVkInbound(TelegramStore store, VkChannel.Message item)
             throws IOException, SQLException, InterruptedException {
         if (!item.unsupported()) {
-            receiveVk(handoff.routingInbox(), store, item.event(), item.peer(), item.message(), item.name(), item.text());
+            receiveVk(handoff.routingInbox(), store, item.event(), item.peer(), item.message(), item.name(), item.text(), item.payload());
             return;
         }
         var source = "vk:unsupported";
@@ -274,9 +274,9 @@ public final class TelegramRuntime {
     }
 
     private void receiveVk(OperatorInbox inbox, TelegramStore store, String event, long peer, long message,
-            String name, String text) throws IOException, SQLException, InterruptedException {
+            String name, String text, String payload) throws IOException, SQLException, InterruptedException {
         var menu = new VkClientMenu(information, vk.channel(), serviceControl::intakePaused);
-        if (!menu.handle(store, event, peer, text)) {
+        if (!menu.handle(store, event, peer, text, payload)) {
             new HandoffService(store, inbox, Clock.systemUTC(), queue).processVk(event, peer, message, name, text);
         }
     }
@@ -321,9 +321,9 @@ public final class TelegramRuntime {
         }
     }
 
-    public boolean resolveOperatorAction(String id, boolean received) throws IOException, SQLException {
+    public boolean resolveOperatorAction(String id, String resolution) throws IOException, SQLException {
         try (var store = new TelegramStore(database)) {
-            return store.resolveOperatorAction(id, received, Instant.now());
+            return store.resolveOperatorAction(id, resolution, Instant.now());
         }
     }
 
@@ -371,6 +371,7 @@ public final class TelegramRuntime {
                 var event = "web:" + (close ? "close:" : "reply:") + id + ":" + key;
                 new HandoffService(store, handoff.routingInbox(), Clock.systemUTC(), queue)
                         .relayReply(current, event, close ? "/close" : text, event);
+                store.markWebOwned(id, Instant.now());
                 result.set("ok");
             });
             return result.get();

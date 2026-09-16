@@ -9,6 +9,7 @@ import type { OperationsStatus } from '@frontend/entities/operations/model/types
 import {
   channelProblem,
   type ChannelProblem,
+  type OperationsAttentionEmits,
 } from '@frontend/widgets/operations-overview/model/operations-attention';
 
 export type ComponentProps = {
@@ -16,19 +17,7 @@ export type ComponentProps = {
   pendingInboundEventId: string | undefined;
   pendingOperatorActionId: string | undefined;
   status: OperationsStatus;
-} & EventProps<{
-  resolveDelivery: [
-    deliveryId: string,
-    resolution: 'not_received' | 'received',
-  ];
-  retryDelivery: [deliveryId: string];
-  resolveOperatorAction: [actionId: string, resolution: 'received' | 'use_web'];
-  resolveInboundEvent: [
-    eventId: string,
-    source: string,
-    resolution: 'retry' | 'skip',
-  ];
-}> &
+} & EventProps<OperationsAttentionEmits> &
   ComponentAttributes;
 export const componentDefaults = {};
 type ResolvedProps = WithDefaults<ComponentProps, typeof componentDefaults>;

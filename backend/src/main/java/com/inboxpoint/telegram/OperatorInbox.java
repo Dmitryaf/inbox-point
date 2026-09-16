@@ -6,6 +6,15 @@ interface OperatorInbox {
     void close(String topic) throws TelegramBotApi.RequestFailed, InterruptedException;
     void reopen(String topic) throws TelegramBotApi.RequestFailed, InterruptedException;
 
+    default void lifecycle(String topic, String request, String event, boolean open)
+            throws TelegramBotApi.RequestFailed, InterruptedException {
+        if (open) {
+            reopen(topic);
+        } else {
+            close(topic);
+        }
+    }
+
     default void prepareRelay(String request, String topic, String message, int sequence, boolean initial) { }
 
     record Relay(String topic, String messageId) { }

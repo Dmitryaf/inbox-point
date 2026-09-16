@@ -3,8 +3,6 @@ package com.inboxpoint.telegram;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.time.Instant;
-import java.util.List;
-import java.util.Locale;
 import java.util.function.Predicate;
 
 import com.inboxpoint.content.ClientInformation;
@@ -28,30 +26,31 @@ final class VkClientMenu {
 
     boolean handle(TelegramStore store, String event, long peer, String text)
             throws IOException, SQLException, InterruptedException {
-        var active = store.activeRequest("vk", peer);
-        var label = text.strip();
-        var blocked = active == null && paused.test("vk");
-        var stale = information.isStaleMenuAction(label);
-        if (blocked && !information.isPublishedInformation(label) && !stale) {
-            var now = Instant.now();
-            if (store.claim("vk:menu", event, now)) {
-                store.completeEvent("vk:menu", event, now);
-            }
-            return true;
-        }
-        var answer = stale ? "Меню обновилось. Выберите нужный раздел ниже." : response(label, active != null);
+        return handle(store, event, peer, text, "");
+    }
+
+    boolean handle(TelegramStore store, String event, long peer, String text, String payload)
+            throws IOException, SQLException, InterruptedException {
+        var stage = store.clientStage("vk", peer);
+        var pausedNow = paused.test("vk");
+        var answer = ClientMenuPolicy.resolve(information, stage, text, pausedNow, action(payload));
         if (answer == null) {
             return false;
         }
-        if (!store.claim("vk:menu", event, Instant.now())) {
+        var now = Instant.now();
+        if (!store.claim("vk:menu", event, now)) {
             return true;
         }
         try {
-            api.send(peer, answer, "vk-menu:" + event, keyboard(blocked));
-            if (information.isPublishedInformation(label)) {
-                store.usageEvent("information:vk:" + event, "information_section", "vk", null, Instant.now());
+            var hidden = stage == ClientMenuPolicy.Stage.ACTIVE || stage == ClientMenuPolicy.Stage.AWAITING || answer.begin();
+            api.send(peer, answer.text(), "vk-menu:" + event, hidden ? hiddenKeyboard() : keyboard(pausedNow));
+            if (answer.begin()) {
+                store.beginQuestion("vk", peer, now);
             }
-            store.completeEvent("vk:menu", event, Instant.now());
+            if (answer.information()) {
+                store.usageEvent("information:vk:" + event, "information_section", "vk", null, now);
+            }
+            store.completeEvent("vk:menu", event, now);
             return true;
         } catch (IOException failure) {
             store.release("vk:menu", event);
@@ -59,25 +58,21 @@ final class VkClientMenu {
         }
     }
 
-    private String response(String label, boolean active) {
-        var informationAnswer = information.resolve(label);
-        if (informationAnswer != null) {
-            return informationAnswer;
+    private static String action(String payload) {
+        if (payload == null || payload.isBlank()) {
+            return "";
         }
-        if (ClientInformation.isHandoffRequest(label)) {
-            return active ? "Напишите сообщение, и оператор получит его в текущем разговоре."
-                    : "Напишите свой вопрос одним сообщением. Оператор ответит вам здесь.";
+        try {
+            return JsonMapper.shared().readTree(payload).path("action").asString("");
+        } catch (tools.jackson.core.JacksonException malformed) {
+            return "";
         }
-        var command = label.toLowerCase(Locale.ROOT);
-        if (List.of("/start", "/menu", "начать").contains(command)) {
-            return active ? "У вас уже есть открытый вопрос. Напишите сообщение или выберите нужный раздел."
-                    : "Здравствуйте! Выберите нужный раздел или напишите оператору.";
-        }
-        if (command.startsWith("/")) {
-            return active ? "Просто напишите сообщение оператору или выберите нужный раздел."
-                    : "Выберите нужный раздел.";
-        }
-        return null;
+    }
+
+    static JsonNode hiddenKeyboard() {
+        var keyboard = JsonMapper.shared().createObjectNode().put("inline", false).put("one_time", false);
+        keyboard.putArray("buttons");
+        return keyboard;
     }
 
     private JsonNode keyboard(boolean blocked) {
@@ -86,16 +81,20 @@ final class VkClientMenu {
         var standard = information.informationButtons();
         for (int index = 0; index < standard.size(); index += 2) {
             var row = rows.addArray();
-            for (var label : standard.subList(index, Math.min(index + 2, standard.size()))) {
-                row.addObject().put("color", "secondary").putObject("action").put("label", label).put("type", "text");
+            for (int button = index; button < Math.min(index + 2, standard.size()); button++) {
+                row.addObject().put("color", "secondary").putObject("action").put("label", standard.get(button)).put("type", "text")
+                        .put("payload", "{\"action\":\"information-" + button + "\"}");
             }
         }
+        int custom = 0;
         for (var section : information.sections()) {
             rows.addArray().addObject().put("color", "secondary").putObject("action")
-                    .put("label", section.label()).put("type", "text");
+                    .put("label", section.label()).put("type", "text")
+                    .put("payload", "{\"action\":\"custom-" + custom++ + "\"}");
         }
         if (!blocked) {
-            rows.addArray().addObject().put("color", "primary").putObject("action").put("label", ASK).put("type", "text");
+            rows.addArray().addObject().put("color", "primary").putObject("action").put("label", ASK).put("type", "text")
+                    .put("payload", "{\"action\":\"handoff\"}");
         }
         return layout;
     }

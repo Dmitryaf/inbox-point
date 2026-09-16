@@ -46,6 +46,28 @@ final class TelegramStore implements AutoCloseable {
         }
     }
 
+    ClientMenuPolicy.Stage clientStage(String channel, long conversation) throws SQLException {
+        if (activeRequest(channel, conversation) != null) {
+            return ClientMenuPolicy.Stage.ACTIVE;
+        }
+        try (var statement = prepare("""
+                SELECT 1 FROM client_conversation_states WHERE channel = ? AND external_conversation_id = ?
+                """, channel, Long.toString(conversation)); var rows = statement.executeQuery()) {
+            if (rows.next()) {
+                return ClientMenuPolicy.Stage.AWAITING;
+            }
+        }
+        return latestRequest(channel, conversation) == null ? ClientMenuPolicy.Stage.FIRST_CONTACT : ClientMenuPolicy.Stage.CLOSED;
+    }
+
+    void beginQuestion(String channel, long conversation, Instant now) throws SQLException {
+        update("""
+                INSERT INTO client_conversation_states(channel, external_conversation_id, state, updated_at)
+                VALUES (?, ?, 'awaiting_question', ?)
+                ON CONFLICT(channel, external_conversation_id) DO UPDATE SET updated_at = excluded.updated_at
+                """, channel, Long.toString(conversation), now.toString());
+    }
+
     Request activeRequest(long conversation) throws SQLException {
         return activeRequest("telegram", conversation);
     }
@@ -260,10 +282,20 @@ final class TelegramStore implements AutoCloseable {
                 Long.toString(request.conversation()), text, now.toString(), now.toString());
     }
 
+    boolean canReopen(Request request) throws SQLException {
+        var latest = latestRequest(request.channel(), request.conversation());
+        var active = activeRequest(request.channel(), request.conversation());
+        return latest != null && latest.id().equals(request.id()) && (active == null || active.id().equals(request.id()));
+    }
+
     boolean resolveOperatorAction(String id, boolean received, Instant now) throws SQLException {
+        return resolveOperatorAction(id, received ? "received" : "use_web", now);
+    }
+
+    boolean resolveOperatorAction(String id, String resolution, Instant now) throws SQLException {
         connection.setAutoCommit(false);
         try {
-            var resolved = resolveOperatorActionInTransaction(id, received, now);
+            var resolved = resolveOperatorActionInTransaction(id, resolution, now);
             connection.commit();
             return resolved;
         } catch (SQLException | RuntimeException failure) {
@@ -274,14 +306,32 @@ final class TelegramStore implements AutoCloseable {
         }
     }
 
-    private boolean resolveOperatorActionInTransaction(String id, boolean received, Instant now) throws SQLException {
+    private boolean resolveOperatorActionInTransaction(String id, String resolution, Instant now) throws SQLException {
         var actions = operatorActions();
         var incident = actions.incident(id);
         if (incident == null) {
             return false;
         }
         var request = byId(incident.requestId());
-        if (received) {
+        var lifecycle = incident.action().equals("close_request") || incident.action().equals("reopen_request");
+        if (lifecycle) {
+            var completed = "completed".equals(resolution);
+            if (!completed && !"not_completed".equals(resolution)) {
+                return false;
+            }
+            var open = incident.action().equals("reopen_request");
+            if (completed && (!request.topic().equals(incident.operatorTopicId()) || open && !canReopen(request))) {
+                return false;
+            }
+            if (!actions.resolveLifecycle(id, completed, now)) {
+                return false;
+            }
+            if (completed) {
+                changeStatus(request.id(), open, now);
+            }
+            return true;
+        }
+        if ("received".equals(resolution)) {
             if (!actions.confirm(id, now)) {
                 return false;
             }
@@ -289,6 +339,9 @@ final class TelegramStore implements AutoCloseable {
                 acknowledge(request, HandoffService.ACKNOWLEDGEMENT, now);
             }
             return true;
+        }
+        if (!"use_web".equals(resolution)) {
+            return false;
         }
         if (!EmergencyOperatorInbox.isWebTopic(request.topic())
                 && !switchTopic(request.id(), request.topic(), "web:" + request.id())) {
@@ -298,6 +351,7 @@ final class TelegramStore implements AutoCloseable {
         if (incident.initial()) {
             acknowledge(request, HandoffService.DELAYED, now);
         }
+        markWebOwned(request.id(), now);
         actions.abandon(incident, now);
         return true;
     }
@@ -359,7 +413,7 @@ final class TelegramStore implements AutoCloseable {
     List<String> recoverableWebRequests() throws SQLException {
         try (var statement = connection.createStatement(); var rows = statement.executeQuery("""
                 SELECT r.id FROM support_requests r
-                WHERE r.status = 'active' AND r.operator_topic_id LIKE 'web:%'
+                WHERE r.status = 'active' AND r.operator_topic_id LIKE 'web:%' AND r.web_owned_at IS NULL
                     AND NOT EXISTS (SELECT 1 FROM conversation_messages m WHERE m.request_id = r.id
                         AND m.direction = 'operator_to_client')
                     AND NOT EXISTS (SELECT 1 FROM operator_actions a WHERE a.request_id = r.id
@@ -376,10 +430,17 @@ final class TelegramStore implements AutoCloseable {
 
     boolean hasWebReply(String request) throws SQLException {
         try (var statement = prepare("""
-                SELECT 1 FROM conversation_messages WHERE request_id = ? AND direction = 'operator_to_client' LIMIT 1
+                SELECT 1 FROM support_requests WHERE id = ? AND (web_owned_at IS NOT NULL OR EXISTS (
+                    SELECT 1 FROM conversation_messages WHERE request_id = support_requests.id AND direction = 'operator_to_client'
+                )) LIMIT 1
                 """, request); var rows = statement.executeQuery()) {
             return rows.next();
         }
+    }
+
+    void markWebOwned(String id, Instant now) throws SQLException {
+        update("UPDATE support_requests SET web_owned_at = COALESCE(web_owned_at, ?) WHERE id = ? AND operator_topic_id LIKE 'web:%'",
+                now.toString(), id);
     }
 
     record RecoveryMessage(String event, String name, String text) { }

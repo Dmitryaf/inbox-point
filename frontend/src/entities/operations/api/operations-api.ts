@@ -1,6 +1,7 @@
 import { request } from '@frontend/shared/api/http-client';
 import type {
   OperationsStatus,
+  OperatorActionResolution,
   OperatorInboxMessage,
   OperatorInboxRequest,
 } from '@frontend/entities/operations/model/types';
@@ -31,7 +32,7 @@ export function resolveOperationsDelivery(
 
 export function resolveOperatorAction(
   actionId: string,
-  resolution: 'received' | 'use_web',
+  resolution: OperatorActionResolution,
 ): Promise<void> {
   return request(
     `/api/ops/operator-actions/${encodeURIComponent(actionId)}/resolve`,

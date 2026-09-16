@@ -71,9 +71,11 @@ final class TelegramDeliveryWorker {
             }
             long sent;
             try {
+                var stage = store.clientStage(item.channel(), item.conversation());
+                var hide = stage == ClientMenuPolicy.Stage.ACTIVE || stage == ClientMenuPolicy.Stage.AWAITING;
                 sent = "vk".equals(item.channel())
-                        ? vkChannel.send(item.conversation(), item.text(), item.key())
-                        : api.sendMessage(item.conversation(), null, item.text(), keyboard.get());
+                        ? vkChannel.send(item.conversation(), item.text(), item.key(), hide ? VkClientMenu.hiddenKeyboard() : null)
+                        : api.sendMessage(item.conversation(), null, item.text(), hide ? TelegramClientMenu.removeKeyboard() : keyboard.get());
             } catch (IOException failure) {
                 failures.record(item, failure);
                 continue;

@@ -17,7 +17,7 @@ public final class SqliteSchema {
             int previous;
             try (var version = statement.executeQuery("PRAGMA user_version")) {
                 previous = version.next() ? version.getInt(1) : 0;
-                if (previous > 7) {
+                if (previous > 8) {
                     throw new SQLException("Unsupported SQLite schema version");
                 }
             }
@@ -59,7 +59,18 @@ public final class SqliteSchema {
             statement.execute("CREATE INDEX IF NOT EXISTS support_requests_by_operator_topic ON support_requests(operator_topic_id, status, created_at)");
             statement.execute(topicTrigger("insert", "INSERT", ""));
             statement.execute(topicTrigger("update", "UPDATE OF operator_topic_id, channel, external_conversation_id", " AND id <> NEW.id"));
-            statement.execute("PRAGMA user_version = 7");
+            ensureColumn(connection, "support_requests", "web_owned_at", "TEXT");
+            if (previous > 0 && previous < 8) {
+                migrateLifecycleActions(statement);
+            }
+            statement.execute("""
+                    CREATE TRIGGER IF NOT EXISTS clear_client_conversation_state_on_request
+                    AFTER INSERT ON support_requests BEGIN
+                        DELETE FROM client_conversation_states WHERE channel = NEW.channel
+                            AND external_conversation_id = NEW.external_conversation_id;
+                    END
+                    """);
+            statement.execute("PRAGMA user_version = 8");
         }
     }
 
@@ -119,6 +130,47 @@ public final class SqliteSchema {
                     AND (channel <> NEW.channel OR external_conversation_id <> NEW.external_conversation_id)
                 ) BEGIN SELECT RAISE(ABORT, 'operator topic belongs to another conversation'); END
                 """.formatted(label, operation, excludeCurrent);
+    }
+
+    private static void migrateLifecycleActions(java.sql.Statement statement) throws SQLException {
+        statement.execute("BEGIN IMMEDIATE");
+        try {
+            boolean required;
+            try (var version = statement.executeQuery("PRAGMA user_version")) {
+                required = version.next() && version.getInt(1) < 8;
+            }
+            if (required) {
+                statement.execute("ALTER TABLE operator_actions RENAME TO operator_actions_v7");
+                statement.execute("""
+                              CREATE TABLE IF NOT EXISTS operator_actions (
+                                id TEXT PRIMARY KEY,
+                                request_id TEXT NOT NULL REFERENCES support_requests(id),
+                                kind TEXT NOT NULL CHECK (kind IN ('open_request', 'relay_message', 'close_request', 'reopen_request')),
+                                client_message_id TEXT NOT NULL,
+                                operator_topic_id TEXT NOT NULL,
+                                sequence INTEGER NOT NULL,
+                                initial INTEGER NOT NULL CHECK (initial IN (0, 1)),
+                                status TEXT NOT NULL CHECK (status IN ('pending', 'sending', 'sent', 'failed', 'outcome_unknown', 'abandoned')),
+                                external_result_id TEXT,
+                                last_error TEXT,
+                                attempt_started_at TEXT,
+                                completed_at TEXT,
+                                manual_resolution TEXT CHECK (manual_resolution IN ('confirmed_received', 'use_web', 'completed', 'not_completed')),
+                                resolved_at TEXT,
+                                created_at TEXT NOT NULL
+                              ) STRICT
+                        """);
+                statement.execute("INSERT INTO operator_actions SELECT * FROM operator_actions_v7");
+                statement.execute("DROP TABLE operator_actions_v7");
+                statement.execute("CREATE INDEX operator_actions_by_request ON operator_actions(request_id, client_message_id, sequence)");
+                statement.execute("CREATE INDEX operator_actions_by_status ON operator_actions(status, created_at)");
+                statement.execute("PRAGMA user_version = 8");
+            }
+            statement.execute("COMMIT");
+        } catch (SQLException | RuntimeException failure) {
+            statement.execute("ROLLBACK");
+            throw failure;
+        }
     }
 
     private static void ensureColumn(Connection connection, String table, String name, String definition) throws SQLException {

@@ -49,7 +49,7 @@ class VkBridgeTest {
             assertThat(menu.handle(store, "pause", 123, "New question")).isTrue();
             var label = information.informationButtons().getFirst();
             assertThat(menu.handle(store, "information", 123, label)).isTrue();
-            assertThat(calls).singleElement().satisfies(call -> assertThat(call)
+            assertThat(calls).hasSize(2).anySatisfy(call -> assertThat(call)
                     .contains("message=" + information.resolve(label)).doesNotContain(ClientInformation.ASK));
             store.open(new TelegramStore.Request("active", 123, 42, true, "vk"), java.time.Instant.now());
             assertThat(menu.handle(store, "active", 123, "Follow-up")).isFalse();

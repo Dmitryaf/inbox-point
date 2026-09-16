@@ -107,7 +107,7 @@ public final class VkChannel implements AutoCloseable {
                 || message.path("out").asInt(0) != 0) {
             return null;
         }
-        return new Message(item.event(), peer, id, unsupported ? "" : api.userDisplayName(peer), text, unsupported);
+        return new Message(item.event(), peer, id, unsupported ? "" : api.userDisplayName(peer), text, unsupported, message.path("payload").asString(""));
     }
 
     private static String eventId(JsonNode update) {
@@ -157,9 +157,9 @@ public final class VkChannel implements AutoCloseable {
         http.close();
     }
 
-    public record Message(String event, long peer, long message, String name, String text, boolean unsupported) {
+    public record Message(String event, long peer, long message, String name, String text, boolean unsupported, String payload) {
         public Message(String event, long peer, long message, String name, String text) {
-            this(event, peer, message, name, text, false);
+            this(event, peer, message, name, text, false, "");
         }
     }
 

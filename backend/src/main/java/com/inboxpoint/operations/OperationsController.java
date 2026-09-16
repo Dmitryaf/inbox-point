@@ -134,12 +134,11 @@ final class OperationsController {
             return denied;
         }
         var choice = input == null ? "" : input.path("resolution").asString("");
-        var received = "received".equals(choice);
-        if (id.length() > 500 || !received && !"use_web".equals(choice)) {
+        if (id.length() > 500 || !java.util.Set.of("received", "use_web", "completed", "not_completed").contains(choice)) {
             return message(400, "Не удалось уточнить передачу обращения.");
         }
         try {
-            if (!runtime.resolveOperatorAction(id, received)) {
+            if (!runtime.resolveOperatorAction(id, choice)) {
                 return message(409, "Инцидент уже обработан или выбранное действие недоступно.");
             }
             return ResponseEntity.ok(Map.of("resolved", true));
