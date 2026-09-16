@@ -595,11 +595,10 @@ final class TelegramStore implements AutoCloseable {
     }
 
     void acknowledge(Request request, String text, Instant now) throws SQLException {
-        var kind = switch (text) {
-            case HandoffService.DELAYED -> "delayed";
-            case HandoffService.RECOVERED -> "recovered";
-            default -> "ack";
-        };
+        acknowledge(request, text, HandoffService.DELAYED.equals(text) ? "delayed" : "ack", now);
+    }
+
+    void acknowledge(Request request, String text, String kind, Instant now) throws SQLException {
         var key = "system:handoff-" + kind + ":" + request.id();
         update("""
                 INSERT OR IGNORE INTO deliveries

@@ -9,9 +9,9 @@ import java.util.Locale;
 import java.util.UUID;
 
 final class HandoffService {
-    static final String ACKNOWLEDGEMENT = "Вопрос отправлен.";
-    static final String DELAYED = "Вопрос сохранён. Доставка оператору задерживается.";
-    static final String RECOVERED = "Вопрос доставлен оператору.";
+    static final String ACKNOWLEDGEMENT = ClientMessages.HANDOFF_SENT;
+    static final String DELAYED = ClientMessages.HANDOFF_DELAYED;
+    static final String RECOVERED = ClientMessages.HANDOFF_SENT;
     private static final int MESSAGE_LIMIT = 4096;
     private final TelegramStore store;
     private final OperatorInbox inbox;
@@ -192,7 +192,7 @@ final class HandoffService {
             throw definiteFailure;
         }
         if (complete) {
-            store.acknowledge(request, RECOVERED, clock.instant());
+            store.acknowledge(request, RECOVERED, "recovered", clock.instant());
         }
     }
 

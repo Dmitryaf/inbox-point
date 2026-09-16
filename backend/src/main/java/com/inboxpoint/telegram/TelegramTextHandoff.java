@@ -14,7 +14,7 @@ final class TelegramTextHandoff {
 
     private static final List<String> UNSUPPORTED = List.of("animation", "audio", "contact", "dice", "document",
             "paid_media", "photo", "poll", "sticker", "story", "venue", "video", "video_note", "voice");
-    static final String TEXT_ONLY = "Сейчас можно отправить только текст. Напишите вопрос отдельным текстовым сообщением.";
+    static final String TEXT_ONLY = ClientMessages.UNSUPPORTED_CONTENT;
 
     private final long operatorGroup;
     private final TelegramStore store;

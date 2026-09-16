@@ -236,13 +236,13 @@ public final class ClientInformation {
 
     private static String resolve(String label, Snapshot snapshot) {
         if (FAQ.equals(label)) {
-            return snapshot.faq().isEmpty() ? "Частые вопросы пока не добавлены. Задайте вопрос, если нужна помощь." : formatFaq(snapshot.faq());
+            return snapshot.faq().isEmpty() ? "Раздел с частыми вопросами пока пуст." : formatFaq(snapshot.faq());
         }
         return switch (label) {
-            case SCHEDULE -> formatList(SCHEDULE, snapshot.standard().get("schedule"), "Расписание пока не добавлено. Задайте вопрос, чтобы уточнить время.");
-            case PRICES -> formatList(PRICES, snapshot.standard().get("prices"), "Информация о ценах пока не добавлена. Задайте вопрос, чтобы уточнить стоимость.");
+            case SCHEDULE -> formatList(SCHEDULE, snapshot.standard().get("schedule"), "Расписание пока не указано.");
+            case PRICES -> formatList(PRICES, snapshot.standard().get("prices"), "Цены пока не указаны.");
             case ADDRESS -> snapshot.standard().containsKey("address")
-                    ? "Адрес\n\n" + snapshot.standard().get("address") : "Адрес пока не добавлен. Задайте вопрос, чтобы уточнить детали.";
+                    ? "Адрес\n\n" + snapshot.standard().get("address") : "Адрес пока не указан.";
             default -> snapshot.custom().stream()
                     .filter(section -> section.label().equals(label)).map(Section::text).findFirst().orElse(null);
         };

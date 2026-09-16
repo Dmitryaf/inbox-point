@@ -119,7 +119,7 @@ class ClientInformationTest {
     void publishesTrimmedAnswersOnlyOnSuccessfulSaveAndRestoresThemAfterRestart() throws Exception {
         var database = directory.resolve("inbox.sqlite").toString();
         var catalog = new ClientInformation(database);
-        assertThat(catalog.resolve("Расписание")).startsWith("Расписание пока не добавлено");
+        assertThat(catalog.resolve("Расписание")).isEqualTo("Расписание пока не указано.");
         assertThat(catalog.informationButtons()).isEmpty();
         var json = JsonMapper.shared();
         assertThat(catalog.save(json.createObjectNode().put("schedule", "  По субботам  ").put("prices", "")))

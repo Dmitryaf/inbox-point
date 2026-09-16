@@ -25,18 +25,20 @@ final class ClientMenuPolicy {
                 return answer;
             }
             if (informationAction) {
-                return new Response("Меню обновилось. Выберите нужный раздел ниже.");
+                return new Response(ClientMessages.MENU_UPDATED);
             }
-            if (menu || "handoff".equals(action) || ClientInformation.isHandoffRequest(text)
-                    || ClientInformation.RESET.equals(text)) {
-                return new Response("Разговор уже начат. Напишите сообщение, чтобы продолжить.");
+            if ("handoff".equals(action) || ClientInformation.isHandoffRequest(text) || ClientInformation.RESET.equals(text)) {
+                return new Response(ClientMessages.QUESTION_PROMPT);
+            }
+            if (menu) {
+                return new Response(ClientMessages.ACTIVE_MENU);
             }
             return command.startsWith("/")
-                    ? new Response("Эта команда недоступна во время разговора. Просто напишите сообщение.") : null;
+                    ? new Response(ClientMessages.ACTIVE_COMMAND_UNAVAILABLE) : null;
         }
         if (stage == Stage.AWAITING && menu) {
-            var greeting = paused ? ClientInformation.INTAKE_PAUSED
-                    : "Здравствуйте! Здесь можно посмотреть основную информацию или задать вопрос.";
+            var greeting = paused ? ClientMessages.PAUSED_INTAKE
+                    : stage == Stage.FIRST_CONTACT ? ClientMessages.GREETING : ClientMessages.MENU_OPENED;
             return new Response(greeting, false, false, true);
         }
         if (paused || informationAction) {
@@ -45,7 +47,7 @@ final class ClientMenuPolicy {
                 return response;
             }
             if (paused) {
-                return new Response(ClientInformation.INTAKE_PAUSED);
+                return new Response(ClientMessages.PAUSED_INTAKE);
             }
         }
         if (stage == Stage.AWAITING && !command.startsWith("/") && !"handoff".equals(action)
@@ -57,21 +59,21 @@ final class ClientMenuPolicy {
             return response;
         }
         if ("handoff".equals(action) || ClientInformation.isHandoffRequest(text) || ClientInformation.RESET.equals(text)) {
-            return new Response("Напишите свой вопрос. Мы ответим здесь.", true, false);
+            return new Response(ClientMessages.QUESTION_PROMPT, true, false);
         }
         if (menu) {
-            return new Response("Здравствуйте! Здесь можно посмотреть основную информацию или задать вопрос.");
+            return new Response(stage == Stage.FIRST_CONTACT ? ClientMessages.GREETING : ClientMessages.MENU_OPENED);
         }
         if (command.startsWith("/")) {
-            return new Response("Открытого обращения нет. Выберите нужный раздел в меню.");
+            return new Response(ClientMessages.NO_OPEN_REQUEST);
         }
         return stage == Stage.CLOSED
-                ? new Response("Предыдущий разговор завершён. Если хотите задать новый вопрос, нажмите «Задать вопрос».") : null;
+                ? new Response(ClientMessages.CLOSED_CONVERSATION) : null;
     }
 
     private static Response resolveInformation(ClientInformation information, String text) {
         if (information.isStaleMenuAction(text)) {
-            return new Response("Меню обновилось. Выберите нужный раздел ниже.");
+            return new Response(ClientMessages.MENU_UPDATED);
         }
         if (information.isPublishedInformation(text)) {
             return new Response(information.resolve(text), false, true);
