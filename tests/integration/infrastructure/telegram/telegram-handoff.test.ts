@@ -9,6 +9,7 @@ import { EmergencyOperatorInbox } from '@/core/application/emergency-operator-in
 import { HandoffService } from '@/core/application/handoff-service.js';
 import { SwitchableOperatorInbox } from '@/core/application/switchable-operator-inbox.js';
 import { DeliveryOutcomeUnknownError } from '@/core/contracts/client-channel.js';
+import { OperatorActionOutcomeUnknownError } from '@/core/contracts/operator-inbox.js';
 import {
   ClientInformationCatalog,
   faqButton,
@@ -775,6 +776,126 @@ describe('Telegram handoff integration', () => {
       operatorTopicId: '900',
     });
     expect(gateway.reopened).toEqual([900]);
+  });
+
+  it('reopens the Telegram topic before accepting a reply after close', async () => {
+    await router.route(createPrivateUpdate(1, 501, 'Вопрос'));
+    const request = repository.findActiveRequest('telegram', '101');
+    if (!request) {
+      throw new Error('Expected an active request');
+    }
+    await router.route(createOperatorUpdate(2, 601, 900, '/close'));
+
+    await router.route(
+      createOperatorUpdate(3, 602, 900, 'Ответ после закрытия'),
+    );
+
+    expect(gateway.reopened).toEqual([900]);
+    expect(repository.findRequestById(request.id)?.status).toBe('active');
+    expect(repository.findConversationMessages(request.id, 10)).toContainEqual(
+      expect.objectContaining({ text: 'Ответ после закрытия' }),
+    );
+  });
+
+  it('keeps a reply retryable when automatic reopen fails', async () => {
+    await router.route(createPrivateUpdate(1, 501, 'Вопрос'));
+    const request = repository.findActiveRequest('telegram', '101');
+    if (!request) {
+      throw new Error('Expected an active request');
+    }
+    await router.route(createOperatorUpdate(2, 601, 900, '/close'));
+    gateway.failNextReopen = true;
+    const reply = createOperatorUpdate(3, 602, 900, 'Ответ после закрытия');
+
+    await expect(router.route(reply)).rejects.toThrow(
+      'Temporary Telegram reopen failure',
+    );
+    expect(repository.findRequestById(request.id)?.status).toBe('closed');
+    expect(
+      repository.findConversationMessages(request.id, 10),
+    ).not.toContainEqual(
+      expect.objectContaining({ text: 'Ответ после закрытия' }),
+    );
+
+    await router.route(reply);
+    expect(gateway.reopened).toEqual([900]);
+    expect(repository.findRequestById(request.id)?.status).toBe('active');
+    expect(repository.findConversationMessages(request.id, 10)).toContainEqual(
+      expect.objectContaining({ text: 'Ответ после закрытия' }),
+    );
+  });
+
+  it('delivers a held reply after an uncertain reopen is confirmed', async () => {
+    await router.route(createPrivateUpdate(1, 501, 'Вопрос'));
+    const request = repository.findActiveRequest('telegram', '101');
+    if (!request) {
+      throw new Error('Expected an active request');
+    }
+    await router.route(createOperatorUpdate(2, 601, 900, '/close'));
+    gateway.unknownNextReopen = true;
+    const reply = createOperatorUpdate(3, 602, 900, 'Ответ после закрытия');
+
+    await expect(router.route(reply)).rejects.toBeInstanceOf(
+      OperatorActionOutcomeUnknownError,
+    );
+    expect(repository.findRequestById(request.id)?.status).toBe('closed');
+    expect(
+      repository.findConversationMessages(request.id, 10),
+    ).not.toContainEqual(
+      expect.objectContaining({ text: 'Ответ после закрытия' }),
+    );
+    const incident = repository.findOperatorActionIncidents(10)[0];
+    if (!incident) {
+      throw new Error('Expected an uncertain reopen incident');
+    }
+
+    expect(
+      repository.resolveOperatorLifecycleAction(
+        incident.id,
+        'completed',
+        new Date('2026-08-31T12:01:00.000Z'),
+      ),
+    ).toBe(true);
+    await router.route(reply);
+
+    expect(repository.findRequestById(request.id)?.status).toBe('active');
+    expect(repository.findConversationMessages(request.id, 10)).toContainEqual(
+      expect.objectContaining({ text: 'Ответ после закрытия' }),
+    );
+  });
+
+  it('retries a held reply when uncertain reopen did not complete', async () => {
+    await router.route(createPrivateUpdate(1, 501, 'Вопрос'));
+    const request = repository.findActiveRequest('telegram', '101');
+    if (!request) {
+      throw new Error('Expected an active request');
+    }
+    await router.route(createOperatorUpdate(2, 601, 900, '/close'));
+    gateway.unknownNextReopen = true;
+    const reply = createOperatorUpdate(3, 602, 900, 'Ответ после закрытия');
+
+    await expect(router.route(reply)).rejects.toBeInstanceOf(
+      OperatorActionOutcomeUnknownError,
+    );
+    const incident = repository.findOperatorActionIncidents(10)[0];
+    if (!incident) {
+      throw new Error('Expected an uncertain reopen incident');
+    }
+    expect(
+      repository.resolveOperatorLifecycleAction(
+        incident.id,
+        'not_completed',
+        new Date('2026-08-31T12:01:00.000Z'),
+      ),
+    ).toBe(true);
+
+    await router.route(reply);
+
+    expect(gateway.reopened).toEqual([900]);
+    expect(repository.findRequestById(request.id)?.status).toBe('active');
+    expect(repository.findConversationMessages(request.id, 10)).toContainEqual(
+      expect.objectContaining({ text: 'Ответ после закрытия' }),
+    );
   });
 
   it('keeps a request active and delivers a reply after a failed close', async () => {

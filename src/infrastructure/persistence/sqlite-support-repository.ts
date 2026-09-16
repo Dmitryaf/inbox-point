@@ -201,8 +201,19 @@ export class SqliteSupportRepository implements SupportRepository {
     const result = this.database
       .prepare(
         `UPDATE operator_actions
-         SET status = 'sending', attempt_started_at = ?
-         WHERE id = ? AND status IN ('pending', 'failed')`,
+         SET status = 'sending',
+             attempt_started_at = ?,
+             manual_resolution = NULL,
+             resolved_at = NULL
+         WHERE id = ?
+           AND (
+             status IN ('pending', 'failed')
+             OR (
+               status = 'abandoned'
+               AND kind = 'reopen_request'
+               AND manual_resolution = 'confirmed_not_completed'
+             )
+           )`,
       )
       .run(startedAt.toISOString(), actionId);
 

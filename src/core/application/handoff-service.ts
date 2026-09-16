@@ -558,6 +558,10 @@ export class HandoffService {
       if (!this.canReopenRequest(request)) {
         return;
       }
+      await this.operatorInbox.reopenRequest(request.operatorTopicId, {
+        externalEventId,
+        requestId: request.id,
+      });
       this.repository.reopenRequest(request.id);
       this.repository.confirmOperatorLifecycleAction(
         request.id,
