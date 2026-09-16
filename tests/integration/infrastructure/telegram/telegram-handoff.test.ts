@@ -13,7 +13,6 @@ import {
   ClientInformationCatalog,
   faqButton,
   handoffButton,
-  newQuestionButton,
 } from '@/core/application/client-information.js';
 import { type ClientIntakePolicy } from '@/core/contracts/client-intake-policy.js';
 import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-support-repository.js';
@@ -263,7 +262,13 @@ describe('Telegram handoff integration', () => {
       chatId: 101,
       text: 'Answer',
     });
-    expect(gateway.sent[2]?.replyMarkup).toEqual({ remove_keyboard: true });
+    const activeReplyMarkup = gateway.sent[2]?.replyMarkup;
+    if (!activeReplyMarkup || !('keyboard' in activeReplyMarkup)) {
+      throw new Error('Expected an active conversation keyboard');
+    }
+    expect(
+      activeReplyMarkup.keyboard.flat().map((button) => button.text),
+    ).toEqual(['Как добраться']);
     expect(
       repository.getUsageEventCounts(new Date('2026-01-01')).new_request,
     ).toBe(1);
@@ -605,6 +610,7 @@ describe('Telegram handoff integration', () => {
   });
 
   it('continues an open Telegram conversation after intake is paused', async () => {
+    information.replace({ schedule: 'Понедельник 19:00' });
     await router.route(createPrivateUpdate(1, 501, 'Первый вопрос'));
     telegramPaused = true;
 
@@ -617,10 +623,16 @@ describe('Telegram handoff integration', () => {
     expect(gateway.sent[1]?.messageThreadId).toBe(900);
     expect(gateway.sent[1]?.text).toContain('Уточнение');
     expect(gateway.sent[2]).toMatchObject({
-      chatId: -1_001,
-      messageThreadId: 900,
+      chatId: 101,
+      text: 'Расписание\n\n• Понедельник 19:00',
     });
-    expect(gateway.sent[2]?.text).toContain('Расписание');
+    const activeMenu = gateway.sent[2]?.replyMarkup;
+    if (!activeMenu || !('keyboard' in activeMenu)) {
+      throw new Error('Expected an active conversation keyboard');
+    }
+    expect(activeMenu.keyboard.flat().map((button) => button.text)).toEqual([
+      'Расписание',
+    ]);
   });
 
   it('reports an active request instead of forwarding /start to operators', async () => {
@@ -635,16 +647,27 @@ describe('Telegram handoff integration', () => {
     });
   });
 
-  it('forwards a reference label as normal text during an active request', async () => {
+  it('keeps information buttons available during an active request', async () => {
+    information.replace({ schedule: 'Понедельник 19:00' });
     await router.route(createPrivateUpdate(1, 501, 'Первый вопрос'));
     await router.route(createPrivateUpdate(2, 502, 'Расписание'));
 
     expect(gateway.sent).toHaveLength(2);
     expect(gateway.sent[1]).toMatchObject({
-      chatId: -1_001,
-      messageThreadId: 900,
+      chatId: 101,
+      text: 'Расписание\n\n• Понедельник 19:00',
     });
-    expect(gateway.sent[1]?.text).toContain('Расписание');
+    const activeMenu = gateway.sent[1]?.replyMarkup;
+    if (!activeMenu || !('keyboard' in activeMenu)) {
+      throw new Error('Expected an active conversation keyboard');
+    }
+    expect(activeMenu.keyboard.flat().map((button) => button.text)).toEqual([
+      'Расписание',
+    ]);
+    expect(
+      repository.getUsageEventCounts(new Date('2026-01-01'))
+        .information_section,
+    ).toBe(1);
   });
 
   it('shows and resolves the built-in FAQ without opening a request', async () => {
@@ -1276,7 +1299,7 @@ describe('Telegram handoff integration', () => {
     expect(gateway.sent[1]?.text).toContain('Второй вопрос');
   });
 
-  it('treats a former active-menu label as client text', async () => {
+  it('does not forward a former active-menu action as client text', async () => {
     await router.route(createPrivateUpdate(1, 501, 'Первый вопрос'));
     gateway.unavailableTopics.add(900);
 
@@ -1284,13 +1307,13 @@ describe('Telegram handoff integration', () => {
     await router.route(createPrivateUpdate(3, 503, 'Начать новый вопрос'));
 
     expect(repository.findActiveRequest('telegram', '101')).toMatchObject({
-      operatorTopicId: '901',
+      operatorTopicId: '900',
     });
     expect(gateway.sent[2]).toMatchObject({
-      chatId: -1_001,
-      messageThreadId: 901,
+      chatId: 101,
+      text: 'Разговор уже начат. Напишите сообщение, чтобы продолжить.',
     });
-    expect(gateway.sent[2]?.text).toContain(newQuestionButton);
+    expect(gateway.createdTopics).toEqual([900]);
   });
 
   it('keeps explicit question intent across a repository restart', async () => {
