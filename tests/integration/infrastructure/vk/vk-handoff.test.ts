@@ -455,7 +455,11 @@ describe('VK handoff integration', () => {
       'Расписание',
     ]);
     expect(gateway.sent.at(-1)?.text).toBe('Расписание\n\n• Понедельник 19:00');
-    expect(gateway.sent.at(-1)?.keyboard?.buttons).toEqual([]);
+    const labels = gateway.sent
+      .at(-1)
+      ?.keyboard?.buttons.flat()
+      .map((button) => button.action.label);
+    expect(labels).toEqual(['Расписание']);
   });
 
   it('does not open a request from post-dialog VK text', async () => {

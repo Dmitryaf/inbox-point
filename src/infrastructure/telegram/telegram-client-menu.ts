@@ -122,8 +122,28 @@ function resolveMenuResponse(
   const normalized = text.trim();
   const command = parseCommand(normalized);
   const mainMenu = createTelegramMainKeyboard(information, state);
+  const informationResponse = information.resolve(normalized);
 
   if (state.stage === 'active') {
+    if (informationResponse) {
+      return {
+        replyMarkup: mainMenu,
+        informationRequested: true,
+        text: informationResponse,
+      };
+    }
+    if (information.isStaleMenuAction(normalized)) {
+      return {
+        replyMarkup: mainMenu,
+        text: 'Меню обновилось. Выберите нужный раздел ниже.',
+      };
+    }
+    if (normalized === newQuestionButton || isHandoffRequest(normalized)) {
+      return {
+        replyMarkup: mainMenu,
+        text: 'Разговор уже начат. Напишите сообщение, чтобы продолжить.',
+      };
+    }
     if (command === '/start' || command === '/menu') {
       return {
         replyMarkup: mainMenu,
@@ -152,7 +172,6 @@ function resolveMenuResponse(
     };
   }
 
-  const informationResponse = information.resolve(normalized);
   if (state.intakePaused) {
     if (informationResponse) {
       return {
@@ -238,7 +257,7 @@ export function createTelegramMainKeyboard(
   information: ClientInformationResolver,
   state: ClientConversationState,
 ): TelegramReplyMarkup {
-  if (state.stage === 'active' || state.stage === 'awaiting_question') {
+  if (state.stage === 'awaiting_question') {
     return { remove_keyboard: true };
   }
   const informationRows = createButtonRows(
@@ -248,7 +267,10 @@ export function createTelegramMainKeyboard(
     .getCustomSections()
     .map((section) => ({ text: section.label }));
   const customRows = createButtonRows(customButtons);
-  const actionRows = state.intakePaused ? [] : [[{ text: handoffButton }]];
+  const actionRows =
+    state.stage === 'active' || state.intakePaused
+      ? []
+      : [[{ text: handoffButton }]];
   const keyboard = [...informationRows, ...customRows, ...actionRows];
   if (keyboard.length === 0) {
     return { remove_keyboard: true };

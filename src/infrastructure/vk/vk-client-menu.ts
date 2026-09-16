@@ -123,7 +123,7 @@ export function createVkMainKeyboard(
     stage: 'first_contact',
   },
 ): VkKeyboard {
-  if (state.stage === 'active' || state.stage === 'awaiting_question') {
+  if (state.stage === 'awaiting_question') {
     return { buttons: [], inline: false, one_time: false };
   }
   const informationButtons = information
@@ -137,7 +137,7 @@ export function createVkMainKeyboard(
     buttons: [
       ...informationRows,
       ...customRows,
-      ...(state.intakePaused
+      ...(state.stage === 'active' || state.intakePaused
         ? []
         : [[createButton(handoffButton, 'handoff', 'primary')]]),
     ],
