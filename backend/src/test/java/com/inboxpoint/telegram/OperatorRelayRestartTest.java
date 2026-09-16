@@ -18,6 +18,23 @@ class OperatorRelayRestartTest {
     Path directory;
 
     @Test
+    void movesOnlyUnclaimedActiveWebRequests() throws Exception {
+        var now = Instant.parse("2026-09-16T09:00:00Z");
+        try (var store = new TelegramStore(directory.resolve("ownership.sqlite"))) {
+            var first = new TelegramStore.Request("first", 123, "web:first", true, "vk");
+            var second = new TelegramStore.Request("second", 124, "web:second", true, "vk");
+            store.open(first, now);
+            store.open(second, now);
+            assertThat(store.claimWebRequest(first.id(), first.topic(), now)).isTrue();
+            assertThat(store.recoverWebRequest(first.id(), first.topic(), "42")).isFalse();
+            assertThat(store.recoverWebRequest(second.id(), second.topic(), "43")).isTrue();
+            assertThat(store.claimWebRequest(second.id(), second.topic(), now)).isFalse();
+            assertThat(store.byId(first.id()).topic()).isEqualTo(first.topic());
+            assertThat(store.byId(second.id()).topic()).isEqualTo("43");
+        }
+    }
+
+    @Test
     void keepsTheRequestOpenAfterAnUncertainCloseUntilAnOperatorConfirmsIt() throws Exception {
         var now = Instant.parse("2026-10-01T10:00:00Z");
         try (var store = new TelegramStore(directory.resolve("lifecycle.sqlite"))) {

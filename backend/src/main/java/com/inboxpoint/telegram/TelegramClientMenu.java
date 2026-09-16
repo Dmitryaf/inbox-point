@@ -41,11 +41,14 @@ final class TelegramClientMenu {
             return true;
         }
         try {
-            var hidden = stage == ClientMenuPolicy.Stage.ACTIVE || stage == ClientMenuPolicy.Stage.AWAITING || answer.begin();
-            api.sendMessage(chat, null, answer.text(), hidden ? removeKeyboard() : keyboard(information, pausedNow));
-            if (answer.begin()) {
+            if (answer.cancel()) {
+                store.clearQuestion("telegram", chat);
+                stage = store.clientStage("telegram", chat);
+            } else if (answer.begin()) {
                 store.beginQuestion("telegram", chat, now);
             }
+            var hidden = stage == ClientMenuPolicy.Stage.ACTIVE || stage == ClientMenuPolicy.Stage.AWAITING || answer.begin();
+            api.sendMessage(chat, null, answer.text(), hidden ? removeKeyboard() : keyboard(information, pausedNow));
             if (answer.information()) {
                 store.usageEvent("information:telegram:" + event, "information_section", "telegram", null, now);
             }

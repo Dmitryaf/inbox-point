@@ -354,25 +354,27 @@ public final class TelegramRuntime {
     public String inboxAction(String id, String key, String text, boolean close)
             throws IOException, SQLException, InterruptedException {
         try (var store = new TelegramStore(database)) {
-            var request = store.byId(id);
-            if (request == null || !EmergencyOperatorInbox.isWebTopic(request.topic())) {
+            var initial = store.byId(id);
+            if (initial == null) {
                 return "missing";
             }
-            var result = new java.util.concurrent.atomic.AtomicReference<>("missing");
-            queue.run(request.channel(), request.conversation(), () -> {
+            var result = new java.util.concurrent.atomic.AtomicReference<String>();
+            queue.run(initial.channel(), initial.conversation(), () -> {
                 var current = store.byId(id);
-                if (current == null || !EmergencyOperatorInbox.isWebTopic(current.topic())) {
-                    return;
-                }
-                if (!current.active()) {
+                if (current == null) {
+                    result.set("missing");
+                } else if (!EmergencyOperatorInbox.isWebTopic(current.topic())) {
+                    result.set("moved");
+                } else if (!current.active()) {
                     result.set(close ? "ok" : "closed");
-                    return;
+                } else if (!store.claimWebRequest(id, current.topic(), Instant.now())) {
+                    result.set("moved");
+                } else {
+                    var event = "web:" + (close ? "close:" : "reply:") + id + ":" + key;
+                    var service = new HandoffService(store, handoff.routingInbox(), Clock.systemUTC(), queue);
+                    service.relayReply(current, event, close ? "/close" : text, event);
+                    result.set("ok");
                 }
-                var event = "web:" + (close ? "close:" : "reply:") + id + ":" + key;
-                new HandoffService(store, handoff.routingInbox(), Clock.systemUTC(), queue)
-                        .relayReply(current, event, close ? "/close" : text, event);
-                store.markWebOwned(id, Instant.now());
-                result.set("ok");
             });
             return result.get();
         }

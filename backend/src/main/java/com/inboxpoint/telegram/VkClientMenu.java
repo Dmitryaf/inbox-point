@@ -42,11 +42,14 @@ final class VkClientMenu {
             return true;
         }
         try {
-            var hidden = stage == ClientMenuPolicy.Stage.ACTIVE || stage == ClientMenuPolicy.Stage.AWAITING || answer.begin();
-            api.send(peer, answer.text(), "vk-menu:" + event, hidden ? hiddenKeyboard() : keyboard(pausedNow));
-            if (answer.begin()) {
+            if (answer.cancel()) {
+                store.clearQuestion("vk", peer);
+                stage = store.clientStage("vk", peer);
+            } else if (answer.begin()) {
                 store.beginQuestion("vk", peer, now);
             }
+            var hidden = stage == ClientMenuPolicy.Stage.ACTIVE || stage == ClientMenuPolicy.Stage.AWAITING || answer.begin();
+            api.send(peer, answer.text(), "vk-menu:" + event, hidden ? hiddenKeyboard() : keyboard(pausedNow));
             if (answer.information()) {
                 store.usageEvent("information:vk:" + event, "information_section", "vk", null, now);
             }

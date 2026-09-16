@@ -7,8 +7,9 @@ import com.inboxpoint.content.ClientInformation;
 final class ClientMenuPolicy {
     enum Stage { FIRST_CONTACT, AWAITING, ACTIVE, CLOSED }
 
-    record Response(String text, boolean begin, boolean information) {
-        Response(String text) { this(text, false, false); }
+    record Response(String text, boolean begin, boolean information, boolean cancel) {
+        Response(String text) { this(text, false, false, false); }
+        Response(String text, boolean begin, boolean information) { this(text, begin, information, false); }
     }
 
     private ClientMenuPolicy() { }
@@ -28,6 +29,11 @@ final class ClientMenuPolicy {
             return command.startsWith("/")
                     ? new Response("Эта команда недоступна во время разговора. Просто напишите сообщение.") : null;
         }
+        if (stage == Stage.AWAITING && menu) {
+            var greeting = paused ? ClientInformation.INTAKE_PAUSED
+                    : "Здравствуйте! Здесь можно посмотреть основную информацию или задать вопрос.";
+            return new Response(greeting, false, false, true);
+        }
         if (paused || informationAction) {
             var response = resolveInformation(information, text);
             if (response != null) {
@@ -37,7 +43,8 @@ final class ClientMenuPolicy {
                 return new Response(ClientInformation.INTAKE_PAUSED);
             }
         }
-        if (stage == Stage.AWAITING && !command.startsWith("/")) {
+        if (stage == Stage.AWAITING && !command.startsWith("/") && !"handoff".equals(action)
+                && !ClientInformation.isHandoffRequest(text) && !ClientInformation.RESET.equals(text)) {
             return null;
         }
         var response = resolveInformation(information, text);

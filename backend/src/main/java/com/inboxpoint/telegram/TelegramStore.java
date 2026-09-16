@@ -438,6 +438,28 @@ final class TelegramStore implements AutoCloseable {
         }
     }
 
+    void clearQuestion(String channel, long conversation) throws SQLException {
+        update("DELETE FROM client_conversation_states WHERE channel = ? AND external_conversation_id = ?",
+                channel, Long.toString(conversation));
+    }
+
+    boolean claimWebRequest(String id, String expectedTopic, Instant now) throws SQLException {
+        return update("""
+                UPDATE support_requests SET web_owned_at = COALESCE(web_owned_at, ?)
+                WHERE id = ? AND status = 'active' AND operator_topic_id = ? AND operator_topic_id LIKE 'web:%'
+                """, now.toString(), id, expectedTopic) == 1;
+    }
+
+    boolean recoverWebRequest(String id, String expectedTopic, String replacement) throws SQLException {
+        return update("""
+                UPDATE support_requests SET operator_topic_id = ?
+                WHERE id = ? AND status = 'active' AND operator_topic_id = ? AND operator_topic_id LIKE 'web:%'
+                    AND web_owned_at IS NULL
+                    AND NOT EXISTS (SELECT 1 FROM conversation_messages
+                        WHERE request_id = support_requests.id AND direction = 'operator_to_client')
+                """, replacement, id, expectedTopic) == 1;
+    }
+
     void markWebOwned(String id, Instant now) throws SQLException {
         update("UPDATE support_requests SET web_owned_at = COALESCE(web_owned_at, ?) WHERE id = ? AND operator_topic_id LIKE 'web:%'",
                 now.toString(), id);

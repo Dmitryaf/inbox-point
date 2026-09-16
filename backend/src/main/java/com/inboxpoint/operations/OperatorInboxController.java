@@ -76,6 +76,7 @@ final class OperatorInboxController {
         try {
             return switch (runtime.inboxAction(id, key, text, close)) {
                 case "missing" -> missing();
+                case "moved" -> message(409, "Обращение уже перенесено в Telegram. Список обновлён.");
                 case "closed" -> message(409, "Обращение уже закрыто.");
                 default -> ResponseEntity.ok(Map.of(close ? "closed" : "queued", true));
             };

@@ -167,7 +167,10 @@ final class HandoffService {
         if (EmergencyOperatorInbox.isWebTopic(topic) || store.hasWebReply(id)) {
             return;
         }
-        switchOperatorTopic(id, request.topic(), topic);
+        if (!store.recoverWebRequest(id, request.topic(), topic)) {
+            inbox.lifecycle(topic, id, "recovery-conflict:" + topic, false);
+            return;
+        }
         var target = new TelegramStore.Request(id, request.conversation(), topic, true, request.channel());
         boolean complete = true;
         try {
@@ -221,7 +224,16 @@ final class HandoffService {
             return;
         }
         var request = store.byTopic(topic);
-        if (request != null && store.topicEventIsCurrent(request.id(), occurred)) {
+        if (request != null) {
+            queue.run(request.channel(), request.conversation(),
+                    () -> reconcileCurrentTopic(store.byId(request.id()), request.topic(), event, active, occurred));
+        }
+        store.completeEvent("operator:telegram", event, clock.instant());
+    }
+
+    private void reconcileCurrentTopic(TelegramStore.Request request, String expectedTopic, String event,
+            boolean active, java.time.Instant occurred) throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
+        if (request != null && request.topic().equals(expectedTopic) && store.topicEventIsCurrent(request.id(), occurred)) {
             if (active && !store.canReopen(request)) {
                 lifecycle(request, event, false);
             } else {
@@ -231,14 +243,18 @@ final class HandoffService {
                 store.operatorActions().observeLifecycle(request.id(), request.topic(), active, occurred);
             }
         }
-        store.completeEvent("operator:telegram", event, clock.instant());
     }
 
     void relayReply(long topic, long message, String text, String event)
             throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
         var request = store.byTopic(topic);
         if (request != null) {
-            relayReply(request, Long.toString(message), text, event);
+            queue.run(request.channel(), request.conversation(), () -> {
+                var current = store.byId(request.id());
+                if (current != null && current.topic().equals(request.topic())) {
+                    relayReply(current, Long.toString(message), text, event);
+                }
+            });
         }
     }
 
