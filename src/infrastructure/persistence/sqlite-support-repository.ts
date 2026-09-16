@@ -509,6 +509,41 @@ export class SqliteSupportRepository implements SupportRepository {
   }
 
   public createRequest(request: SupportRequest): void {
+    this.insertRequest(request);
+  }
+
+  public createNextRequest(request: SupportRequest): boolean {
+    if (request.status !== 'active') {
+      throw new Error('A new client request must be active');
+    }
+
+    this.database.exec('BEGIN IMMEDIATE');
+    try {
+      const active = this.findActiveRequest(
+        request.channel,
+        request.conversationId,
+      );
+      if (active) {
+        this.database.exec('ROLLBACK');
+        return false;
+      }
+      const latest = this.findLatestRequest(
+        request.channel,
+        request.conversationId,
+      );
+      if (latest?.status === 'closed') {
+        this.supersedeHeldOperatorReplies(latest.id, request.createdAt);
+      }
+      this.insertRequest(request);
+      this.database.exec('COMMIT');
+      return true;
+    } catch (error: unknown) {
+      this.database.exec('ROLLBACK');
+      throw error;
+    }
+  }
+
+  private insertRequest(request: SupportRequest): void {
     this.database
       .prepare(
         `INSERT INTO support_requests (
@@ -1023,13 +1058,24 @@ export class SqliteSupportRepository implements SupportRepository {
          WHERE request_id = ?
            AND operator_topic_id = ?
            AND kind = 'reopen_request'
-           AND (
-             status IN ('pending', 'sending', 'failed', 'outcome_unknown')
-             OR (
-               status = 'abandoned'
-               AND manual_resolution = 'confirmed_not_completed'
-             )
-           )
+            AND (
+              status IN ('pending', 'sending', 'outcome_unknown')
+              OR (
+                (
+                  status = 'failed'
+                  OR (
+                    status = 'abandoned'
+                    AND manual_resolution = 'confirmed_not_completed'
+                  )
+                )
+                AND EXISTS (
+                  SELECT 1
+                  FROM conversation_messages AS held
+                  WHERE held.prerequisite_action_id = operator_actions.id
+                    AND held.processing_state = 'held'
+                )
+              )
+            )
          ORDER BY created_at DESC, rowid DESC
          LIMIT 1`,
       )
@@ -1973,10 +2019,13 @@ export class SqliteSupportRepository implements SupportRepository {
   private releaseHeldOperatorReplies(
     requestId: string,
     completedAt: Date,
+    expectedRequestStatus: SupportRequest['status'] = 'active',
   ): void {
     const request = this.findRequestById(requestId);
-    if (request?.status !== 'active') {
-      throw new Error('Held operator replies require an active request');
+    if (request?.status !== expectedRequestStatus) {
+      throw new Error(
+        `Held operator replies require a ${expectedRequestStatus} request`,
+      );
     }
     const replies = this.database
       .prepare(
@@ -2038,6 +2087,38 @@ export class SqliteSupportRepository implements SupportRepository {
         type: 'first_reply',
       });
     }
+  }
+
+  private supersedeHeldOperatorReplies(
+    requestId: string,
+    resolvedAt: Date,
+  ): void {
+    this.database
+      .prepare(
+        `UPDATE operator_actions
+         SET status = 'abandoned',
+             last_error = NULL,
+             attempt_started_at = NULL,
+             manual_resolution = NULL,
+             resolved_at = ?
+         WHERE request_id = ?
+           AND kind = 'reopen_request'
+           AND status IN (
+             'pending',
+             'sending',
+             'failed',
+             'outcome_unknown',
+             'abandoned'
+           )
+           AND EXISTS (
+             SELECT 1
+             FROM conversation_messages AS held
+             WHERE held.prerequisite_action_id = operator_actions.id
+               AND held.processing_state = 'held'
+           )`,
+      )
+      .run(resolvedAt.toISOString(), requestId);
+    this.releaseHeldOperatorReplies(requestId, resolvedAt, 'closed');
   }
 
   private recoverCompletedHeldOperatorReplies(): void {

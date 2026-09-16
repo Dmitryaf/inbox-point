@@ -110,6 +110,7 @@ export interface SupportRepository
   ): void;
   countActiveWebOperatorRequests(): number;
   createRequest(request: SupportRequest): void;
+  createNextRequest(request: SupportRequest): boolean;
   enqueueDelivery(delivery: PendingDelivery): string;
   findActiveRequest(
     channel: ClientChannelKind,
