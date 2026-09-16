@@ -267,10 +267,7 @@ export function createTelegramMainKeyboard(
     .getCustomSections()
     .map((section) => ({ text: section.label }));
   const customRows = createButtonRows(customButtons);
-  const actionRows =
-    state.stage === 'active' || state.intakePaused
-      ? []
-      : [[{ text: handoffButton }]];
+  const actionRows = state.intakePaused ? [] : [[{ text: handoffButton }]];
   const keyboard = [...informationRows, ...customRows, ...actionRows];
   if (keyboard.length === 0) {
     return { remove_keyboard: true };

@@ -137,7 +137,7 @@ export function createVkMainKeyboard(
     buttons: [
       ...informationRows,
       ...customRows,
-      ...(state.stage === 'active' || state.intakePaused
+      ...(state.intakePaused
         ? []
         : [[createButton(handoffButton, 'handoff', 'primary')]]),
     ],
