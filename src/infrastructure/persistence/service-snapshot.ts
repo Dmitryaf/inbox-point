@@ -335,12 +335,18 @@ function calculateSnapshotExpiration(
          FROM support_requests AS request
          WHERE request.status = 'closed'
            AND request.closed_at IS NOT NULL
-           AND NOT EXISTS (
+            AND NOT EXISTS (
              SELECT 1
              FROM deliveries AS unfinished
              WHERE unfinished.request_id = request.id
-               AND unfinished.status != 'sent'
-           )
+                AND unfinished.status != 'sent'
+            )
+            AND NOT EXISTS (
+              SELECT 1
+              FROM conversation_messages AS held
+              WHERE held.request_id = request.id
+                AND held.processing_state = 'held'
+            )
            AND (
              request.client_display_name IS NOT NULL
              OR EXISTS (
@@ -451,6 +457,12 @@ function expiredEligibleRequestWhere(): string {
       FROM deliveries AS unfinished
       WHERE unfinished.request_id = request.id
         AND unfinished.status != 'sent'
+    )
+    AND NOT EXISTS (
+      SELECT 1
+      FROM conversation_messages AS held
+      WHERE held.request_id = request.id
+        AND held.processing_state = 'held'
     )`;
 }
 

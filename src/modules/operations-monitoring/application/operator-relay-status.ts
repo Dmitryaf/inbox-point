@@ -15,26 +15,37 @@ export function mapOperatorRelayStatus(
       clientMessageId: incident.clientMessageId,
       confirmable: incident.confirmable,
       createdAt: incident.createdAt.toISOString(),
+      heldReplyCount: incident.heldReplyCount,
       id: incident.id,
       initial: incident.initial,
       operatorTopicId: incident.operatorTopicId,
-      reason: operatorActionReason(incident.kind),
+      reason: operatorActionReason(incident),
       requestId: incident.requestId,
       sequence: incident.sequence,
+      status: incident.status,
     })),
-    state: summary.uncertain > 0 ? 'uncertain' : 'healthy',
+    state: incidents.length > 0 ? 'uncertain' : 'healthy',
     uncertain: summary.uncertain,
   };
 }
 
-function operatorActionReason(kind: OperatorActionIncident['kind']): string {
-  if (kind === 'close_request') {
+function operatorActionReason(incident: OperatorActionIncident): string {
+  if (incident.kind === 'close_request') {
     return 'Telegram мог закрыть тему, но подтверждение не получено. Обращение пока оставлено открытым в Inbox Point.';
   }
-  if (kind === 'reopen_request') {
+  if (incident.kind === 'reopen_request' && incident.heldReplyCount > 0) {
+    if (incident.status === 'failed') {
+      return 'Открыть Telegram-тему не удалось. Ответ сохранён, повторно отправлять его не нужно. Можно повторить открытие или продолжить обращение здесь.';
+    }
+    if (incident.status === 'abandoned') {
+      return 'Подтверждено, что тема осталась закрыта. Ответ сохранён, повторно отправлять его не нужно. Можно повторить открытие или продолжить обращение здесь.';
+    }
+    return 'Не удалось подтвердить открытие Telegram-темы. Ответ оператора сохранён и будет отправлен после разрешения ситуации.';
+  }
+  if (incident.kind === 'reopen_request') {
     return 'Telegram мог открыть тему, но подтверждение не получено. Обращение пока оставлено закрытым в Inbox Point.';
   }
-  if (kind === 'open_request') {
+  if (incident.kind === 'open_request') {
     return 'Telegram мог создать тему, но подтверждение не получено. Обращение сохранено в web inbox; проверьте группу и закройте возможный дубль.';
   }
   return 'Telegram мог принять сообщение клиента. Не отправляйте его повторно: проверьте тему или переведите обращение в web inbox.';

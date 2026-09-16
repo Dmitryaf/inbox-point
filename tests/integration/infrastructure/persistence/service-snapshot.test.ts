@@ -101,7 +101,7 @@ describe('ServiceSnapshotService', () => {
       formatVersion: 1,
       instanceId: 'default',
       secretsIncluded: false,
-      sqliteSchemaVersion: 8,
+      sqliteSchemaVersion: 9,
     });
     expect(manifest.files.map((file) => file.name)).toEqual([
       'database.sqlite',
@@ -185,7 +185,7 @@ describe('ServiceSnapshotService', () => {
       readOnly: true,
     });
     expect(restoredDatabase.prepare('PRAGMA user_version').get()).toEqual({
-      user_version: 8,
+      user_version: 9,
     });
     restoredDatabase.close();
     const restoredSessionStore = new SqliteAdminSessionStore(

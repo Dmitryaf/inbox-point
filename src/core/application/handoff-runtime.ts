@@ -115,6 +115,10 @@ export class HandoffRuntime {
     );
   }
 
+  public retryHeldOperatorReply(actionId: string): Promise<boolean> {
+    return this.handoffService.retryHeldOperatorReply(actionId);
+  }
+
   public registerClientChannel(channel: ClientChannel): () => void {
     this.deliveryWorker.registerChannel(channel);
     return () => this.deliveryWorker.unregisterChannel(channel);

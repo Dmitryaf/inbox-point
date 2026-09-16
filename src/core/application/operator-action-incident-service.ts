@@ -3,7 +3,7 @@ import type { SupportRepository } from '@/core/contracts/support-repository.js';
 import type { OperatorActionIncident } from '@/core/model/operator-action.js';
 
 export type OperatorActionResolution =
-  'completed' | 'not_completed' | 'received' | 'use_web';
+  'completed' | 'not_completed' | 'received' | 'retry' | 'use_web';
 
 export class OperatorActionIncidentService {
   private readonly clock: () => Date;
@@ -11,14 +11,17 @@ export class OperatorActionIncidentService {
   public constructor(
     private readonly repository: SupportRepository,
     clock: () => Date = () => new Date(),
+    private readonly retryHeldOperatorReply?: (
+      actionId: string,
+    ) => Promise<boolean>,
   ) {
     this.clock = clock;
   }
 
-  public resolve(
+  public async resolve(
     actionId: string,
     resolution: OperatorActionResolution,
-  ): boolean {
+  ): Promise<boolean> {
     const incident = this.repository.findOperatorActionIncident(actionId);
     if (!incident) {
       return false;
@@ -27,10 +30,25 @@ export class OperatorActionIncidentService {
     if (resolution === 'received') {
       return this.confirmReceived(incident);
     }
+    if (resolution === 'retry') {
+      return this.retryHeldReply(incident);
+    }
     if (resolution === 'completed' || resolution === 'not_completed') {
       return this.resolveLifecycle(incident, resolution);
     }
     return this.moveToWeb(incident);
+  }
+
+  private retryHeldReply(incident: OperatorActionIncident): Promise<boolean> {
+    if (
+      incident.kind !== 'reopen_request' ||
+      incident.heldReplyCount === 0 ||
+      (incident.status !== 'failed' && incident.status !== 'abandoned') ||
+      !this.retryHeldOperatorReply
+    ) {
+      return Promise.resolve(false);
+    }
+    return this.retryHeldOperatorReply(incident.id);
   }
 
   private resolveLifecycle(
@@ -38,8 +56,8 @@ export class OperatorActionIncidentService {
     resolution: 'completed' | 'not_completed',
   ): boolean {
     if (
-      incident.kind !== 'close_request' &&
-      incident.kind !== 'reopen_request'
+      incident.status !== 'outcome_unknown' ||
+      (incident.kind !== 'close_request' && incident.kind !== 'reopen_request')
     ) {
       return false;
     }
@@ -100,6 +118,27 @@ export class OperatorActionIncidentService {
   }
 
   private moveToWeb(incident: OperatorActionIncident): boolean {
+    if (
+      incident.kind === 'reopen_request' &&
+      incident.heldReplyCount > 0 &&
+      (incident.status === 'failed' || incident.status === 'abandoned')
+    ) {
+      const now = this.clock();
+      const moved = this.repository.moveHeldOperatorReplyToWeb(
+        incident.id,
+        now,
+      );
+      if (moved) {
+        this.repository.recordUsageEvent({
+          channel: incident.channel,
+          id: `web-takeover:${incident.requestId}`,
+          occurredAt: now,
+          requestId: incident.requestId,
+          type: 'web_takeover',
+        });
+      }
+      return moved;
+    }
     if (incident.kind !== 'open_request' && incident.kind !== 'relay_message') {
       return false;
     }

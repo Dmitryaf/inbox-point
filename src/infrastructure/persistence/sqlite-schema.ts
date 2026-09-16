@@ -1,6 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 
-export const sqliteSchemaVersion = 8;
+export const sqliteSchemaVersion = 9;
 
 export const requiredSqliteTables = [
   'client_conversation_states',
@@ -42,6 +42,10 @@ export function initializeSqliteSchema(database: DatabaseSync): void {
   if (hasTables !== undefined && version === 7) {
     database.exec(operatorActionsTableSql);
     migrateSchema(database, schemaEightMigrationSql, 8);
+    version = 8;
+  }
+  if (hasTables !== undefined && version === 8) {
+    migrateConversationMessagesForHeldReplies(database);
     version = sqliteSchemaVersion;
   }
   if (hasTables !== undefined && version !== sqliteSchemaVersion) {
@@ -128,6 +132,52 @@ function migrateSchema(
   try {
     database.exec(migrationSql);
     database.exec(`PRAGMA user_version = ${nextVersion}`);
+    database.exec('COMMIT');
+  } catch (error: unknown) {
+    database.exec('ROLLBACK');
+    throw error;
+  }
+}
+
+function migrateConversationMessagesForHeldReplies(
+  database: DatabaseSync,
+): void {
+  database.exec('BEGIN IMMEDIATE');
+  try {
+    const columns = new Set(
+      (
+        database.prepare('PRAGMA table_info(conversation_messages)').all() as {
+          name: string;
+        }[]
+      ).map((column) => column.name),
+    );
+    if (!columns.has('processing_state')) {
+      database.exec(`ALTER TABLE conversation_messages
+        ADD COLUMN processing_state TEXT NOT NULL DEFAULT 'accepted' CHECK (
+          processing_state IN ('accepted', 'held')
+        )`);
+    }
+    if (!columns.has('event_source')) {
+      database.exec(
+        'ALTER TABLE conversation_messages ADD COLUMN event_source TEXT',
+      );
+    }
+    if (!columns.has('external_event_id')) {
+      database.exec(
+        'ALTER TABLE conversation_messages ADD COLUMN external_event_id TEXT',
+      );
+    }
+    if (!columns.has('prerequisite_action_id')) {
+      database.exec(
+        'ALTER TABLE conversation_messages ADD COLUMN prerequisite_action_id TEXT',
+      );
+    }
+    if (!columns.has('held_sequence')) {
+      database.exec(`ALTER TABLE conversation_messages
+        ADD COLUMN held_sequence INTEGER CHECK (held_sequence >= 0)`);
+    }
+    database.exec(schemaNineIndexesSql);
+    database.exec('PRAGMA user_version = 9');
     database.exec('COMMIT');
   } catch (error: unknown) {
     database.exec('ROLLBACK');
@@ -265,6 +315,17 @@ const schemaEightMigrationSql = `
   ${clientConversationStateTableSql}
 `;
 
+const schemaNineIndexesSql = `
+  CREATE UNIQUE INDEX IF NOT EXISTS conversation_messages_by_operator_event
+    ON conversation_messages(request_id, event_source, external_event_id)
+    WHERE event_source IS NOT NULL AND external_event_id IS NOT NULL;
+  CREATE UNIQUE INDEX IF NOT EXISTS conversation_messages_by_held_sequence
+    ON conversation_messages(request_id, held_sequence)
+    WHERE held_sequence IS NOT NULL;
+  CREATE INDEX IF NOT EXISTS conversation_messages_by_prerequisite
+    ON conversation_messages(prerequisite_action_id, processing_state);
+`;
+
 const supportRequestIndexesAndTriggersSql = `
   CREATE UNIQUE INDEX IF NOT EXISTS one_active_request_per_conversation
     ON support_requests(channel, external_conversation_id)
@@ -343,11 +404,29 @@ const initialSchemaSql = `
     sender_name TEXT,
     text TEXT NOT NULL,
     created_at TEXT NOT NULL,
+    processing_state TEXT NOT NULL DEFAULT 'accepted' CHECK (
+      processing_state IN ('accepted', 'held')
+    ),
+    event_source TEXT,
+    external_event_id TEXT,
+    prerequisite_action_id TEXT,
+    held_sequence INTEGER CHECK (held_sequence >= 0),
     UNIQUE (request_id, direction, external_message_id)
   ) STRICT;
 
   CREATE INDEX IF NOT EXISTS conversation_messages_by_request
     ON conversation_messages(request_id, created_at, id);
+
+  CREATE UNIQUE INDEX IF NOT EXISTS conversation_messages_by_operator_event
+    ON conversation_messages(request_id, event_source, external_event_id)
+    WHERE event_source IS NOT NULL AND external_event_id IS NOT NULL;
+
+  CREATE UNIQUE INDEX IF NOT EXISTS conversation_messages_by_held_sequence
+    ON conversation_messages(request_id, held_sequence)
+    WHERE held_sequence IS NOT NULL;
+
+  CREATE INDEX IF NOT EXISTS conversation_messages_by_prerequisite
+    ON conversation_messages(prerequisite_action_id, processing_state);
 
   CREATE TABLE IF NOT EXISTS processed_events (
     source TEXT NOT NULL,

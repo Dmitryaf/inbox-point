@@ -25,9 +25,29 @@ export interface OperatorActionIncident extends OperatorAction {
   channel: ClientChannelKind;
   confirmable: boolean;
   conversationId: string;
+  heldReplyCount: number;
   lastError: string;
 }
 
 export interface OperatorActionSummary {
   uncertain: number;
+}
+
+export function createOperatorLifecycleAction(
+  kind: 'close_request' | 'reopen_request',
+  operatorTopicId: string,
+  options: { externalEventId: string; requestId: string },
+  createdAt: Date,
+): PendingOperatorAction {
+  const operation = kind === 'close_request' ? 'close' : 'reopen';
+  return {
+    clientMessageId: options.externalEventId,
+    createdAt,
+    id: `operator-${operation}:${options.requestId}:${options.externalEventId}`,
+    initial: false,
+    kind,
+    operatorTopicId,
+    requestId: options.requestId,
+    sequence: 0,
+  };
 }

@@ -1,6 +1,7 @@
 import type {
   ConversationMessage,
   FailedDelivery,
+  HeldOperatorReply,
   MessageLink,
   PendingDelivery,
   QueuedDelivery,
@@ -100,6 +101,7 @@ export interface SupportRepository
     externalEventId: string,
     completedAt: Date,
   ): void;
+  completeHeldOperatorReopen(actionId: string, completedAt: Date): boolean;
   completeDelivery(
     deliveryId: string,
     externalMessageId: string,
@@ -140,6 +142,10 @@ export interface SupportRepository
     requestId: string,
     clientMessageId: string,
   ): boolean;
+  holdOperatorReply(
+    reply: HeldOperatorReply,
+    reopenAction: PendingOperatorAction,
+  ): OperatorAction | undefined;
   findRequestByTopicId(topicId: string): SupportRequest | undefined;
   findRequestById(requestId: string): SupportRequest | undefined;
   findPendingDeliveries(
@@ -166,6 +172,7 @@ export interface SupportRepository
     expectedTopicId: string,
     claimedAt: Date,
   ): boolean;
+  moveHeldOperatorReplyToWeb(actionId: string, resolvedAt: Date): boolean;
   markDeliveryRetry(
     deliveryId: string,
     error: string,

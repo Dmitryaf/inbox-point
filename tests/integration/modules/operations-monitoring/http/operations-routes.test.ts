@@ -66,9 +66,9 @@ describe('operations monitoring routes', () => {
       },
       monitoring: createMonitoringService(),
       operatorActions: {
-        resolve: (actionId, resolution) => {
+        resolve: async (actionId, resolution) => {
           resolvedOperatorActions.push(`${resolution}:${actionId}`);
-          return true;
+          return Promise.resolve(true);
         },
       },
       serviceControl: createServiceControl(),

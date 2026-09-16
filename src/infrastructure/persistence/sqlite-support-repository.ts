@@ -18,6 +18,7 @@ import type {
 import type {
   ConversationMessage,
   FailedDelivery,
+  HeldOperatorReply,
   MessageLink,
   OperatorRequestSummary,
   PendingDelivery,
@@ -49,6 +50,7 @@ import {
   type ConversationMessageRow,
   type DeliveryRow,
   type FailedDeliveryRow,
+  type HeldOperatorReplyRow,
   type OperatorActionIncidentRow,
   type OperatorActionRow,
   type OperatorRequestSummaryRow,
@@ -76,6 +78,7 @@ export class SqliteSupportRepository implements SupportRepository {
       throw error;
     }
     recoverInterruptedSqliteWork(this.database);
+    this.recoverCompletedHeldOperatorReplies();
   }
 
   public addMessageLink(link: MessageLink): void {
@@ -299,6 +302,30 @@ export class SqliteSupportRepository implements SupportRepository {
 
     if (Number(result.changes) !== 1) {
       throw new Error('Claimed event was not found');
+    }
+  }
+
+  public completeHeldOperatorReopen(
+    actionId: string,
+    completedAt: Date,
+  ): boolean {
+    this.database.exec('BEGIN IMMEDIATE');
+    try {
+      const action = this.findOperatorActionRow(actionId);
+      if (action?.kind !== 'reopen_request' || action.status !== 'sent') {
+        this.database.exec('ROLLBACK');
+        return false;
+      }
+      if (!this.activateRequestForHeldReplies(action)) {
+        this.database.exec('ROLLBACK');
+        return false;
+      }
+      this.releaseHeldOperatorReplies(action.request_id, completedAt);
+      this.database.exec('COMMIT');
+      return true;
+    } catch (error: unknown) {
+      this.database.exec('ROLLBACK');
+      throw error;
     }
   }
 
@@ -583,30 +610,7 @@ export class SqliteSupportRepository implements SupportRepository {
   }
 
   public prepareOperatorAction(action: PendingOperatorAction): OperatorAction {
-    this.database
-      .prepare(
-        `INSERT OR IGNORE INTO operator_actions (
-          id,
-          request_id,
-          kind,
-          client_message_id,
-          operator_topic_id,
-          sequence,
-          initial,
-          status,
-          created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)`,
-      )
-      .run(
-        action.id,
-        action.requestId,
-        action.kind,
-        action.clientMessageId,
-        action.operatorTopicId,
-        action.sequence,
-        action.initial ? 1 : 0,
-        action.createdAt.toISOString(),
-      );
+    this.insertOperatorAction(action);
 
     const row = this.findOperatorActionRow(action.id);
     if (!row || !operatorActionMatches(row, action)) {
@@ -742,7 +746,8 @@ export class SqliteSupportRepository implements SupportRepository {
            LEFT JOIN deliveries AS delivery
              ON delivery.request_id = message.request_id
             AND delivery.operator_message_id = message.external_message_id
-           WHERE message.request_id = ?
+            WHERE message.request_id = ?
+              AND message.processing_state = 'accepted'
            ORDER BY message.created_at DESC, message.rowid DESC
            LIMIT ?
          )
@@ -859,7 +864,26 @@ export class SqliteSupportRepository implements SupportRepository {
     actionId: string,
   ): OperatorActionIncident | undefined {
     const rows = this.findOperatorActionIncidentRows(
-      `WHERE action.id = ? AND action.status = 'outcome_unknown'`,
+      `WHERE action.id = ?
+         AND (
+           action.status = 'outcome_unknown'
+           OR (
+             action.kind = 'reopen_request'
+             AND (
+               action.status = 'failed'
+               OR (
+                 action.status = 'abandoned'
+                 AND action.manual_resolution = 'confirmed_not_completed'
+               )
+             )
+             AND EXISTS (
+               SELECT 1
+               FROM conversation_messages AS held
+               WHERE held.prerequisite_action_id = action.id
+                 AND held.processing_state = 'held'
+             )
+           )
+         )`,
       actionId,
     );
     const row = rows[0];
@@ -871,6 +895,22 @@ export class SqliteSupportRepository implements SupportRepository {
   ): readonly OperatorActionIncident[] {
     return this.findOperatorActionIncidentRows(
       `WHERE action.status = 'outcome_unknown'
+          OR (
+            action.kind = 'reopen_request'
+            AND (
+              action.status = 'failed'
+              OR (
+                action.status = 'abandoned'
+                AND action.manual_resolution = 'confirmed_not_completed'
+              )
+            )
+            AND EXISTS (
+              SELECT 1
+              FROM conversation_messages AS held
+              WHERE held.prerequisite_action_id = action.id
+                AND held.processing_state = 'held'
+            )
+          )
        ORDER BY action.created_at DESC, action.id DESC
        LIMIT ?`,
       limit,
@@ -902,10 +942,16 @@ export class SqliteSupportRepository implements SupportRepository {
       .prepare(
         `SELECT action.id, action.request_id, action.kind,
                 action.client_message_id, action.operator_topic_id,
-                action.sequence, action.initial, action.status,
-                action.external_result_id, action.last_error,
-                action.created_at, request.channel,
-                CASE WHEN action.kind IN ('close_request', 'reopen_request')
+                 action.sequence, action.initial, action.status,
+                 action.external_result_id, action.last_error,
+                 action.created_at, request.channel,
+                 (
+                   SELECT COUNT(*)
+                   FROM conversation_messages AS held
+                   WHERE held.prerequisite_action_id = action.id
+                     AND held.processing_state = 'held'
+                 ) AS held_reply_count,
+                 CASE WHEN action.kind IN ('close_request', 'reopen_request')
                   THEN 1
                 WHEN action.kind = 'relay_message' AND NOT EXISTS (
                   SELECT 1
@@ -935,6 +981,168 @@ export class SqliteSupportRepository implements SupportRepository {
          WHERE id = ?`,
       )
       .get(actionId) as OperatorActionRow | undefined;
+  }
+
+  private insertOperatorAction(action: PendingOperatorAction): void {
+    this.database
+      .prepare(
+        `INSERT OR IGNORE INTO operator_actions (
+          id,
+          request_id,
+          kind,
+          client_message_id,
+          operator_topic_id,
+          sequence,
+          initial,
+          status,
+          created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)`,
+      )
+      .run(
+        action.id,
+        action.requestId,
+        action.kind,
+        action.clientMessageId,
+        action.operatorTopicId,
+        action.sequence,
+        action.initial ? 1 : 0,
+        action.createdAt.toISOString(),
+      );
+  }
+
+  private findBlockingReopenAction(
+    requestId: string,
+    operatorTopicId: string,
+  ): OperatorActionRow | undefined {
+    return this.database
+      .prepare(
+        `SELECT id, request_id, kind, client_message_id, operator_topic_id,
+                sequence, initial, status, external_result_id, last_error,
+                created_at
+         FROM operator_actions
+         WHERE request_id = ?
+           AND operator_topic_id = ?
+           AND kind = 'reopen_request'
+           AND (
+             status IN ('pending', 'sending', 'failed', 'outcome_unknown')
+             OR (
+               status = 'abandoned'
+               AND manual_resolution = 'confirmed_not_completed'
+             )
+           )
+         ORDER BY created_at DESC, rowid DESC
+         LIMIT 1`,
+      )
+      .get(requestId, operatorTopicId) as OperatorActionRow | undefined;
+  }
+
+  public holdOperatorReply(
+    reply: HeldOperatorReply,
+    reopenAction: PendingOperatorAction,
+  ): OperatorAction | undefined {
+    if (reopenAction.kind !== 'reopen_request') {
+      throw new Error('Held operator replies require a reopen action');
+    }
+
+    this.database.exec('BEGIN IMMEDIATE');
+    try {
+      const request = this.findRequestById(reply.requestId);
+      if (
+        request?.status !== 'closed' ||
+        request.operatorTopicId !== reopenAction.operatorTopicId
+      ) {
+        this.database.exec('COMMIT');
+        return undefined;
+      }
+
+      const existing = this.database
+        .prepare(
+          `SELECT prerequisite_action_id, processing_state
+           FROM conversation_messages
+           WHERE request_id = ?
+             AND direction = 'operator_to_client'
+             AND (
+               external_message_id = ?
+               OR (event_source = ? AND external_event_id = ?)
+             )
+           LIMIT 1`,
+        )
+        .get(
+          reply.requestId,
+          reply.externalMessageId,
+          reply.eventSource,
+          reply.externalEventId,
+        ) as
+        | { prerequisite_action_id: string | null; processing_state: string }
+        | undefined;
+      if (existing?.processing_state === 'accepted') {
+        this.database.exec('COMMIT');
+        return undefined;
+      }
+      if (existing?.prerequisite_action_id) {
+        const existingAction = this.findOperatorActionRow(
+          existing.prerequisite_action_id,
+        );
+        if (!existingAction) {
+          throw new Error('Held operator reply prerequisite was not found');
+        }
+        this.database.exec('COMMIT');
+        return mapOperatorAction(existingAction);
+      }
+
+      let action = this.findBlockingReopenAction(
+        reply.requestId,
+        reopenAction.operatorTopicId,
+      );
+      if (!action) {
+        this.insertOperatorAction(reopenAction);
+        action = this.findOperatorActionRow(reopenAction.id);
+        if (!action || !operatorActionMatches(action, reopenAction)) {
+          throw new Error('Operator action identity collision');
+        }
+      }
+
+      const nextSequence = this.database
+        .prepare(
+          `SELECT COALESCE(MAX(held_sequence), -1) + 1 AS sequence
+           FROM conversation_messages
+           WHERE request_id = ? AND held_sequence IS NOT NULL`,
+        )
+        .get(reply.requestId) as { sequence: number };
+      this.database
+        .prepare(
+          `INSERT OR IGNORE INTO conversation_messages (
+            id,
+            request_id,
+            direction,
+            external_message_id,
+            sender_name,
+            text,
+            created_at,
+            processing_state,
+            event_source,
+            external_event_id,
+            prerequisite_action_id,
+            held_sequence
+          ) VALUES (?, ?, 'operator_to_client', ?, NULL, ?, ?, 'held', ?, ?, ?, ?)`,
+        )
+        .run(
+          reply.id,
+          reply.requestId,
+          reply.externalMessageId,
+          reply.text,
+          reply.createdAt.toISOString(),
+          reply.eventSource,
+          reply.externalEventId,
+          action.id,
+          nextSequence.sequence,
+        );
+      this.database.exec('COMMIT');
+      return mapOperatorAction(action);
+    } catch (error: unknown) {
+      this.database.exec('ROLLBACK');
+      throw error;
+    }
   }
 
   public findPendingInboundEvents(
@@ -1285,7 +1493,7 @@ export class SqliteSupportRepository implements SupportRepository {
          SET status = 'failed',
              last_error = ?,
              attempt_started_at = NULL
-         WHERE id = ? AND status = 'sending'`,
+         WHERE id = ? AND status IN ('pending', 'sending')`,
       )
       .run(error, actionId);
   }
@@ -1476,25 +1684,35 @@ export class SqliteSupportRepository implements SupportRepository {
     externalResultId: string,
     confirmedAt: Date,
   ): void {
-    this.database
-      .prepare(
-        `UPDATE operator_actions
-         SET status = 'sent',
-             external_result_id = ?,
-             last_error = NULL,
-             completed_at = ?,
-             resolved_at = ?
-         WHERE request_id = ?
-           AND kind = ?
-           AND status = 'outcome_unknown'`,
-      )
-      .run(
-        externalResultId,
-        confirmedAt.toISOString(),
-        confirmedAt.toISOString(),
-        requestId,
-        kind,
-      );
+    this.database.exec('BEGIN IMMEDIATE');
+    try {
+      this.database
+        .prepare(
+          `UPDATE operator_actions
+           SET status = 'sent',
+               external_result_id = ?,
+               last_error = NULL,
+               completed_at = ?,
+               resolved_at = ?
+           WHERE request_id = ?
+             AND kind = ?
+             AND status = 'outcome_unknown'`,
+        )
+        .run(
+          externalResultId,
+          confirmedAt.toISOString(),
+          confirmedAt.toISOString(),
+          requestId,
+          kind,
+        );
+      if (kind === 'reopen_request') {
+        this.releaseHeldOperatorReplies(requestId, confirmedAt);
+      }
+      this.database.exec('COMMIT');
+    } catch (error: unknown) {
+      this.database.exec('ROLLBACK');
+      throw error;
+    }
   }
 
   public moveOperatorActionRequestToWeb(actionId: string): boolean {
@@ -1518,6 +1736,84 @@ export class SqliteSupportRepository implements SupportRepository {
       incident.operatorTopicId,
       webTopicId,
     );
+  }
+
+  public moveHeldOperatorReplyToWeb(
+    actionId: string,
+    resolvedAt: Date,
+  ): boolean {
+    const incident = this.findOperatorActionIncident(actionId);
+    if (
+      incident?.kind !== 'reopen_request' ||
+      incident.heldReplyCount === 0 ||
+      (incident.status !== 'failed' && incident.status !== 'abandoned')
+    ) {
+      return false;
+    }
+
+    this.database.exec('BEGIN IMMEDIATE');
+    try {
+      const request = this.findRequestById(incident.requestId);
+      if (request?.status !== 'closed') {
+        this.database.exec('ROLLBACK');
+        return false;
+      }
+      const latest = this.findLatestRequest(
+        request.channel,
+        request.conversationId,
+      );
+      const active = this.findActiveRequest(
+        request.channel,
+        request.conversationId,
+      );
+      if (latest?.id !== request.id || (active && active.id !== request.id)) {
+        this.database.exec('ROLLBACK');
+        return false;
+      }
+      const webTopicId = `${webOperatorTopicPrefix}${request.id}`;
+      const moved = this.database
+        .prepare(
+          `UPDATE support_requests
+           SET operator_topic_id = ?,
+               status = 'active',
+               closed_at = NULL,
+               web_owned_at = ?
+           WHERE id = ?
+             AND operator_topic_id = ?
+             AND status = 'closed'`,
+        )
+        .run(
+          webTopicId,
+          resolvedAt.toISOString(),
+          request.id,
+          incident.operatorTopicId,
+        );
+      if (Number(moved.changes) !== 1) {
+        this.database.exec('ROLLBACK');
+        return false;
+      }
+      this.clearAwaitingClientQuestionForRequest(request.id);
+      this.releaseHeldOperatorReplies(request.id, resolvedAt);
+      const resolved = this.database
+        .prepare(
+          `UPDATE operator_actions
+           SET status = 'abandoned',
+               last_error = NULL,
+               manual_resolution = 'use_web',
+               resolved_at = ?
+           WHERE id = ? AND status IN ('failed', 'abandoned')`,
+        )
+        .run(resolvedAt.toISOString(), actionId);
+      if (Number(resolved.changes) !== 1) {
+        this.database.exec('ROLLBACK');
+        return false;
+      }
+      this.database.exec('COMMIT');
+      return true;
+    } catch (error: unknown) {
+      this.database.exec('ROLLBACK');
+      throw error;
+    }
   }
 
   public resolveOperatorActionAsWeb(
@@ -1554,7 +1850,7 @@ export class SqliteSupportRepository implements SupportRepository {
   ): boolean {
     const incident = this.findOperatorActionIncident(actionId);
     if (
-      !incident ||
+      incident?.status !== 'outcome_unknown' ||
       (incident.kind !== 'close_request' && incident.kind !== 'reopen_request')
     ) {
       return false;
@@ -1576,16 +1872,12 @@ export class SqliteSupportRepository implements SupportRepository {
               incident.operatorTopicId,
             );
         } else {
-          const result = this.database
-            .prepare(
-              `UPDATE support_requests
-               SET status = 'active', closed_at = NULL
-               WHERE id = ? AND operator_topic_id = ?`,
-            )
-            .run(incident.requestId, incident.operatorTopicId);
-          if (Number(result.changes) === 1) {
-            this.clearAwaitingClientQuestionForRequest(incident.requestId);
+          const action = this.findOperatorActionRow(actionId);
+          if (!action || !this.activateRequestForHeldReplies(action)) {
+            this.database.exec('ROLLBACK');
+            return false;
           }
+          this.releaseHeldOperatorReplies(incident.requestId, resolvedAt);
         }
       }
 
@@ -1644,6 +1936,126 @@ export class SqliteSupportRepository implements SupportRepository {
          )`,
       )
       .run(requestId);
+  }
+
+  private activateRequestForHeldReplies(action: OperatorActionRow): boolean {
+    const request = this.findRequestById(action.request_id);
+    if (request?.operatorTopicId !== action.operator_topic_id) {
+      return false;
+    }
+    const latest = this.findLatestRequest(
+      request.channel,
+      request.conversationId,
+    );
+    const active = this.findActiveRequest(
+      request.channel,
+      request.conversationId,
+    );
+    if (latest?.id !== request.id || (active && active.id !== request.id)) {
+      return false;
+    }
+    if (request.status === 'closed') {
+      const updated = this.database
+        .prepare(
+          `UPDATE support_requests
+           SET status = 'active', closed_at = NULL
+           WHERE id = ? AND operator_topic_id = ? AND status = 'closed'`,
+        )
+        .run(action.request_id, action.operator_topic_id);
+      if (Number(updated.changes) !== 1) {
+        return false;
+      }
+    }
+    this.clearAwaitingClientQuestionForRequest(action.request_id);
+    return true;
+  }
+
+  private releaseHeldOperatorReplies(
+    requestId: string,
+    completedAt: Date,
+  ): void {
+    const request = this.findRequestById(requestId);
+    if (request?.status !== 'active') {
+      throw new Error('Held operator replies require an active request');
+    }
+    const replies = this.database
+      .prepare(
+        `SELECT id, request_id, external_message_id, text, created_at,
+                event_source, external_event_id, prerequisite_action_id,
+                held_sequence
+         FROM conversation_messages
+         WHERE request_id = ?
+           AND direction = 'operator_to_client'
+           AND processing_state = 'held'
+         ORDER BY held_sequence, created_at, rowid`,
+      )
+      .all(requestId) as unknown as HeldOperatorReplyRow[];
+
+    for (const reply of replies) {
+      this.database
+        .prepare(
+          `INSERT OR IGNORE INTO deliveries (
+            id,
+            request_id,
+            idempotency_key,
+            operator_message_id,
+            channel,
+            external_conversation_id,
+            text,
+            reply_to_external_message_id,
+            status,
+            attempts,
+            created_at,
+            next_attempt_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, 'pending', 0, ?, ?)`,
+        )
+        .run(
+          `held-delivery:${reply.id}`,
+          requestId,
+          `operator:${reply.external_event_id}`,
+          reply.external_message_id,
+          request.channel,
+          request.conversationId,
+          reply.text,
+          reply.created_at,
+          reply.created_at,
+        );
+      this.database
+        .prepare(
+          `UPDATE conversation_messages
+           SET processing_state = 'accepted'
+           WHERE id = ? AND processing_state = 'held'`,
+        )
+        .run(reply.id);
+    }
+
+    if (replies.length > 0) {
+      this.recordUsageEvent({
+        channel: request.channel,
+        id: `first-reply:${request.id}`,
+        occurredAt: completedAt,
+        requestId: request.id,
+        type: 'first_reply',
+      });
+    }
+  }
+
+  private recoverCompletedHeldOperatorReplies(): void {
+    const rows = this.database
+      .prepare(
+        `SELECT DISTINCT action.id
+         FROM operator_actions AS action
+         JOIN conversation_messages AS held
+           ON held.prerequisite_action_id = action.id
+          AND held.processing_state = 'held'
+         WHERE action.kind = 'reopen_request' AND action.status = 'sent'`,
+      )
+      .all() as unknown as { id: string }[];
+    for (const row of rows) {
+      if (!this.completeHeldOperatorReopen(row.id, new Date())) {
+        throw new Error('Completed held operator reply could not be recovered');
+      }
+    }
   }
 
   public switchOperatorTopic(

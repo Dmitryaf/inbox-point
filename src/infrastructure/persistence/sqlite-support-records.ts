@@ -40,6 +40,18 @@ export interface ConversationMessageRow {
   text: string;
 }
 
+export interface HeldOperatorReplyRow {
+  created_at: string;
+  event_source: string;
+  external_event_id: string;
+  external_message_id: string;
+  held_sequence: number;
+  id: string;
+  prerequisite_action_id: string;
+  request_id: string;
+  text: string;
+}
+
 export interface DeliveryRow {
   attempts: number;
   channel: ClientChannelKind;
@@ -83,6 +95,7 @@ export interface OperatorActionIncidentRow extends OperatorActionRow {
   channel: ClientChannelKind;
   confirmable: number;
   external_conversation_id: string;
+  held_reply_count: number;
 }
 
 export function mapRequest(row: SupportRequestRow): SupportRequest {
@@ -125,6 +138,7 @@ export function mapOperatorActionIncident(
     channel: row.channel,
     confirmable: row.confirmable === 1,
     conversationId: row.external_conversation_id,
+    heldReplyCount: row.held_reply_count,
     lastError: row.last_error ?? 'Unknown operator action error',
   };
 }
