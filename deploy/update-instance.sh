@@ -174,6 +174,11 @@ fi
 compose=(docker compose -p "$project" --env-file "$env_file")
 
 if [[ "$previous_commit" != "$target_commit" ]]; then
+  current_step='build snapshot helper for the current source'
+  if ! "${compose[@]}" --profile operations build backup; then
+    abort 'snapshot helper build failed'
+  fi
+
   current_step='create service snapshot in the application volume'
   if ! snapshot_output=$(
     "${compose[@]}" exec -T app node dist/create-service-snapshot.js
