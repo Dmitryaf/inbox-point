@@ -3,7 +3,13 @@ import type { ClientChannelKind } from './support-message.js';
 export type OperatorActionKind =
   'close_request' | 'open_request' | 'relay_message' | 'reopen_request';
 export type OperatorActionStatus =
-  'abandoned' | 'failed' | 'outcome_unknown' | 'pending' | 'sending' | 'sent';
+  | 'abandoned'
+  | 'failed'
+  | 'outcome_unknown'
+  | 'pending'
+  | 'sending'
+  | 'sent'
+  | 'superseded';
 
 export interface PendingOperatorAction {
   clientMessageId: string;

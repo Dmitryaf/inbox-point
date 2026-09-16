@@ -62,7 +62,7 @@ export interface InboundEventOperationsStatus {
 
 export interface InboundEventIncident {
   attempts: number;
-  channel: 'VK';
+  channel: 'Telegram' | 'VK';
   eventId: string;
   reason: string;
   receivedAt: string;
@@ -92,7 +92,13 @@ export interface OperatorRelayIncident {
   requestId: string;
   sequence: number;
   status:
-    'abandoned' | 'failed' | 'outcome_unknown' | 'pending' | 'sending' | 'sent';
+    | 'abandoned'
+    | 'failed'
+    | 'outcome_unknown'
+    | 'pending'
+    | 'sending'
+    | 'sent'
+    | 'superseded';
 }
 
 export interface OutboundDeliveryOperationsStatus {

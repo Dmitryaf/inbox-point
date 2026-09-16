@@ -9,7 +9,7 @@ const eventParamsSchema = z.object({
 });
 const resolutionSchema = z.object({
   resolution: z.enum(['retry', 'skip']),
-  source: z.literal('vk:long-poll'),
+  source: z.enum(['telegram:get-updates', 'vk:long-poll']),
 });
 
 export function registerInboundEventRoutes(

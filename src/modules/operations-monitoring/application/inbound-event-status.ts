@@ -11,7 +11,7 @@ export function mapInboundEventStatus(
   return {
     incidents: incidents.map((incident) => ({
       attempts: incident.attempts,
-      channel: 'VK',
+      channel: incident.source.startsWith('telegram:') ? 'Telegram' : 'VK',
       eventId: incident.externalEventId,
       reason: incident.lastError,
       receivedAt: incident.receivedAt.toISOString(),

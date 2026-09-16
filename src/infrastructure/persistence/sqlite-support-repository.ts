@@ -79,6 +79,7 @@ export class SqliteSupportRepository implements SupportRepository {
     }
     recoverInterruptedSqliteWork(this.database);
     this.recoverCompletedHeldOperatorReplies();
+    this.recoverSupersededHeldOperatorReplies();
   }
 
   public addMessageLink(link: MessageLink): void {
@@ -527,13 +528,11 @@ export class SqliteSupportRepository implements SupportRepository {
         this.database.exec('ROLLBACK');
         return false;
       }
-      const latest = this.findLatestRequest(
+      this.supersedeConversationOperatorActions(
         request.channel,
         request.conversationId,
+        request.createdAt,
       );
-      if (latest?.status === 'closed') {
-        this.supersedeHeldOperatorReplies(latest.id, request.createdAt);
-      }
       this.insertRequest(request);
       this.database.exec('COMMIT');
       return true;
@@ -642,6 +641,54 @@ export class SqliteSupportRepository implements SupportRepository {
       this.database.exec('ROLLBACK');
       throw error;
     }
+  }
+
+  public enqueueInboundEventsAndAdvanceCursor(
+    source: string,
+    events: readonly PendingInboundEvent[],
+    nextCursor: string,
+  ): void {
+    if (events.some((event) => event.source !== source)) {
+      throw new Error('Inbound event batch contains a different source');
+    }
+
+    const insert = this.database.prepare(
+      `INSERT OR IGNORE INTO inbound_events (
+        source,
+        external_event_id,
+        payload,
+        received_at
+      ) VALUES (?, ?, ?, ?)`,
+    );
+    this.database.exec('BEGIN IMMEDIATE');
+    try {
+      for (const event of events) {
+        insert.run(
+          event.source,
+          event.externalEventId,
+          event.payload,
+          event.receivedAt.toISOString(),
+        );
+      }
+      this.database
+        .prepare(
+          `INSERT INTO inbound_event_cursors (source, cursor)
+           VALUES (?, ?)
+           ON CONFLICT (source) DO UPDATE SET cursor = excluded.cursor`,
+        )
+        .run(source, nextCursor);
+      this.database.exec('COMMIT');
+    } catch (error: unknown) {
+      this.database.exec('ROLLBACK');
+      throw error;
+    }
+  }
+
+  public findInboundEventCursor(source: string): string | undefined {
+    const row = this.database
+      .prepare('SELECT cursor FROM inbound_event_cursors WHERE source = ?')
+      .get(source) as { cursor: string } | undefined;
+    return row?.cursor;
   }
 
   public prepareOperatorAction(action: PendingOperatorAction): OperatorAction {
@@ -2089,36 +2136,57 @@ export class SqliteSupportRepository implements SupportRepository {
     }
   }
 
-  private supersedeHeldOperatorReplies(
-    requestId: string,
-    resolvedAt: Date,
-  ): void {
+  private supersedeOperatorActions(requestId: string, resolvedAt: Date): void {
     this.database
       .prepare(
         `UPDATE operator_actions
-         SET status = 'abandoned',
-             last_error = NULL,
+         SET status = 'superseded',
              attempt_started_at = NULL,
              manual_resolution = NULL,
              resolved_at = ?
          WHERE request_id = ?
-           AND kind = 'reopen_request'
-           AND status IN (
-             'pending',
-             'sending',
-             'failed',
-             'outcome_unknown',
-             'abandoned'
+           AND (
+             status IN (
+               'pending',
+               'sending',
+               'failed',
+               'outcome_unknown'
+             )
+             OR (
+               status = 'abandoned'
+               AND kind = 'reopen_request'
+               AND EXISTS (
+                 SELECT 1
+                 FROM conversation_messages AS held
+                 WHERE held.prerequisite_action_id = operator_actions.id
+                   AND held.processing_state = 'held'
+               )
+             )
            )
-           AND EXISTS (
-             SELECT 1
-             FROM conversation_messages AS held
-             WHERE held.prerequisite_action_id = operator_actions.id
-               AND held.processing_state = 'held'
-           )`,
+        `,
       )
       .run(resolvedAt.toISOString(), requestId);
     this.releaseHeldOperatorReplies(requestId, resolvedAt, 'closed');
+  }
+
+  private supersedeConversationOperatorActions(
+    channel: ClientChannelKind,
+    conversationId: string,
+    resolvedAt: Date,
+  ): void {
+    const requests = this.database
+      .prepare(
+        `SELECT id
+         FROM support_requests
+         WHERE channel = ?
+           AND external_conversation_id = ?
+           AND status = 'closed'
+         ORDER BY rowid`,
+      )
+      .all(channel, conversationId) as unknown as { id: string }[];
+    for (const request of requests) {
+      this.supersedeOperatorActions(request.id, resolvedAt);
+    }
   }
 
   private recoverCompletedHeldOperatorReplies(): void {
@@ -2136,6 +2204,24 @@ export class SqliteSupportRepository implements SupportRepository {
       if (!this.completeHeldOperatorReopen(row.id, new Date())) {
         throw new Error('Completed held operator reply could not be recovered');
       }
+    }
+  }
+
+  private recoverSupersededHeldOperatorReplies(): void {
+    const rows = this.database
+      .prepare(
+        `SELECT DISTINCT action.request_id
+         FROM operator_actions AS action
+         JOIN conversation_messages AS held
+           ON held.prerequisite_action_id = action.id
+          AND held.processing_state = 'held'
+         JOIN support_requests AS request ON request.id = action.request_id
+         WHERE action.status = 'superseded'
+           AND request.status = 'closed'`,
+      )
+      .all() as unknown as { request_id: string }[];
+    for (const row of rows) {
+      this.releaseHeldOperatorReplies(row.request_id, new Date(), 'closed');
     }
   }
 

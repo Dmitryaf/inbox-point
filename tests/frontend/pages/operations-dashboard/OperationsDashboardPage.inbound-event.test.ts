@@ -52,7 +52,8 @@ describe('OperationsDashboardPage inbound event quarantine', () => {
     });
     await flushPromises();
 
-    expect(wrapper.text()).toContain('Необработанные сообщения VK');
+    expect(wrapper.text()).toContain('Необработанные сообщения');
+    expect(wrapper.text()).toContain('Сообщение VK требует решения');
     expect(wrapper.text()).not.toContain('Quarantine VK');
     expect(
       wrapper
@@ -77,6 +78,73 @@ describe('OperationsDashboardPage inbound event quarantine', () => {
       }),
     );
     expect(wrapper.text()).toContain('Повторная обработка началась.');
+    wrapper.unmount();
+  });
+
+  it('warns before retrying an uncertain Telegram update', async () => {
+    const status = attentionOperationsStatus();
+    status.inboundEvents = {
+      incidents: [
+        {
+          attempts: 1,
+          channel: 'Telegram',
+          eventId: 'telegram-update-1',
+          reason: 'Telegram delivery outcome is unknown',
+          receivedAt: '2026-09-16T12:00:00.000Z',
+          source: 'telegram:get-updates',
+        },
+      ],
+      quarantined: 1,
+      state: 'quarantined',
+    };
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = requestUrl(input);
+      if (url.endsWith('/session')) {
+        return Promise.resolve(response({ authenticated: true }));
+      }
+      if (url.endsWith('/service-control')) {
+        return Promise.resolve(
+          response({
+            channels: {
+              telegram: { mode: 'active' },
+              vk: { mode: 'active' },
+            },
+            delivery: { mode: 'active' },
+          }),
+        );
+      }
+      if (url.endsWith('/inbound-events/telegram-update-1/resolve')) {
+        return Promise.resolve(response({ resolved: true }));
+      }
+      return Promise.resolve(response(status));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const wrapper = mount(OperationsDashboardPage, {
+      global: { stubs: { RouterLink: true } },
+    });
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Сообщение Telegram требует решения');
+    expect(wrapper.text()).toContain(
+      'Перед повтором проверьте чат: предыдущий ответ бота мог быть отправлен.',
+    );
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Повторить обработку')
+      ?.trigger('click');
+    await flushPromises();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/ops/inbound-events/telegram-update-1/resolve',
+      expect.objectContaining({
+        body: JSON.stringify({
+          resolution: 'retry',
+          source: 'telegram:get-updates',
+        }),
+        method: 'POST',
+      }),
+    );
     wrapper.unmount();
   });
 });

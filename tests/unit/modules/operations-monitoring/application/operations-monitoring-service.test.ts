@@ -285,7 +285,7 @@ describe('OperationsMonitoringService', () => {
     expect(monitoring.isReady()).toBe(true);
   });
 
-  it('blocks readiness and exposes a quarantined VK event', () => {
+  it('blocks readiness and exposes quarantined channel events', () => {
     const monitoring = new OperationsMonitoringService({
       channelActivity: () => ({
         lastSuccessfulPollAt: new Date('2026-09-04T12:01:00.000Z'),
@@ -301,8 +301,15 @@ describe('OperationsMonitoringService', () => {
           receivedAt: new Date('2026-09-04T12:00:00.000Z'),
           source: 'vk:long-poll',
         },
+        {
+          attempts: 1,
+          externalEventId: 'telegram-update-1',
+          lastError: 'Telegram delivery outcome is unknown',
+          receivedAt: new Date('2026-09-04T12:00:01.000Z'),
+          source: 'telegram:get-updates',
+        },
       ],
-      inboundEventSummary: () => ({ quarantined: 1 }),
+      inboundEventSummary: () => ({ quarantined: 2 }),
       startedAt: new Date('2026-09-04T12:00:00.000Z'),
       telegramStatus: () => ({ connected: true, source: 'local' }),
       vkStatus: () => ({ connected: true, source: 'local' }),
@@ -316,8 +323,13 @@ describe('OperationsMonitoringService', () => {
             channel: 'VK',
             eventId: 'vk-event-1',
           },
+          {
+            attempts: 1,
+            channel: 'Telegram',
+            eventId: 'telegram-update-1',
+          },
         ],
-        quarantined: 1,
+        quarantined: 2,
         state: 'quarantined',
       },
       state: 'attention',

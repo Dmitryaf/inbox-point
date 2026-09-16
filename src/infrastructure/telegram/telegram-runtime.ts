@@ -101,10 +101,11 @@ export class TelegramRuntime implements TelegramRuntimeControl {
         gateway,
       ),
       config.pollTimeoutSeconds,
+      this.repository,
       {
         onError: (error) => {
           this.activity.recordPollFailed('telegram', new Date());
-          this.logger.error(error, 'Telegram update failed; retrying');
+          this.logger.error(error, 'Telegram update processing failed');
         },
         onSuccess: () => {
           this.activity.recordPollSucceeded('telegram', new Date());

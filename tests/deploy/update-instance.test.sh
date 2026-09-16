@@ -143,7 +143,7 @@ if [[ ${1:-} == compose ]]; then
       elif [[ ${FAKE_MISSING_LISTED_FILE:-0} == 1 ]]; then
         manifest_files+=",{\"name\":\"service-control.json\",\"sha256\":\"$empty_sha\",\"size\":0}"
       fi
-      printf '{"closedRequestRetentionDays":7,"createdAt":"2026-09-14T12:00:00.000Z","expiresAt":"2026-09-21T12:00:00.000Z","files":[%s],"formatVersion":1,"instanceId":"test","secretsIncluded":false,"sqliteSchemaVersion":9}\n' \
+      printf '{"closedRequestRetentionDays":7,"createdAt":"2026-09-14T12:00:00.000Z","expiresAt":"2026-09-21T12:00:00.000Z","files":[%s],"formatVersion":1,"instanceId":"test","secretsIncluded":false,"sqliteSchemaVersion":10}\n' \
         "$manifest_files" >"$snapshot/manifest.json"
       if [[ ${FAKE_MISSING_LISTED_FILE:-0} == 1 ]]; then
         printf '%s\n' 'synthetic manifest verification failure' >&2

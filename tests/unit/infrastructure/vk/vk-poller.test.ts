@@ -346,6 +346,7 @@ describe('VkPoller', () => {
 });
 
 class MemoryInboundEventStore implements InboundEventStore {
+  private readonly cursors = new Map<string, string>();
   private readonly events: StoredInboundEvent[] = [];
 
   public completeInboundEvent(source: string, externalEventId: string): void {
@@ -369,6 +370,19 @@ class MemoryInboundEventStore implements InboundEventStore {
         this.events.push({ ...event, attempts: 0, status: 'pending' });
       }
     }
+  }
+
+  public enqueueInboundEventsAndAdvanceCursor(
+    source: string,
+    events: readonly PendingInboundEvent[],
+    nextCursor: string,
+  ): void {
+    this.enqueueInboundEvents(events);
+    this.cursors.set(source, nextCursor);
+  }
+
+  public findInboundEventCursor(source: string): string | undefined {
+    return this.cursors.get(source);
   }
 
   public findPendingInboundEvents(
