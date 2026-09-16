@@ -1,6 +1,10 @@
 import { dirname, resolve } from 'node:path';
 
-import { loadRuntimeConfig } from '@/config/runtime-config.js';
+import {
+  loadRuntimeConfig,
+  type TelegramRuntimeConfig,
+  type VkRuntimeConfig,
+} from '@/config/runtime-config.js';
 import { ClientInformationCatalog } from '@/core/application/client-information.js';
 import { DataRetentionService } from '@/core/application/data-retention-service.js';
 import { HandoffRuntime } from '@/core/application/handoff-runtime.js';
@@ -28,7 +32,10 @@ import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-sup
 import { SqliteAdminSessionStore } from '@/infrastructure/persistence/sqlite-admin-session-store.js';
 import { FileTelegramSettingsStore } from '@/infrastructure/persistence/telegram-settings-store.js';
 import { FileVkSettingsStore } from '@/infrastructure/persistence/vk-settings-store.js';
-import { startChannelRuntime } from '@/infrastructure/runtime/start-channel-runtime.js';
+import {
+  startChannelRuntime,
+  startChannelRuntimes,
+} from '@/infrastructure/runtime/start-channel-runtime.js';
 import { TelegramRuntime } from '@/infrastructure/telegram/telegram-runtime.js';
 import { TelegramSetupController } from '@/infrastructure/telegram/telegram-setup-controller.js';
 import { createTelegramHttpTransport } from '@/infrastructure/telegram/telegram-http-transport.js';
@@ -136,7 +143,7 @@ async function start(): Promise<void> {
     } catch (error: unknown) {
       app.log.error({ err: error }, 'Ignoring invalid local content settings');
     }
-    let storedTelegram;
+    let storedTelegram: TelegramRuntimeConfig | undefined;
     if (!config.telegram) {
       try {
         storedTelegram = await settingsStore.load();
@@ -158,7 +165,7 @@ async function start(): Promise<void> {
       source,
       telegramTransport.fetch,
     );
-    let storedVk;
+    let storedVk: VkRuntimeConfig | undefined;
     if (!config.vk) {
       try {
         storedVk = await vkSettingsStore.load();
@@ -188,6 +195,7 @@ async function start(): Promise<void> {
     registerSetupRoutes(app, setup, vkSetup, adminRouteAccess);
     registerManagementRoutes(app, contentSetup, adminRouteAccess);
     const operationsMonitoring = new OperationsMonitoringService({
+      activeWebRequests: () => repository.countActiveWebOperatorRequests(),
       channelActivity: (channel) => channelActivity.snapshot(channel),
       deliveryActivity: () => deliveryActivity.snapshot(),
       deliveryFailures: () => repository.findFailedDeliveries(20),
@@ -223,19 +231,21 @@ async function start(): Promise<void> {
       error: (error: unknown, message: string) =>
         app.log.error({ err: error }, message),
     };
-    await Promise.all([
-      startChannelRuntime({
-        channel: 'Telegram',
-        config: config.telegram ?? storedTelegram,
-        logger: runtimeLogger,
-        runtime: telegramRuntime,
-      }),
-      startChannelRuntime({
-        channel: 'VK',
-        config: config.vk ?? storedVk,
-        logger: runtimeLogger,
-        runtime: vkRuntime,
-      }),
+    await startChannelRuntimes([
+      () =>
+        startChannelRuntime({
+          channel: 'Telegram',
+          config: config.telegram ?? storedTelegram,
+          logger: runtimeLogger,
+          runtime: telegramRuntime,
+        }),
+      () =>
+        startChannelRuntime({
+          channel: 'VK',
+          config: config.vk ?? storedVk,
+          logger: runtimeLogger,
+          runtime: vkRuntime,
+        }),
     ]);
     const adminUiAvailable =
       Boolean(config.adminPassword) || config.nodeEnv !== 'production';

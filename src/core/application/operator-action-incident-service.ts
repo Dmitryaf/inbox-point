@@ -84,6 +84,7 @@ export class OperatorActionIncidentService {
           id: incident.requestId,
         },
         now,
+        'delayed',
       );
     }
     return this.repository.resolveOperatorActionAsWeb(incident.id, now);

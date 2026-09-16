@@ -25,6 +25,7 @@ export class HandoffRuntime {
   private readonly handoffService: HandoffService;
   private readonly logger: HandoffRuntimeDependencies['logger'];
   private readonly operatorInbox: SwitchableOperatorInbox;
+  private recoveryPromise: Promise<void> | undefined;
 
   public constructor(dependencies: HandoffRuntimeDependencies) {
     this.logger = dependencies.logger;
@@ -122,7 +123,33 @@ export class HandoffRuntime {
   public registerOperatorInbox(
     inbox: OperatorInbox & DeliveryIncidentNotifier,
   ): () => void {
-    return this.operatorInbox.register(inbox);
+    const unregister = this.operatorInbox.register(inbox);
+    void this.recoverEmergencyRequests();
+    return unregister;
+  }
+
+  public recoverEmergencyRequests(): Promise<void> {
+    if (this.recoveryPromise) {
+      return this.recoveryPromise;
+    }
+
+    const recovery = this.operatorInbox
+      .withRegisteredInbox((inbox) =>
+        this.handoffService.recoverWebRequests(inbox),
+      )
+      .catch((error: unknown) => {
+        this.logger.error(
+          error,
+          'Emergency web inbox recovery failed; will retry after a successful Telegram poll',
+        );
+      })
+      .finally(() => {
+        if (this.recoveryPromise === recovery) {
+          this.recoveryPromise = undefined;
+        }
+      });
+    this.recoveryPromise = recovery;
+    return recovery;
   }
 
   public start(): void {

@@ -27,11 +27,17 @@ export interface OperationsStatus {
   };
   inboundEvents: InboundEventOperationsStatus;
   observedAt: string;
+  operatorInbox: OperatorInboxOperationsStatus;
   operatorRelays: OperatorRelayOperationsStatus;
   outbound: OutboundDeliveryOperationsStatus;
   startedAt: string;
   state: 'attention' | 'healthy' | 'maintenance';
   uptimeSeconds: number;
+}
+
+export interface OperatorInboxOperationsStatus {
+  activeWebRequests: number;
+  state: 'attention' | 'healthy';
 }
 
 export interface InboundEventOperationsStatus {

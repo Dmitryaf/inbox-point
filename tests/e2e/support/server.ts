@@ -72,6 +72,7 @@ app.get('/api/ops/status', requireAdmin, () => ({
   inboundEvents: { incidents: [], quarantined: 0, state: 'healthy' },
   intake: { telegram: { mode: 'active' }, vk: { mode: 'active' } },
   observedAt: '2026-09-10T08:00:00.000Z',
+  operatorInbox: { activeWebRequests: 0, state: 'healthy' },
   operatorRelays: { incidents: [], state: 'healthy', uncertain: 0 },
   outbound: { mode: 'active' },
   startedAt: '2026-09-10T07:00:00.000Z',

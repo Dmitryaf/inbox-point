@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { DeliveryWorker } from '@/core/application/delivery-worker.js';
+import { EmergencyOperatorInbox } from '@/core/application/emergency-operator-inbox.js';
 import { HandoffService } from '@/core/application/handoff-service.js';
 import { DeliveryOutcomeUnknownError } from '@/core/contracts/client-channel.js';
 import {
@@ -384,6 +385,42 @@ describe('Telegram handoff integration', () => {
       operatorTopicId: '900',
     });
     expect(gateway.sent).toHaveLength(1);
+  });
+
+  it('moves an unanswered web request to one Telegram topic after recovery', async () => {
+    const handoff = new HandoffService({
+      operatorInbox: new EmergencyOperatorInbox(),
+      repository,
+    });
+    const firstMessage = {
+      channel: 'vk' as const,
+      conversationId: '101',
+      displayName: 'VK Customer',
+      externalMessageId: 'vk-message-1',
+      receivedAt: new Date('2026-09-16T06:48:00.000Z'),
+      text: 'First question',
+    };
+    await handoff.handleClientMessage('vk-event-1', firstMessage);
+    await handoff.handleClientMessage('vk-event-2', {
+      ...firstMessage,
+      externalMessageId: 'vk-message-2',
+      text: 'More details',
+    });
+
+    const telegramInbox = new TelegramTopicsInbox(gateway, -1_001, repository);
+    await handoff.recoverWebRequests(telegramInbox);
+    await handoff.recoverWebRequests(telegramInbox);
+
+    expect(gateway.createdTopics).toEqual([900]);
+    expect(gateway.sent).toHaveLength(2);
+    expect(gateway.sent[0]).toMatchObject({
+      messageThreadId: 900,
+    });
+    expect(gateway.sent[0]?.text).toContain('First question');
+    expect(gateway.sent[1]?.text).toContain('More details');
+    expect(repository.findActiveRequest('vk', '101')).toMatchObject({
+      operatorTopicId: '900',
+    });
   });
 
   it('shows the menu without opening a request and hands off the actual question', async () => {

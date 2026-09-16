@@ -34,6 +34,7 @@ export interface ConversationMessageRow {
   direction: ConversationMessage['direction'];
   external_message_id: string;
   id: string;
+  message_rowid: number;
   request_id: string;
   sender_name: string | null;
   text: string;

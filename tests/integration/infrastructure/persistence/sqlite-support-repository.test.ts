@@ -709,6 +709,50 @@ describe('SqliteSupportRepository', () => {
     repository.close();
   });
 
+  it('selects only unanswered active web requests for Telegram recovery', () => {
+    const repository = new SqliteSupportRepository(':memory:');
+    const createdAt = new Date('2026-09-16T06:48:00.000Z');
+    for (const requestId of ['unanswered', 'answered']) {
+      repository.createRequest({
+        channel: 'vk',
+        conversationId: requestId,
+        createdAt,
+        id: requestId,
+        operatorTopicId: `web:${requestId}`,
+        status: 'active',
+      });
+      repository.recordConversationMessage({
+        createdAt,
+        direction: 'client_to_operator',
+        externalMessageId: `${requestId}-message`,
+        id: `${requestId}-message`,
+        requestId,
+        text: 'Question',
+      });
+    }
+    repository.recordConversationMessage({
+      createdAt: new Date(createdAt.getTime() + 1_000),
+      direction: 'operator_to_client',
+      externalMessageId: 'web:answer',
+      id: 'web:answer',
+      requestId: 'answered',
+      text: 'Answer',
+    });
+
+    expect(repository.countActiveWebOperatorRequests()).toBe(2);
+    expect(repository.findRecoverableWebOperatorRequests(10)).toEqual([
+      expect.objectContaining({ id: 'unanswered' }),
+    ]);
+
+    repository.closeRequest(
+      'unanswered',
+      new Date(createdAt.getTime() + 2_000),
+    );
+    expect(repository.countActiveWebOperatorRequests()).toBe(1);
+    expect(repository.findRecoverableWebOperatorRequests(10)).toEqual([]);
+    repository.close();
+  });
+
   it('releases an interrupted event claim when the process restarts', () => {
     const directory = mkdtempSync(join(tmpdir(), 'inbox-point-test-'));
     temporaryDirectories.push(directory);

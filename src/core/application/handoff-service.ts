@@ -14,6 +14,10 @@ import {
   isWebOperatorTopic,
 } from '@/core/model/operator-topic.js';
 import type { SupportMessage } from '@/core/model/support-message.js';
+import type {
+  ConversationMessage,
+  SupportRequest,
+} from '@/core/model/support-request.js';
 
 export interface HandoffServiceDependencies {
   clock?: () => Date;
@@ -51,6 +55,129 @@ export class HandoffService {
         },
       );
     });
+  }
+
+  public async recoverWebRequests(
+    operatorInbox: OperatorInbox,
+    limit = 50,
+  ): Promise<void> {
+    const failures: unknown[] = [];
+    const requests = this.repository.findRecoverableWebOperatorRequests(limit);
+
+    for (const request of requests) {
+      const conversationKey = createConversationKey(request);
+      try {
+        await this.clientMessageQueue.run(conversationKey, async () => {
+          await this.recoverWebRequest(request.id, operatorInbox);
+        });
+      } catch (error: unknown) {
+        failures.push(error);
+      }
+    }
+
+    if (failures.length > 0) {
+      throw new AggregateError(
+        failures,
+        'One or more emergency web requests could not be delivered to Telegram',
+      );
+    }
+  }
+
+  private async recoverWebRequest(
+    requestId: string,
+    operatorInbox: OperatorInbox,
+  ): Promise<void> {
+    const request = this.repository.findRequestById(requestId);
+    if (
+      request?.status !== 'active' ||
+      !isWebOperatorTopic(request.operatorTopicId)
+    ) {
+      return;
+    }
+
+    const messages = this.repository.findConversationMessages(request.id);
+    if (
+      messages.some((message) => message.direction === 'operator_to_client')
+    ) {
+      return;
+    }
+    const clientMessages = messages.filter(
+      (message) => message.direction === 'client_to_operator',
+    );
+    const firstMessage = clientMessages[0];
+    if (!firstMessage) {
+      return;
+    }
+
+    const source = createRecoveredSupportMessage(request, firstMessage);
+    const opened = await operatorInbox.openRequest({
+      requestId: request.id,
+      source,
+      title: createTopicTitle(request.channel, source.displayName),
+    });
+    if (isWebOperatorTopic(opened.topicId)) {
+      throw new Error('Emergency request recovery did not reach Telegram');
+    }
+
+    const current = this.repository.findRequestById(request.id);
+    if (current?.status !== 'active') {
+      return;
+    }
+    if (current.operatorTopicId === request.operatorTopicId) {
+      const switched = this.repository.switchOperatorTopic(
+        request.id,
+        request.operatorTopicId,
+        opened.topicId,
+      );
+      if (!switched) {
+        throw new Error('The operator surface changed concurrently');
+      }
+    } else if (current.operatorTopicId !== opened.topicId) {
+      return;
+    }
+
+    try {
+      for (const [index, message] of clientMessages.entries()) {
+        const recoveredMessage = createRecoveredSupportMessage(
+          request,
+          message,
+        );
+        const relayed = await operatorInbox.relayCustomerMessage(
+          opened.topicId,
+          recoveredMessage,
+          { initial: index === 0, requestId: request.id },
+        );
+        if (relayed.operatorTopicId !== opened.topicId) {
+          throw new Error('The recovered operator topic changed unexpectedly');
+        }
+        for (const operatorMessageId of relayed.operatorMessageIds) {
+          this.repository.ensureMessageLink({
+            clientMessageId: message.externalMessageId,
+            createdAt: this.clock(),
+            direction: 'client_to_operator',
+            id: this.createId(),
+            operatorMessageId,
+            requestId: request.id,
+          });
+        }
+      }
+    } catch (error: unknown) {
+      if (!(error instanceof OperatorActionOutcomeUnknownError)) {
+        this.repository.switchOperatorTopic(
+          request.id,
+          opened.topicId,
+          request.operatorTopicId,
+        );
+      }
+      throw error;
+    }
+
+    enqueueHandoffAcknowledgement(
+      this.repository,
+      request,
+      this.clock(),
+      'recovered',
+    );
   }
 
   private async processClientMessage(message: SupportMessage): Promise<void> {
@@ -139,6 +266,7 @@ export class HandoffService {
         id: request.id,
       },
       this.clock(),
+      isWebOperatorTopic(relayed.operatorTopicId) ? 'delayed' : 'sent',
     );
   }
 
@@ -201,6 +329,7 @@ export class HandoffService {
           id: requestId,
         },
         this.clock(),
+        'delayed',
       );
       return;
     }
@@ -384,8 +513,24 @@ export class HandoffService {
   }
 }
 
-function createConversationKey(message: SupportMessage): string {
+function createConversationKey(
+  message: Pick<SupportMessage, 'channel' | 'conversationId'>,
+): string {
   return `${message.channel}\u0000${message.conversationId}`;
+}
+
+function createRecoveredSupportMessage(
+  request: SupportRequest,
+  message: ConversationMessage,
+): SupportMessage {
+  return {
+    channel: request.channel,
+    conversationId: request.conversationId,
+    displayName: message.senderName ?? request.displayName ?? 'Клиент',
+    externalMessageId: message.externalMessageId,
+    receivedAt: message.createdAt,
+    text: message.text,
+  };
 }
 
 function topicEventCanAffectRequest(

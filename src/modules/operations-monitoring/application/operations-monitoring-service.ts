@@ -1,8 +1,6 @@
 import type { DeliverySummary } from '@/core/contracts/support-repository.js';
-import type {
-  OperatorActionIncident,
-  OperatorActionSummary,
-} from '@/core/model/operator-action.js';
+import type { OperatorActionIncident } from '@/core/model/operator-action.js';
+import type { OperatorActionSummary } from '@/core/model/operator-action.js';
 import type { ClientChannelKind } from '@/core/model/support-message.js';
 import type { FailedDelivery } from '@/core/model/support-request.js';
 import type {
@@ -21,10 +19,16 @@ import {
   type ChannelStatusSnapshot,
 } from '@/modules/operations-monitoring/application/channel-status.js';
 import { operationsAreReady } from '@/modules/operations-monitoring/application/operations-readiness.js';
+import {
+  mapOperatorInboxStatus,
+  mapOperationsState,
+  uptimeSeconds,
+} from '@/modules/operations-monitoring/application/operations-summary.js';
 import type { OperationsStatus } from '@/modules/operations-monitoring/model/operations-status.js';
 import type { ServiceControlState } from '@/modules/service-control/model/service-control-state.js';
 
 export interface OperationsMonitoringDependencies {
+  activeWebRequests?: () => number;
   clock?: () => Date;
   channelActivity: (channel: ClientChannelKind) => ChannelActivitySnapshot;
   deliveryActivity: () => DeliveryWorkerActivitySnapshot;
@@ -103,7 +107,7 @@ export class OperationsMonitoringService {
       intake.telegram.mode === 'paused' ||
       intake.vk.mode === 'paused' ||
       outbound.mode === 'paused';
-    const operatorActionIncidents: readonly OperatorActionIncident[] =
+    const operatorActionIncidents =
       this.dependencies.operatorActionIncidents?.() ?? [];
     const operatorRelays = mapOperatorRelayStatus(
       this.dependencies.operatorActionSummary?.() ?? { uncertain: 0 },
@@ -113,6 +117,14 @@ export class OperationsMonitoringService {
       this.dependencies.inboundEventSummary?.() ?? { quarantined: 0 },
       this.dependencies.inboundEventIncidents?.() ?? [],
     );
+    const operatorInbox = mapOperatorInboxStatus(
+      this.dependencies.activeWebRequests?.() ?? 0,
+    );
+    const overallNeedsAttention =
+      needsAttention ||
+      operatorInbox.state === 'attention' ||
+      operatorRelays.state === 'uncertain' ||
+      inboundEvents.state === 'quarantined';
 
     return {
       channels: { telegram, vk },
@@ -120,24 +132,12 @@ export class OperationsMonitoringService {
       intake,
       inboundEvents,
       observedAt: observedAt.toISOString(),
+      operatorInbox,
       operatorRelays,
       outbound,
       startedAt: this.dependencies.startedAt.toISOString(),
-      state:
-        needsAttention ||
-        operatorRelays.state === 'uncertain' ||
-        inboundEvents.state === 'quarantined'
-          ? 'attention'
-          : maintenance
-            ? 'maintenance'
-            : 'healthy',
-      uptimeSeconds: Math.max(
-        0,
-        Math.floor(
-          (observedAt.getTime() - this.dependencies.startedAt.getTime()) /
-            1_000,
-        ),
-      ),
+      state: mapOperationsState(overallNeedsAttention, maintenance),
+      uptimeSeconds: uptimeSeconds(this.dependencies.startedAt, observedAt),
     };
   }
 
