@@ -1,10 +1,11 @@
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
 import type { SupportRequest } from '@/core/model/support-request.js';
 
-export const handoffAcknowledgement = 'Вопрос отправлен.';
-export const handoffDelayedAcknowledgement =
-  'Вопрос сохранён. Доставка оператору задерживается.';
-export const handoffRecoveredAcknowledgement = 'Вопрос доставлен оператору.';
+import { clientMessages } from './client-messages.js';
+
+export const handoffAcknowledgement = clientMessages.handoffSent;
+export const handoffDelayedAcknowledgement = clientMessages.handoffDelayed;
+export const handoffRecoveredAcknowledgement = clientMessages.handoffSent;
 
 export type HandoffAcknowledgementKind = 'delayed' | 'recovered' | 'sent';
 

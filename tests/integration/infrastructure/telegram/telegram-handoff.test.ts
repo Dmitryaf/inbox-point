@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { DeliveryWorker } from '@/core/application/delivery-worker.js';
 import { EmergencyOperatorInbox } from '@/core/application/emergency-operator-inbox.js';
 import { HandoffService } from '@/core/application/handoff-service.js';
+import { clientMessages } from '@/core/application/client-messages.js';
 import { SwitchableOperatorInbox } from '@/core/application/switchable-operator-inbox.js';
 import { DeliveryOutcomeUnknownError } from '@/core/contracts/client-channel.js';
 import {
@@ -256,7 +257,7 @@ describe('Telegram handoff integration', () => {
     expect(gateway.sent[0]?.text).toContain('Question');
     expect(gateway.sent[1]).toMatchObject({
       chatId: 101,
-      text: 'Вопрос отправлен.',
+      text: clientMessages.handoffSent,
     });
     expect(gateway.sent[2]).toMatchObject({
       chatId: 101,
@@ -299,7 +300,7 @@ describe('Telegram handoff integration', () => {
     });
     expect(gateway.sent[0]?.text).toContain('Ответ не доставлен');
     expect(gateway.sent[0]?.text).toContain('Сообщение оператора: 502');
-    expect(gateway.sent[0]?.text).toContain('/ops');
+    expect(gateway.sent[0]?.text).toContain('раздел «Состояние»');
     expect(gateway.sent[0]?.text).not.toContain('Private client answer');
     expect(gateway.sent[0]?.text).not.toContain('request-private-id');
     expect(gateway.sent[0]?.text).not.toContain('delivery-private-id');
@@ -325,7 +326,7 @@ describe('Telegram handoff integration', () => {
       messageThreadId: 900,
     });
     expect(gateway.sent[0]?.text).toContain(
-      'Не отправляйте ответ повторно вслепую',
+      'Не отправляйте тот же ответ повторно',
     );
     expect(gateway.sent[0]?.text).toContain(
       'Не удалось подтвердить доставку ответа',
@@ -405,6 +406,8 @@ describe('Telegram handoff integration', () => {
     expect(gateway.sent.every((message) => message.text.length <= 4_096)).toBe(
       true,
     );
+    expect(gateway.sent[0]?.text).toContain('Первое сообщение:');
+    expect(gateway.sent[1]?.text).toMatch(/^Продолжение сообщения:/);
     expect(
       gateway.sent.reduce(
         (count, message) =>
@@ -561,7 +564,7 @@ describe('Telegram handoff integration', () => {
     expect(gateway.sent).toHaveLength(1);
     expect(gateway.sent[0]).toMatchObject({
       chatId: 101,
-      text: 'Открытого обращения нет. Выберите нужный раздел в меню.',
+      text: clientMessages.noOpenRequest,
     });
   });
 
@@ -573,9 +576,7 @@ describe('Telegram handoff integration', () => {
     expect(repository.findActiveRequest('telegram', '101')).toBeUndefined();
     expect(gateway.sent).toHaveLength(1);
     expect(gateway.sent[0]?.chatId).toBe(101);
-    expect(gateway.sent[0]?.text).toBe(
-      'Сейчас бот временно не принимает новые обращения. Попробуйте немного позже или свяжитесь по контакту, указанному в описании бота.',
-    );
+    expect(gateway.sent[0]?.text).toBe(clientMessages.pausedIntake);
     expect(gateway.sent[0]?.replyMarkup).toEqual({ remove_keyboard: true });
   });
 
@@ -635,23 +636,26 @@ describe('Telegram handoff integration', () => {
     ]);
   });
 
-  it('reports an active request instead of forwarding /start to operators', async () => {
-    await router.route(createPrivateUpdate(1, 501, 'Первый вопрос'));
-    await router.route(createPrivateUpdate(2, 502, '/start'));
+  it.each(['/start', '/menu'])(
+    'opens the active menu for %s without forwarding the command',
+    async (command) => {
+      await router.route(createPrivateUpdate(1, 501, 'Первый вопрос'));
+      await router.route(createPrivateUpdate(2, 502, command));
 
-    expect(gateway.sent).toHaveLength(2);
-    expect(gateway.sent[1]).toMatchObject({
-      chatId: 101,
-      text: 'Разговор уже начат. Напишите сообщение, чтобы продолжить.',
-    });
-    const activeMenu = gateway.sent[1]?.replyMarkup;
-    if (!activeMenu || !('keyboard' in activeMenu)) {
-      throw new Error('Expected an active conversation keyboard');
-    }
-    expect(activeMenu.keyboard.flat().map((button) => button.text)).toEqual([
-      handoffButton,
-    ]);
-  });
+      expect(gateway.sent).toHaveLength(2);
+      expect(gateway.sent[1]).toMatchObject({
+        chatId: 101,
+        text: clientMessages.activeMenu,
+      });
+      const activeMenu = gateway.sent[1]?.replyMarkup;
+      if (!activeMenu || !('keyboard' in activeMenu)) {
+        throw new Error('Expected an active conversation keyboard');
+      }
+      expect(activeMenu.keyboard.flat().map((button) => button.text)).toEqual([
+        handoffButton,
+      ]);
+    },
+  );
 
   it('keeps the handoff button without opening another active request', async () => {
     await router.route(createPrivateUpdate(1, 501, 'Первый вопрос'));
@@ -666,7 +670,7 @@ describe('Telegram handoff integration', () => {
     expect(gateway.sent).toHaveLength(2);
     expect(gateway.sent[1]).toMatchObject({
       chatId: 101,
-      text: 'Разговор уже начат. Напишите сообщение, чтобы продолжить.',
+      text: clientMessages.questionPrompt,
     });
     const activeMenu = gateway.sent[1]?.replyMarkup;
     if (!activeMenu || !('keyboard' in activeMenu)) {
@@ -705,7 +709,7 @@ describe('Telegram handoff integration', () => {
     information.replace({
       faq: [
         {
-          answer: 'Напишите оператору.',
+          answer: 'Напишите нам.',
           question: 'Как записаться?',
         },
       ],
@@ -762,9 +766,7 @@ describe('Telegram handoff integration', () => {
 
     expect(repository.findActiveRequest('telegram', '101')).toBeUndefined();
     expect(gateway.sent).toHaveLength(1);
-    expect(gateway.sent[0]?.text).toBe(
-      'Меню обновилось. Выберите нужный раздел ниже.',
-    );
+    expect(gateway.sent[0]?.text).toBe(clientMessages.menuUpdated);
     const renamedKeyboard = gateway.sent[0]?.replyMarkup;
     if (!renamedKeyboard || !('keyboard' in renamedKeyboard)) {
       throw new Error('Expected a refreshed Telegram keyboard');
@@ -777,12 +779,8 @@ describe('Telegram handoff integration', () => {
     await router.route(createPrivateUpdate(3, 503, 'Удалённая кнопка'));
 
     expect(repository.findActiveRequest('telegram', '101')).toBeUndefined();
-    expect(gateway.sent[1]?.text).toBe(
-      'Меню обновилось. Выберите нужный раздел ниже.',
-    );
-    expect(gateway.sent[2]?.text).toBe(
-      'Меню обновилось. Выберите нужный раздел ниже.',
-    );
+    expect(gateway.sent[1]?.text).toBe(clientMessages.menuUpdated);
+    expect(gateway.sent[2]?.text).toBe(clientMessages.menuUpdated);
   });
 
   it('still sends unknown customer text to the operator after a menu change', async () => {
@@ -1342,7 +1340,7 @@ describe('Telegram handoff integration', () => {
     });
     expect(gateway.sent[2]).toMatchObject({
       chatId: 101,
-      text: 'Разговор уже начат. Напишите сообщение, чтобы продолжить.',
+      text: 'Напишите свой вопрос. Мы ответим здесь.',
     });
     expect(gateway.createdTopics).toEqual([900]);
   });
@@ -1433,7 +1431,7 @@ describe('Telegram handoff integration', () => {
 
     expect(repository.isAwaitingClientQuestion('telegram', '101')).toBe(false);
     const menu = gateway.sent.at(-1);
-    expect(menu?.text).toContain('Здесь можно посмотреть основную информацию');
+    expect(menu?.text).toBe(clientMessages.menuOpened);
     if (!menu?.replyMarkup || !('keyboard' in menu.replyMarkup)) {
       throw new Error('Expected a restored Telegram menu');
     }

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { clientMessages } from '@/core/application/client-messages.js';
 import { HandoffRuntime } from '@/core/application/handoff-runtime.js';
 import {
   OperatorActionOutcomeUnknownError,
@@ -124,7 +125,7 @@ describe('HandoffRuntime', () => {
       repository
         .findPendingDeliveries(new Date('2100-01-01T00:00:00.000Z'), 10)
         .map((delivery) => delivery.text),
-    ).toEqual(['Вопрос сохранён. Доставка оператору задерживается.']);
+    ).toEqual([clientMessages.handoffDelayed]);
 
     const inbox = new FakeOperatorInbox();
     runtime.registerOperatorInbox(inbox);
@@ -139,7 +140,7 @@ describe('HandoffRuntime', () => {
       repository
         .findPendingDeliveries(new Date('2100-01-01T00:00:00.000Z'), 10)
         .map((delivery) => delivery.text),
-    ).toEqual(['Вопрос сохранён. Доставка оператору задерживается.']);
+    ).toEqual([clientMessages.handoffDelayed]);
 
     await runtime.recoverEmergencyRequests();
     expect(inbox.opened).toHaveLength(1);
@@ -262,7 +263,7 @@ describe('HandoffRuntime', () => {
       ),
     ).toEqual([
       expect.objectContaining({
-        text: 'Вопрос сохранён. Доставка оператору задерживается.',
+        text: clientMessages.handoffDelayed,
       }),
     ]);
 
@@ -543,7 +544,7 @@ describe('HandoffRuntime', () => {
       repository
         .findPendingDeliveries(new Date('2100-01-01T00:00:00.000Z'), 10)
         .map((delivery) => delivery.text),
-    ).toEqual(['Вопрос отправлен.']);
+    ).toEqual([clientMessages.handoffSent]);
     expect(
       repository.findConversationMessages(request?.id ?? '', 10),
     ).not.toContainEqual(
