@@ -1,8 +1,9 @@
 import type { DatabaseSync } from 'node:sqlite';
 
-export const sqliteSchemaVersion = 7;
+export const sqliteSchemaVersion = 8;
 
 export const requiredSqliteTables = [
+  'client_conversation_states',
   'conversation_messages',
   'deliveries',
   'inbound_events',
@@ -36,6 +37,11 @@ export function initializeSqliteSchema(database: DatabaseSync): void {
   }
   if (hasTables !== undefined && version === 6) {
     migrateSchema(database, rememberedAdminSessionsTableSql, 7);
+    version = 7;
+  }
+  if (hasTables !== undefined && version === 7) {
+    database.exec(operatorActionsTableSql);
+    migrateSchema(database, schemaEightMigrationSql, 8);
     version = sqliteSchemaVersion;
   }
   if (hasTables !== undefined && version !== sqliteSchemaVersion) {
@@ -88,7 +94,7 @@ function migrateSupportRequestsForTopicReuse(database: DatabaseSync): void {
       DROP TABLE support_requests;
       ALTER TABLE support_requests_v6 RENAME TO support_requests;
       ${supportRequestIndexesAndTriggersSql}
-      PRAGMA user_version = ${sqliteSchemaVersion};
+      PRAGMA user_version = 6;
     `);
 
     const foreignKeyViolations = database
@@ -146,7 +152,12 @@ const operatorActionsTableSql = `
   CREATE TABLE IF NOT EXISTS operator_actions (
     id TEXT PRIMARY KEY,
     request_id TEXT NOT NULL REFERENCES support_requests(id),
-    kind TEXT NOT NULL CHECK (kind IN ('open_request', 'relay_message')),
+    kind TEXT NOT NULL CHECK (kind IN (
+      'close_request',
+      'open_request',
+      'relay_message',
+      'reopen_request'
+    )),
     client_message_id TEXT NOT NULL,
     operator_topic_id TEXT NOT NULL,
     sequence INTEGER NOT NULL,
@@ -165,7 +176,12 @@ const operatorActionsTableSql = `
     attempt_started_at TEXT,
     completed_at TEXT,
     manual_resolution TEXT CHECK (
-      manual_resolution IN ('confirmed_received', 'use_web')
+      manual_resolution IN (
+        'confirmed_completed',
+        'confirmed_not_completed',
+        'confirmed_received',
+        'use_web'
+      )
     ),
     resolved_at TEXT
   ) STRICT;
@@ -183,6 +199,70 @@ const rememberedAdminSessionsTableSql = `
 
   CREATE INDEX IF NOT EXISTS remembered_admin_sessions_by_expiry
     ON remembered_admin_sessions(expires_at);
+`;
+
+const clientConversationStateTableSql = `
+  CREATE TABLE IF NOT EXISTS client_conversation_states (
+    channel TEXT NOT NULL CHECK (channel IN ('telegram', 'vk')),
+    external_conversation_id TEXT NOT NULL,
+    state TEXT NOT NULL CHECK (state = 'awaiting_question'),
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (channel, external_conversation_id)
+  ) STRICT;
+
+  CREATE TRIGGER IF NOT EXISTS clear_client_conversation_state_on_request
+    AFTER INSERT ON support_requests
+    BEGIN
+      DELETE FROM client_conversation_states
+      WHERE channel = NEW.channel
+        AND external_conversation_id = NEW.external_conversation_id;
+    END;
+`;
+
+const schemaEightMigrationSql = `
+  ALTER TABLE support_requests ADD COLUMN web_owned_at TEXT;
+
+  ALTER TABLE operator_actions RENAME TO operator_actions_v7;
+  DROP INDEX IF EXISTS operator_actions_by_status;
+  ${operatorActionsTableSql}
+
+  INSERT INTO operator_actions (
+    id,
+    request_id,
+    kind,
+    client_message_id,
+    operator_topic_id,
+    sequence,
+    initial,
+    status,
+    external_result_id,
+    last_error,
+    created_at,
+    attempt_started_at,
+    completed_at,
+    manual_resolution,
+    resolved_at
+  )
+  SELECT
+    id,
+    request_id,
+    kind,
+    client_message_id,
+    operator_topic_id,
+    sequence,
+    initial,
+    status,
+    external_result_id,
+    last_error,
+    created_at,
+    attempt_started_at,
+    completed_at,
+    manual_resolution,
+    resolved_at
+  FROM operator_actions_v7;
+
+  DROP TABLE operator_actions_v7;
+  ${clientConversationStateTableSql}
 `;
 
 const supportRequestIndexesAndTriggersSql = `
@@ -233,12 +313,14 @@ const initialSchemaSql = `
     external_conversation_id TEXT NOT NULL,
     client_display_name TEXT,
     operator_topic_id TEXT NOT NULL,
+    web_owned_at TEXT,
     status TEXT NOT NULL CHECK (status IN ('active', 'closed')),
     created_at TEXT NOT NULL,
     closed_at TEXT
   ) STRICT;
 
   ${supportRequestIndexesAndTriggersSql}
+  ${clientConversationStateTableSql}
 
   CREATE TABLE IF NOT EXISTS message_links (
     id TEXT PRIMARY KEY,

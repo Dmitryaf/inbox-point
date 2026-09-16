@@ -6,6 +6,7 @@ import type {
   DeliverySummary,
   RetentionCleanupResult,
   SupportRepository,
+  WebOperatorRequestSummary,
 } from '@/core/contracts/support-repository.js';
 import type {
   InboundEventFailureOutcome,
@@ -403,7 +404,7 @@ export class SqliteSupportRepository implements SupportRepository {
             throw new Error('The operator surface changed concurrently');
           }
         }
-      } else {
+      } else if (action.kind === 'relay_message') {
         this.addMessageLink({
           clientMessageId: action.client_message_id,
           createdAt: completedAt,
@@ -445,6 +446,28 @@ export class SqliteSupportRepository implements SupportRepository {
       )
       .get(`${webOperatorTopicPrefix}%`) as { count: number };
     return row.count;
+  }
+
+  public getWebOperatorRequestSummary(): WebOperatorRequestSummary {
+    const row = this.database
+      .prepare(
+        `SELECT
+          SUM(CASE WHEN request.web_owned_at IS NULL
+            THEN 1 ELSE 0 END) AS recoverable,
+          SUM(CASE WHEN request.web_owned_at IS NOT NULL
+            THEN 1 ELSE 0 END) AS web_owned
+         FROM support_requests AS request
+         WHERE request.status = 'active'
+           AND request.operator_topic_id LIKE ?`,
+      )
+      .get(`${webOperatorTopicPrefix}%`) as {
+      recoverable: number | null;
+      web_owned: number | null;
+    };
+    return {
+      recoverable: row.recoverable ?? 0,
+      webOwned: row.web_owned ?? 0,
+    };
   }
 
   public createRequest(request: SupportRequest): void {
@@ -666,12 +689,7 @@ export class SqliteSupportRepository implements SupportRepository {
           ON message.request_id = request.id
         WHERE request.status = 'active'
           AND request.operator_topic_id LIKE ?
-          AND NOT EXISTS (
-            SELECT 1
-            FROM conversation_messages AS operator_message
-            WHERE operator_message.request_id = request.id
-              AND operator_message.direction = 'operator_to_client'
-          )
+          AND request.web_owned_at IS NULL
         GROUP BY request.id
         ORDER BY COALESCE(MAX(message.created_at), request.created_at),
                  request.id
@@ -876,7 +894,9 @@ export class SqliteSupportRepository implements SupportRepository {
                 action.sequence, action.initial, action.status,
                 action.external_result_id, action.last_error,
                 action.created_at, request.channel,
-                CASE WHEN action.kind = 'relay_message' AND NOT EXISTS (
+                CASE WHEN action.kind IN ('close_request', 'reopen_request')
+                  THEN 1
+                WHEN action.kind = 'relay_message' AND NOT EXISTS (
                   SELECT 1
                   FROM operator_actions AS blocking_action
                   WHERE blocking_action.request_id = action.request_id
@@ -1054,6 +1074,22 @@ export class SqliteSupportRepository implements SupportRepository {
     return row ? mapRequest(row) : undefined;
   }
 
+  public isAwaitingClientQuestion(
+    channel: ClientChannelKind,
+    conversationId: string,
+  ): boolean {
+    const row = this.database
+      .prepare(
+        `SELECT 1
+         FROM client_conversation_states
+         WHERE channel = ?
+           AND external_conversation_id = ?
+           AND state = 'awaiting_question'`,
+      )
+      .get(channel, conversationId);
+    return row !== undefined;
+  }
+
   public getDeliverySummary(): DeliverySummary {
     const row = this.database
       .prepare(
@@ -1200,6 +1236,18 @@ export class SqliteSupportRepository implements SupportRepository {
       .run(error, deliveryId);
   }
 
+  public markWebOperatorOwned(requestId: string, claimedAt: Date): void {
+    this.database
+      .prepare(
+        `UPDATE support_requests
+         SET web_owned_at = ?
+         WHERE id = ?
+           AND status = 'active'
+           AND operator_topic_id LIKE ?`,
+      )
+      .run(claimedAt.toISOString(), requestId, `${webOperatorTopicPrefix}%`);
+  }
+
   public markOperatorActionFailed(actionId: string, error: string): void {
     this.database
       .prepare(
@@ -1289,6 +1337,45 @@ export class SqliteSupportRepository implements SupportRepository {
       );
   }
 
+  public rejectOperatorLifecycleActionOutcome(
+    requestId: string,
+    kind: 'close_request' | 'reopen_request',
+    resolvedAt: Date,
+  ): void {
+    this.database
+      .prepare(
+        `UPDATE operator_actions
+         SET status = 'abandoned',
+             last_error = NULL,
+             manual_resolution = 'confirmed_not_completed',
+             resolved_at = ?
+         WHERE request_id = ?
+           AND kind = ?
+           AND status = 'outcome_unknown'`,
+      )
+      .run(resolvedAt.toISOString(), requestId, kind);
+  }
+
+  public setAwaitingClientQuestion(
+    channel: ClientChannelKind,
+    conversationId: string,
+    updatedAt: Date,
+  ): void {
+    this.database
+      .prepare(
+        `INSERT INTO client_conversation_states (
+          channel,
+          external_conversation_id,
+          state,
+          updated_at
+        ) VALUES (?, ?, 'awaiting_question', ?)
+        ON CONFLICT (channel, external_conversation_id) DO UPDATE SET
+          state = excluded.state,
+          updated_at = excluded.updated_at`,
+      )
+      .run(channel, conversationId, updatedAt.toISOString());
+  }
+
   public purgeClosedConversationContent(
     closedBefore: Date,
   ): RetentionCleanupResult {
@@ -1343,6 +1430,33 @@ export class SqliteSupportRepository implements SupportRepository {
     return Number(result.changes) === 1;
   }
 
+  public confirmOperatorLifecycleAction(
+    requestId: string,
+    kind: 'close_request' | 'reopen_request',
+    externalResultId: string,
+    confirmedAt: Date,
+  ): void {
+    this.database
+      .prepare(
+        `UPDATE operator_actions
+         SET status = 'sent',
+             external_result_id = ?,
+             last_error = NULL,
+             completed_at = ?,
+             resolved_at = ?
+         WHERE request_id = ?
+           AND kind = ?
+           AND status = 'outcome_unknown'`,
+      )
+      .run(
+        externalResultId,
+        confirmedAt.toISOString(),
+        confirmedAt.toISOString(),
+        requestId,
+        kind,
+      );
+  }
+
   public moveOperatorActionRequestToWeb(actionId: string): boolean {
     const incident = this.findOperatorActionIncident(actionId);
     if (!incident) {
@@ -1393,6 +1507,83 @@ export class SqliteSupportRepository implements SupportRepository {
     return Number(result.changes) > 0;
   }
 
+  public resolveOperatorLifecycleAction(
+    actionId: string,
+    resolution: 'completed' | 'not_completed',
+    resolvedAt: Date,
+  ): boolean {
+    const incident = this.findOperatorActionIncident(actionId);
+    if (
+      !incident ||
+      (incident.kind !== 'close_request' && incident.kind !== 'reopen_request')
+    ) {
+      return false;
+    }
+
+    this.database.exec('BEGIN IMMEDIATE');
+    try {
+      if (resolution === 'completed') {
+        if (incident.kind === 'close_request') {
+          this.database
+            .prepare(
+              `UPDATE support_requests
+               SET status = 'closed', closed_at = ?
+               WHERE id = ?`,
+            )
+            .run(resolvedAt.toISOString(), incident.requestId);
+        } else {
+          this.database
+            .prepare(
+              `UPDATE support_requests
+               SET status = 'active', closed_at = NULL
+               WHERE id = ?`,
+            )
+            .run(incident.requestId);
+        }
+      }
+
+      const result = this.database
+        .prepare(
+          `UPDATE operator_actions
+           SET status = ?,
+               external_result_id = CASE WHEN ? = 'completed'
+                 THEN operator_topic_id
+                 ELSE external_result_id
+               END,
+               last_error = NULL,
+               completed_at = CASE WHEN ? = 'completed'
+                 THEN ?
+                 ELSE completed_at
+               END,
+               manual_resolution = ?,
+               resolved_at = ?
+           WHERE id = ?
+             AND status = 'outcome_unknown'
+             AND kind IN ('close_request', 'reopen_request')`,
+        )
+        .run(
+          resolution === 'completed' ? 'sent' : 'abandoned',
+          resolution,
+          resolution,
+          resolvedAt.toISOString(),
+          resolution === 'completed'
+            ? 'confirmed_completed'
+            : 'confirmed_not_completed',
+          resolvedAt.toISOString(),
+          actionId,
+        );
+      if (Number(result.changes) !== 1) {
+        this.database.exec('ROLLBACK');
+        return false;
+      }
+      this.database.exec('COMMIT');
+      return true;
+    } catch (error: unknown) {
+      this.database.exec('ROLLBACK');
+      throw error;
+    }
+  }
+
   public switchOperatorTopic(
     requestId: string,
     expectedTopicId: string,
@@ -1401,7 +1592,7 @@ export class SqliteSupportRepository implements SupportRepository {
     const result = this.database
       .prepare(
         `UPDATE support_requests
-         SET operator_topic_id = ?
+         SET operator_topic_id = ?, web_owned_at = NULL
          WHERE id = ?
            AND operator_topic_id = ?
            AND status = 'active'`,

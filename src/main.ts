@@ -195,7 +195,7 @@ async function start(): Promise<void> {
     registerSetupRoutes(app, setup, vkSetup, adminRouteAccess);
     registerManagementRoutes(app, contentSetup, adminRouteAccess);
     const operationsMonitoring = new OperationsMonitoringService({
-      activeWebRequests: () => repository.countActiveWebOperatorRequests(),
+      webOperatorRequests: () => repository.getWebOperatorRequestSummary(),
       channelActivity: (channel) => channelActivity.snapshot(channel),
       deliveryActivity: () => deliveryActivity.snapshot(),
       deliveryFailures: () => repository.findFailedDeliveries(20),

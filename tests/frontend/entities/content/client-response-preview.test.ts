@@ -47,7 +47,10 @@ describe('client response preview', () => {
       { label: 'Контакты', text: 'Позвоните нам.' },
     ];
     const catalog = new ClientInformationCatalog(content);
-    const telegramKeyboard = createTelegramMainKeyboard(catalog, false);
+    const telegramKeyboard = createTelegramMainKeyboard(catalog, {
+      intakePaused: false,
+      stage: 'first_contact',
+    });
     if (!('keyboard' in telegramKeyboard)) {
       throw new Error('Expected a Telegram keyboard');
     }

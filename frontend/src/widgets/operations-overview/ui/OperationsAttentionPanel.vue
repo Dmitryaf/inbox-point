@@ -5,6 +5,7 @@ import type { OperationsStatus } from '@frontend/entities/operations/model/types
 import {
   channelProblem,
   type ChannelProblem,
+  type OperationsAttentionEmits,
 } from '@frontend/widgets/operations-overview/model/operations-attention';
 import ConnectionSetupGuide from './ConnectionSetupGuide.vue';
 import DeliveryIncidentList from './DeliveryIncidentList.vue';
@@ -18,19 +19,7 @@ const props = defineProps<{
   pendingOperatorActionId: string | undefined;
   status: OperationsStatus;
 }>();
-defineEmits<{
-  resolveDelivery: [
-    deliveryId: string,
-    resolution: 'not_received' | 'received',
-  ];
-  retryDelivery: [deliveryId: string];
-  resolveOperatorAction: [actionId: string, resolution: 'received' | 'use_web'];
-  resolveInboundEvent: [
-    eventId: string,
-    source: string,
-    resolution: 'retry' | 'skip',
-  ];
-}>();
+defineEmits<OperationsAttentionEmits>();
 
 const channelProblems = computed<ChannelProblem[]>(() =>
   [
@@ -116,7 +105,7 @@ const hasAttention = computed(
 
     <OperatorInboxAttention
       v-if="status.operatorInbox.state === 'attention'"
-      :active-requests="status.operatorInbox.activeWebRequests"
+      :recoverable-requests="status.operatorInbox.recoverableWebRequests"
     />
 
     <DeliveryIncidentList

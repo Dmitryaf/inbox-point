@@ -59,8 +59,9 @@ describe('OperationsMonitoringService', () => {
       },
       observedAt: '2026-09-04T12:01:05.000Z',
       operatorInbox: {
-        activeWebRequests: 0,
+        recoverableWebRequests: 0,
         state: 'healthy',
+        webOwnedRequests: 0,
       },
       operatorRelays: {
         incidents: [],
@@ -233,9 +234,9 @@ describe('OperationsMonitoringService', () => {
     expect(monitoring.isReady()).toBe(false);
   });
 
-  it('blocks readiness while an active request exists only in the web inbox', () => {
+  it('blocks readiness while a recoverable request waits in the web inbox', () => {
     const monitoring = new OperationsMonitoringService({
-      activeWebRequests: () => 1,
+      webOperatorRequests: () => ({ recoverable: 1, webOwned: 0 }),
       channelActivity: () => ({
         lastSuccessfulPollAt: new Date('2026-09-04T12:01:00.000Z'),
       }),
@@ -249,12 +250,38 @@ describe('OperationsMonitoringService', () => {
 
     expect(monitoring.getStatus()).toMatchObject({
       operatorInbox: {
-        activeWebRequests: 1,
+        recoverableWebRequests: 1,
         state: 'attention',
+        webOwnedRequests: 0,
       },
       state: 'attention',
     });
     expect(monitoring.isReady()).toBe(false);
+  });
+
+  it('keeps readiness healthy for a web-owned active request', () => {
+    const monitoring = new OperationsMonitoringService({
+      webOperatorRequests: () => ({ recoverable: 0, webOwned: 1 }),
+      channelActivity: () => ({
+        lastSuccessfulPollAt: new Date('2026-09-04T12:01:00.000Z'),
+      }),
+      clock: () => new Date('2026-09-04T12:01:05.000Z'),
+      deliveryActivity: () => ({ running: true }),
+      deliverySummary: () => ({ failed: 0, pending: 0 }),
+      startedAt: new Date('2026-09-04T12:00:00.000Z'),
+      telegramStatus: () => ({ connected: true, source: 'local' }),
+      vkStatus: () => ({ connected: true, source: 'local' }),
+    });
+
+    expect(monitoring.getStatus()).toMatchObject({
+      operatorInbox: {
+        recoverableWebRequests: 0,
+        state: 'healthy',
+        webOwnedRequests: 1,
+      },
+      state: 'healthy',
+    });
+    expect(monitoring.isReady()).toBe(true);
   });
 
   it('blocks readiness and exposes a quarantined VK event', () => {

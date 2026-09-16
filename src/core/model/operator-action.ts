@@ -1,6 +1,7 @@
 import type { ClientChannelKind } from './support-message.js';
 
-export type OperatorActionKind = 'open_request' | 'relay_message';
+export type OperatorActionKind =
+  'close_request' | 'open_request' | 'relay_message' | 'reopen_request';
 export type OperatorActionStatus =
   'abandoned' | 'failed' | 'outcome_unknown' | 'pending' | 'sending' | 'sent';
 

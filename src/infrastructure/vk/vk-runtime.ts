@@ -56,7 +56,12 @@ export class VkRuntime {
       throw new Error('VK is already connected');
     }
     const gateway = new VkApiClient(config.accessToken);
-    const clientChannel = new VkClientChannel(gateway, this.information);
+    const clientChannel = new VkClientChannel(
+      gateway,
+      this.repository,
+      this.information,
+      this.intakePolicy,
+    );
     const poller = new VkPoller(
       gateway,
       config.groupId,

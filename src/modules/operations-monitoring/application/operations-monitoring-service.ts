@@ -1,14 +1,3 @@
-import type { DeliverySummary } from '@/core/contracts/support-repository.js';
-import type { OperatorActionIncident } from '@/core/model/operator-action.js';
-import type { OperatorActionSummary } from '@/core/model/operator-action.js';
-import type { ClientChannelKind } from '@/core/model/support-message.js';
-import type { FailedDelivery } from '@/core/model/support-request.js';
-import type {
-  InboundEventIncident,
-  InboundEventSummary,
-} from '@/core/model/inbound-event.js';
-import type { ChannelActivitySnapshot } from '@/modules/operations-monitoring/application/channel-activity-monitor.js';
-import type { DeliveryWorkerActivitySnapshot } from '@/modules/operations-monitoring/application/delivery-worker-activity-monitor.js';
 import { mapDeliveryStatus } from '@/modules/operations-monitoring/application/delivery-status.js';
 import { mapDeliveryIncident } from '@/modules/operations-monitoring/application/delivery-incident.js';
 import { mapOperatorRelayStatus } from '@/modules/operations-monitoring/application/operator-relay-status.js';
@@ -16,8 +5,8 @@ import { mapInboundEventStatus } from '@/modules/operations-monitoring/applicati
 import {
   channelNeedsAttention,
   mapChannelStatus,
-  type ChannelStatusSnapshot,
 } from '@/modules/operations-monitoring/application/channel-status.js';
+import type { OperationsMonitoringDependencies } from '@/modules/operations-monitoring/application/operations-monitoring-dependencies.js';
 import { operationsAreReady } from '@/modules/operations-monitoring/application/operations-readiness.js';
 import {
   mapOperatorInboxStatus,
@@ -25,27 +14,6 @@ import {
   uptimeSeconds,
 } from '@/modules/operations-monitoring/application/operations-summary.js';
 import type { OperationsStatus } from '@/modules/operations-monitoring/model/operations-status.js';
-import type { ServiceControlState } from '@/modules/service-control/model/service-control-state.js';
-
-export interface OperationsMonitoringDependencies {
-  activeWebRequests?: () => number;
-  clock?: () => Date;
-  channelActivity: (channel: ClientChannelKind) => ChannelActivitySnapshot;
-  deliveryActivity: () => DeliveryWorkerActivitySnapshot;
-  deliveryFailures?: () => readonly FailedDelivery[];
-  deliverySummary: () => DeliverySummary;
-  deliveryControlStatus?: () => ServiceControlState['delivery'];
-  intakeStatus?: () => ServiceControlState['channels'];
-  inboundEventIncidents?: () => readonly InboundEventIncident[];
-  inboundEventSummary?: () => InboundEventSummary;
-  operatorActionIncidents?: () => readonly OperatorActionIncident[];
-  operatorActionSummary?: () => OperatorActionSummary;
-  pendingDeliveryStaleAfterMs?: number;
-  pollStaleAfterMs?: number;
-  startedAt: Date;
-  telegramStatus: () => ChannelStatusSnapshot;
-  vkStatus: () => ChannelStatusSnapshot;
-}
 
 export class OperationsMonitoringService {
   private readonly clock: () => Date;
@@ -118,7 +86,10 @@ export class OperationsMonitoringService {
       this.dependencies.inboundEventIncidents?.() ?? [],
     );
     const operatorInbox = mapOperatorInboxStatus(
-      this.dependencies.activeWebRequests?.() ?? 0,
+      this.dependencies.webOperatorRequests?.() ?? {
+        recoverable: 0,
+        webOwned: 0,
+      },
     );
     const overallNeedsAttention =
       needsAttention ||

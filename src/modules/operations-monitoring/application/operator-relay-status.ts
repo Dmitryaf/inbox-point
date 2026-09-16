@@ -18,14 +18,24 @@ export function mapOperatorRelayStatus(
       id: incident.id,
       initial: incident.initial,
       operatorTopicId: incident.operatorTopicId,
-      reason:
-        incident.kind === 'open_request'
-          ? 'Telegram мог создать тему, но подтверждение не получено. Обращение сохранено в web inbox; проверьте группу и закройте возможный дубль.'
-          : 'Telegram мог принять сообщение клиента. Не отправляйте его повторно: проверьте тему или переведите обращение в web inbox.',
+      reason: operatorActionReason(incident.kind),
       requestId: incident.requestId,
       sequence: incident.sequence,
     })),
     state: summary.uncertain > 0 ? 'uncertain' : 'healthy',
     uncertain: summary.uncertain,
   };
+}
+
+function operatorActionReason(kind: OperatorActionIncident['kind']): string {
+  if (kind === 'close_request') {
+    return 'Telegram мог закрыть тему, но подтверждение не получено. Обращение пока оставлено открытым в Inbox Point.';
+  }
+  if (kind === 'reopen_request') {
+    return 'Telegram мог открыть тему, но подтверждение не получено. Обращение пока оставлено закрытым в Inbox Point.';
+  }
+  if (kind === 'open_request') {
+    return 'Telegram мог создать тему, но подтверждение не получено. Обращение сохранено в web inbox; проверьте группу и закройте возможный дубль.';
+  }
+  return 'Telegram мог принять сообщение клиента. Не отправляйте его повторно: проверьте тему или переведите обращение в web inbox.';
 }

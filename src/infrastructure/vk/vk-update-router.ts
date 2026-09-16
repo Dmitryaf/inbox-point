@@ -57,6 +57,7 @@ export class VkUpdateRouter {
     }
     const handledByMenu = await this.clientMenu?.handle({
       externalEventId,
+      ...(message.payload ? { payload: message.payload } : {}),
       peerId: message.peer_id,
       text: message.text,
     });

@@ -3,6 +3,7 @@ import {
   OperatorInboxUnavailableError,
   type OpenOperatorRequest,
   type OperatorInbox,
+  type OperatorLifecycleActionOptions,
   type RelayCustomerMessageOptions,
 } from '@/core/contracts/operator-inbox.js';
 import type { DeliveryIncidentNotifier } from '@/core/contracts/delivery-incident-notifier.js';
@@ -26,14 +27,15 @@ export class SwitchableOperatorInbox
     ) => void = () => undefined,
   ) {}
 
-  public async closeRequest(operatorTopicId: string): Promise<void> {
+  public async closeRequest(
+    operatorTopicId: string,
+    options: OperatorLifecycleActionOptions,
+  ): Promise<void> {
     if (isWebOperatorTopic(operatorTopicId)) {
-      return this.fallback.closeRequest(operatorTopicId);
+      return this.fallback.closeRequest(operatorTopicId, options);
     }
-    await this.runWithFallback(
-      'close',
-      (inbox) => inbox.closeRequest(operatorTopicId),
-      () => this.fallback.closeRequest(operatorTopicId),
+    await this.runWithoutFallback('close', (inbox) =>
+      inbox.closeRequest(operatorTopicId, options),
     );
   }
 
@@ -96,14 +98,15 @@ export class SwitchableOperatorInbox
     );
   }
 
-  public async reopenRequest(operatorTopicId: string): Promise<void> {
+  public async reopenRequest(
+    operatorTopicId: string,
+    options: OperatorLifecycleActionOptions,
+  ): Promise<void> {
     if (isWebOperatorTopic(operatorTopicId)) {
-      return this.fallback.reopenRequest(operatorTopicId);
+      return this.fallback.reopenRequest(operatorTopicId, options);
     }
-    await this.runWithFallback(
-      'reopen',
-      (inbox) => inbox.reopenRequest(operatorTopicId),
-      () => this.fallback.reopenRequest(operatorTopicId),
+    await this.runWithoutFallback('reopen', (inbox) =>
+      inbox.reopenRequest(operatorTopicId, options),
     );
   }
 
@@ -124,6 +127,22 @@ export class SwitchableOperatorInbox
       }
       this.onFallback(error, operation);
       return runFallback();
+    }
+  }
+
+  private async runWithoutFallback<T>(
+    operation: Extract<FallbackOperation, 'close' | 'reopen'>,
+    runPrimary: (inbox: ActiveOperatorInbox) => Promise<T>,
+  ): Promise<T> {
+    const inbox = this.inbox;
+    if (!inbox) {
+      throw new OperatorInboxUnavailableError();
+    }
+    try {
+      return await runPrimary(inbox);
+    } catch (error: unknown) {
+      this.onFallback(error, operation);
+      throw error;
     }
   }
 

@@ -2,6 +2,7 @@ import { DeliveryOutcomeUnknownError } from '@/core/contracts/client-channel.js'
 import type {
   OpenOperatorRequest,
   OperatorInbox,
+  OperatorLifecycleActionOptions,
   RelayCustomerMessageOptions,
 } from '@/core/contracts/operator-inbox.js';
 import {
@@ -16,6 +17,7 @@ import type { SupportMessage } from '@/core/model/support-message.js';
 import { createWebOperatorTopicId } from '@/core/model/operator-topic.js';
 
 import {
+  isAlreadyOpenForumTopicError,
   isMissingForumTopicError,
   isUnavailableForumTopicError,
   type TelegramGateway,
@@ -31,17 +33,40 @@ export class TelegramTopicsInbox
     private readonly clock: () => Date = () => new Date(),
   ) {}
 
-  public async closeRequest(operatorTopicId: string): Promise<void> {
-    await this.gateway.closeForumTopic(
-      this.operatorChatId,
-      Number(operatorTopicId),
+  public async closeRequest(
+    operatorTopicId: string,
+    options: OperatorLifecycleActionOptions,
+  ): Promise<void> {
+    await this.executeAction(
+      createLifecycleAction(
+        'close_request',
+        operatorTopicId,
+        options,
+        this.clock(),
+      ),
+      'close',
+      async () => {
+        try {
+          await this.gateway.closeForumTopic(
+            this.operatorChatId,
+            Number(operatorTopicId),
+          );
+        } catch (error: unknown) {
+          if (!isUnavailableForumTopicError(error)) {
+            throw error;
+          }
+        }
+        return operatorTopicId;
+      },
     );
   }
 
   public async openRequest(
     request: OpenOperatorRequest,
   ): Promise<{ topicId: string }> {
-    const actionId = `operator-open:${request.requestId}`;
+    const actionId = request.unavailableTopicId
+      ? `operator-open-replacement:${request.requestId}:${request.unavailableTopicId}`
+      : `operator-open:${request.requestId}`;
     const topicId = await this.executeAction(
       {
         clientMessageId: request.source.externalMessageId,
@@ -55,7 +80,7 @@ export class TelegramTopicsInbox
       },
       'open',
       async () => {
-        if (request.reusableTopicId) {
+        if (request.reusableTopicId && !request.unavailableTopicId) {
           try {
             await this.gateway.reopenForumTopic(
               this.operatorChatId,
@@ -63,6 +88,9 @@ export class TelegramTopicsInbox
             );
             return request.reusableTopicId;
           } catch (error: unknown) {
+            if (isAlreadyOpenForumTopicError(error)) {
+              return request.reusableTopicId;
+            }
             if (!isMissingForumTopicError(error)) {
               throw error;
             }
@@ -162,7 +190,7 @@ export class TelegramTopicsInbox
 
   private async executeAction(
     action: PendingOperatorAction,
-    operation: 'open' | 'relay',
+    operation: 'close' | 'open' | 'relay' | 'reopen',
     execute: () => Promise<string>,
   ): Promise<string> {
     const prepared = this.actions.prepareOperatorAction(action);
@@ -210,27 +238,66 @@ export class TelegramTopicsInbox
     return externalResultId;
   }
 
-  public async reopenRequest(operatorTopicId: string): Promise<void> {
-    try {
-      await this.gateway.reopenForumTopic(
-        this.operatorChatId,
-        Number(operatorTopicId),
-      );
-    } catch (error: unknown) {
-      if (isUnavailableForumTopicError(error)) {
-        throw new OperatorConversationUnavailableError();
-      }
-      throw error;
-    }
+  public async reopenRequest(
+    operatorTopicId: string,
+    options: OperatorLifecycleActionOptions,
+  ): Promise<void> {
+    await this.executeAction(
+      createLifecycleAction(
+        'reopen_request',
+        operatorTopicId,
+        options,
+        this.clock(),
+      ),
+      'reopen',
+      async () => {
+        try {
+          await this.gateway.reopenForumTopic(
+            this.operatorChatId,
+            Number(operatorTopicId),
+          );
+        } catch (error: unknown) {
+          if (isAlreadyOpenForumTopicError(error)) {
+            return operatorTopicId;
+          }
+          if (isUnavailableForumTopicError(error)) {
+            throw new OperatorConversationUnavailableError();
+          }
+          throw error;
+        }
+        return operatorTopicId;
+      },
+    );
   }
+}
+
+function createLifecycleAction(
+  kind: 'close_request' | 'reopen_request',
+  operatorTopicId: string,
+  options: OperatorLifecycleActionOptions,
+  createdAt: Date,
+): PendingOperatorAction {
+  const operation = kind === 'close_request' ? 'close' : 'reopen';
+  return {
+    clientMessageId: options.externalEventId,
+    createdAt,
+    id: `operator-${operation}:${options.requestId}:${options.externalEventId}`,
+    initial: false,
+    kind,
+    operatorTopicId,
+    requestId: options.requestId,
+    sequence: 0,
+  };
 }
 
 function createRelayActionId(
   requestId: string,
   clientMessageId: string,
   sequence: number,
+  actionScope?: string,
 ): string {
-  return `operator-relay:${requestId}:${clientMessageId}:${sequence}`;
+  const scopeSuffix = actionScope ? `:${actionScope}` : '';
+  return `operator-relay:${requestId}:${clientMessageId}:${sequence}${scopeSuffix}`;
 }
 
 function createRelayAction(
@@ -247,6 +314,7 @@ function createRelayAction(
       options.requestId,
       message.externalMessageId,
       sequence,
+      options.actionScope,
     ),
     initial: options.initial,
     kind: 'relay_message',

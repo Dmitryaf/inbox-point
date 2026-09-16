@@ -2,7 +2,10 @@
 import { computed } from 'vue';
 
 import { formatUptime } from '@frontend/entities/operations/lib/status-format';
-import type { OperationsStatus } from '@frontend/entities/operations/model/types';
+import type {
+  OperationsStatus,
+  OperatorActionResolution,
+} from '@frontend/entities/operations/model/types';
 import { formatShortDateTimeWithSeconds } from '@frontend/shared/lib/format-date-time';
 import ChannelStatusCard from './ChannelStatusCard.vue';
 import DeliveryStatusCard from './DeliveryStatusCard.vue';
@@ -22,7 +25,10 @@ defineEmits<{
     resolution: 'not_received' | 'received',
   ];
   retryDelivery: [deliveryId: string];
-  resolveOperatorAction: [actionId: string, resolution: 'received' | 'use_web'];
+  resolveOperatorAction: [
+    actionId: string,
+    resolution: OperatorActionResolution,
+  ];
   resolveInboundEvent: [
     eventId: string,
     source: string,

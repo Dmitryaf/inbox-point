@@ -1,14 +1,17 @@
 <script setup lang="ts">
-import type { OperatorRelayIncident } from '@frontend/entities/operations/model/types';
 import { formatShortDateTime } from '@frontend/shared/lib/format-date-time';
+import {
+  actionButtonLabel,
+  canUseWeb,
+  isLifecycle,
+  lifecycleResolutionLabel,
+  operationLabel,
+  type OperatorRelayIncidentListEmits,
+  type OperatorRelayIncidentListProps,
+} from '@frontend/widgets/operations-overview/model/operator-action-presentation';
 
-defineProps<{
-  incidents: readonly OperatorRelayIncident[];
-  pendingActionId: string | undefined;
-}>();
-defineEmits<{
-  resolve: [actionId: string, resolution: 'received' | 'use_web'];
-}>();
+defineProps<OperatorRelayIncidentListProps>();
+defineEmits<OperatorRelayIncidentListEmits>();
 </script>
 
 <template>
@@ -17,17 +20,29 @@ defineEmits<{
     class="delivery-incidents"
     aria-labelledby="operator-relay-incidents-title"
   >
-    <h3 id="operator-relay-incidents-title">Новые обращения</h3>
-    <p>Проверьте, появилось ли обращение у операторов в Telegram.</p>
+    <h3 id="operator-relay-incidents-title">Действия в Telegram</h3>
+    <p>Проверьте фактическое состояние темы перед выбором действия.</p>
     <ol>
       <li v-for="incident in incidents" :key="incident.id">
         <div class="delivery-incident-heading">
-          <strong>Обращение из {{ incident.channel }} требует решения</strong>
+          <strong>
+            {{
+              isLifecycle(incident)
+                ? 'Состояние темы требует решения'
+                : `Обращение из ${incident.channel} требует решения`
+            }}
+          </strong>
           <time :datetime="incident.createdAt">
             {{ formatShortDateTime(incident.createdAt) }}
           </time>
         </div>
-        <p>Не удалось точно определить, появилось ли сообщение у операторов.</p>
+        <p>
+          {{
+            isLifecycle(incident)
+              ? 'Не удалось точно определить, изменилось ли состояние темы.'
+              : 'Не удалось точно определить, появилось ли сообщение у операторов.'
+          }}
+        </p>
         <details class="technical-details">
           <summary>Технические данные</summary>
           <dl class="delivery-incident-context">
@@ -43,18 +58,14 @@ defineEmits<{
               <dt>ID сообщения клиента</dt>
               <dd>{{ incident.clientMessageId }}</dd>
             </div>
-            <div v-if="incident.action === 'relay_message'">
+            <div v-if="incident.action !== 'open_request'">
               <dt>ID темы Telegram</dt>
               <dd>{{ incident.operatorTopicId }}</dd>
             </div>
             <div>
               <dt>Операция</dt>
               <dd>
-                {{
-                  incident.action === 'open_request'
-                    ? 'Создание Telegram-темы'
-                    : `Передача части ${incident.sequence + 1}`
-                }}
+                {{ operationLabel(incident) }}
               </dd>
             </div>
           </dl>
@@ -76,20 +87,50 @@ defineEmits<{
             @click="$emit('resolve', incident.id, 'received')"
           >
             {{
-              pendingActionId === incident.id
-                ? 'Сохраняем…'
-                : 'Сообщение есть в Telegram'
+              actionButtonLabel(
+                pendingActionId === incident.id,
+                'Сообщение есть в Telegram',
+              )
             }}
           </button>
           <button
+            v-if="isLifecycle(incident)"
+            class="secondary-button"
+            type="button"
+            :disabled="Boolean(pendingActionId)"
+            @click="$emit('resolve', incident.id, 'completed')"
+          >
+            {{
+              actionButtonLabel(
+                pendingActionId === incident.id,
+                lifecycleResolutionLabel(incident, 'completed'),
+              )
+            }}
+          </button>
+          <button
+            v-if="isLifecycle(incident)"
+            type="button"
+            :disabled="Boolean(pendingActionId)"
+            @click="$emit('resolve', incident.id, 'not_completed')"
+          >
+            {{
+              actionButtonLabel(
+                pendingActionId === incident.id,
+                lifecycleResolutionLabel(incident, 'not_completed'),
+              )
+            }}
+          </button>
+          <button
+            v-if="canUseWeb(incident)"
             type="button"
             :disabled="Boolean(pendingActionId)"
             @click="$emit('resolve', incident.id, 'use_web')"
           >
             {{
-              pendingActionId === incident.id
-                ? 'Сохраняем…'
-                : 'Открыть обращение здесь'
+              actionButtonLabel(
+                pendingActionId === incident.id,
+                'Открыть обращение здесь',
+              )
             }}
           </button>
         </div>

@@ -1,6 +1,7 @@
 import { ref } from 'vue';
 
 import { resolveOperatorAction } from '@frontend/entities/operations/api/operations-api';
+import type { OperatorActionResolution } from '@frontend/entities/operations/model/types';
 import { requestErrorMessage } from '@frontend/shared/lib/request-error-message';
 
 export function useOperatorActionResolution(
@@ -13,7 +14,7 @@ export function useOperatorActionResolution(
 
   async function resolve(
     actionId: string,
-    resolution: 'received' | 'use_web',
+    resolution: OperatorActionResolution,
   ): Promise<void> {
     if (!confirmResolution(resolution)) {
       return;
@@ -23,10 +24,7 @@ export function useOperatorActionResolution(
     notice.value = '';
     try {
       await resolveOperatorAction(actionId, resolution);
-      notice.value =
-        resolution === 'received'
-          ? 'Подтверждено: сообщение есть в Telegram.'
-          : 'Обращение открыто на этой странице.';
+      notice.value = resolutionNotice(resolution);
       await refresh();
     } catch (cause: unknown) {
       error.value = requestErrorMessage(cause, onUnauthorized);
@@ -38,12 +36,32 @@ export function useOperatorActionResolution(
   return { error, notice, pendingActionId, resolve };
 }
 
-function confirmResolution(resolution: 'received' | 'use_web'): boolean {
-  return resolution === 'received'
-    ? window.confirm(
-        'Подтвердить, что всё сообщение видно в Telegram? Автоматического повтора не будет.',
-      )
-    : window.confirm(
-        'Открыть обращение на этой странице? Ответы из прежней темы Telegram больше не будут приниматься.',
-      );
+function confirmResolution(resolution: OperatorActionResolution): boolean {
+  if (resolution === 'received') {
+    return window.confirm(
+      'Подтвердить, что всё сообщение видно в Telegram? Автоматического повтора не будет.',
+    );
+  }
+  if (resolution === 'use_web') {
+    return window.confirm(
+      'Открыть обращение на этой странице? Ответы из прежней темы Telegram больше не будут приниматься.',
+    );
+  }
+  return window.confirm(
+    resolution === 'completed'
+      ? 'Подтвердить, что состояние темы в Telegram изменилось? Состояние обращения будет синхронизировано.'
+      : 'Подтвердить, что состояние темы в Telegram не изменилось? Автоматического повтора не будет.',
+  );
+}
+
+function resolutionNotice(resolution: OperatorActionResolution): string {
+  if (resolution === 'received') {
+    return 'Подтверждено: сообщение есть в Telegram.';
+  }
+  if (resolution === 'use_web') {
+    return 'Обращение открыто на этой странице.';
+  }
+  return resolution === 'completed'
+    ? 'Состояние обращения синхронизировано с Telegram.'
+    : 'Подтверждено: состояние темы не изменилось.';
 }

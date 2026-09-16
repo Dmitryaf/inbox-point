@@ -325,9 +325,17 @@ function responseValidationError(method: string, problem: string): Error {
 
 function hasUncertainSideEffect(method: string): boolean {
   return (
+    method === 'closeForumTopic' ||
     method === 'createForumTopic' ||
     method === 'reopenForumTopic' ||
     method === 'sendMessage'
+  );
+}
+
+export function isAlreadyOpenForumTopicError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    error.message.toLowerCase().includes('topic_not_modified')
   );
 }
 

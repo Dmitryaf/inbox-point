@@ -174,7 +174,7 @@ describe('VK handoff integration', () => {
       text: 'Answer to VK',
     });
     const worker = new DeliveryWorker({
-      channels: [new VkClientChannel(gateway)],
+      channels: [new VkClientChannel(gateway, repository)],
       repository,
     });
     await worker.processPending();
@@ -208,6 +208,14 @@ describe('VK handoff integration', () => {
       createMessageEvent({
         conversation_message_id: 8,
         id: 502,
+        payload: menuPayload('handoff'),
+        text: handoffButton,
+      }),
+    );
+    await router.route(
+      createMessageEvent({
+        conversation_message_id: 9,
+        id: 503,
         text: 'Second question from VK',
       }),
     );
@@ -228,7 +236,7 @@ describe('VK handoff integration', () => {
       text: 'Second answer to VK',
     });
     const worker = new DeliveryWorker({
-      channels: [new VkClientChannel(gateway)],
+      channels: [new VkClientChannel(gateway, repository)],
       repository,
     });
     await worker.processPending();
@@ -267,9 +275,9 @@ describe('VK handoff integration', () => {
     );
 
     expect(inbox.opened).toHaveLength(1);
-    expect(inbox.relayed).toHaveLength(1);
-    expect(gateway.sent.at(-1)?.text).toContain('Расписание');
-    expect(gateway.sent.at(-1)?.keyboard).toBeDefined();
+    expect(inbox.relayed).toHaveLength(2);
+    expect(inbox.relayed[1]?.text).toBe('Расписание');
+    expect(gateway.sent).toHaveLength(1);
   });
 
   it('redirects a new VK customer while intake is paused', async () => {
@@ -278,7 +286,10 @@ describe('VK handoff integration', () => {
     await router.route(createMessageEvent());
 
     expect(inbox.opened).toHaveLength(0);
-    expect(gateway.sent).toHaveLength(0);
+    expect(gateway.sent).toHaveLength(1);
+    expect(gateway.sent[0]?.text).toContain(
+      'бот временно не принимает новые обращения',
+    );
   });
 
   it('keeps configured VK information available while intake is paused', async () => {
@@ -288,11 +299,17 @@ describe('VK handoff integration', () => {
     });
     vkPaused = true;
 
-    await router.route(createMessageEvent({ text: 'Расписание' }));
+    await router.route(
+      createMessageEvent({
+        payload: menuPayload('information-0'),
+        text: 'Расписание',
+      }),
+    );
     await router.route(
       createMessageEvent({
         conversation_message_id: 8,
         id: 502,
+        payload: menuPayload('custom-0'),
         text: 'Как добраться',
       }),
     );
@@ -335,11 +352,100 @@ describe('VK handoff integration', () => {
     );
 
     expect(inbox.opened).toHaveLength(1);
-    expect(inbox.relayed).toHaveLength(2);
+    expect(inbox.relayed).toHaveLength(3);
     expect(inbox.relayed[1]?.text).toBe('Уточнение');
-    expect(gateway.sent.at(-1)?.text).toBe(
-      'Расписание пока не добавлено. Задайте вопрос, чтобы уточнить время.',
+    expect(inbox.relayed[2]?.text).toBe('Расписание');
+    expect(gateway.sent).toHaveLength(0);
+  });
+
+  it('uses payload for an information click but relays the same manual text', async () => {
+    information.replace({ schedule: 'Понедельник 19:00' });
+    await router.route(createMessageEvent({ text: 'Первый вопрос' }));
+
+    await router.route(
+      createMessageEvent({
+        conversation_message_id: 8,
+        id: 502,
+        text: 'Расписание',
+      }),
     );
+    await router.route(
+      createMessageEvent({
+        conversation_message_id: 9,
+        id: 503,
+        payload: menuPayload('information-0'),
+        text: 'Расписание',
+      }),
+    );
+
+    expect(inbox.relayed.map((message) => message.text)).toEqual([
+      'Первый вопрос',
+      'Расписание',
+    ]);
+    expect(gateway.sent.at(-1)?.text).toBe('Расписание\n\n• Понедельник 19:00');
+    expect(gateway.sent.at(-1)?.keyboard?.buttons).toEqual([]);
+  });
+
+  it('does not open a request from post-dialog VK text', async () => {
+    await router.route(createMessageEvent({ text: 'Первый вопрос' }));
+    const firstRequest = repository.findActiveRequest('vk', '101');
+    await service.handleOperatorMessage('telegram-close-1', {
+      externalMessageId: 'telegram-command-1',
+      operatorTopicId: 'topic-1',
+      receivedAt: new Date('2026-09-01T12:01:00.000Z'),
+      text: '/close',
+    });
+
+    await router.route(
+      createMessageEvent({
+        conversation_message_id: 8,
+        id: 502,
+        text: 'Спасибо',
+      }),
+    );
+
+    expect(repository.findActiveRequest('vk', '101')).toBeUndefined();
+    expect(repository.findLatestRequest('vk', '101')?.id).toBe(
+      firstRequest?.id,
+    );
+    expect(gateway.sent.at(-1)?.text).toContain('Предыдущий разговор завершён');
+    expect(
+      gateway.sent
+        .at(-1)
+        ?.keyboard?.buttons.flat()
+        .map((button) => button.action.label),
+    ).toContain(handoffButton);
+  });
+
+  it('uses the current closed state for a delayed VK keyboard', async () => {
+    await router.route(createMessageEvent({ text: 'Вопрос' }));
+    const worker = new DeliveryWorker({
+      channels: [new VkClientChannel(gateway, repository)],
+      repository,
+    });
+    await worker.processPending();
+    await service.handleOperatorMessage('telegram-answer-1', {
+      externalMessageId: 'telegram-answer-1',
+      operatorTopicId: 'topic-1',
+      receivedAt: new Date('2026-09-01T12:01:00.000Z'),
+      text: 'Ответ',
+    });
+    await service.handleOperatorMessage('telegram-close-1', {
+      externalMessageId: 'telegram-close-1',
+      operatorTopicId: 'topic-1',
+      receivedAt: new Date('2026-09-01T12:02:00.000Z'),
+      text: '/close',
+    });
+
+    await worker.processPending();
+
+    expect(gateway.sent.at(-1)?.text).toBe('Ответ');
+    expect(
+      gateway.sent
+        .at(-1)
+        ?.keyboard?.buttons.flat()
+        .map((button) => button.action.label),
+    ).toContain(handoffButton);
   });
 
   it('shows and resolves the built-in FAQ without opening a request', async () => {
@@ -357,6 +463,7 @@ describe('VK handoff integration', () => {
       createMessageEvent({
         conversation_message_id: 8,
         id: 502,
+        payload: menuPayload('information-0'),
         text: faqButton,
       }),
     );
@@ -384,6 +491,7 @@ describe('VK handoff integration', () => {
       createMessageEvent({
         conversation_message_id: 8,
         id: 502,
+        payload: menuPayload('custom-0'),
         text: 'Первое занятие',
       }),
     );
@@ -404,7 +512,10 @@ describe('VK handoff integration', () => {
       },
       ['Стоимость', 'Абонементы'],
     );
-    const event = createMessageEvent({ text: 'Абонементы' });
+    const event = createMessageEvent({
+      payload: menuPayload('custom-1'),
+      text: 'Абонементы',
+    });
 
     await router.route(event);
     await router.route(event);
@@ -502,4 +613,8 @@ function createMessageEvent(
     },
     type: 'message_new',
   };
+}
+
+function menuPayload(action: string): string {
+  return JSON.stringify({ action });
 }

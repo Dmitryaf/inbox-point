@@ -8,7 +8,7 @@ const actionParamsSchema = z.object({
   actionId: z.string().min(1).max(500),
 });
 const resolutionSchema = z.object({
-  resolution: z.enum(['received', 'use_web']),
+  resolution: z.enum(['completed', 'not_completed', 'received', 'use_web']),
 });
 
 export function registerOperatorActionRoutes(
