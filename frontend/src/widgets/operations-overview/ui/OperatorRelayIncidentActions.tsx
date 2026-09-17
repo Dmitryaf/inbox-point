@@ -30,6 +30,7 @@ export default function OperatorRelayIncidentActions(
     componentDefaults,
     createComponentModel,
   );
+  const { isMessageDeliveryIncident } = $state;
   const $attributes = inheritedAttributes($props);
   return (
     <ModelScopeProvider scope={$scope}>
@@ -38,7 +39,7 @@ export default function OperatorRelayIncidentActions(
         className={$class('delivery-resolution-actions', $attributes.className)}
         data-r-464ae559=""
       >
-        {$props.incident.action === 'relay_message' ? (
+        {isMessageDeliveryIncident($props.incident) ? (
           <p data-r-464ae559="">
             {' Проверьте Telegram-тему перед выбором действия. '}
           </p>

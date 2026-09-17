@@ -443,11 +443,17 @@ export class SqliteSupportRepository implements SupportRepository {
             throw new Error('The operator surface changed concurrently');
           }
         }
-      } else if (action.kind === 'relay_message') {
+      } else if (
+        action.kind === 'relay_message' ||
+        action.kind === 'mirror_operator_message'
+      ) {
         this.addMessageLink({
           clientMessageId: action.client_message_id,
           createdAt: completedAt,
-          direction: 'client_to_operator',
+          direction:
+            action.kind === 'mirror_operator_message'
+              ? 'operator_to_client'
+              : 'client_to_operator',
           id: `operator-action-link:${action.id}`,
           operatorMessageId: externalResultId,
           requestId: action.request_id,
@@ -724,6 +730,37 @@ export class SqliteSupportRepository implements SupportRepository {
         LIMIT 1`,
       )
       .get(channel, conversationId) as SupportRequestRow | undefined;
+
+    return row ? mapRequest(row) : undefined;
+  }
+
+  public findRequestByChannelOperatorMessage(
+    channel: ClientChannelKind,
+    conversationId: string,
+    externalMessageId: string,
+  ): SupportRequest | undefined {
+    const row = this.database
+      .prepare(
+        `SELECT
+          request.id,
+          request.channel,
+          request.external_conversation_id,
+          request.client_display_name,
+          request.operator_topic_id,
+          request.status,
+          request.created_at,
+          request.closed_at
+        FROM conversation_messages AS message
+        JOIN support_requests AS request ON request.id = message.request_id
+        WHERE request.channel = ?
+          AND request.external_conversation_id = ?
+          AND message.direction = 'operator_to_client'
+          AND message.external_message_id = ?
+        ORDER BY message.rowid
+        LIMIT 1`,
+      )
+      .get(channel, conversationId, externalMessageId) as
+      SupportRequestRow | undefined;
 
     return row ? mapRequest(row) : undefined;
   }
@@ -1035,7 +1072,10 @@ export class SqliteSupportRepository implements SupportRepository {
                  ) AS held_reply_count,
                  CASE WHEN action.kind IN ('close_request', 'reopen_request')
                   THEN 1
-                WHEN action.kind = 'relay_message' AND NOT EXISTS (
+                WHEN action.kind IN (
+                  'relay_message',
+                  'mirror_operator_message'
+                ) AND NOT EXISTS (
                   SELECT 1
                   FROM operator_actions AS blocking_action
                   WHERE blocking_action.request_id = action.request_id
@@ -1756,7 +1796,7 @@ export class SqliteSupportRepository implements SupportRepository {
              manual_resolution = 'confirmed_received',
              resolved_at = ?
          WHERE id = ?
-           AND kind = 'relay_message'
+           AND kind IN ('relay_message', 'mirror_operator_message')
            AND status = 'outcome_unknown'
            AND NOT EXISTS (
              SELECT 1
@@ -2145,6 +2185,7 @@ export class SqliteSupportRepository implements SupportRepository {
              manual_resolution = NULL,
              resolved_at = ?
          WHERE request_id = ?
+           AND kind != 'mirror_operator_message'
            AND (
              status IN (
                'pending',

@@ -168,6 +168,7 @@ describe('VkSetupController', () => {
     disabled.getLongPollSettings.mockResolvedValueOnce({
       enabled: false,
       messageNew: true,
+      messageReply: true,
     });
     await expect(
       disabled.controller.connect(initialConfig.accessToken, 'test'),
@@ -178,11 +179,23 @@ describe('VkSetupController', () => {
     missingEvent.getLongPollSettings.mockResolvedValueOnce({
       enabled: true,
       messageNew: false,
+      messageReply: true,
     });
     await expect(
       missingEvent.controller.connect(initialConfig.accessToken, 'test'),
     ).rejects.toThrow('message_new event is disabled');
     expect(missingEvent.getLongPollServer).not.toHaveBeenCalled();
+
+    const missingReplies = createHarness({ source: 'none' });
+    missingReplies.getLongPollSettings.mockResolvedValueOnce({
+      enabled: true,
+      messageNew: true,
+      messageReply: false,
+    });
+    await expect(
+      missingReplies.controller.connect(initialConfig.accessToken, 'test'),
+    ).rejects.toThrow('message_reply event is disabled');
+    expect(missingReplies.getLongPollServer).not.toHaveBeenCalled();
   });
 });
 
@@ -237,7 +250,11 @@ function createHarness(options: {
   const getLongPollSettings = vi.fn<VkSetupGateway['getLongPollSettings']>(
     () => {
       events.push('settings');
-      return Promise.resolve({ enabled: true, messageNew: true });
+      return Promise.resolve({
+        enabled: true,
+        messageNew: true,
+        messageReply: true,
+      });
     },
   );
   const getTokenPermissions = vi.fn<VkSetupGateway['getTokenPermissions']>(

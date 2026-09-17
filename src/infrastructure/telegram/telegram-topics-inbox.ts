@@ -1,6 +1,7 @@
 import { DeliveryOutcomeUnknownError } from '@/core/contracts/client-channel.js';
 import type {
   OpenOperatorRequest,
+  MirrorOperatorMessageOptions,
   OperatorInbox,
   OperatorLifecycleActionOptions,
   RelayCustomerMessageOptions,
@@ -16,6 +17,7 @@ import {
   type PendingOperatorAction,
 } from '@/core/model/operator-action.js';
 import type { FailedDelivery } from '@/core/model/support-request.js';
+import type { ChannelOperatorMessage } from '@/core/model/operator-message.js';
 import type { SupportMessage } from '@/core/model/support-message.js';
 import { createWebOperatorTopicId } from '@/core/model/operator-topic.js';
 
@@ -77,7 +79,10 @@ export class TelegramTopicsInbox
         id: actionId,
         initial: true,
         kind: 'open_request',
-        operatorTopicId: createWebOperatorTopicId(request.requestId),
+        operatorTopicId:
+          request.expectedTopicId ??
+          request.unavailableTopicId ??
+          createWebOperatorTopicId(request.requestId),
         requestId: request.requestId,
         sequence: 0,
       },
@@ -115,6 +120,63 @@ export class TelegramTopicsInbox
       messageThreadId: Number(delivery.operatorTopicId),
       text: formatDeliveryFailureNotification(delivery),
     });
+  }
+
+  public async mirrorOperatorMessage(
+    operatorTopicId: string,
+    message: ChannelOperatorMessage,
+    options: MirrorOperatorMessageOptions,
+  ): Promise<void> {
+    try {
+      const messages = formatMirroredOperatorMessages(message);
+      const actions = messages.map((_, sequence) =>
+        createMirrorAction(
+          operatorTopicId,
+          message,
+          options,
+          sequence,
+          this.clock(),
+        ),
+      );
+      for (const action of actions) {
+        this.actions.prepareOperatorAction(action);
+      }
+
+      let outcomeUnknown: OperatorActionOutcomeUnknownError | undefined;
+      for (const [sequence, text] of messages.entries()) {
+        const action = actions[sequence];
+        if (!action) {
+          throw new Error('Mirrored operator action was not prepared');
+        }
+        try {
+          await this.executeAction(action, 'mirror', async () => {
+            const sent = await this.gateway.sendMessage({
+              chatId: this.operatorChatId,
+              messageThreadId: Number(operatorTopicId),
+              text,
+            });
+            return String(sent.messageId);
+          });
+        } catch (error: unknown) {
+          if (error instanceof OperatorActionOutcomeUnknownError) {
+            outcomeUnknown ??= error;
+            continue;
+          }
+          if (outcomeUnknown) {
+            throw outcomeUnknown;
+          }
+          throw error;
+        }
+      }
+      if (outcomeUnknown) {
+        throw outcomeUnknown;
+      }
+    } catch (error: unknown) {
+      if (isUnavailableForumTopicError(error)) {
+        throw new OperatorConversationUnavailableError();
+      }
+      throw error;
+    }
   }
 
   public async relayCustomerMessage(
@@ -193,12 +255,17 @@ export class TelegramTopicsInbox
 
   private async executeAction(
     action: PendingOperatorAction,
-    operation: 'close' | 'open' | 'relay' | 'reopen',
+    operation: 'close' | 'mirror' | 'open' | 'relay' | 'reopen',
     execute: () => Promise<string>,
   ): Promise<string> {
     const prepared = this.actions.prepareOperatorAction(action);
-    if (prepared.status === 'sent' && prepared.externalResultId) {
-      return prepared.externalResultId;
+    if (prepared.status === 'sent') {
+      if (prepared.externalResultId) {
+        return prepared.externalResultId;
+      }
+      if (operation === 'mirror') {
+        return action.operatorTopicId;
+      }
     }
     if (
       prepared.status === 'outcome_unknown' ||
@@ -322,6 +389,28 @@ function createRelayAction(
   };
 }
 
+function createMirrorAction(
+  operatorTopicId: string,
+  message: ChannelOperatorMessage,
+  options: MirrorOperatorMessageOptions,
+  sequence: number,
+  createdAt: Date,
+): PendingOperatorAction {
+  const actionScope = options.actionScope
+    ? `${options.requestId}:${options.actionScope}`
+    : options.requestId;
+  return {
+    clientMessageId: message.externalMessageId,
+    createdAt,
+    id: `operator-mirror:${actionScope}:${message.channel}:${message.externalMessageId}:${sequence}`,
+    initial: false,
+    kind: 'mirror_operator_message',
+    operatorTopicId,
+    requestId: options.requestId,
+    sequence,
+  };
+}
+
 function safeErrorMessage(error: unknown): string {
   return error instanceof Error
     ? error.message.slice(0, 500)
@@ -374,6 +463,28 @@ function formatCustomerMessages(
       ].join('\n')
     : 'Сообщение:\n\n';
   const continuationPrefix = 'Продолжение сообщения:\n\n';
+  const characters = Array.from(message.text);
+  const messages: string[] = [];
+  let offset = 0;
+  let prefix = firstPrefix;
+
+  while (offset < characters.length) {
+    const capacity = telegramTextLimit - Array.from(prefix).length;
+    const chunk = characters.slice(offset, offset + capacity).join('');
+    messages.push(prefix + chunk);
+    offset += capacity;
+    prefix = continuationPrefix;
+  }
+
+  return messages;
+}
+
+function formatMirroredOperatorMessages(
+  message: ChannelOperatorMessage,
+): readonly string[] {
+  const channelName = message.channel === 'telegram' ? 'Telegram' : 'VK';
+  const firstPrefix = `Ответ отправлен из ${channelName}:\n\n`;
+  const continuationPrefix = `Продолжение ответа из ${channelName}:\n\n`;
   const characters = Array.from(message.text);
   const messages: string[] = [];
   let offset = 0;

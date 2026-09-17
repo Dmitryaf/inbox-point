@@ -14,6 +14,7 @@ import type {
   OperatorInbox,
   RelayCustomerMessageOptions,
 } from '@/core/contracts/operator-inbox.js';
+import type { ChannelOperatorMessage } from '@/core/model/operator-message.js';
 import type { SupportMessage } from '@/core/model/support-message.js';
 import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-support-repository.js';
 
@@ -45,6 +46,18 @@ class FakeVkGateway implements VkGateway {
       key: 'key',
       server: 'https://lp.vk.test',
       ts: '1',
+    });
+  }
+
+  public getLongPollSettings(): Promise<{
+    enabled: boolean;
+    messageNew: boolean;
+    messageReply: boolean;
+  }> {
+    return Promise.resolve({
+      enabled: true,
+      messageNew: true,
+      messageReply: true,
     });
   }
 
@@ -82,6 +95,10 @@ class FakeOperatorInbox implements OperatorInbox {
   public readonly opened: OpenOperatorRequest[] = [];
   public readonly reopened: string[] = [];
   public readonly relayed: SupportMessage[] = [];
+  public readonly mirrored: {
+    message: ChannelOperatorMessage;
+    operatorTopicId: string;
+  }[] = [];
 
   public closeRequest(operatorTopicId: string): Promise<void> {
     this.closed.push(operatorTopicId);
@@ -99,6 +116,14 @@ class FakeOperatorInbox implements OperatorInbox {
     const topicId = `topic-${this.createdTopics.length + 1}`;
     this.createdTopics.push(topicId);
     return Promise.resolve({ topicId });
+  }
+
+  public mirrorOperatorMessage(
+    operatorTopicId: string,
+    message: ChannelOperatorMessage,
+  ): Promise<void> {
+    this.mirrored.push({ message, operatorTopicId });
+    return Promise.resolve();
   }
 
   public relayCustomerMessage(
@@ -198,6 +223,79 @@ describe('VK handoff integration', () => {
     expect(
       repository.getUsageEventCounts(new Date('2026-01-01')).new_request,
     ).toBe(1);
+  });
+
+  it('mirrors a manual VK community reply into the existing topic once', async () => {
+    await router.route(createMessageEvent());
+    const reply = createReplyEvent({
+      admin_author_id: 777,
+      conversation_message_id: 8,
+      from_id: -42,
+      out: 1,
+      text: 'Answer sent directly from VK',
+    });
+
+    await router.route(reply);
+    await router.route(reply);
+
+    expect(inbox.createdTopics).toEqual(['topic-1']);
+    expect(inbox.mirrored).toHaveLength(1);
+    const mirrored = inbox.mirrored[0];
+    expect(mirrored?.operatorTopicId).toBe('topic-1');
+    expect(mirrored?.message.channel).toBe('vk');
+    expect(mirrored?.message.conversationId).toBe('101');
+    expect(mirrored?.message.externalMessageId).toBe('101:8');
+    expect(mirrored?.message.text).toBe('Answer sent directly from VK');
+    expect(gateway.sent).toHaveLength(0);
+    expect(
+      repository
+        .findConversationMessages(
+          repository.findActiveRequest('vk', '101')?.id ?? '',
+          10,
+        )
+        .filter((message) => message.direction === 'operator_to_client'),
+    ).toEqual([
+      expect.objectContaining({
+        externalMessageId: '101:8',
+        text: 'Answer sent directly from VK',
+      }),
+    ]);
+  });
+
+  it('ignores an outgoing VK event created by an API call', async () => {
+    await router.route(createMessageEvent());
+
+    await router.route(
+      createReplyEvent({
+        admin_author_id: 777,
+        conversation_message_id: 9,
+        from_id: -42,
+        out: 1,
+        random_id: 123_456,
+        text: 'Automated answer from Inbox Point',
+      }),
+    );
+
+    expect(inbox.mirrored).toHaveLength(0);
+  });
+
+  it('keeps accepting the wrapped message_reply payload variant', async () => {
+    await router.route(createMessageEvent());
+    const directReply = createReplyEvent({
+      admin_author_id: 777,
+      conversation_message_id: 10,
+      from_id: -42,
+      out: 1,
+      text: 'Wrapped manual reply',
+    });
+
+    await router.route({
+      ...directReply,
+      object: { message: directReply.object },
+    });
+
+    expect(inbox.mirrored).toHaveLength(1);
+    expect(inbox.mirrored[0]?.message.text).toBe('Wrapped manual reply');
   });
 
   it('reuses one Telegram topic for later requests from the same VK client', async () => {
@@ -730,6 +828,20 @@ function createMessageEvent(
       },
     },
     type: 'message_new',
+  };
+}
+
+function createReplyEvent(
+  overrides: Partial<VkMessageNewEvent['object']['message']> & {
+    random_id?: number;
+  } = {},
+): VkLongPollEvent {
+  const base = createMessageEvent(overrides);
+  return {
+    event_id: base.event_id,
+    group_id: base.group_id,
+    object: base.object.message,
+    type: 'message_reply',
   };
 }
 

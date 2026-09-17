@@ -24,6 +24,11 @@ describe('vkSetupErrorMessage', () => {
     ).toContain('«Входящие сообщения»');
     expect(
       vkSetupErrorMessage(
+        new Error('VK Long Poll message_reply event is disabled'),
+      ),
+    ).toContain('«Исходящие сообщения»');
+    expect(
+      vkSetupErrorMessage(
         new Error('VK access token is missing manage permission'),
       ),
     ).toContain('«Управление сообществом»');

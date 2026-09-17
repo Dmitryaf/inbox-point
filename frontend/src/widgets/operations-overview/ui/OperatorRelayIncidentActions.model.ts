@@ -23,5 +23,13 @@ export function createComponentModel(
   _props: ResolvedProps,
   $emit: (event: string, ...args: unknown[]) => void,
 ) {
-  return { $emit };
+  function isMessageDeliveryIncident(
+    incident: OperatorRelayIncidentListProps['incidents'][number],
+  ): boolean {
+    return (
+      incident.action === 'relay_message' ||
+      incident.action === 'mirror_operator_message'
+    );
+  }
+  return { $emit, isMessageDeliveryIncident };
 }

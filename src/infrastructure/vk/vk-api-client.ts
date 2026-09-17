@@ -29,6 +29,7 @@ const longPollSettingsSchema = z.object({
   is_enabled: vkBooleanSchema,
   events: z.object({
     message_new: vkBooleanSchema,
+    message_reply: vkBooleanSchema,
   }),
 });
 
@@ -76,6 +77,7 @@ export interface VkLongPollServer {
 export interface VkLongPollSettings {
   enabled: boolean;
   messageNew: boolean;
+  messageReply: boolean;
 }
 
 export interface VkTokenPermissions {
@@ -152,6 +154,7 @@ export class VkApiClient implements VkGateway {
     return {
       enabled: settings.is_enabled,
       messageNew: settings.events.message_new,
+      messageReply: settings.events.message_reply,
     };
   }
 

@@ -22,6 +22,10 @@ export class EmergencyOperatorInbox implements OperatorInbox {
     });
   }
 
+  public mirrorOperatorMessage(): Promise<void> {
+    return Promise.resolve();
+  }
+
   public relayCustomerMessage(
     operatorTopicId: string,
     message: SupportMessage,

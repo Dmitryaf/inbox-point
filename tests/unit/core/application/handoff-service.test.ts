@@ -65,6 +65,10 @@ class FakeOperatorInbox implements OperatorInbox {
     return { topicId: `topic-${openNumber}` };
   }
 
+  public mirrorOperatorMessage(): Promise<void> {
+    return Promise.resolve();
+  }
+
   public relayCustomerMessage(
     operatorTopicId: string,
     message: SupportMessage,

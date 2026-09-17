@@ -145,7 +145,7 @@ describe('VkApiClient', () => {
       .mockResolvedValueOnce(
         Response.json({
           response: {
-            events: { message_new: 1 },
+            events: { message_new: 1, message_reply: 1 },
             is_enabled: 1,
           },
         }),
@@ -158,6 +158,7 @@ describe('VkApiClient', () => {
     await expect(client.getLongPollSettings(42)).resolves.toEqual({
       enabled: true,
       messageNew: true,
+      messageReply: true,
     });
 
     expect(fetchMock.mock.calls[0]?.[0]).toBe(

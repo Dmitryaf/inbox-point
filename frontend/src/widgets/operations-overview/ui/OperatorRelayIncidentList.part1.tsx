@@ -82,7 +82,11 @@ export function renderOperatorRelayIncidentListPart1(
                       <dd data-r-e2822c38="">{incident.reason}</dd>
                     </div>
                     <div data-r-e2822c38="">
-                      <dt data-r-e2822c38="">{'ID сообщения клиента'}</dt>
+                      <dt data-r-e2822c38="">
+                        {incident.action === 'mirror_operator_message'
+                          ? 'ID ответа VK'
+                          : 'ID сообщения клиента'}
+                      </dt>
                       <dd data-r-e2822c38="">{incident.clientMessageId}</dd>
                     </div>
                     {incident.action !== 'open_request' ? (
