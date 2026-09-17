@@ -15,6 +15,8 @@ class VkLongPollEventTest {
                 .put("date", 1000).put("admin_author_id", 123).put("text", "From VK").put("random_id", 0);
         assertThat(VkChannel.nativeReply("native", 2, 7, message)).isNotNull();
         message.put("random_id", 9);
+        assertThat(VkChannel.nativeReply("native", 2, 7, message)).isNotNull();
+        message.remove("admin_author_id");
         assertThat(VkChannel.nativeReply("native", 2, 7, message)).isNull();
     }
 

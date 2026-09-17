@@ -118,7 +118,7 @@ public final class VkChannel implements AutoCloseable {
 
     static Message nativeReply(String event, long peer, long id, JsonNode message) {
         if (!message.path("admin_author_id").isIntegralNumber() || message.path("admin_author_id").asLong() <= 0
-                || message.path("random_id").asLong(0) != 0 || message.path("text").asString("").isBlank()) {
+                || message.path("text").asString("").isBlank()) {
             return null;
         }
         var occurred = java.time.Instant.ofEpochSecond(message.path("date").asLong(0));
