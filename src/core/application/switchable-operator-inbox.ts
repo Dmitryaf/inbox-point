@@ -1,6 +1,7 @@
 import {
   OperatorActionOutcomeUnknownError,
   OperatorInboxUnavailableError,
+  type MirrorOperatorMessageOptions,
   type OpenOperatorRequest,
   type OperatorInbox,
   type OperatorLifecycleActionOptions,
@@ -10,9 +11,10 @@ import type { DeliveryIncidentNotifier } from '@/core/contracts/delivery-inciden
 import type { FailedDelivery } from '@/core/model/support-request.js';
 import { isWebOperatorTopic } from '@/core/model/operator-topic.js';
 import type { SupportMessage } from '@/core/model/support-message.js';
+import type { ChannelOperatorMessage } from '@/core/model/operator-message.js';
 
 type ActiveOperatorInbox = OperatorInbox & DeliveryIncidentNotifier;
-type FallbackOperation = 'close' | 'open' | 'relay' | 'reopen';
+type FallbackOperation = 'close' | 'mirror' | 'open' | 'relay' | 'reopen';
 
 export class SwitchableOperatorInbox
   implements OperatorInbox, DeliveryIncidentNotifier
@@ -24,6 +26,7 @@ export class SwitchableOperatorInbox
     private readonly onFallback: (
       error: unknown,
       operation: FallbackOperation,
+      fallbackUsed: boolean,
     ) => void = () => undefined,
   ) {}
 
@@ -54,6 +57,23 @@ export class SwitchableOperatorInbox
       return Promise.resolve();
     }
     return this.requireInbox().notifyDeliveryFailure(delivery);
+  }
+
+  public async mirrorOperatorMessage(
+    operatorTopicId: string,
+    message: ChannelOperatorMessage,
+    options: MirrorOperatorMessageOptions,
+  ): Promise<void> {
+    if (isWebOperatorTopic(operatorTopicId)) {
+      return this.fallback.mirrorOperatorMessage(
+        operatorTopicId,
+        message,
+        options,
+      );
+    }
+    await this.runWithoutFallback('mirror', (inbox) =>
+      inbox.mirrorOperatorMessage(operatorTopicId, message, options),
+    );
   }
 
   public register(inbox: ActiveOperatorInbox): () => void {
@@ -125,13 +145,13 @@ export class SwitchableOperatorInbox
       if (error instanceof OperatorActionOutcomeUnknownError) {
         throw error;
       }
-      this.onFallback(error, operation);
+      this.onFallback(error, operation, true);
       return runFallback();
     }
   }
 
   private async runWithoutFallback<T>(
-    operation: Extract<FallbackOperation, 'close' | 'reopen'>,
+    operation: Extract<FallbackOperation, 'close' | 'mirror' | 'reopen'>,
     runPrimary: (inbox: ActiveOperatorInbox) => Promise<T>,
   ): Promise<T> {
     const inbox = this.inbox;
@@ -141,7 +161,7 @@ export class SwitchableOperatorInbox
     try {
       return await runPrimary(inbox);
     } catch (error: unknown) {
-      this.onFallback(error, operation);
+      this.onFallback(error, operation, false);
       throw error;
     }
   }

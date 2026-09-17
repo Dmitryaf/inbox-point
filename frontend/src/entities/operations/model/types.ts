@@ -79,7 +79,12 @@ export type OperatorActionResolution =
   'completed' | 'not_completed' | 'received' | 'retry' | 'use_web';
 
 export interface OperatorRelayIncident {
-  action: 'close_request' | 'open_request' | 'relay_message' | 'reopen_request';
+  action:
+    | 'close_request'
+    | 'mirror_operator_message'
+    | 'open_request'
+    | 'relay_message'
+    | 'reopen_request';
   channel: 'Telegram' | 'VK';
   clientMessageId: string;
   confirmable: boolean;

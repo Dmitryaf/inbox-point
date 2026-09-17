@@ -86,7 +86,10 @@ export class OperatorActionIncidentService {
   }
 
   private confirmReceived(incident: OperatorActionIncident): boolean {
-    if (incident.kind !== 'relay_message') {
+    if (
+      incident.kind !== 'relay_message' &&
+      incident.kind !== 'mirror_operator_message'
+    ) {
       return false;
     }
     const now = this.clock();

@@ -122,6 +122,11 @@ export interface SupportRepository
     channel: ClientChannelKind,
     conversationId: string,
   ): SupportRequest | undefined;
+  findRequestByChannelOperatorMessage(
+    channel: ClientChannelKind,
+    conversationId: string,
+    externalMessageId: string,
+  ): SupportRequest | undefined;
   findActiveWebOperatorRequests(
     limit: number,
   ): readonly OperatorRequestSummary[];

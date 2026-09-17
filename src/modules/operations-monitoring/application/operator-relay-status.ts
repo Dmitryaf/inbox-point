@@ -48,5 +48,8 @@ function operatorActionReason(incident: OperatorActionIncident): string {
   if (incident.kind === 'open_request') {
     return 'Telegram мог создать тему, но подтверждение не получено. Обращение сохранено в web inbox; проверьте группу и закройте возможный дубль.';
   }
+  if (incident.kind === 'mirror_operator_message') {
+    return 'Telegram мог отразить ответ, отправленный из VK, но подтверждение не получено. Не отправляйте его повторно: проверьте тему.';
+  }
   return 'Telegram мог принять сообщение клиента. Не отправляйте его повторно: проверьте тему или переведите обращение в web inbox.';
 }

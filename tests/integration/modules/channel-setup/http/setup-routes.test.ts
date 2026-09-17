@@ -411,7 +411,11 @@ function registerTestSetup(
     () => ({
       getLongPollServer: () => Promise.resolve({}),
       getLongPollSettings: () =>
-        Promise.resolve({ enabled: true, messageNew: true }),
+        Promise.resolve({
+          enabled: true,
+          messageNew: true,
+          messageReply: true,
+        }),
       getTokenPermissions: () =>
         Promise.resolve({ names: ['manage', 'messages'] }),
       resolveCommunity: () => Promise.resolve(42),

@@ -9,7 +9,10 @@ import {
   type OperatorInbox,
 } from '@/core/contracts/operator-inbox.js';
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
-import type { OperatorMessage } from '@/core/model/operator-message.js';
+import type {
+  ChannelOperatorMessage,
+  OperatorMessage,
+} from '@/core/model/operator-message.js';
 import { createOperatorLifecycleAction } from '@/core/model/operator-action.js';
 import {
   createWebOperatorTopicId,
@@ -138,6 +141,7 @@ export class HandoffService {
         throw error;
       }
       opened = await operatorInbox.openRequest({
+        expectedTopicId: request.operatorTopicId,
         requestId: request.id,
         source,
         title: createTopicTitle(request.channel, source.displayName),
@@ -477,6 +481,153 @@ export class HandoffService {
       createConversationKey(request),
       operation,
     );
+  }
+
+  public async handleChannelOperatorMessage(
+    externalEventId: string,
+    message: ChannelOperatorMessage,
+  ): Promise<void> {
+    await this.conversationMutationQueue.run(
+      createConversationKey(message),
+      () =>
+        this.handleEvent(
+          `operator:${message.channel}:native`,
+          externalEventId,
+          async () => {
+            try {
+              await this.processChannelOperatorMessage(message);
+            } catch (error: unknown) {
+              if (!(error instanceof OperatorActionOutcomeUnknownError)) {
+                throw error;
+              }
+            }
+          },
+        ),
+    );
+  }
+
+  private async processChannelOperatorMessage(
+    message: ChannelOperatorMessage,
+  ): Promise<void> {
+    const request =
+      this.repository.findRequestByChannelOperatorMessage(
+        message.channel,
+        message.conversationId,
+        message.externalMessageId,
+      ) ??
+      this.repository.findActiveRequest(
+        message.channel,
+        message.conversationId,
+      );
+    if (!request) {
+      return;
+    }
+
+    const occurredAt = this.clock();
+    this.repository.recordUsageEvent({
+      channel: request.channel,
+      id: `first-reply:${request.id}`,
+      occurredAt,
+      requestId: request.id,
+      type: 'first_reply',
+    });
+    this.repository.recordConversationMessage({
+      createdAt: message.receivedAt,
+      direction: 'operator_to_client',
+      externalMessageId: message.externalMessageId,
+      id: this.createId(),
+      requestId: request.id,
+      text: message.text,
+    });
+    try {
+      await this.operatorInbox.mirrorOperatorMessage(
+        request.operatorTopicId,
+        message,
+        { requestId: request.id },
+      );
+    } catch (error: unknown) {
+      if (!(error instanceof OperatorConversationUnavailableError)) {
+        throw error;
+      }
+      await this.replaceUnavailableTopicForOperatorMessage(request, message);
+    }
+  }
+
+  private async replaceUnavailableTopicForOperatorMessage(
+    request: SupportRequest,
+    message: ChannelOperatorMessage,
+  ): Promise<void> {
+    const current = this.repository.findRequestById(request.id);
+    if (
+      current?.status !== 'active' ||
+      current.operatorTopicId !== request.operatorTopicId
+    ) {
+      throw new OperatorConversationUnavailableError();
+    }
+    const clientMessages = this.repository
+      .findConversationMessages(request.id)
+      .filter((item) => item.direction === 'client_to_operator');
+    const firstMessage = clientMessages[0];
+    if (!firstMessage) {
+      throw new OperatorConversationUnavailableError();
+    }
+    const source = createRecoveredSupportMessage(request, firstMessage);
+    const opened = await this.operatorInbox.openRequest({
+      requestId: request.id,
+      source,
+      title: createTopicTitle(request.channel, source.displayName),
+      unavailableTopicId: request.operatorTopicId,
+    });
+    const afterOpen = this.repository.findRequestById(request.id);
+    const switched =
+      afterOpen?.operatorTopicId === opened.topicId ||
+      this.repository.switchOperatorTopic(
+        request.id,
+        request.operatorTopicId,
+        opened.topicId,
+      );
+    if (!switched) {
+      await this.closeAbandonedRecoveryTopic(
+        request.id,
+        opened.topicId,
+        this.operatorInbox,
+      );
+      throw new Error('The operator surface changed during topic replacement');
+    }
+
+    const actionScope = `replacement:${opened.topicId}`;
+    for (const [index, clientMessage] of clientMessages.entries()) {
+      const recoveredMessage = createRecoveredSupportMessage(
+        request,
+        clientMessage,
+      );
+      const relayed = await this.operatorInbox.relayCustomerMessage(
+        opened.topicId,
+        recoveredMessage,
+        {
+          actionScope,
+          initial: index === 0,
+          requestId: request.id,
+        },
+      );
+      if (relayed.operatorTopicId !== opened.topicId) {
+        throw new Error('The replacement operator topic changed unexpectedly');
+      }
+      for (const operatorMessageId of relayed.operatorMessageIds) {
+        this.repository.ensureMessageLink({
+          clientMessageId: clientMessage.externalMessageId,
+          createdAt: this.clock(),
+          direction: 'client_to_operator',
+          id: this.createId(),
+          operatorMessageId,
+          requestId: request.id,
+        });
+      }
+    }
+    await this.operatorInbox.mirrorOperatorMessage(opened.topicId, message, {
+      actionScope,
+      requestId: request.id,
+    });
   }
 
   private findRequestForOperatorMessage(

@@ -24,7 +24,7 @@ describe('SetupPage', () => {
 
     expect(wrapper.get('#telegram-setup-title').text()).toBe('Telegram');
     expect(wrapper.get('#vk-setup-title').text()).toBe('VK');
-    expect(wrapper.text()).not.toContain('Настройте Long Poll API');
+    expect(wrapper.text()).not.toContain('входящие и исходящие сообщения');
     expect(wrapper.text()).toContain('Сначала Telegram');
     expect(wrapper.text()).not.toContain('Доставка ответов');
     expect(wrapper.text()).not.toContain('Резервная копия');
@@ -124,7 +124,7 @@ describe('SetupPage', () => {
       .findAll('.setup-toggle')
       .find((button) => button.text() === 'Подключить VK')
       ?.trigger('click');
-    expect(wrapper.text()).toContain('Настройте Long Poll API');
+    expect(wrapper.text()).toContain('входящие и исходящие сообщения');
     expect(wrapper.text()).toContain(
       '«Дополнительно» → «Работа с API» → «Long Poll API»',
     );

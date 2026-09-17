@@ -395,6 +395,231 @@ describe('Telegram handoff integration', () => {
     expect(repository.getDeliverySummary()).toMatchObject({ pending: 0 });
   });
 
+  it('mirrors a native VK operator reply into its Telegram topic once', async () => {
+    repository.createRequest({
+      channel: 'vk',
+      conversationId: '202',
+      createdAt: new Date('2026-09-17T08:00:00.000Z'),
+      id: 'request-vk-native',
+      operatorTopicId: '900',
+      status: 'active',
+    });
+    const message = {
+      channel: 'vk' as const,
+      conversationId: '202',
+      externalMessageId: '202:8',
+      receivedAt: new Date('2026-09-17T08:01:00.000Z'),
+      text: 'Ответ из интерфейса VK',
+    };
+
+    await handoff.handleChannelOperatorMessage('vk-native-event-1', message);
+    await handoff.handleChannelOperatorMessage('vk-native-event-1', message);
+
+    expect(gateway.sent).toEqual([
+      expect.objectContaining({
+        messageThreadId: 900,
+        text: 'Ответ отправлен из VK:\n\nОтвет из интерфейса VK',
+      }),
+    ]);
+    expect(
+      repository.findConversationMessages('request-vk-native', 10),
+    ).toEqual([
+      expect.objectContaining({
+        direction: 'operator_to_client',
+        externalMessageId: '202:8',
+        text: 'Ответ из интерфейса VK',
+      }),
+    ]);
+  });
+
+  it('does not resend a VK reply whose Telegram mirror outcome is unknown', async () => {
+    repository.createRequest({
+      channel: 'vk',
+      conversationId: '203',
+      createdAt: new Date('2026-09-17T08:00:00.000Z'),
+      id: 'request-vk-native-unknown',
+      operatorTopicId: '901',
+      status: 'active',
+    });
+    gateway.unknownOnSendNumber = 1;
+    const message = {
+      channel: 'vk' as const,
+      conversationId: '203',
+      externalMessageId: '203:9',
+      receivedAt: new Date('2026-09-17T08:01:00.000Z'),
+      text: 'Ответ с неизвестным исходом отражения',
+    };
+
+    await handoff.handleChannelOperatorMessage(
+      'vk-native-event-unknown',
+      message,
+    );
+    repository.closeRequest(
+      'request-vk-native-unknown',
+      new Date('2026-09-17T08:02:00.000Z'),
+    );
+    expect(
+      repository.createNextRequest({
+        channel: 'vk',
+        conversationId: '203',
+        createdAt: new Date('2026-09-17T08:03:00.000Z'),
+        id: 'request-vk-native-next',
+        operatorTopicId: '901',
+        status: 'active',
+      }),
+    ).toBe(true);
+    await handoff.handleChannelOperatorMessage(
+      'vk-native-event-unknown',
+      message,
+    );
+
+    expect(gateway.sent).toHaveLength(1);
+    expect(repository.getOperatorActionSummary()).toEqual({ uncertain: 1 });
+    expect(
+      repository.findConversationMessages('request-vk-native-next', 10),
+    ).toEqual([]);
+  });
+
+  it('completes a retried historical mirror after manual receipt confirmation', async () => {
+    repository.createRequest({
+      channel: 'vk',
+      conversationId: '206',
+      createdAt: new Date('2026-09-17T08:00:00.000Z'),
+      id: 'request-vk-confirmed-mirror',
+      operatorTopicId: '903',
+      status: 'active',
+    });
+    const action = {
+      clientMessageId: '206:12',
+      createdAt: new Date('2026-09-17T08:01:00.000Z'),
+      id: 'operator-mirror:request-vk-confirmed-mirror:vk:206:12:0',
+      initial: false,
+      kind: 'mirror_operator_message' as const,
+      operatorTopicId: '903',
+      requestId: 'request-vk-confirmed-mirror',
+      sequence: 0,
+    };
+    repository.prepareOperatorAction(action);
+    repository.claimOperatorAction(action.id, action.createdAt);
+    repository.markOperatorActionOutcomeUnknown(
+      action.id,
+      'Telegram response was lost',
+    );
+    expect(
+      repository.confirmOperatorActionReceived(
+        action.id,
+        new Date('2026-09-17T08:02:00.000Z'),
+      ),
+    ).toBe(true);
+    const inbox = new TelegramTopicsInbox(gateway, -1_001, repository);
+
+    await inbox.mirrorOperatorMessage(
+      '903',
+      {
+        channel: 'vk',
+        conversationId: '206',
+        externalMessageId: '206:12',
+        receivedAt: action.createdAt,
+        text: 'Уже подтверждённый ответ',
+      },
+      { requestId: 'request-vk-confirmed-mirror' },
+    );
+
+    expect(gateway.sent).toHaveLength(0);
+  });
+
+  it('keeps a retried VK reply bound to its original request generation', async () => {
+    repository.createRequest({
+      channel: 'vk',
+      conversationId: '204',
+      createdAt: new Date('2026-09-17T08:00:00.000Z'),
+      id: 'request-vk-original',
+      operatorTopicId: '902',
+      status: 'active',
+    });
+    gateway.failNextSend = true;
+    const message = {
+      channel: 'vk' as const,
+      conversationId: '204',
+      externalMessageId: '204:10',
+      receivedAt: new Date('2026-09-17T08:01:00.000Z'),
+      text: 'Ответ, повторённый после временной ошибки',
+    };
+
+    await expect(
+      handoff.handleChannelOperatorMessage('vk-native-event-retry', message),
+    ).rejects.toThrow('Temporary Telegram failure');
+    repository.closeRequest(
+      'request-vk-original',
+      new Date('2026-09-17T08:02:00.000Z'),
+    );
+    expect(
+      repository.createNextRequest({
+        channel: 'vk',
+        conversationId: '204',
+        createdAt: new Date('2026-09-17T08:03:00.000Z'),
+        id: 'request-vk-later',
+        operatorTopicId: '902',
+        status: 'active',
+      }),
+    ).toBe(true);
+
+    await handoff.handleChannelOperatorMessage(
+      'vk-native-event-retry',
+      message,
+    );
+
+    expect(gateway.sent).toHaveLength(1);
+    expect(
+      repository.findConversationMessages('request-vk-original', 10),
+    ).toEqual([expect.objectContaining({ externalMessageId: '204:10' })]);
+    expect(repository.findConversationMessages('request-vk-later', 10)).toEqual(
+      [],
+    );
+  });
+
+  it('replaces a missing topic before mirroring a native VK reply', async () => {
+    repository.createRequest({
+      channel: 'vk',
+      conversationId: '205',
+      createdAt: new Date('2026-09-17T08:00:00.000Z'),
+      displayName: 'VK Customer',
+      id: 'request-vk-missing-topic',
+      operatorTopicId: '800',
+      status: 'active',
+    });
+    repository.recordConversationMessage({
+      createdAt: new Date('2026-09-17T08:00:00.000Z'),
+      direction: 'client_to_operator',
+      externalMessageId: '205:1',
+      id: 'client-message-vk-missing-topic',
+      requestId: 'request-vk-missing-topic',
+      senderName: 'VK Customer',
+      text: 'Исходный вопрос клиента',
+    });
+    gateway.unavailableTopics.add(800);
+
+    await handoff.handleChannelOperatorMessage('vk-native-event-missing', {
+      channel: 'vk',
+      conversationId: '205',
+      externalMessageId: '205:11',
+      receivedAt: new Date('2026-09-17T08:01:00.000Z'),
+      text: 'Ответ после удаления темы',
+    });
+
+    expect(
+      repository.findRequestById('request-vk-missing-topic'),
+    ).toMatchObject({ operatorTopicId: '900', status: 'active' });
+    expect(gateway.createdTopics).toEqual([900]);
+    expect(gateway.sent).toHaveLength(2);
+    expect(gateway.sent[0]?.messageThreadId).toBe(900);
+    expect(gateway.sent[0]?.text).toContain('Исходный вопрос клиента');
+    expect(gateway.sent[1]).toMatchObject({
+      messageThreadId: 900,
+      text: 'Ответ отправлен из VK:\n\nОтвет после удаления темы',
+    });
+  });
+
   it('splits a maximum-length customer message without creating extra topics', async () => {
     const update = createPrivateUpdate(1, 501, 'Я'.repeat(4_096));
 

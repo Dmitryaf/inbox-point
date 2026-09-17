@@ -1,6 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 
-export const sqliteSchemaVersion = 10;
+export const sqliteSchemaVersion = 11;
 
 export const requiredSqliteTables = [
   'client_conversation_states',
@@ -51,6 +51,10 @@ export function initializeSqliteSchema(database: DatabaseSync): void {
   }
   if (hasTables !== undefined && version === 9) {
     migrateSchemaNine(database);
+    version = 10;
+  }
+  if (hasTables !== undefined && version === 10) {
+    migrateOperatorActionsForNativeMirrors(database);
     version = sqliteSchemaVersion;
   }
   if (hasTables !== undefined && version !== sqliteSchemaVersion) {
@@ -275,6 +279,59 @@ function migrateSchemaNine(database: DatabaseSync): void {
   }
 }
 
+function migrateOperatorActionsForNativeMirrors(database: DatabaseSync): void {
+  database.exec('BEGIN IMMEDIATE');
+  try {
+    database.exec(`
+      ALTER TABLE operator_actions RENAME TO operator_actions_v10;
+      DROP INDEX IF EXISTS operator_actions_by_status;
+      ${operatorActionsTableSql}
+
+      INSERT INTO operator_actions (
+        id,
+        request_id,
+        kind,
+        client_message_id,
+        operator_topic_id,
+        sequence,
+        initial,
+        status,
+        external_result_id,
+        last_error,
+        created_at,
+        attempt_started_at,
+        completed_at,
+        manual_resolution,
+        resolved_at
+      )
+      SELECT
+        id,
+        request_id,
+        kind,
+        client_message_id,
+        operator_topic_id,
+        sequence,
+        initial,
+        status,
+        external_result_id,
+        last_error,
+        created_at,
+        attempt_started_at,
+        completed_at,
+        manual_resolution,
+        resolved_at
+      FROM operator_actions_v10;
+
+      DROP TABLE operator_actions_v10;
+      PRAGMA user_version = 11;
+    `);
+    database.exec('COMMIT');
+  } catch (error: unknown) {
+    database.exec('ROLLBACK');
+    throw error;
+  }
+}
+
 const inboundEventRetryMigrationSql = `
   ALTER TABLE inbound_events
     ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0;
@@ -294,6 +351,7 @@ const operatorActionsTableSql = `
     request_id TEXT NOT NULL REFERENCES support_requests(id),
     kind TEXT NOT NULL CHECK (kind IN (
       'close_request',
+      'mirror_operator_message',
       'open_request',
       'relay_message',
       'reopen_request'

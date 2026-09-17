@@ -150,13 +150,16 @@ test('VK setup stays anchored while details open', async ({ page }) => {
   const vkCard = page.locator('.setup-card').filter({ hasText: 'VK' });
   const collapsed = await requiredBox(vkCard);
   await vkCard.getByRole('button', { name: 'Подключить VK' }).click();
-  await expect(page.getByText('Настройте Long Poll API.')).toBeVisible();
+  await expect(
+    page.getByText('Включите входящие и исходящие сообщения в Long Poll API.'),
+  ).toBeVisible();
   const expanded = await requiredBox(vkCard);
 
   expectStablePlacement(expanded, collapsed);
   await expect(vkCard).toContainText(
     '«Дополнительно» → «Работа с API» → «Long Poll API»',
   );
+  await expect(vkCard).toContainText('«Исходящие сообщения»');
   await expect(vkCard).toContainText('обязательно поставьте две галочки');
   await expect(vkCard).toContainText('Добавить кнопку „Начать“');
   await expect(vkCard).toContainText(

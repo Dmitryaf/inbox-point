@@ -1,4 +1,5 @@
 import type { SupportMessage } from '@/core/model/support-message.js';
+import type { ChannelOperatorMessage } from '@/core/model/operator-message.js';
 
 export class OperatorConversationUnavailableError extends Error {
   public constructor() {
@@ -24,7 +25,7 @@ export class OperatorConversationOwnershipConflictError extends Error {
 export class OperatorActionOutcomeUnknownError extends Error {
   public constructor(
     public readonly actionId: string,
-    public readonly operation: 'close' | 'open' | 'relay' | 'reopen',
+    public readonly operation: 'close' | 'mirror' | 'open' | 'relay' | 'reopen',
   ) {
     super(`Operator inbox ${operation} outcome is unknown`);
     this.name = 'OperatorActionOutcomeUnknownError';
@@ -32,6 +33,7 @@ export class OperatorActionOutcomeUnknownError extends Error {
 }
 
 export interface OpenOperatorRequest {
+  expectedTopicId?: string;
   requestId: string;
   reusableTopicId?: string;
   source: SupportMessage;
@@ -55,12 +57,22 @@ export interface RelayedCustomerMessage {
   operatorTopicId: string;
 }
 
+export interface MirrorOperatorMessageOptions {
+  actionScope?: string;
+  requestId: string;
+}
+
 export interface OperatorInbox {
   closeRequest(
     operatorTopicId: string,
     options: OperatorLifecycleActionOptions,
   ): Promise<void>;
   openRequest(request: OpenOperatorRequest): Promise<{ topicId: string }>;
+  mirrorOperatorMessage(
+    operatorTopicId: string,
+    message: ChannelOperatorMessage,
+    options: MirrorOperatorMessageOptions,
+  ): Promise<void>;
   reopenRequest(
     operatorTopicId: string,
     options: OperatorLifecycleActionOptions,

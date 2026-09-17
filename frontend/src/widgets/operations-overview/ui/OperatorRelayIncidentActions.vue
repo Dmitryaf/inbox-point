@@ -15,18 +15,27 @@ defineProps<
   }
 >();
 defineEmits<OperatorRelayIncidentListEmits>();
+
+function isMessageDeliveryIncident(
+  incident: OperatorRelayIncidentListProps['incidents'][number],
+): boolean {
+  return (
+    incident.action === 'relay_message' ||
+    incident.action === 'mirror_operator_message'
+  );
+}
 </script>
 
 <template>
   <div class="delivery-resolution-actions">
-    <p v-if="incident.action === 'relay_message'">
+    <p v-if="isMessageDeliveryIncident(incident)">
       Проверьте Telegram-тему перед выбором действия.
     </p>
     <p v-if="incident.action === 'relay_message' && !incident.confirmable">
       Не все сообщения появились в Telegram. Откройте обращение здесь.
     </p>
     <button
-      v-if="incident.action === 'relay_message' && incident.confirmable"
+      v-if="isMessageDeliveryIncident(incident) && incident.confirmable"
       class="secondary-button"
       type="button"
       :disabled="Boolean(pendingActionId)"

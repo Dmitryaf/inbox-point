@@ -49,6 +49,10 @@ class FakeOperatorInbox implements OperatorInbox {
     return Promise.resolve();
   }
 
+  public mirrorOperatorMessage(): Promise<void> {
+    return Promise.resolve();
+  }
+
   public async relayCustomerMessage(
     operatorTopicId: string,
     _message: SupportMessage,

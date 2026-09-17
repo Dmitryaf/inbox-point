@@ -62,5 +62,8 @@ export function operationLabel(incident: OperatorRelayIncident): string {
   if (incident.action === 'open_request') {
     return 'Создание Telegram-темы';
   }
+  if (incident.action === 'mirror_operator_message') {
+    return `Отражение ответа из VK, часть ${incident.sequence + 1}`;
+  }
   return `Передача части ${incident.sequence + 1}`;
 }

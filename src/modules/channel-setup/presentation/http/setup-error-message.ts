@@ -47,6 +47,9 @@ export function vkSetupErrorMessage(error: unknown): string {
   if (message.includes('message_new event is disabled')) {
     return 'В Long Poll API откройте «Типы событий» и включите «Входящие сообщения».';
   }
+  if (message.includes('message_reply event is disabled')) {
+    return 'В Long Poll API откройте «Типы событий» и включите «Исходящие сообщения».';
+  }
   if (message.includes('code 5')) {
     return 'Ключ VK недействителен или был удалён. Создайте новый ключ доступа.';
   }

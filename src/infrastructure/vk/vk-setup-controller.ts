@@ -2,6 +2,7 @@ import type { VkRuntimeConfig } from '@/config/runtime-config.js';
 import type { VkSettingsStore } from '@/infrastructure/persistence/vk-settings-store.js';
 
 import { VkApiClient } from './vk-api-client.js';
+import { assertVkLongPollReady } from './vk-long-poll-readiness.js';
 
 export type VkSettingsSource = 'environment' | 'local' | 'none';
 
@@ -16,6 +17,7 @@ export interface VkSetupGateway {
   getLongPollSettings(groupId: number): Promise<{
     enabled: boolean;
     messageNew: boolean;
+    messageReply: boolean;
   }>;
   getTokenPermissions(): Promise<{ names: readonly string[] }>;
   resolveCommunity(reference: string): Promise<number>;
@@ -57,14 +59,7 @@ export class VkSetupController {
       groupId: await client.resolveCommunity(community),
       pollTimeoutSeconds: 25,
     };
-    const longPoll = await client.getLongPollSettings(config.groupId);
-    if (!longPoll.enabled) {
-      throw new Error('VK Long Poll is disabled');
-    }
-    if (!longPoll.messageNew) {
-      throw new Error('VK Long Poll message_new event is disabled');
-    }
-    await client.getLongPollServer(config.groupId);
+    await assertVkLongPollReady(client, config.groupId);
     await this.runtime.start(config);
     try {
       await this.settingsStore.save(config);

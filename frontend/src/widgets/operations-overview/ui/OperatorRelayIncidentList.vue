@@ -60,7 +60,13 @@ defineEmits<OperatorRelayIncidentListEmits>();
               <dd>{{ incident.reason }}</dd>
             </div>
             <div>
-              <dt>ID сообщения клиента</dt>
+              <dt>
+                {{
+                  incident.action === 'mirror_operator_message'
+                    ? 'ID ответа VK'
+                    : 'ID сообщения клиента'
+                }}
+              </dt>
               <dd>{{ incident.clientMessageId }}</dd>
             </div>
             <div v-if="incident.action !== 'open_request'">

@@ -58,6 +58,34 @@ describe('OperatorActionIncidentService', () => {
     expect(repository.getDeliverySummary()).toMatchObject({ pending: 1 });
   });
 
+  it('confirms a VK reply mirror without moving the request to web', async () => {
+    const action = {
+      clientMessageId: '101:8',
+      createdAt: new Date('2026-09-06T12:00:00.000Z'),
+      id: 'operator-mirror:request-1:vk:101:8:0',
+      initial: false,
+      kind: 'mirror_operator_message' as const,
+      operatorTopicId: '900',
+      requestId: 'request-1',
+      sequence: 0,
+    };
+    repository.prepareOperatorAction(action);
+    repository.claimOperatorAction(action.id, action.createdAt);
+    repository.markOperatorActionOutcomeUnknown(
+      action.id,
+      'network response lost',
+    );
+
+    expect(await service.resolve(action.id, 'use_web')).toBe(false);
+    expect(await service.resolve(action.id, 'received')).toBe(true);
+
+    expect(repository.findRequestById('request-1')?.operatorTopicId).toBe(
+      '900',
+    );
+    expect(repository.getOperatorActionSummary()).toEqual({ uncertain: 0 });
+    expect(repository.getDeliverySummary()).toMatchObject({ pending: 0 });
+  });
+
   it('acknowledges only after every uncertain chunk is confirmed', async () => {
     createUnknownRelay(repository, 0);
     createUnknownRelay(repository, 1);

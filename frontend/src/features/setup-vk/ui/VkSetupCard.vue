@@ -4,7 +4,6 @@ import { computed, ref } from 'vue';
 import type { ChannelSetupStatus } from '@frontend/entities/setup/model/types';
 import { useVkSetup } from '@frontend/features/setup-vk/model/use-vk-setup';
 import VkSetupInstructions from './VkSetupInstructions.vue';
-
 const props = defineProps<{
   status: ChannelSetupStatus;
   telegramConnected: boolean;
@@ -67,14 +66,8 @@ const toggleLabel = computed(() => {
       {{ toggleLabel }}
     </button>
     <div v-if="expanded" class="setup-details">
-      <p
-        v-if="status.connected"
-        class="setup-status setup-status--success"
-        role="status"
-      >
-        Подключение активно.
-      </p>
       <template v-if="status.source !== 'none'">
+        <VkSetupInstructions compact :connected="status.connected" />
         <p
           v-if="status.source === 'environment'"
           class="setup-status setup-status--info"

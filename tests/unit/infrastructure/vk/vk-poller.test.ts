@@ -154,7 +154,10 @@ describe('VkPoller', () => {
     };
     const gateway = new ScriptedGateway([{ ts: '2', updates: [invalidEvent] }]);
     const router = new VkUpdateRouter(
-      { handleClientMessage: () => Promise.resolve() },
+      {
+        handleChannelOperatorMessage: () => Promise.resolve(),
+        handleClientMessage: () => Promise.resolve(),
+      },
       {
         getUserDisplayName: () => Promise.resolve('Customer'),
         sendMessage: () => Promise.resolve({ externalMessageId: '1' }),

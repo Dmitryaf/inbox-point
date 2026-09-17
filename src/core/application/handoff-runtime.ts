@@ -8,7 +8,10 @@ import type { DeliveryWorkerActivityReporter } from '@/core/contracts/delivery-w
 import type { OperatorInbox } from '@/core/contracts/operator-inbox.js';
 import type { OutboundDeliveryPolicy } from '@/core/contracts/outbound-delivery-policy.js';
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
-import type { OperatorMessage } from '@/core/model/operator-message.js';
+import type {
+  ChannelOperatorMessage,
+  OperatorMessage,
+} from '@/core/model/operator-message.js';
 import type { SupportMessage } from '@/core/model/support-message.js';
 
 export interface HandoffRuntimeDependencies {
@@ -31,10 +34,12 @@ export class HandoffRuntime {
     this.logger = dependencies.logger;
     this.operatorInbox = new SwitchableOperatorInbox(
       new EmergencyOperatorInbox(),
-      (error, operation) =>
+      (error, operation, fallbackUsed) =>
         dependencies.logger.error(
           error,
-          `Operator inbox ${operation} failed; using emergency web inbox`,
+          fallbackUsed
+            ? `Operator inbox ${operation} failed; using emergency web inbox`
+            : `Operator inbox ${operation} failed; no fallback was applied`,
         ),
     );
     this.handoffService = new HandoffService({
@@ -80,6 +85,16 @@ export class HandoffRuntime {
     message: OperatorMessage,
   ): Promise<void> {
     return this.handoffService.handleOperatorMessage(externalEventId, message);
+  }
+
+  public handleChannelOperatorMessage(
+    externalEventId: string,
+    message: ChannelOperatorMessage,
+  ): Promise<void> {
+    return this.handoffService.handleChannelOperatorMessage(
+      externalEventId,
+      message,
+    );
   }
 
   public handleWebOperatorMessage(
