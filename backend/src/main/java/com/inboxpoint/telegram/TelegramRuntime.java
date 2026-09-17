@@ -162,6 +162,10 @@ public final class TelegramRuntime {
 
     private void processVkInbound(TelegramStore store, VkChannel.Message item)
             throws IOException, SQLException, InterruptedException {
+        if (item.nativeReply()) {
+            new HandoffService(store, handoff.routingInbox(), Clock.systemUTC(), queue).mirrorVkReply(item);
+            return;
+        }
         if (!item.unsupported()) {
             receiveVk(handoff.routingInbox(), store, item.event(), item.peer(), item.message(), item.name(), item.text(), item.payload());
             return;

@@ -27,6 +27,19 @@ final class SwitchableOperatorInbox implements OperatorInbox {
     }
 
     @Override
+    public void mirror(String request, String topic, String message, int sequence, String text)
+            throws TelegramBotApi.RequestFailed, InterruptedException {
+        if (EmergencyOperatorInbox.isWebTopic(topic)) {
+            return;
+        }
+        var target = primary.get();
+        if (target == null) {
+            throw new TelegramBotApi.RequestFailed("Operator Telegram topics are unavailable", false);
+        }
+        target.mirror(request, topic, message, sequence, text);
+    }
+
+    @Override
     public void lifecycle(String topic, String request, String event, boolean open)
             throws TelegramBotApi.RequestFailed, InterruptedException {
         var target = EmergencyOperatorInbox.isWebTopic(topic) ? fallback : primary.get();

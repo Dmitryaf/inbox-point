@@ -196,6 +196,81 @@ final class HandoffService {
         }
     }
 
+    void mirrorVkReply(com.inboxpoint.vk.VkChannel.Message message)
+            throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
+        queue.run("vk", message.peer(), () -> mirrorVkReplySerially(message));
+    }
+
+    private void mirrorVkReplySerially(com.inboxpoint.vk.VkChannel.Message message)
+            throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
+        var source = "operator:vk";
+        if (!store.claim(source, message.event(), clock.instant())) {
+            return;
+        }
+        try {
+            var externalMessage = message.peer() + ":" + message.message();
+            var request = store.requestForNativeVkReply(message.peer(), externalMessage);
+            if (request == null) {
+                request = store.activeRequest("vk", message.peer());
+            }
+            if (request != null) {
+                store.recordMessage(request.id(), "operator_to_client", externalMessage, null, message.text(), message.occurred());
+                store.usageEvent("first-reply:" + request.id(), "first_reply", request.channel(), request.id(), clock.instant());
+                try {
+                    sendNativeMirror(request, externalMessage, message.text());
+                } catch (TelegramBotApi.RequestFailed failure) {
+                    if (failure.topicProblem() != TelegramBotApi.TopicProblem.MISSING || !request.active()) {
+                        throw failure;
+                    }
+                    restoreTopicForNativeReply(request, externalMessage, message.text());
+                }
+            }
+            store.completeEvent(source, message.event(), clock.instant());
+        } catch (DurableTelegramInbox.UnknownOutcome uncertain) {
+            store.completeEvent(source, message.event(), clock.instant());
+        } catch (SQLException | TelegramBotApi.RequestFailed failure) {
+            store.release(source, message.event());
+            throw failure;
+        }
+    }
+
+    private void restoreTopicForNativeReply(TelegramStore.Request request, String message, String text)
+            throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
+        var history = store.recoveryMessages(request.id());
+        if (history.isEmpty()) {
+            throw new SQLException("Request history is unavailable");
+        }
+        var name = "VK - " + history.getFirst().name();
+        var title = name.substring(0, name.offsetByCodePoints(0, Math.min(128, name.codePointCount(0, name.length()))));
+        var next = inbox.open(request.id(), "native-reply:" + request.topic() + ":" + message, title, null);
+        if (!store.switchTopic(request.id(), request.topic(), next)) {
+            throw new SQLException("Could not bind the replacement operator topic");
+        }
+        var current = store.byId(request.id());
+        for (int index = 0; index < history.size(); index++) {
+            var item = history.get(index);
+            var chunks = chunks(request.channel(), item.name(), item.text(), index == 0);
+            for (int part = 0; part < chunks.size(); part++) {
+                var sent = inbox.relay(request.id(), next, "replay:" + next + ":" + item.event(), part, index == 0, chunks.get(part));
+                store.link(request.id(), "client_to_operator", item.event(), sent.messageId(), clock.instant());
+            }
+        }
+        sendNativeMirror(current, message, text);
+    }
+
+    private void sendNativeMirror(TelegramStore.Request request, String message, String text)
+            throws TelegramBotApi.RequestFailed, InterruptedException {
+        var prefix = "Ответ отправлен из VK:\n\n";
+        int sequence = 0;
+        for (int start = 0; start < text.length();) {
+            int length = Math.min(text.codePointCount(start, text.length()), MESSAGE_LIMIT - prefix.length());
+            int end = text.offsetByCodePoints(start, length);
+            inbox.mirror(request.id(), request.topic(), message, sequence++, prefix + text.substring(start, end));
+            prefix = "Продолжение ответа из VK:\n\n";
+            start = end;
+        }
+    }
+
     private void switchOperatorTopic(String request, String current, String next) throws SQLException {
         if (!store.switchTopic(request, current, next)) {
             var stored = store.byId(request);

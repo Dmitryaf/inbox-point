@@ -15,6 +15,11 @@ interface OperatorInbox {
         }
     }
 
+    default void mirror(String request, String topic, String message, int sequence, String text)
+            throws TelegramBotApi.RequestFailed, InterruptedException {
+        relay(request, topic, message, sequence, false, text);
+    }
+
     default void prepareRelay(String request, String topic, String message, int sequence, boolean initial) { }
 
     record Relay(String topic, String messageId) { }

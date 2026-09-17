@@ -152,6 +152,7 @@ final class OperatorActions {
                 var reason = held > 0 && !"outcome_unknown".equals(status)
                         ? "Открыть Telegram-тему не удалось. Ответ сохранён. Можно повторить открытие или продолжить обращение здесь."
                         : switch (action) {
+                    case "mirror_operator_message" -> "Не удалось подтвердить отражение ответа из VK в Telegram-теме.";
                     case "close_request" -> "Telegram мог закрыть тему, но подтверждение не получено. Обращение пока оставлено открытым в Inbox Point.";
                     case "reopen_request" -> "Telegram мог открыть тему, но подтверждение не получено. Обращение пока оставлено закрытым в Inbox Point.";
                     case "open_request" -> "Telegram мог создать тему, но подтверждение не получено. Обращение сохранено в web inbox; проверьте группу и закройте возможный дубль.";

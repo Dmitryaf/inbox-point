@@ -20,7 +20,14 @@ export function renderVkSetupCardPart3(
   return (
     <>
       {$props.status.source !== 'none' ? (
-        <>{renderVkSetupCardPart4($state, $props)}</>
+        <>
+          <VkSetupInstructions
+            compact
+            connected={$props.status.connected}
+            data-r-712bbad4=""
+          />
+          {renderVkSetupCardPart4($state, $props)}
+        </>
       ) : (
         <>
           <VkSetupInstructions data-r-712bbad4="" />

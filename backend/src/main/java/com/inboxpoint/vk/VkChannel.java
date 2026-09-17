@@ -94,7 +94,8 @@ public final class VkChannel implements AutoCloseable {
         if (!VkApiClient.isEvent(stored)) {
             throw new IOException("Invalid stored VK update");
         }
-        if (!"message_new".equals(stored.path("type").asString())) {
+        var nativeReply = "message_reply".equals(stored.path("type").asString());
+        if (!nativeReply && !"message_new".equals(stored.path("type").asString())) {
             return null;
         }
         var message = messageNew(stored);
@@ -103,11 +104,25 @@ public final class VkChannel implements AutoCloseable {
         var id = message.path("conversation_message_id").asLong(message.path("id").asLong());
         var text = message.path("text").asString();
         var unsupported = message.path("attachments").isArray() && !message.path("attachments").isEmpty();
-        if (from != peer || peer <= 0 || peer >= FIRST_GROUP_CHAT || id <= 0 || !unsupported && text.isBlank()
-                || message.path("out").asInt(0) != 0) {
+        if (peer <= 0 || peer >= FIRST_GROUP_CHAT || id <= 0) {
             return null;
         }
-        return new Message(item.event(), peer, id, unsupported ? "" : api.userDisplayName(peer), text, unsupported, message.path("payload").asString(""));
+        if (nativeReply || message.path("out").asInt(0) == 1) {
+            return nativeReply(item.event(), peer, id, message);
+        }
+        if (from != peer || !unsupported && text.isBlank()) {
+            return null;
+        }
+        return new Message(item.event(), peer, id, unsupported ? "" : api.userDisplayName(peer), text, unsupported, message.path("payload").asString(""), false, null);
+    }
+
+    static Message nativeReply(String event, long peer, long id, JsonNode message) {
+        if (!message.path("admin_author_id").isIntegralNumber() || message.path("admin_author_id").asLong() <= 0
+                || message.path("random_id").asLong(0) != 0 || message.path("text").asString("").isBlank()) {
+            return null;
+        }
+        var occurred = java.time.Instant.ofEpochSecond(message.path("date").asLong(0));
+        return new Message(event, peer, id, null, message.path("text").asString(), false, "", true, occurred);
     }
 
     private static String eventId(JsonNode update) {
@@ -157,9 +172,9 @@ public final class VkChannel implements AutoCloseable {
         http.close();
     }
 
-    public record Message(String event, long peer, long message, String name, String text, boolean unsupported, String payload) {
+    public record Message(String event, long peer, long message, String name, String text, boolean unsupported, String payload, boolean nativeReply, java.time.Instant occurred) {
         public Message(String event, long peer, long message, String name, String text) {
-            this(event, peer, message, name, text, false, "");
+            this(event, peer, message, name, text, false, "", false, null);
         }
     }
 

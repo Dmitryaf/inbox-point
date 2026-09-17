@@ -146,6 +146,9 @@ final class TelegramSetupController {
         if (text.contains("Long Poll is disabled")) {
             return "Откройте «Дополнительно» → «Работа с API» → «Long Poll API» и включите Long Poll.";
         }
+        if (text.contains("message_reply event is disabled")) {
+            return "Включите в Long Poll API событие «Исходящие сообщения» (message_reply).";
+        }
         if (text.contains("message_new event is disabled")) {
             return "В Long Poll API откройте «Типы событий» и включите «Входящие сообщения».";
         }

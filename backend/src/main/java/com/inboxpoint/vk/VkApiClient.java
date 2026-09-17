@@ -51,6 +51,9 @@ final class VkApiClient {
         if (!flag(events.path("message_new"))) {
             throw new IOException("VK Long Poll message_new event is disabled");
         }
+        if (!flag(events.path("message_reply"))) {
+            throw new IOException("VK Long Poll message_reply event is disabled");
+        }
     }
 
     long resolveConfiguredCommunity(String reference) throws IOException, InterruptedException {

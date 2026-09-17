@@ -56,7 +56,7 @@ CREATE INDEX IF NOT EXISTS remembered_admin_sessions_by_expiry ON remembered_adm
 CREATE TABLE IF NOT EXISTS operator_actions (
   id TEXT PRIMARY KEY,
   request_id TEXT NOT NULL REFERENCES support_requests(id),
-  kind TEXT NOT NULL CHECK (kind IN ('open_request', 'relay_message', 'close_request', 'reopen_request')),
+  kind TEXT NOT NULL CHECK (kind IN ('open_request', 'relay_message', 'close_request', 'reopen_request', 'mirror_operator_message')),
   client_message_id TEXT NOT NULL,
   operator_topic_id TEXT NOT NULL,
   sequence INTEGER NOT NULL,

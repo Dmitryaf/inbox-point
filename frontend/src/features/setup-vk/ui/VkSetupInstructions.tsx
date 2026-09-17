@@ -12,7 +12,7 @@ import {
 } from './VkSetupInstructions.model';
 
 export default function VkSetupInstructions($incomingProps: ComponentProps) {
-  const { scope: $scope } = useComponentModel(
+  const { props: $props, scope: $scope } = useComponentModel(
     $incomingProps,
     componentDefaults,
     createComponentModel,
@@ -20,20 +20,7 @@ export default function VkSetupInstructions($incomingProps: ComponentProps) {
 
   return (
     <ModelScopeProvider scope={$scope}>
-      <div className="setup-intro" data-r-aa9e848d="">
-        <strong data-r-aa9e848d="">{'Что вы настраиваете'}</strong>
-        <p data-r-aa9e848d="">
-          {
-            ' Клиенты продолжат писать в сообщения вашего сообщества VK. Inbox Point будет переносить эти сообщения в уже подключённую группу сотрудников. '
-          }
-        </p>
-      </div>
-      {renderVkSetupInstructionsPart1()}
-      <p className="setup-warning" data-r-aa9e848d="">
-        {
-          ' Ключ даёт доступ к сообщениям сообщества. Не отправляйте его в чатах и не сохраняйте в заметках с общим доступом. '
-        }
-      </p>
+      {renderVkSetupInstructionsPart1($props)}
     </ModelScopeProvider>
   );
 }

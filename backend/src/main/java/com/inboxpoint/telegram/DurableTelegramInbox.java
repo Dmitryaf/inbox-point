@@ -91,6 +91,14 @@ final class DurableTelegramInbox implements OperatorInbox {
         });
     }
 
+    @Override
+    public void mirror(String request, String topic, String message, int sequence, String text)
+            throws TelegramBotApi.RequestFailed, InterruptedException {
+        var key = new OperatorActions.Key("operator-mirror:" + request + ":" + topic + ":" + message + ":" + sequence,
+                request, "mirror_operator_message", topic, message, sequence, false);
+        perform(key, () -> delegate.relay(request, topic, message, sequence, false, text).messageId());
+    }
+
     static OperatorActions.Key lifecycleKey(String topic, String request, String event, boolean open) {
         var kind = open ? "reopen_request" : "close_request";
         return new OperatorActions.Key("operator-" + kind + ":" + request + ":" + event,

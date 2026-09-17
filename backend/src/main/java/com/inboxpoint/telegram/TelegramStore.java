@@ -475,6 +475,15 @@ final class TelegramStore implements AutoCloseable {
                 request.id());
     }
 
+    Request requestForNativeVkReply(long conversation, String message) throws SQLException {
+        return request("""
+                channel = 'vk' AND external_conversation_id = ? AND EXISTS (
+                    SELECT 1 FROM conversation_messages m WHERE m.request_id = support_requests.id
+                        AND m.direction = 'operator_to_client' AND m.external_message_id = ?
+                ) ORDER BY julianday(created_at), rowid LIMIT 1
+                """, Long.toString(conversation), message);
+    }
+
     void queue(Request request, String event, long message, String text, Instant now) throws SQLException {
         queue(request, event, Long.toString(message), text, now);
     }
@@ -568,6 +577,9 @@ final class TelegramStore implements AutoCloseable {
                 }
             }
             return true;
+        }
+        if ("mirror_operator_message".equals(incident.action())) {
+            return "received".equals(resolution) && actions.confirm(id, now);
         }
         if ("received".equals(resolution)) {
             if (!actions.confirm(id, now)) {

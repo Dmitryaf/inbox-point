@@ -10,6 +10,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class VkLongPollEventTest {
     @Test
+    void separatesNativeStaffRepliesFromApiMessages() {
+        var message = tools.jackson.databind.json.JsonMapper.shared().createObjectNode()
+                .put("date", 1000).put("admin_author_id", 123).put("text", "From VK").put("random_id", 0);
+        assertThat(VkChannel.nativeReply("native", 2, 7, message)).isNotNull();
+        message.put("random_id", 9);
+        assertThat(VkChannel.nativeReply("native", 2, 7, message)).isNull();
+    }
+
+    @Test
     void validatesMixedEnvelopesAndParsesOnlyNewMessages() throws Exception {
         var update = JsonMapper.shared().readTree("""
                 [

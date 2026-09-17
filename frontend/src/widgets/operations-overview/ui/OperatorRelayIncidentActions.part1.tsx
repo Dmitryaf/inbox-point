@@ -12,11 +12,11 @@ export function renderOperatorRelayIncidentActionsPart1(
   $state: ReturnType<typeof createComponentModel>,
   $props: WithDefaults<ComponentProps, typeof componentDefaults>,
 ) {
-  const { $emit } = $state;
+  const { isMessageDeliveryIncident, $emit } = $state;
 
   return (
     <>
-      {$props.incident.action === 'relay_message' &&
+      {isMessageDeliveryIncident($props.incident) &&
       $props.incident.confirmable ? (
         <button
           type="button"
