@@ -27,7 +27,7 @@ record TelegramTopicsInbox(TelegramBotApi api, long group) implements OperatorIn
         var next = delivery.outcomeUnknown()
                 ? "Не отправляйте ответ повторно вслепую. Владелец должен уточнить получение и разрешить инцидент в /ops."
                 : "Владелец может повторить доставку в /ops.";
-        var reference = delivery.operatorMessageId() == null ? "" : "\nСообщение оператора: " + delivery.operatorMessageId();
+        var reference = delivery.operatorMessageId() == null ? "" : "\nСообщение администратора: " + delivery.operatorMessageId();
         relay(delivery.requestId(), delivery.operatorTopicId(), delivery.id(), 0, false, heading + "\n\nКанал: " + delivery.channel() + reference + "\n\n" + next);
     }
 

@@ -35,7 +35,7 @@ export function renderOperatorInboxPart1(
               </h2>
               <p data-r-ae8be5db="">
                 {
-                  ' Здесь можно отвечать, если группа операторов в Telegram недоступна. '
+                  ' Здесь можно отвечать, если группа администраторов в Telegram недоступна. '
                 }
               </p>
             </div>

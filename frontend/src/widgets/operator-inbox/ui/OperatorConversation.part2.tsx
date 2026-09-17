@@ -41,7 +41,7 @@ export function renderOperatorConversationPart2(
                 <strong data-r-e21483db="">
                   {message.direction === 'client_to_operator'
                     ? $or(message.senderName, () => 'Отправитель')
-                    : 'Оператор'}
+                    : 'Администратор'}
                 </strong>
                 <time dateTime={message.createdAt} data-r-e21483db="">
                   {$unref(formatShortDateTime)(message.createdAt)}

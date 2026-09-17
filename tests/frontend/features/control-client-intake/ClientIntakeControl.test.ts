@@ -59,7 +59,7 @@ describe('ClientIntakeControl', () => {
       'Новые обращения из Telegram приостановлены',
     );
     expect(wrapper.text()).toContain(
-      'Бот не передаёт новые обращения оператору',
+      'Бот не передаёт новые обращения администратору',
     );
     expect(wrapper.findAll('input')).toHaveLength(0);
   });

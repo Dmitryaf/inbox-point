@@ -19,11 +19,6 @@ export function renderVkSetupInstructionsPart1(
               {' Подключение активно. '}
             </p>
           ) : null}
-          <p className="setup-status setup-status--info" data-r-aa9e848d="">
-            {
-              ' Для переноса ручных ответов из VK в Telegram в Long Poll API должны быть включены «Входящие сообщения» и «Исходящие сообщения». '
-            }
-          </p>
         </>
       ) : (
         <>

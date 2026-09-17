@@ -39,7 +39,7 @@ export default function ClientIntakeControl($incomingProps: ComponentProps) {
         data-r-77f00789=""
       >
         <p className="eyebrow" data-r-77f00789="">
-          {'Клиент → оператор'}
+          {'Клиент → администратор'}
         </p>
         <h3 id="intake-flow-title" data-r-77f00789="">
           {'Новые обращения'}

@@ -22,7 +22,7 @@ export function renderTelegramConnectionFormPart2(
     <>
       {chats.length ? (
         <fieldset className="setup-options" data-r-4c039fa9="">
-          <legend data-r-4c039fa9="">{'Операторская группа'}</legend>
+          <legend data-r-4c039fa9="">{'Группа администраторов'}</legend>
           {$renderList(chats, (chat) => (
             <label key={chat.id} data-r-4c039fa9="">
               <input

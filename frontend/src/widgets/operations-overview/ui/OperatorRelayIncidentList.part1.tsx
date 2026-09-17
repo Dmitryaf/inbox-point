@@ -60,7 +60,7 @@ export function renderOperatorRelayIncidentListPart1(
                   <p data-r-e2822c38="">
                     {$unref(isLifecycle)(incident)
                       ? 'Не удалось точно определить, изменилось ли состояние темы.'
-                      : 'Не удалось точно определить, появилось ли сообщение у операторов.'}
+                      : 'Не удалось точно определить, появилось ли сообщение у администраторов.'}
                   </p>
                 )}
                 {incident.heldReplyCount > 1 ? (
