@@ -41,8 +41,8 @@ export function createComponentModel(
     const channelIsPaused = props.state.channels[channel].mode === 'paused';
     if (channelIsPaused) {
       return channel === 'telegram'
-        ? 'Бот не передаёт новые обращения оператору и сообщает клиенту о паузе.'
-        : 'Новые сообщения остаются в VK, но не появляются у оператора.';
+        ? 'Бот не передаёт новые обращения администратору и сообщает клиенту о паузе.'
+        : 'Новые сообщения остаются в VK, но не появляются у администратора.';
     }
     if (channel === 'telegram') {
       return 'Новый вопрос можно задать через бота.';

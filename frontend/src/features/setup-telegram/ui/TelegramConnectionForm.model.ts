@@ -28,7 +28,7 @@ export function createComponentModel(
   const botToken = ref('');
   const chats = ref<TelegramOperatorChat[]>([]);
   const selectedChatId = ref<number | null>(null);
-  const message = ref('Выполните шаги ниже и найдите операторскую группу.');
+  const message = ref('Выполните шаги ниже и найдите группу администраторов.');
   const messageKind = ref<'error' | 'info' | 'success'>('info');
   const pending = ref<'connect' | 'discover' | null>(null);
   function chatLabel(chat: TelegramOperatorChat): string {
@@ -42,7 +42,7 @@ export function createComponentModel(
       chats.value = result.chats;
       selectedChatId.value = null;
       message.value = result.chats.length
-        ? 'Выберите операторскую группу.'
+        ? 'Выберите группу администраторов.'
         : 'Группа не найдена. Проверьте, что бот добавлен администратором, темы включены и после добавления бота в группе отправлено сообщение.';
     } catch (cause: unknown) {
       message.value = errorMessage(cause);
@@ -53,7 +53,7 @@ export function createComponentModel(
   }
   async function connect(): Promise<void> {
     if (selectedChatId.value === null) {
-      message.value = 'Выберите операторскую группу.';
+      message.value = 'Выберите группу администраторов.';
       messageKind.value = 'error';
       return;
     }

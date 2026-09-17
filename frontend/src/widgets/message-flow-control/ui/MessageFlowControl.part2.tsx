@@ -35,7 +35,7 @@ export function renderMessageFlowControlPart2(
           data-r-c8d03842=""
         >
           <p className="eyebrow" data-r-c8d03842="">
-            {'Оператор → клиент'}
+            {'Администратор → клиент'}
           </p>
           <h3 id="outbound-flow-title" data-r-c8d03842="">
             {'Ответы клиентам'}
