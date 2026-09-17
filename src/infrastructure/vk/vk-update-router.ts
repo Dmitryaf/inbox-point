@@ -46,7 +46,6 @@ export class VkUpdateRouter {
     if (parsedEvent.data.type === 'message_reply' || message.out === 1) {
       if (
         message.admin_author_id === undefined ||
-        (message.random_id ?? 0) !== 0 ||
         message.peer_id >= 2_000_000_000 ||
         message.text.trim().length === 0
       ) {
