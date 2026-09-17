@@ -51,7 +51,7 @@ defineExpose({
         class="message-flow-outbound"
         aria-labelledby="outbound-flow-title"
       >
-        <p class="eyebrow">Оператор → клиент</p>
+        <p class="eyebrow">Администратор → клиент</p>
         <h3 id="outbound-flow-title">Ответы клиентам</h3>
         <OutboundDeliveryControl
           :outbound="outbound"

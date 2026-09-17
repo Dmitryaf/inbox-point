@@ -81,7 +81,7 @@ function deliveryLabel(message: OperatorInboxMessage): string | undefined {
             {{
               message.direction === 'client_to_operator'
                 ? message.senderName || 'Отправитель'
-                : 'Оператор'
+                : 'Администратор'
             }}
           </strong>
           <time :datetime="message.createdAt">

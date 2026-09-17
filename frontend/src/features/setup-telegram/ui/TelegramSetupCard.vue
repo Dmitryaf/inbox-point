@@ -19,7 +19,7 @@ async function disconnect(): Promise<void> {
   if (
     props.vkConfigured ||
     !window.confirm(
-      'Отключить Telegram? Приложение перестанет получать сообщения из бота и передавать обращения в группу операторов. История обращений сохранится.',
+      'Отключить Telegram? Приложение перестанет получать сообщения из бота и передавать обращения в группу администраторов. История обращений сохранится.',
     )
   ) {
     return;
@@ -46,7 +46,7 @@ async function disconnect(): Promise<void> {
     <header class="setup-card-heading">
       <div>
         <h2 id="telegram-setup-title">Telegram</h2>
-        <p>Операторская группа и бот для передачи обращений.</p>
+        <p>Группа администраторов и бот для передачи обращений.</p>
       </div>
       <span
         class="status-pill"

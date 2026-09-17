@@ -18,7 +18,7 @@ defineExpose({ refresh: control.load });
 
 <template>
   <section class="client-intake-control" aria-labelledby="intake-flow-title">
-    <p class="eyebrow">Клиент → оператор</p>
+    <p class="eyebrow">Клиент → администратор</p>
     <h3 id="intake-flow-title">Новые обращения</h3>
     <p class="intake-control-intro">
       Для подключённых каналов пауза действует отдельно. Текущие обращения

@@ -14,10 +14,6 @@ withDefaults(defineProps<{ compact?: boolean; connected?: boolean }>(), {
     >
       Подключение активно.
     </p>
-    <p class="setup-status setup-status--info">
-      Для переноса ручных ответов из VK в Telegram в Long Poll API должны быть
-      включены «Входящие сообщения» и «Исходящие сообщения».
-    </p>
   </template>
   <template v-else>
     <div class="setup-intro">

@@ -299,7 +299,7 @@ describe('Telegram handoff integration', () => {
       messageThreadId: 900,
     });
     expect(gateway.sent[0]?.text).toContain('Ответ не доставлен');
-    expect(gateway.sent[0]?.text).toContain('Сообщение оператора: 502');
+    expect(gateway.sent[0]?.text).toContain('Сообщение администратора: 502');
     expect(gateway.sent[0]?.text).toContain('раздел «Состояние»');
     expect(gateway.sent[0]?.text).not.toContain('Private client answer');
     expect(gateway.sent[0]?.text).not.toContain('request-private-id');

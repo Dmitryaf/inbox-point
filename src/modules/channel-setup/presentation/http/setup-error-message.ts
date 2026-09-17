@@ -24,7 +24,7 @@ export function telegramSetupErrorMessage(error: unknown): string {
 export function vkSetupErrorMessage(error: unknown): string {
   const message = error instanceof Error ? error.message : '';
   if (message.includes('workspace is not connected')) {
-    return 'Сначала подключите Telegram для операторов.';
+    return 'Сначала подключите Telegram для администраторов.';
   }
   if (message.includes('does not point to a community')) {
     return 'Укажите ссылку именно на сообщество VK.';

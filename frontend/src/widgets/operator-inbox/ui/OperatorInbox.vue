@@ -27,7 +27,8 @@ defineExpose({ refresh: inbox.refresh });
         </p>
         <h2 id="operator-inbox-title">Входящие обращения</h2>
         <p>
-          Здесь можно отвечать, если группа операторов в Telegram недоступна.
+          Здесь можно отвечать, если группа администраторов в Telegram
+          недоступна.
         </p>
       </div>
       <span class="status-pill status-pill--neutral">
