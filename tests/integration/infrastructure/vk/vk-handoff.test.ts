@@ -225,13 +225,14 @@ describe('VK handoff integration', () => {
     ).toBe(1);
   });
 
-  it('mirrors a manual VK community reply into the existing topic once', async () => {
+  it('mirrors a manual VK reply with a non-zero random ID once', async () => {
     await router.route(createMessageEvent());
     const reply = createReplyEvent({
       admin_author_id: 777,
       conversation_message_id: 8,
       from_id: -42,
       out: 1,
+      random_id: -781_261_767,
       text: 'Answer sent directly from VK',
     });
 
@@ -267,7 +268,6 @@ describe('VK handoff integration', () => {
 
     await router.route(
       createReplyEvent({
-        admin_author_id: 777,
         conversation_message_id: 9,
         from_id: -42,
         out: 1,
