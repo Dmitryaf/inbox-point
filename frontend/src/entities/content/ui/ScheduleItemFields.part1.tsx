@@ -23,6 +23,7 @@ export function renderScheduleItemFieldsPart1(
         }
         aria-invalid={Boolean($props.errors[`schedule-title-${$props.index}`])}
         maxLength={120}
+        placeholder="Бачата — начинающие"
         required
         value={item.title ?? ''}
         onChange={$textProperty(() => $state.item.value, 'title')}

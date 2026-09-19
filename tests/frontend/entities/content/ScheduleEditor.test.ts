@@ -57,6 +57,15 @@ describe('ScheduleEditor', () => {
     expect(wrapper.get('#schedule-day-time-0').attributes('aria-invalid')).toBe(
       'true',
     );
+    expect(wrapper.get('#schedule-title-0').attributes('placeholder')).toBe(
+      'Бачата — начинающие',
+    );
+    expect(wrapper.get('#schedule-day-time-0').attributes('placeholder')).toBe(
+      'Вт / Чт, 19:00',
+    );
+    expect(
+      wrapper.get('#schedule-description-0').attributes('placeholder'),
+    ).toBe('Подходит тем, кто начинает с нуля.');
 
     content.schedule[0]!.dayTime = 'Вт / Чт, 19:00';
     expect(validateContentDraft(content).valid).toBe(true);

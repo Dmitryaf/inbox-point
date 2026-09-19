@@ -1,6 +1,9 @@
 import type { ScheduleItem } from '@frontend/entities/content/model/types';
 
-export { formatScheduleResponse } from '@core/application/schedule-response';
+export {
+  formatScheduleCompatibilityResponse,
+  formatScheduleResponse,
+} from '@core/application/schedule-response';
 
 export function normalizeScheduleItems(
   items: readonly ScheduleItem[],

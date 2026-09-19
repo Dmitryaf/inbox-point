@@ -483,7 +483,7 @@ describe('VK handoff integration', () => {
 
     expect(inbox.opened).toHaveLength(0);
     expect(gateway.sent.map((message) => message.text)).toEqual([
-      'Расписание\n\nБачата\nДень / время: Понедельник 19:00',
+      'Расписание\n\nБачата\nПонедельник 19:00',
       'Вход со двора.',
     ]);
     const labels = gateway.sent[0]?.keyboard?.buttons
@@ -552,7 +552,7 @@ describe('VK handoff integration', () => {
       'Расписание',
     ]);
     expect(gateway.sent.at(-1)?.text).toBe(
-      'Расписание\n\nБачата\nДень / время: Понедельник 19:00',
+      'Расписание\n\nБачата\nПонедельник 19:00',
     );
     const labels = gateway.sent
       .at(-1)

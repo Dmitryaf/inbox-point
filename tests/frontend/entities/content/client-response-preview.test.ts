@@ -10,6 +10,10 @@ import {
   buildTelegramMenuPreviewRows,
   formatFaqResponse,
 } from '@frontend/entities/content/lib/client-response-preview';
+import {
+  formatScheduleCompatibilityResponse,
+  formatScheduleResponse,
+} from '@frontend/entities/content/lib/schedule-response';
 import { validateContentDraft } from '@frontend/entities/content/lib/content-validation';
 import { createEmptyContent } from '@frontend/entities/content/model/content-draft';
 
@@ -119,5 +123,23 @@ describe('client response preview', () => {
       message: 'Это название используется служебной кнопкой.',
       valid: false,
     });
+  });
+
+  it('rejects a schedule whose legacy-compatible response exceeds the limit', () => {
+    const content = createEmptyContent();
+    content.schedule = Array.from({ length: 5 }, (_, index) => ({
+      dayTime: `День ${index}`,
+      description: 'a'.repeat(750),
+      title: `Группа ${index}`,
+    }));
+    content.schedule[0]!.description += 'a'.repeat(
+      4_000 - formatScheduleResponse(content.schedule).length,
+    );
+
+    expect(formatScheduleResponse(content.schedule)).toHaveLength(4_000);
+    expect(
+      formatScheduleCompatibilityResponse(content.schedule).length,
+    ).toBeGreaterThan(4_000);
+    expect(validateContentDraft(content).valid).toBe(false);
   });
 });

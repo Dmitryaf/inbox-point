@@ -11,7 +11,7 @@ export function formatScheduleBody(items: readonly ScheduleItem[]): string {
     .map((item) =>
       [
         item.title,
-        `День / время: ${item.dayTime}`,
+        item.dayTime,
         ...(item.description ? [item.description] : []),
       ].join('\n'),
     )
@@ -34,4 +34,14 @@ export function formatScheduleCompatibilityText(
       ].join(' — '),
     )
     .join('\n');
+}
+
+export function formatScheduleCompatibilityResponse(
+  items: readonly ScheduleItem[],
+): string {
+  const lines = formatScheduleCompatibilityText(items)
+    .split(/\r?\n/u)
+    .map((line) => line.trim().replace(/^[-•]\s*/u, ''))
+    .filter(Boolean);
+  return `${scheduleResponseTitle}\n\n${lines.map((line) => `• ${line}`).join('\n')}`;
 }

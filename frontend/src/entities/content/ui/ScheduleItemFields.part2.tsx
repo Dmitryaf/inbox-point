@@ -25,6 +25,7 @@ export function renderScheduleItemFieldsPart2(
           $props.errors[`schedule-day-time-${$props.index}`],
         )}
         maxLength={120}
+        placeholder="Вт / Чт, 19:00"
         required
         value={item.dayTime ?? ''}
         onChange={$textProperty(() => $state.item.value, 'dayTime')}

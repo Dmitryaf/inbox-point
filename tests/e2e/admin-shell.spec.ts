@@ -89,6 +89,17 @@ test('structured schedule survives save, reload, and client preview', async ({
   await login(page);
 
   await page.getByRole('button', { name: 'Добавить направление' }).click();
+  await expect(page.getByLabel('Направление / группа').nth(1)).toHaveAttribute(
+    'placeholder',
+    'Бачата — начинающие',
+  );
+  await expect(page.getByLabel('День / время').nth(1)).toHaveAttribute(
+    'placeholder',
+    'Вт / Чт, 19:00',
+  );
+  await expect(
+    page.getByLabel('Дополнительное описание').nth(1),
+  ).toHaveAttribute('placeholder', 'Подходит тем, кто начинает с нуля.');
   await page
     .getByLabel('Направление / группа')
     .nth(1)
@@ -110,10 +121,10 @@ test('structured schedule survives save, reload, and client preview', async ({
     .locator('.preview-response')
     .filter({ hasText: 'Расписание' });
   await expect(schedulePreview).toContainText(
-    'Бачата — начинающие\nДень / время: Вт / Чт, 19:00',
+    'Бачата — начинающие\nВт / Чт, 19:00',
   );
   await expect(schedulePreview).toContainText(
-    'Бачата — продолжающие\nДень / время: Пн / Ср, 20:00\nДля учеников с опытом.',
+    'Бачата — продолжающие\nПн / Ср, 20:00\nДля учеников с опытом.',
   );
 });
 
