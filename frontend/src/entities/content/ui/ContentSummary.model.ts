@@ -5,6 +5,7 @@ import {
 
 import { computed } from '@frontend/shared/lib/model-state';
 import { isSectionVisible } from '@frontend/entities/content/model/content-draft';
+import { normalizeScheduleItems } from '@frontend/entities/content/lib/schedule-response';
 import type { ContentDraft } from '@frontend/entities/content/model/types';
 
 export type ComponentProps = {
@@ -17,7 +18,8 @@ export function createComponentModel($props: ResolvedProps) {
   const standardCount = computed(() => {
     const sections = [
       isSectionVisible(props.content, 'schedule') &&
-        props.content.schedule.trim(),
+        (normalizeScheduleItems(props.content.schedule).length > 0 ||
+          props.content.legacySchedule.trim()),
       isSectionVisible(props.content, 'prices') && props.content.prices.trim(),
       isSectionVisible(props.content, 'address') &&
         props.content.address.trim(),

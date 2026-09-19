@@ -23,7 +23,10 @@ describe('ContentManagementPage states', () => {
           return Promise.resolve(response({ history: [] }));
         }
         return Promise.resolve(
-          response({ content: {}, version: initialVersion }),
+          response({
+            content: { schedule: '', scheduleItems: [] },
+            version: initialVersion,
+          }),
         );
       }),
     );
@@ -53,7 +56,10 @@ describe('ContentManagementPage states', () => {
           return Promise.resolve(response({ history: [] }));
         }
         return Promise.resolve(
-          response({ content: {}, version: initialVersion }),
+          response({
+            content: { schedule: '', scheduleItems: [] },
+            version: initialVersion,
+          }),
         );
       }),
     );
@@ -102,7 +108,12 @@ describe('ContentManagementPage states', () => {
         }
         return Promise.resolve(
           response({
-            content: { schedule: 'Старое расписание' },
+            content: {
+              schedule: '',
+              scheduleItems: [
+                { dayTime: 'Понедельник, 19:00', title: 'Старое расписание' },
+              ],
+            },
             version: initialVersion,
           }),
         );
@@ -111,7 +122,7 @@ describe('ContentManagementPage states', () => {
 
     const wrapper = mount(ContentManagementPage);
     await flushPromises();
-    await wrapper.get('#schedule').setValue('Новое расписание');
+    await wrapper.get('#schedule-title-0').setValue('Новое расписание');
     const saveButton = wrapper
       .findAll('button')
       .find((button) => button.text() === 'Сохранить');
@@ -121,9 +132,9 @@ describe('ContentManagementPage states', () => {
     await saveButton.trigger('click');
     await flushPromises();
 
-    expect(wrapper.get<HTMLTextAreaElement>('#schedule').element.value).toBe(
-      'Новое расписание',
-    );
+    expect(
+      wrapper.get<HTMLInputElement>('#schedule-title-0').element.value,
+    ).toBe('Новое расписание');
     expect(wrapper.get('[role="alert"]').text()).toContain(
       'изменения остались на этой странице',
     );

@@ -1,3 +1,7 @@
+import type { ScheduleItem } from '@core/application/schedule-response';
+
+export type { ScheduleItem } from '@core/application/schedule-response';
+
 export interface FaqItem {
   answer: string;
   question: string;
@@ -21,8 +25,9 @@ export interface ContentDraft {
   address: string;
   customSections: CustomSection[];
   faq: FaqItem[];
+  legacySchedule: string;
   prices: string;
-  schedule: string;
+  schedule: ScheduleItem[];
   visibleSections: InformationSectionId[];
 }
 
@@ -33,6 +38,9 @@ export interface ContentChange {
 }
 
 export interface ContentSnapshot {
-  content: Partial<ContentDraft>;
+  content: Partial<Omit<ContentDraft, 'legacySchedule' | 'schedule'>> & {
+    schedule?: string;
+    scheduleItems?: ScheduleItem[];
+  };
   version: string;
 }

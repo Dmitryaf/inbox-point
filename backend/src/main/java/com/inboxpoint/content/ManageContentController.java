@@ -31,7 +31,7 @@ final class ManageContentController {
         if (!admin.available(request, response)) {
             return missing();
         }
-        return admin.authorized(request, response) ? ResponseEntity.ok(information.snapshot()) : unauthorized();
+        return admin.authorized(request, response) ? ResponseEntity.ok(ClientInformation.editorSnapshot(information.snapshot())) : unauthorized();
     }
 
     @GetMapping("/content/history")
@@ -59,7 +59,9 @@ final class ManageContentController {
             return error(400, "Проверьте данные редактора.");
         }
         try {
-            return ResponseEntity.ok(information.save(input.path("content"), version));
+            return ResponseEntity.ok(ClientInformation.editorSnapshot(information.save(input.path("content"), version)));
+        } catch (ClientInformation.LegacyScheduleConflict conflict) {
+            return error(409, "Редактор расписания обновился. Обновите страницу перед изменением расписания.");
         } catch (ClientInformation.VersionConflict conflict) {
             return error(409, "Информация уже изменилась в другой вкладке. Скопируйте свои правки и обновите страницу.");
         } catch (IllegalArgumentException invalid) {
@@ -89,7 +91,7 @@ final class ManageContentController {
         try {
             var restored = information.restore(revision.intValue(), version);
             return restored == null ? error(404, "Эта версия больше недоступна для восстановления.")
-                    : ResponseEntity.ok(restored);
+                    : ResponseEntity.ok(ClientInformation.editorSnapshot(restored));
         } catch (ClientInformation.VersionConflict conflict) {
             return error(409, "Информация уже изменилась в другой вкладке. Обновите страницу перед восстановлением версии.");
         } catch (IOException unavailable) {

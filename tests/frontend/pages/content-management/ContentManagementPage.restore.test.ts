@@ -36,7 +36,13 @@ describe('ContentManagementPage restore', () => {
           schedule = 'Понедельник, 19:00';
           restored = true;
           return Promise.resolve(
-            response({ content: { schedule }, version: savedVersion }),
+            response({
+              content: {
+                schedule: '',
+                scheduleItems: [{ dayTime: schedule, title: 'Бачата' }],
+              },
+              version: savedVersion,
+            }),
           );
         }
         if (url.endsWith('/history')) {
@@ -48,7 +54,13 @@ describe('ContentManagementPage restore', () => {
           return Promise.resolve(response({ history }));
         }
         return Promise.resolve(
-          response({ content: { schedule }, version: initialVersion }),
+          response({
+            content: {
+              schedule: '',
+              scheduleItems: [{ dayTime: schedule, title: 'Бачата' }],
+            },
+            version: initialVersion,
+          }),
         );
       }),
     );
@@ -68,9 +80,9 @@ describe('ContentManagementPage restore', () => {
       'click',
     );
 
-    expect(wrapper.get<HTMLTextAreaElement>('#schedule').element.value).toBe(
-      'Понедельник, 19:00',
-    );
+    expect(
+      wrapper.get<HTMLInputElement>('#schedule-day-time-0').element.value,
+    ).toBe('Понедельник, 19:00');
     expect(wrapper.text()).toContain('Предыдущая версия восстановлена');
     expect(wrapper.get('[role="alert"]').text()).toContain(
       'Версия восстановлена, но историю изменений сейчас открыть нельзя. Попробуйте обновить страницу позже.',

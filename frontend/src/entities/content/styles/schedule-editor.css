@@ -1,0 +1,19 @@
+@import './core-sections-fields.css';
+@import './collection-editor.css';
+
+.legacy-schedule {
+  background: var(--color-surface-muted);
+  border-radius: 0.75rem;
+  margin: 1rem 0;
+  padding: 0.9rem;
+}
+
+.legacy-schedule p {
+  color: var(--color-text-muted);
+}
+
+.legacy-schedule pre {
+  margin: 0.75rem 0 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}

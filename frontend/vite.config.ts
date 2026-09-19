@@ -23,6 +23,7 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
+      '@core': resolve(root, '../src/core'),
       '@frontend': resolve(root, 'src'),
     },
   },

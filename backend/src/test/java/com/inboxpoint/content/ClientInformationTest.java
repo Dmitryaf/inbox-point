@@ -105,8 +105,10 @@ class ClientInformationTest {
     void publishedMenuResolvesTheSameSyntheticFixtureAsTheReactPreview() throws Exception {
         var info = new ClientInformation(directory.resolve("preview.sqlite").toString());
         var json = JsonMapper.shared();
-        var content = json.createObjectNode().put("schedule", "Пн, 18:00\n- Ср, 19:00")
-                .put("address", "  ул. Мира, 1  ");
+        var content = json.createObjectNode().put("address", "  ул. Мира, 1  ");
+        var schedule = content.putArray("schedule");
+        schedule.addObject().put("dayTime", "Пн, 18:00").put("description", "Для тех, кто начинает с нуля.").put("title", "Бачата — начинающие");
+        schedule.addObject().put("dayTime", "Ср, 19:00").put("title", "Бачата — продолжающие");
         content.putArray("faq").addObject().put("answer", "Напишите нам.").put("question", "Как записаться?");
         info.save(content);
         var actual = info.informationButtons().stream().map(label -> java.util.List.of(label, info.resolve(label))).toList();
@@ -123,7 +125,7 @@ class ClientInformationTest {
         assertThat(catalog.informationButtons()).isEmpty();
         var json = JsonMapper.shared();
         assertThat(catalog.save(json.createObjectNode().put("schedule", "  По субботам  ").put("prices", "")))
-                .containsEntry("schedule", "По субботам").doesNotContainKey("prices");
+                .containsEntry("legacySchedule", "По субботам").doesNotContainKey("prices");
         assertThatThrownBy(() -> catalog.save(json.createObjectNode().put("schedule", "x".repeat(4001))))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThat(catalog.resolve("Расписание")).contains("• По субботам");

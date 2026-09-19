@@ -31,15 +31,15 @@ describe('ContentManagementPage load recovery', () => {
 
     const wrapper = mount(ContentManagementPage);
     await flushPromises();
-    expect(wrapper.find('#schedule').exists()).toBe(false);
+    expect(wrapper.find('#schedule-title-0').exists()).toBe(false);
     expect(wrapper.text()).toContain('Редактор не открыт');
 
     contentUnavailable = false;
     await findButton(wrapper.findAll('button'), 'Повторить').trigger('click');
     await flushPromises();
 
-    expect(wrapper.get<HTMLTextAreaElement>('#schedule').element.value).toBe(
-      'Расписание загружено',
-    );
+    expect(
+      wrapper.get<HTMLInputElement>('#schedule-title-0').element.value,
+    ).toBe('Расписание загружено');
   });
 });

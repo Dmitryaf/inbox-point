@@ -22,7 +22,12 @@ describe('content visibility', () => {
         }
         return Promise.resolve(
           response({
-            content: { schedule: 'Понедельник, 19:00' },
+            content: {
+              schedule: '',
+              scheduleItems: [
+                { dayTime: 'Понедельник, 19:00', title: 'Бачата' },
+              ],
+            },
             version: initialVersion,
           }),
         );

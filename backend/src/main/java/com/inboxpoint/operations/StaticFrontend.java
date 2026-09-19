@@ -52,7 +52,7 @@ final class StaticFrontend {
                 ? Files.readString(file).replace("__INBOX_POINT_ORIGIN__", org.springframework.web.util.HtmlUtils.htmlEscape(admin.baseUrl(request)))
                         .getBytes(java.nio.charset.StandardCharsets.UTF_8)
                 : Files.readAllBytes(file);
-        return ResponseEntity.ok().contentType(MediaType.parseMediaType(asset.contentType())).body(bytes);
+        return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).contentType(MediaType.parseMediaType(asset.contentType())).body(bytes);
     }
 
     private record Asset(String file, String contentType) { }

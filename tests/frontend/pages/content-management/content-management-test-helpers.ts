@@ -5,7 +5,13 @@ import { response } from '@test/frontend/support/fake-response';
 export const initialVersion = 'a'.repeat(64);
 
 export function contentResponse(schedule: string) {
-  return response({ content: { schedule }, version: initialVersion });
+  return response({
+    content: {
+      schedule: '',
+      scheduleItems: [{ dayTime: 'Понедельник, 19:00', title: schedule }],
+    },
+    version: initialVersion,
+  });
 }
 
 export function findButton(buttons: DOMWrapper<Element>[], label: string) {

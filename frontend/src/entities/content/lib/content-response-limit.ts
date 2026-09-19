@@ -4,6 +4,10 @@ import {
   formatListResponse,
   normalizeFaqItems,
 } from '@frontend/entities/content/lib/client-response-preview';
+import {
+  formatScheduleResponse,
+  normalizeScheduleItems,
+} from '@frontend/entities/content/lib/schedule-response';
 import type { ContentDraft } from '@frontend/entities/content/model/types';
 
 const messageLengthLimit = 4_000;
@@ -19,7 +23,7 @@ export function findOversizedContentResponse(
   content: ContentDraft,
 ): ContentResponse | undefined {
   const responses: (ContentResponse | undefined)[] = [
-    createListResponse('schedule', 'Расписание', content.schedule),
+    createScheduleResponse(content),
     createListResponse('prices', 'Цены', content.prices),
     content.address.trim()
       ? {
@@ -61,18 +65,38 @@ export function getCoreResponseLengths(content: ContentDraft): {
       : 0,
     prices:
       createListResponse('prices', 'Цены', content.prices)?.text.length ?? 0,
-    schedule:
-      createListResponse('schedule', 'Расписание', content.schedule)?.text
-        .length ?? 0,
+    schedule: createScheduleResponse(content)?.text.length ?? 0,
   };
 }
 
 function createListResponse(
-  fieldId: 'prices' | 'schedule',
-  label: 'Расписание' | 'Цены',
+  fieldId: 'prices',
+  label: 'Цены',
   text: string,
 ): ContentResponse | undefined {
   return text.trim()
     ? { fieldId, label, section: 'core', text: formatListResponse(label, text) }
+    : undefined;
+}
+
+function createScheduleResponse(
+  content: ContentDraft,
+): ContentResponse | undefined {
+  const schedule = normalizeScheduleItems(content.schedule);
+  if (schedule.length > 0) {
+    return {
+      fieldId: 'schedule-title-0',
+      label: 'Расписание',
+      section: 'core',
+      text: formatScheduleResponse(schedule),
+    };
+  }
+  return content.legacySchedule.trim()
+    ? {
+        fieldId: 'legacy-schedule',
+        label: 'Расписание',
+        section: 'core',
+        text: formatListResponse('Расписание', content.legacySchedule),
+      }
     : undefined;
 }

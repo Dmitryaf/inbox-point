@@ -24,14 +24,24 @@ describe('ContentManagementPage channel button notice', () => {
         if (options?.method === 'POST') {
           return Promise.resolve(
             response({
-              content: { schedule: 'Новое расписание' },
+              content: {
+                schedule: '',
+                scheduleItems: [
+                  { dayTime: 'Вторник, 20:00', title: 'Новое расписание' },
+                ],
+              },
               version: savedVersion,
             }),
           );
         }
         return Promise.resolve(
           response({
-            content: { schedule: 'Старое расписание' },
+            content: {
+              schedule: '',
+              scheduleItems: [
+                { dayTime: 'Понедельник, 19:00', title: 'Старое расписание' },
+              ],
+            },
             version: initialVersion,
           }),
         );
@@ -40,7 +50,7 @@ describe('ContentManagementPage channel button notice', () => {
 
     const wrapper = mount(ContentManagementPage);
     await flushPromises();
-    await wrapper.get('#schedule').setValue('Новое расписание');
+    await wrapper.get('#schedule-title-0').setValue('Новое расписание');
     const saveButton = wrapper
       .findAll('button')
       .find((button) => button.text() === 'Сохранить');

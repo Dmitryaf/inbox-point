@@ -21,14 +21,14 @@ export function renderCoreSectionsFieldsPart1(
 
   return (
     <>
-      <details open className="field-group" data-r-54db50dd="">
+      <details className="field-group" data-r-54db50dd="">
         <summary data-r-54db50dd="">
           <span className="summary-copy" data-r-54db50dd="">
-            <strong data-r-54db50dd="">{'Расписание'}</strong>
+            <strong data-r-54db50dd="">{'Цены'}</strong>
           </span>
           <span className="summary-meta" data-r-54db50dd="">
             <small data-r-54db50dd="">
-              {draft.schedule.trim() ? 'Заполнено' : 'Не заполнено'}
+              {draft.prices.trim() ? 'Заполнено' : 'Не заполнено'}
             </small>
             <span
               aria-hidden="true"
@@ -37,39 +37,37 @@ export function renderCoreSectionsFieldsPart1(
             />
           </span>
         </summary>
-        <label htmlFor="schedule" data-r-54db50dd="">
+        <label htmlFor="prices" data-r-54db50dd="">
           {'Текст ответа'}
         </label>
         <textarea
-          id="schedule"
-          aria-describedby={
-            $props.errors.schedule ? 'schedule-error' : undefined
-          }
-          aria-invalid={Boolean($props.errors.schedule)}
+          id="prices"
+          aria-describedby={$props.errors.prices ? 'prices-error' : undefined}
+          aria-invalid={Boolean($props.errors.prices)}
           maxLength={4000}
           rows={5}
-          value={draft.schedule ?? ''}
-          onChange={$textProperty(() => $state.draft.value, 'schedule')}
+          value={draft.prices ?? ''}
+          onChange={$textProperty(() => $state.draft.value, 'prices')}
           data-r-54db50dd=""
         />
         <FieldError
-          id="schedule-error"
-          text={$props.errors.schedule}
+          id="prices-error"
+          text={$props.errors.prices}
           data-r-54db50dd=""
         />
         <p
           className={$class('counter', {
-            'counter--error': responseLengths.schedule > 4000,
+            'counter--error': responseLengths.prices > 4000,
           })}
           data-r-54db50dd=""
         >
           {' Итоговый ответ: '}
-          {responseLengths.schedule}
+          {responseLengths.prices}
           {' / 4000 '}
         </p>
         <SectionVisibilityControl
-          contentPresent={Boolean(draft.schedule.trim())}
-          section="schedule"
+          contentPresent={Boolean(draft.prices.trim())}
+          section="prices"
           modelValue={draft.visibleSections}
           onModelValueChange={$propertySetter(
             () => $state.draft.value,

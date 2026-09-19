@@ -52,10 +52,10 @@ public final class ClientInformation {
             var entries = history(json.path("history"));
             state = new State(content, entries, historicalMenuActions(content, entries));
         } catch (NoSuchFileException missing) {
-            state = new State(new Snapshot(Map.of(), List.of(), List.of(), null), List.of(), List.of());
+            state = new State(new Snapshot(Map.of(), List.of(), List.of(), null, List.of()), List.of(), List.of());
         } catch (IOException | RuntimeException invalid) {
             LoggerFactory.getLogger(ClientInformation.class).warn("Saved client information could not be read");
-            state = new State(new Snapshot(Map.of(), List.of(), List.of(), null), List.of(), List.of());
+            state = new State(new Snapshot(Map.of(), List.of(), List.of(), null, List.of()), List.of(), List.of());
         }
     }
 
@@ -88,7 +88,17 @@ public final class ClientInformation {
 
     public synchronized ManagedSnapshot save(JsonNode input, String expected) throws IOException {
         requireVersion(expected);
-        save(input);
+        var latest = state.content();
+        if (!input.has("scheduleItems") && !latest.schedule().isEmpty()) {
+            if (!ScheduleInformation.compatibility(latest.schedule()).equals(input.path("schedule").asString(""))) {
+                throw new LegacyScheduleConflict();
+            }
+            var compatible = JsonMapper.shared().valueToTree(input);
+            ((tools.jackson.databind.node.ObjectNode) compatible).set("scheduleItems", JsonMapper.shared().valueToTree(latest.schedule()));
+            save(compatible);
+        } else {
+            save(input);
+        }
         return snapshot();
     }
 
@@ -107,6 +117,18 @@ public final class ClientInformation {
 
     public static final class VersionConflict extends RuntimeException { }
 
+    public static final class LegacyScheduleConflict extends RuntimeException { }
+
+    static ManagedSnapshot editorSnapshot(ManagedSnapshot saved) {
+        var display = new LinkedHashMap<String, Object>(saved.content());
+        var normalized = normalize(JsonMapper.shared().valueToTree(saved.content()));
+        display.remove("legacySchedule");
+        display.put("schedule", normalized.schedule().isEmpty() ? normalized.standard().getOrDefault("schedule", "")
+                : ScheduleInformation.compatibility(normalized.schedule()));
+        display.put("scheduleItems", normalized.schedule());
+        return new ManagedSnapshot(display, saved.version());
+    }
+
     public List<Section> sections() {
         return state.content().custom();
     }
@@ -121,12 +143,14 @@ public final class ClientInformation {
         }
         var previous = state;
         var fieldNames = new ArrayList<>(FIELDS);
+        fieldNames.add("legacySchedule");
         fieldNames.add("customSections");
         fieldNames.add("faq");
         fieldNames.add("visibleSections");
         var changed = fieldNames.stream()
                 .filter(name -> !java.util.Objects.equals(previous.content().jsonFields().get(name), next.jsonFields().get(name)))
-                .map(name -> name.equals("visibleSections") ? "visibility" : name)
+                .map(name -> name.equals("visibleSections") ? "visibility" : name.equals("legacySchedule") ? "schedule" : name)
+                .distinct()
                 .toList();
         if (changed.isEmpty()) {
             return next.jsonFields();
@@ -155,7 +179,10 @@ public final class ClientInformation {
     }
 
     private static void serialize(tools.jackson.databind.node.ObjectNode payload, Snapshot next) {
-        next.standard().forEach(payload::put);
+        next.standard().forEach((key, value) -> payload.put(key.equals("schedule") ? "legacySchedule" : key, value));
+        if (!next.schedule().isEmpty()) {
+            payload.set("schedule", JsonMapper.shared().valueToTree(next.schedule()));
+        }
         if (next.visible() != null) {
             var fields = payload.putArray("visibleSections");
             next.visible().forEach(fields::add);
@@ -215,7 +242,7 @@ public final class ClientInformation {
 
     private static List<String> informationButtons(Snapshot current) {
         var buttons = new ArrayList<String>();
-        if (current.standard().containsKey("schedule") && current.includes("schedule")) {
+        if ((current.standard().containsKey("schedule") || !current.schedule().isEmpty()) && current.includes("schedule")) {
             buttons.add(SCHEDULE);
         }
         if (current.standard().containsKey("prices") && current.includes("prices")) {
@@ -239,7 +266,9 @@ public final class ClientInformation {
             return snapshot.faq().isEmpty() ? "Раздел с частыми вопросами пока пуст." : formatFaq(snapshot.faq());
         }
         return switch (label) {
-            case SCHEDULE -> formatList(SCHEDULE, snapshot.standard().get("schedule"), "Расписание пока не указано.");
+            case SCHEDULE -> snapshot.schedule().isEmpty()
+                    ? formatList(SCHEDULE, snapshot.standard().get("schedule"), "Расписание пока не указано.")
+                    : ScheduleInformation.response(snapshot.schedule());
             case PRICES -> formatList(PRICES, snapshot.standard().get("prices"), "Цены пока не указаны.");
             case ADDRESS -> snapshot.standard().containsKey("address")
                     ? "Адрес\n\n" + snapshot.standard().get("address") : "Адрес пока не указан.";
@@ -350,13 +379,19 @@ public final class ClientInformation {
 
 
     private record Snapshot(Map<String, String> standard, List<Section> custom, List<Faq> faq,
-            List<String> visible) {
+            List<String> visible, List<Map<String, String>> schedule) {
         boolean includes(String section) {
             return visible == null || visible.contains(section);
         }
 
         Map<String, Object> jsonFields() {
             var combined = new LinkedHashMap<String, Object>(standard);
+            combined.remove("schedule");
+            if (!schedule.isEmpty()) {
+                combined.put("schedule", schedule);
+            } else if (standard.containsKey("schedule")) {
+                combined.put("legacySchedule", standard.get("schedule"));
+            }
             if (!custom.isEmpty()) {
                 combined.put("customSections", custom);
             }
@@ -371,8 +406,14 @@ public final class ClientInformation {
     }
 
     private static Snapshot normalize(JsonNode input) {
-                return new Snapshot(fields(input), custom(input.path("customSections")), faq(input.path("faq")),
-                visibility(input.path("visibleSections")));
+        var schedule = input.has("scheduleItems") ? input.path("scheduleItems") : input.path("schedule");
+        var items = schedule.isArray() || input.has("scheduleItems") ? ScheduleInformation.parse(schedule) : List.<Map<String, String>>of();
+        var fields = new LinkedHashMap<>(fields(input));
+        if (!items.isEmpty()) {
+            fields.remove("schedule");
+        }
+        return new Snapshot(Map.copyOf(fields), custom(input.path("customSections")), faq(input.path("faq")),
+                visibility(input.path("visibleSections")), items);
     }
 
     private static List<String> visibility(JsonNode array) {
@@ -433,6 +474,9 @@ public final class ClientInformation {
         var values = new LinkedHashMap<String, String>();
         for (var field : FIELDS) {
             var item = input.path(field);
+            if ("schedule".equals(field) && (item.isArray() || item.isMissingNode())) {
+                item = input.path("legacySchedule");
+            }
             if (item.isMissingNode()) {
                 continue;
             }
