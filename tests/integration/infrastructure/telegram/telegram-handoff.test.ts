@@ -418,7 +418,7 @@ describe('Telegram handoff integration', () => {
     expect(gateway.sent).toEqual([
       expect.objectContaining({
         messageThreadId: 900,
-        text: 'Ответ отправлен из VK:\n\nОтвет из интерфейса VK',
+        text: 'Ответ администратора из VK:\n\nОтвет из интерфейса VK',
       }),
     ]);
     expect(
@@ -616,7 +616,7 @@ describe('Telegram handoff integration', () => {
     expect(gateway.sent[0]?.text).toContain('Исходный вопрос клиента');
     expect(gateway.sent[1]).toMatchObject({
       messageThreadId: 900,
-      text: 'Ответ отправлен из VK:\n\nОтвет после удаления темы',
+      text: 'Ответ администратора из VK:\n\nОтвет после удаления темы',
     });
   });
 
