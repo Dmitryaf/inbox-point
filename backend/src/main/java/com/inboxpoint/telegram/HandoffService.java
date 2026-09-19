@@ -260,13 +260,13 @@ final class HandoffService {
 
     private void sendNativeMirror(TelegramStore.Request request, String message, String text)
             throws TelegramBotApi.RequestFailed, InterruptedException {
-        var prefix = "Ответ отправлен из VK:\n\n";
+        var prefix = "Ответ администратора из VK:\n\n";
         int sequence = 0;
         for (int start = 0; start < text.length();) {
             int length = Math.min(text.codePointCount(start, text.length()), MESSAGE_LIMIT - prefix.length());
             int end = text.offsetByCodePoints(start, length);
             inbox.mirror(request.id(), request.topic(), message, sequence++, prefix + text.substring(start, end));
-            prefix = "Продолжение ответа из VK:\n\n";
+            prefix = "Продолжение ответа администратора из VK:\n\n";
             start = end;
         }
     }
