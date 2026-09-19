@@ -25,6 +25,7 @@ export function renderScheduleItemFieldsPart3(
           $props.errors[`schedule-description-${$props.index}`],
         )}
         maxLength={1000}
+        placeholder="Подходит тем, кто начинает с нуля."
         rows={3}
         value={item.description ?? ''}
         onChange={$textProperty(() => $state.item.value, 'description')}

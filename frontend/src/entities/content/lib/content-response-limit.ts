@@ -5,6 +5,7 @@ import {
   normalizeFaqItems,
 } from '@frontend/entities/content/lib/client-response-preview';
 import {
+  formatScheduleCompatibilityResponse,
   formatScheduleResponse,
   normalizeScheduleItems,
 } from '@frontend/entities/content/lib/schedule-response';
@@ -24,6 +25,7 @@ export function findOversizedContentResponse(
 ): ContentResponse | undefined {
   const responses: (ContentResponse | undefined)[] = [
     createScheduleResponse(content),
+    createScheduleCompatibilityResponse(content),
     createListResponse('prices', 'Цены', content.prices),
     content.address.trim()
       ? {
@@ -67,6 +69,20 @@ export function getCoreResponseLengths(content: ContentDraft): {
       createListResponse('prices', 'Цены', content.prices)?.text.length ?? 0,
     schedule: createScheduleResponse(content)?.text.length ?? 0,
   };
+}
+
+function createScheduleCompatibilityResponse(
+  content: ContentDraft,
+): ContentResponse | undefined {
+  const schedule = normalizeScheduleItems(content.schedule);
+  return schedule.length > 0
+    ? {
+        fieldId: 'schedule-title-0',
+        label: 'Расписание',
+        section: 'core',
+        text: formatScheduleCompatibilityResponse(schedule),
+      }
+    : undefined;
 }
 
 function createListResponse(

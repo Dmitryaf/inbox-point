@@ -42,7 +42,7 @@ final class ScheduleInformation {
             item.put("title", title);
             items.add(java.util.Collections.unmodifiableMap(item));
         }
-        if ((!items.isEmpty() && response(items).length() > MESSAGE_LIMIT) || compatibility(items).length() > MESSAGE_LIMIT) {
+        if ((!items.isEmpty() && response(items).length() > MESSAGE_LIMIT) || compatibilityResponse(items).length() > MESSAGE_LIMIT) {
             throw new IllegalArgumentException("Formatted schedule is too long");
         }
         return List.copyOf(items);
@@ -58,13 +58,19 @@ final class ScheduleInformation {
 
     static String response(List<Map<String, String>> items) {
         return "Расписание\n\n" + items.stream()
-                .map(item -> item.get("title") + "\nДень / время: " + item.get("dayTime") + description(item, "\n", false))
+                .map(item -> item.get("title") + "\n" + item.get("dayTime") + description(item, "\n", false))
                 .collect(Collectors.joining("\n\n"));
     }
 
     static String compatibility(List<Map<String, String>> items) {
         return items.stream().map(item -> item.get("title") + " — " + item.get("dayTime") + description(item, " — ", true))
                 .collect(Collectors.joining("\n"));
+    }
+
+    private static String compatibilityResponse(List<Map<String, String>> items) {
+        var rows = compatibility(items).lines().map(String::strip).map(line -> line.replaceFirst("^[-•]\\s*", ""))
+                .filter(line -> !line.isBlank()).map(line -> "• " + line).collect(Collectors.joining("\n"));
+        return "Расписание\n\n" + rows;
     }
 
     private static String description(Map<String, String> item, String prefix, boolean flattenLines) {
