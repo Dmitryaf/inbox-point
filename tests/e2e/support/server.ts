@@ -35,7 +35,13 @@ app.get('/api/manage/content', requireAdmin, () => ({
       },
     ],
     prices: 'Пробное занятие — бесплатно.',
-    schedule: 'Понедельник и среда, 19:00.',
+    schedule: '',
+    scheduleItems: [
+      {
+        dayTime: 'Понедельник и среда, 19:00.',
+        title: 'Бачата — начинающие',
+      },
+    ],
   },
   version: 'a'.repeat(64),
 }));

@@ -1,6 +1,7 @@
 import {
   informationSectionIds,
   type ContentDraft,
+  type ContentSnapshot,
   type InformationSectionId,
 } from './types';
 
@@ -9,22 +10,38 @@ export function createEmptyContent(): ContentDraft {
     address: '',
     customSections: [],
     faq: [],
+    legacySchedule: '',
     prices: '',
-    schedule: '',
+    schedule: [],
     visibleSections: [...informationSectionIds],
   };
 }
 
 export function normalizeContentDraft(
-  content: Partial<ContentDraft>,
+  content: ContentSnapshot['content'] | ContentDraft,
 ): ContentDraft {
+  const apiScheduleItems =
+    'scheduleItems' in content && Array.isArray(content.scheduleItems)
+      ? content.scheduleItems
+      : undefined;
+  const legacySchedule = apiScheduleItems?.length
+    ? ''
+    : typeof content.schedule === 'string'
+      ? content.schedule
+      : 'legacySchedule' in content
+        ? content.legacySchedule
+        : '';
+  const schedule =
+    apiScheduleItems ??
+    (Array.isArray(content.schedule) ? content.schedule : []);
   return {
     address: content.address ?? '',
     customSections:
       content.customSections?.map((section) => ({ ...section })) ?? [],
     faq: content.faq?.map((item) => ({ ...item })) ?? [],
+    legacySchedule,
     prices: content.prices ?? '',
-    schedule: content.schedule ?? '',
+    schedule: schedule.map((item) => ({ ...item })),
     visibleSections: content.visibleSections
       ? [...content.visibleSections]
       : [...informationSectionIds],
@@ -36,7 +53,13 @@ export function snapshotContent(content: ContentDraft): string {
 }
 
 export function copyContentDraft(content: ContentDraft): ContentDraft {
-  return normalizeContentDraft(content);
+  return {
+    ...content,
+    customSections: content.customSections.map((section) => ({ ...section })),
+    faq: content.faq.map((item) => ({ ...item })),
+    schedule: content.schedule.map((item) => ({ ...item })),
+    visibleSections: [...content.visibleSections],
+  };
 }
 
 export function isSectionVisible(

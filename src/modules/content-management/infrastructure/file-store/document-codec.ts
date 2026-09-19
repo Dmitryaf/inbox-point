@@ -3,7 +3,7 @@ import {
   informationSectionIds,
   type ClientInformationContent,
 } from '@/core/application/client-information.js';
-import { validateContent } from './content-mapper.js';
+import { toContentPayload, validateContent } from './content-mapper.js';
 import { contentPayloadSchema, storedContentSchema } from './schema.js';
 import type {
   ContentSectionKey,
@@ -42,8 +42,11 @@ export function serializeContentDocument(
   document: ContentSettingsDocument,
 ): string {
   const validated = storedContentSchema.parse({
-    content: document.content,
-    history: document.history,
+    content: toContentPayload(document.content),
+    history: document.history.map((entry) => ({
+      ...entry,
+      content: toContentPayload(entry.content),
+    })),
   });
   return JSON.stringify(validated, undefined, 2) + '\n';
 }
@@ -51,7 +54,7 @@ export function serializeContentDocument(
 export function validateContentInput(
   content: ClientInformationContent,
 ): ClientInformationContent {
-  return validateContent(contentPayloadSchema.parse(content));
+  return validateContent(contentPayloadSchema.parse(toContentPayload(content)));
 }
 
 export function findChangedSections(
@@ -59,7 +62,11 @@ export function findChangedSections(
   next: ClientInformationContent,
 ): ContentSectionKey[] {
   const sections: ContentSectionKey[] = [];
-  if (previous.schedule !== next.schedule) {
+  if (
+    JSON.stringify(previous.schedule ?? []) !==
+      JSON.stringify(next.schedule ?? []) ||
+    previous.legacySchedule !== next.legacySchedule
+  ) {
     sections.push('schedule');
   }
   if (previous.prices !== next.prices) {

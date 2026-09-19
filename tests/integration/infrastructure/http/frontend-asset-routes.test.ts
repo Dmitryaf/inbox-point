@@ -65,6 +65,10 @@ describe('shared frontend routes', () => {
 
     expect(script.body).toBe(assets.script);
     expect(styles.body).toBe(assets.styles);
+    expect(script.headers['cache-control']).toBe('no-store');
+    expect(styles.headers['cache-control']).toBe('no-store');
+    expect(icon.headers['cache-control']).toBe('no-store');
+    expect(socialPreview.headers['cache-control']).toBe('no-store');
     expect(icon.body).toBe(assets.icon);
     expect(socialPreview.headers['content-type']).toBe('image/png');
     expect(socialPreview.rawPayload).toEqual(assets.socialPreview);

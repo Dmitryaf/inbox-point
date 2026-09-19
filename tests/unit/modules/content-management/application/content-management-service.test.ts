@@ -25,8 +25,14 @@ describe('ContentManagementService', () => {
     const initialVersion = service.get().version;
 
     const results = await Promise.allSettled([
-      service.save({ schedule: 'Первое расписание' }, initialVersion),
-      service.save({ schedule: 'Второе расписание' }, initialVersion),
+      service.save(
+        { schedule: [{ dayTime: 'Пн', title: 'Первое расписание' }] },
+        initialVersion,
+      ),
+      service.save(
+        { schedule: [{ dayTime: 'Вт', title: 'Второе расписание' }] },
+        initialVersion,
+      ),
     ]);
 
     expect(results[0]?.status).toBe('fulfilled');
@@ -38,7 +44,11 @@ describe('ContentManagementService', () => {
       throw new Error('Expected the second save to be rejected');
     }
     expect(secondResult.reason).toBeInstanceOf(ContentVersionConflictError);
-    expect(saved).toEqual([{ schedule: 'Первое расписание' }]);
-    expect(service.get().content).toEqual({ schedule: 'Первое расписание' });
+    expect(saved).toEqual([
+      { schedule: [{ dayTime: 'Пн', title: 'Первое расписание' }] },
+    ]);
+    expect(service.get().content).toEqual({
+      schedule: [{ dayTime: 'Пн', title: 'Первое расписание' }],
+    });
   });
 });

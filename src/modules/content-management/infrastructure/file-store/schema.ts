@@ -1,5 +1,11 @@
 import { z } from 'zod';
-import { informationSectionIds } from '@/core/application/client-information.js';
+import {
+  informationSectionIds,
+  scheduleDayTimeLengthLimit,
+  scheduleDescriptionLengthLimit,
+  scheduleItemLimit,
+  scheduleTitleLengthLimit,
+} from '@/core/application/client-information.js';
 
 const customSectionSchema = z.object({
   label: z.string().min(1).max(40),
@@ -8,6 +14,19 @@ const customSectionSchema = z.object({
 const faqItemSchema = z.object({
   answer: z.string().min(1).max(3_000),
   question: z.string().min(1).max(300),
+});
+const scheduleItemSchema = z.object({
+  dayTime: z
+    .string()
+    .min(1)
+    .max(scheduleDayTimeLengthLimit)
+    .regex(/^[^\r\n]*$/u),
+  description: z.string().min(1).max(scheduleDescriptionLengthLimit).optional(),
+  title: z
+    .string()
+    .min(1)
+    .max(scheduleTitleLengthLimit)
+    .regex(/^[^\r\n]*$/u),
 });
 const visibleSectionsSchema = z
   .array(z.enum(informationSectionIds))
@@ -20,6 +39,11 @@ export const contentPayloadSchema = z.object({
   faq: z.array(faqItemSchema).max(20).optional(),
   prices: z.string().min(1).max(4_000).optional(),
   schedule: z.string().min(1).max(4_000).optional(),
+  scheduleItems: z
+    .array(scheduleItemSchema)
+    .min(1)
+    .max(scheduleItemLimit)
+    .optional(),
   visibleSections: visibleSectionsSchema.optional(),
 });
 const contentSectionSchema = z.enum([

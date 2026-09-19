@@ -5,6 +5,7 @@ import { getCoreResponseLengths } from '@frontend/entities/content/lib/content-r
 import type { ContentDraft } from '@frontend/entities/content/model/types';
 import FieldError from '@frontend/shared/ui/FieldError.vue';
 import SectionVisibilityControl from '@frontend/entities/content/ui/SectionVisibilityControl.vue';
+import ScheduleEditor from '@frontend/entities/content/ui/ScheduleEditor.vue';
 
 const draft = defineModel<ContentDraft>({ required: true });
 withDefaults(
@@ -19,40 +20,7 @@ const responseLengths = computed(() => getCoreResponseLengths(draft.value));
     <p class="step">Основные разделы</p>
     <h2>Расписание, цены и адрес</h2>
 
-    <details class="field-group" open>
-      <summary>
-        <span class="summary-copy">
-          <strong>Расписание</strong>
-        </span>
-        <span class="summary-meta">
-          <small>{{
-            draft.schedule.trim() ? 'Заполнено' : 'Не заполнено'
-          }}</small>
-          <span class="disclosure-chevron" aria-hidden="true" />
-        </span>
-      </summary>
-      <label for="schedule">Текст ответа</label>
-      <textarea
-        id="schedule"
-        v-model="draft.schedule"
-        :aria-describedby="errors.schedule ? 'schedule-error' : undefined"
-        :aria-invalid="Boolean(errors.schedule)"
-        maxlength="4000"
-        rows="5"
-      />
-      <FieldError id="schedule-error" :text="errors.schedule" />
-      <p
-        class="counter"
-        :class="{ 'counter--error': responseLengths.schedule > 4000 }"
-      >
-        Итоговый ответ: {{ responseLengths.schedule }} / 4000
-      </p>
-      <SectionVisibilityControl
-        v-model="draft.visibleSections"
-        :content-present="Boolean(draft.schedule.trim())"
-        section="schedule"
-      />
-    </details>
+    <ScheduleEditor v-model="draft" :errors="errors" />
 
     <details class="field-group">
       <summary>

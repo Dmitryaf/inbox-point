@@ -1,10 +1,23 @@
-export const scheduleButton = 'Расписание';
+import {
+  formatScheduleResponse,
+  scheduleResponseTitle,
+  type ScheduleItem,
+} from '@/core/application/schedule-response.js';
+
+export { formatScheduleResponse } from '@/core/application/schedule-response.js';
+export type { ScheduleItem } from '@/core/application/schedule-response.js';
+
+export const scheduleButton = scheduleResponseTitle;
 export const pricesButton = 'Цены';
 export const addressButton = 'Адрес';
 export const faqButton = 'Частые вопросы';
 export const handoffButton = 'Задать вопрос';
 export const newQuestionButton = 'Начать новый вопрос';
 export const clientMessageLengthLimit = 4_000;
+export const scheduleItemLimit = 20;
+export const scheduleTitleLengthLimit = 120;
+export const scheduleDayTimeLengthLimit = 120;
+export const scheduleDescriptionLengthLimit = 1_000;
 
 export const informationButtons = [
   scheduleButton,
@@ -36,7 +49,8 @@ export interface ClientInformationContent {
   customSections?: readonly CustomInformationSection[];
   faq?: readonly FaqItem[];
   prices?: string;
-  schedule?: string;
+  legacySchedule?: string;
+  schedule?: readonly ScheduleItem[];
   visibleSections?: readonly InformationSectionId[];
 }
 
@@ -110,9 +124,11 @@ export class ClientInformationCatalog implements ClientInformationResolver {
   public resolve(text: string): string | undefined {
     const normalized = text.trim();
     if (normalized === scheduleButton) {
-      return this.content.schedule
-        ? formatListResponse('Расписание', this.content.schedule)
-        : 'Расписание пока не указано.';
+      return this.content.schedule?.length
+        ? formatScheduleResponse(this.content.schedule)
+        : this.content.legacySchedule
+          ? formatListResponse(scheduleButton, this.content.legacySchedule)
+          : 'Расписание пока не указано.';
     }
     if (normalized === pricesButton) {
       return this.content.prices
@@ -153,7 +169,7 @@ function getInformationButtonValues(
 ): readonly string[] {
   const buttons: string[] = [];
   if (
-    content.schedule?.trim() &&
+    hasScheduleContent(content) &&
     isInformationSectionVisible(content, 'schedule')
   ) {
     buttons.push(scheduleButton);
@@ -199,6 +215,28 @@ export function formatFaqResponse(items: readonly FaqItem[]): string {
     .join('\n\n────────\n\n')}`;
 }
 
+export function hasValidScheduleItems(items: readonly ScheduleItem[]): boolean {
+  return (
+    items.length <= scheduleItemLimit &&
+    items.every(
+      (item) =>
+        item.title === item.title.trim() &&
+        item.dayTime === item.dayTime.trim() &&
+        !/[\r\n]/u.test(item.title) &&
+        !/[\r\n]/u.test(item.dayTime) &&
+        (item.description === undefined ||
+          item.description === item.description.trim()) &&
+        item.title.length > 0 &&
+        item.title.length <= scheduleTitleLengthLimit &&
+        item.dayTime.length > 0 &&
+        item.dayTime.length <= scheduleDayTimeLengthLimit &&
+        (item.description?.length ?? 0) <= scheduleDescriptionLengthLimit,
+    ) &&
+    (items.length === 0 ||
+      formatScheduleResponse(items).length <= clientMessageLengthLimit)
+  );
+}
+
 export function hasValidFaqItems(items: readonly FaqItem[]): boolean {
   return (
     items.length <= 20 &&
@@ -220,9 +258,11 @@ export function hasValidClientInformationResponses(
   content: ClientInformationContent,
 ): boolean {
   const responses = [
-    content.schedule
-      ? formatListResponse(scheduleButton, content.schedule)
-      : undefined,
+    content.schedule?.length
+      ? formatScheduleResponse(content.schedule)
+      : content.legacySchedule
+        ? formatListResponse(scheduleButton, content.legacySchedule)
+        : undefined,
     content.prices
       ? formatListResponse(pricesButton, content.prices)
       : undefined,
@@ -254,6 +294,12 @@ export function copyClientInformationContent(
   if (!hasValidFaqItems(content.faq ?? [])) {
     throw new Error('Invalid FAQ items');
   }
+  if (
+    !hasValidScheduleItems(content.schedule ?? []) ||
+    (content.schedule?.length && content.legacySchedule)
+  ) {
+    throw new Error('Invalid schedule items');
+  }
   if (!hasValidClientInformationResponses(content)) {
     throw new Error('Client information response is too long');
   }
@@ -267,10 +313,19 @@ export function copyClientInformationContent(
         }
       : {}),
     ...(content.faq ? { faq: content.faq.map((item) => ({ ...item })) } : {}),
+    ...(content.schedule
+      ? { schedule: content.schedule.map((item) => ({ ...item })) }
+      : {}),
     ...(content.visibleSections
       ? { visibleSections: [...content.visibleSections] }
       : {}),
   };
+}
+
+function hasScheduleContent(content: ClientInformationContent): boolean {
+  return [content.schedule?.length, content.legacySchedule?.trim()].some(
+    Boolean,
+  );
 }
 
 export function isInformationSectionVisible(

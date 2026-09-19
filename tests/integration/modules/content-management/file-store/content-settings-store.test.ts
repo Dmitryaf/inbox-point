@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
+import { z } from 'zod';
 
 import { FileContentSettingsStore } from '@/modules/content-management/infrastructure/file-store/file-content-settings-store.js';
 
@@ -42,7 +43,7 @@ describe('FileContentSettingsStore', () => {
         },
       ],
       prices: 'Single visit: 10',
-      schedule: 'Monday: 19:00',
+      schedule: [{ dayTime: 'Monday: 19:00', title: 'Beginners' }],
     });
     await store.save({
       address: 'Main street, 1',
@@ -59,7 +60,7 @@ describe('FileContentSettingsStore', () => {
         },
       ],
       prices: 'Single visit: 10',
-      schedule: 'Monday: 19:00',
+      schedule: [{ dayTime: 'Monday: 19:00', title: 'Beginners' }],
     });
 
     await expect(store.load()).resolves.toEqual({
@@ -77,7 +78,7 @@ describe('FileContentSettingsStore', () => {
         },
       ],
       prices: 'Single visit: 10',
-      schedule: 'Monday: 19:00',
+      schedule: [{ dayTime: 'Monday: 19:00', title: 'Beginners' }],
     });
     await expect(store.loadHistory()).resolves.toEqual([
       {
@@ -130,14 +131,18 @@ describe('FileContentSettingsStore', () => {
       () => moments.shift()!,
     );
 
-    await store.save({ schedule: 'Monday: 19:00' });
-    await store.save({ schedule: 'Tuesday: 20:00' });
+    await store.save({
+      schedule: [{ dayTime: 'Monday: 19:00', title: 'Beginners' }],
+    });
+    await store.save({
+      schedule: [{ dayTime: 'Tuesday: 20:00', title: 'Beginners' }],
+    });
     await expect(store.restore(1)).resolves.toEqual({
-      schedule: 'Monday: 19:00',
+      schedule: [{ dayTime: 'Monday: 19:00', title: 'Beginners' }],
     });
 
     await expect(store.load()).resolves.toEqual({
-      schedule: 'Monday: 19:00',
+      schedule: [{ dayTime: 'Monday: 19:00', title: 'Beginners' }],
     });
     await expect(store.loadHistory()).resolves.toEqual([
       {
@@ -166,8 +171,12 @@ describe('FileContentSettingsStore', () => {
       () => new Date('2026-09-01T12:00:00.000Z'),
     );
 
-    await store.save({ schedule: 'Monday: 19:00' });
-    await store.save({ schedule: 'Monday: 19:00' });
+    await store.save({
+      schedule: [{ dayTime: 'Monday: 19:00', title: 'Beginners' }],
+    });
+    await store.save({
+      schedule: [{ dayTime: 'Monday: 19:00', title: 'Beginners' }],
+    });
 
     await expect(store.loadHistory()).resolves.toHaveLength(1);
   });
@@ -273,9 +282,11 @@ describe('FileContentSettingsStore', () => {
       join(directory, 'content-settings.json'),
     );
 
-    await store.save({ schedule: 'Понедельник, 19:00' });
     await store.save({
-      schedule: 'Понедельник, 19:00',
+      schedule: [{ dayTime: 'Понедельник, 19:00', title: 'Бачата' }],
+    });
+    await store.save({
+      schedule: [{ dayTime: 'Понедельник, 19:00', title: 'Бачата' }],
       visibleSections: ['prices', 'address', 'faq'],
     });
     await expect(store.loadHistoricalMenuActions()).resolves.toEqual([
@@ -283,7 +294,7 @@ describe('FileContentSettingsStore', () => {
     ]);
 
     await store.save({
-      schedule: 'Понедельник, 19:00',
+      schedule: [{ dayTime: 'Понедельник, 19:00', title: 'Бачата' }],
       visibleSections: ['schedule', 'prices', 'address', 'faq'],
     });
     await expect(store.loadHistoricalMenuActions()).resolves.toEqual([]);
@@ -355,6 +366,97 @@ describe('FileContentSettingsStore', () => {
     ]);
   });
 
+  it('loads legacy schedule text and preserves mixed history through migration and restore', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'inbox-point-content-'));
+    directories.push(directory);
+    const path = join(directory, 'content-settings.json');
+    await writeFile(
+      path,
+      JSON.stringify({
+        content: { schedule: 'Произвольный старый текст без структуры' },
+        history: [
+          {
+            changedAt: '2026-09-01T12:00:00.000Z',
+            content: { schedule: 'Произвольный старый текст без структуры' },
+            revision: 1,
+            sections: ['schedule'],
+          },
+        ],
+      }),
+      'utf8',
+    );
+    const store = new FileContentSettingsStore(
+      path,
+      () => new Date('2026-09-01T12:05:00.000Z'),
+    );
+
+    await expect(store.load()).resolves.toEqual({
+      legacySchedule: 'Произвольный старый текст без структуры',
+    });
+
+    const schedule = [
+      {
+        dayTime: 'Вт / Чт, 19:00',
+        description: 'Для начинающих.',
+        title: 'Бачата',
+      },
+    ];
+    await store.save({ schedule });
+    await expect(store.load()).resolves.toEqual({ schedule });
+    const structuredDocument = JSON.parse(await readFile(path, 'utf8')) as {
+      content: { schedule: unknown; scheduleItems: unknown };
+    };
+    expect(structuredDocument.content.schedule).toBe(
+      'Бачата — Вт / Чт, 19:00 — Для начинающих.',
+    );
+    expect(structuredDocument.content.scheduleItems).toEqual(schedule);
+    expect(
+      z
+        .object({ schedule: z.string().optional() })
+        .safeParse(structuredDocument.content).success,
+    ).toBe(true);
+
+    await expect(store.restore(1)).resolves.toEqual({
+      legacySchedule: 'Произвольный старый текст без структуры',
+    });
+    const legacyDocument = JSON.parse(await readFile(path, 'utf8')) as {
+      content: { schedule: unknown };
+    };
+    expect(legacyDocument.content.schedule).toBe(
+      'Произвольный старый текст без структуры',
+    );
+
+    await expect(store.restore(2)).resolves.toEqual({ schedule });
+    await expect(store.load()).resolves.toEqual({ schedule });
+    await expect(store.loadHistory()).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ revision: 1, sections: ['schedule'] }),
+        expect.objectContaining({ revision: 2, sections: ['schedule'] }),
+      ]),
+    );
+  });
+
+  it('rejects a structured schedule with a stale compatibility text', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'inbox-point-content-'));
+    directories.push(directory);
+    const path = join(directory, 'content-settings.json');
+    await writeFile(
+      path,
+      JSON.stringify({
+        content: {
+          schedule: 'Устаревший текст',
+          scheduleItems: [{ dayTime: 'Вт, 19:00', title: 'Бачата' }],
+        },
+        history: [],
+      }),
+      'utf8',
+    );
+
+    await expect(new FileContentSettingsStore(path).load()).rejects.toThrow(
+      'The local content settings are invalid',
+    );
+  });
+
   it('rejects content that exceeds the supported message size', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'inbox-point-content-'));
     directories.push(directory);
@@ -362,10 +464,20 @@ describe('FileContentSettingsStore', () => {
       join(directory, 'content-settings.json'),
     );
 
-    await expect(store.save({ schedule: 'x'.repeat(4_001) })).rejects.toThrow();
     await expect(
       store.save({
-        schedule: Array.from({ length: 2_000 }, () => 'x').join('\n'),
+        schedule: [
+          { dayTime: 'Пн', description: 'x'.repeat(1_001), title: 'Группа' },
+        ],
+      }),
+    ).rejects.toThrow();
+    await expect(
+      store.save({
+        schedule: Array.from({ length: 4 }, (_, index) => ({
+          dayTime: `День ${index}`,
+          description: 'x'.repeat(1_000),
+          title: `Группа ${index}`,
+        })),
       }),
     ).rejects.toThrow();
   });

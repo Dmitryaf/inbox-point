@@ -68,6 +68,55 @@ test('passwordless development bypass skips login and hides logout', async ({
   ).toHaveCount(0);
 });
 
+test('structured schedule survives save, reload, and client preview', async ({
+  page,
+}) => {
+  let schedule = [{ dayTime: 'Вт / Чт, 19:00', title: 'Бачата — начинающие' }];
+  let version = 'a'.repeat(64);
+  await page.route('**/api/manage/content', async (route) => {
+    if (route.request().method() === 'POST') {
+      const payload = route.request().postDataJSON() as {
+        content: { scheduleItems: typeof schedule };
+      };
+      schedule = payload.content.scheduleItems;
+      version = 'b'.repeat(64);
+    }
+    await route.fulfill({
+      contentType: 'application/json',
+      json: { content: { schedule: '', scheduleItems: schedule }, version },
+    });
+  });
+  await login(page);
+
+  await page.getByRole('button', { name: 'Добавить направление' }).click();
+  await page
+    .getByLabel('Направление / группа')
+    .nth(1)
+    .fill('Бачата — продолжающие');
+  await page.getByLabel('День / время').nth(1).fill('Пн / Ср, 20:00');
+  await page
+    .getByLabel('Дополнительное описание')
+    .nth(1)
+    .fill('Для учеников с опытом.');
+  await page.getByRole('button', { name: 'Сохранить' }).click();
+  await expect(page.getByText('Все изменения сохранены')).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByLabel('Направление / группа').nth(1)).toHaveValue(
+    'Бачата — продолжающие',
+  );
+  await page.getByRole('button', { name: 'Предпросмотр' }).click();
+  const schedulePreview = page
+    .locator('.preview-response')
+    .filter({ hasText: 'Расписание' });
+  await expect(schedulePreview).toContainText(
+    'Бачата — начинающие\nДень / время: Вт / Чт, 19:00',
+  );
+  await expect(schedulePreview).toContainText(
+    'Бачата — продолжающие\nДень / время: Пн / Ср, 20:00\nДля учеников с опытом.',
+  );
+});
+
 test('message controls distinguish disconnected channels from active intake', async ({
   page,
 }) => {

@@ -2,7 +2,12 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
 import type { AdminRouteAccess } from '@/infrastructure/http/admin-route-access.js';
-import { contentInputSchema, normalizeContentInput } from './content-input.js';
+import {
+  contentInputSchema,
+  hasLegacyScheduleConflict,
+  normalizeContentInput,
+} from './content-input.js';
+import { createContentOutput } from './content-output.js';
 import {
   ContentVersionConflictError,
   type ContentManagementService,
@@ -30,7 +35,7 @@ export function registerManagementContentRoutes(
   app.get(
     '/api/manage/content',
     { preHandler: access.requireAuthorization },
-    () => content.get(),
+    () => createContentOutput(content.get()),
   );
   app.get(
     '/api/manage/content/history',
@@ -56,18 +61,30 @@ export function registerManagementContentRoutes(
       const parsed = saveSchema.safeParse(request.body);
       if (!parsed.success) {
         return reply.code(400).send({
-          message: 'Каждый раздел должен быть короче 4000 символов.',
+          message: 'Проверьте заполненные поля и ограничения по длине.',
         });
       }
-      const normalized = normalizeContentInput(parsed.data.content);
+      const current = content.get();
+      if (hasLegacyScheduleConflict(parsed.data.content, current.content)) {
+        return reply.code(409).send({
+          message:
+            'Редактор расписания обновился. Обновите страницу перед изменением расписания.',
+        });
+      }
+      const normalized = normalizeContentInput(
+        parsed.data.content,
+        current.content,
+      );
       if (!normalized) {
         return reply.code(400).send({
           message:
-            'Проверьте названия и тексты разделов. Каждый вопрос должен содержать ответ, а готовый ответ — быть короче 4000 символов.',
+            'Заполните название и день / время в каждой начатой записи. Проверьте также разделы, вопросы и длину готовых ответов.',
         });
       }
       try {
-        return await content.save(normalized, parsed.data.version);
+        return createContentOutput(
+          await content.save(normalized, parsed.data.version),
+        );
       } catch (error: unknown) {
         if (error instanceof ContentVersionConflictError) {
           return reply.code(409).send({
@@ -93,7 +110,9 @@ export function registerManagementContentRoutes(
         return reply.code(400).send({ message: 'Версия указана неверно.' });
       }
       try {
-        return await content.restore(parsed.data.revision, parsed.data.version);
+        return createContentOutput(
+          await content.restore(parsed.data.revision, parsed.data.version),
+        );
       } catch (error: unknown) {
         if (error instanceof ContentVersionConflictError) {
           return reply.code(409).send({

@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 
 import { isSectionVisible } from '@frontend/entities/content/model/content-draft';
+import { normalizeScheduleItems } from '@frontend/entities/content/lib/schedule-response';
 import type { ContentDraft } from '@frontend/entities/content/model/types';
 import AppIcon from '@frontend/shared/ui/AppIcon.vue';
 
@@ -10,7 +11,8 @@ const props = defineProps<{ content: ContentDraft }>();
 const standardCount = computed(() => {
   const sections = [
     isSectionVisible(props.content, 'schedule') &&
-      props.content.schedule.trim(),
+      (normalizeScheduleItems(props.content.schedule).length > 0 ||
+        props.content.legacySchedule.trim()),
     isSectionVisible(props.content, 'prices') && props.content.prices.trim(),
     isSectionVisible(props.content, 'address') && props.content.address.trim(),
     isSectionVisible(props.content, 'faq') && props.content.faq.length > 0,

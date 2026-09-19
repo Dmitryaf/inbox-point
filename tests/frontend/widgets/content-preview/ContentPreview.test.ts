@@ -9,7 +9,9 @@ import ContentPreview from '@frontend/widgets/content-preview/ui/ContentPreview.
 describe('ContentPreview', () => {
   it('shows the client menu and replies in their real order', () => {
     const content = createEmptyContent();
-    content.schedule = 'Понедельник, 19:00';
+    content.schedule = [
+      { dayTime: 'Понедельник, 19:00', title: 'Бачата — начинающие' },
+    ];
     content.customSections = [
       { label: 'Подготовка', text: 'Возьмите сменную обувь.' },
     ];

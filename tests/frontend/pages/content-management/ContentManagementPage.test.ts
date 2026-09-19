@@ -23,7 +23,10 @@ describe('ContentManagementPage', () => {
           response({
             content: {
               faq: [{ answer: 'Напишите нам.', question: 'Как записаться?' }],
-              schedule: 'Понедельник, 19:00',
+              schedule: '',
+              scheduleItems: [
+                { dayTime: 'Понедельник, 19:00', title: 'Бачата' },
+              ],
             },
             version: initialVersion,
           }),
@@ -34,9 +37,10 @@ describe('ContentManagementPage', () => {
     const wrapper = mount(ContentManagementPage);
     await flushPromises();
 
-    expect(wrapper.get<HTMLTextAreaElement>('#schedule').element.value).toBe(
-      'Понедельник, 19:00',
-    );
+    expect(
+      wrapper.get<HTMLInputElement>('#schedule-day-time-0').element.value,
+    ).toBe('Понедельник, 19:00');
+    expect(wrapper.text()).not.toContain('Сохранён старый текст расписания');
     expect(wrapper.text()).not.toContain('Как записаться?');
     expect(wrapper.text()).toContain('Все изменения сохранены');
 
@@ -46,10 +50,10 @@ describe('ContentManagementPage', () => {
     expect(wrapper.get<HTMLInputElement>('#faq-question-0').element.value).toBe(
       'Как записаться?',
     );
-    expect(wrapper.find('#schedule').exists()).toBe(false);
+    expect(wrapper.find('#schedule-day-time-0').exists()).toBe(false);
 
     await findButton(wrapper.findAll('button'), 'Основное').trigger('click');
-    await wrapper.get('#schedule').setValue('Вторник, 20:00');
+    await wrapper.get('#schedule-day-time-0').setValue('Вторник, 20:00');
     await findButton(wrapper.findAll('button'), 'Предпросмотр').trigger(
       'click',
     );

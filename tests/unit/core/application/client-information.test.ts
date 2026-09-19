@@ -4,11 +4,13 @@ import {
   addressButton,
   ClientInformationCatalog,
   faqButton,
+  formatScheduleResponse,
   handoffButton,
   isHandoffRequest,
   pricesButton,
   scheduleButton,
 } from '@/core/application/client-information.js';
+import { formatScheduleCompatibilityText } from '@/core/application/schedule-response.js';
 
 describe('client information', () => {
   it('lists only information buttons with configured content', () => {
@@ -30,7 +32,7 @@ describe('client information', () => {
     const catalog = new ClientInformationCatalog({
       address: 'Main street, 1',
       prices: 'Single visit: 10',
-      schedule: 'Monday: 19:00',
+      schedule: [{ dayTime: 'Monday: 19:00', title: 'Beginners' }],
       visibleSections: ['address', 'schedule'],
     });
 
@@ -56,21 +58,38 @@ describe('client information', () => {
     expect(catalog.resolve('У меня другой вопрос')).toBeUndefined();
   });
 
-  it('formats list sections without inventing missing values', () => {
+  it('formats structured schedule items and omits an empty description', () => {
     const catalog = new ClientInformationCatalog();
     catalog.replace(
       {
         prices: 'Разовое занятие — 500 ₽\n- Абонемент — 3200 ₽',
-        schedule: 'Понедельник, 19:00\nПятница, 20:00',
+        schedule: [
+          {
+            dayTime: 'Пн / Ср, 19:00',
+            description: 'Подходит начинающим.',
+            title: 'Бачата — начинающие',
+          },
+          { dayTime: 'Пятница, 20:00', title: 'Бачата — продолжающие' },
+        ],
       },
       [],
     );
 
     expect(catalog.resolve(scheduleButton)).toBe(
-      'Расписание\n\n• Понедельник, 19:00\n• Пятница, 20:00',
+      'Расписание\n\nБачата — начинающие\nДень / время: Пн / Ср, 19:00\nПодходит начинающим.\n\nБачата — продолжающие\nДень / время: Пятница, 20:00',
     );
     expect(catalog.resolve(pricesButton)).toBe(
       'Цены\n\n• Разовое занятие — 500 ₽\n• Абонемент — 3200 ₽',
+    );
+  });
+
+  it('keeps a legacy schedule available without interpreting its text', () => {
+    const catalog = new ClientInformationCatalog({
+      legacySchedule: 'Свободный старый текст\n- без известной структуры',
+    });
+
+    expect(catalog.resolve(scheduleButton)).toBe(
+      'Расписание\n\n• Свободный старый текст\n• без известной структуры',
     );
   });
 
@@ -167,11 +186,31 @@ describe('client information', () => {
     ).toThrow('Invalid FAQ items');
   });
 
-  it('rejects list content whose formatted response exceeds the limit', () => {
-    const schedule = Array.from({ length: 2_000 }, () => 'a').join('\n');
+  it('rejects a schedule whose formatted response exceeds the limit', () => {
+    const schedule = Array.from({ length: 5 }, (_, index) => ({
+      dayTime: `День ${index}`,
+      description: 'a'.repeat(800),
+      title: `Группа ${index}`,
+    }));
 
-    expect(() => new ClientInformationCatalog({ schedule })).toThrow(
-      'Client information response is too long',
+    expect(() => new ClientInformationCatalog({ schedule })).toThrow();
+  });
+
+  it('accepts a formatted schedule response at exactly 4000 characters', () => {
+    const schedule = Array.from({ length: 5 }, (_, index) => ({
+      dayTime: `День ${index}`,
+      description: 'a'.repeat(750),
+      title: `Группа ${index}`,
+    }));
+    schedule[0]!.description += 'a'.repeat(
+      4_000 - formatScheduleResponse(schedule).length,
     );
+
+    expect(formatScheduleResponse(schedule)).toHaveLength(4_000);
+    expect(() => new ClientInformationCatalog({ schedule })).not.toThrow();
+    const compatibilityResponse = new ClientInformationCatalog({
+      legacySchedule: formatScheduleCompatibilityText(schedule),
+    }).resolve(scheduleButton);
+    expect(compatibilityResponse?.length).toBeLessThanOrEqual(4_000);
   });
 });

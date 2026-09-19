@@ -3,10 +3,12 @@ import type {
   ContentDraft,
   ContentSnapshot,
 } from '@frontend/entities/content/model/types';
-import { request } from '@frontend/shared/api/http-client';
+import { HttpError, request } from '@frontend/shared/api/http-client';
 
-export function loadContent(): Promise<ContentSnapshot> {
-  return request('/api/manage/content');
+export async function loadContent(): Promise<ContentSnapshot> {
+  return requireStructuredScheduleApi(
+    await request<ContentSnapshot>('/api/manage/content'),
+  );
 }
 
 export async function loadContentHistory(): Promise<ContentChange[]> {
@@ -20,18 +22,38 @@ export function saveContent(
   content: ContentDraft,
   version: string,
 ): Promise<ContentSnapshot> {
-  return request('/api/manage/content', {
-    body: JSON.stringify({ content, version }),
+  const { legacySchedule, schedule, ...sections } = content;
+  return request<ContentSnapshot>('/api/manage/content', {
+    body: JSON.stringify({
+      content: {
+        ...sections,
+        schedule: legacySchedule,
+        scheduleItems: schedule,
+      },
+      version,
+    }),
     method: 'POST',
-  });
+  }).then(requireStructuredScheduleApi);
 }
 
 export function restoreContent(
   revision: number,
   version: string,
 ): Promise<ContentSnapshot> {
-  return request('/api/manage/content/restore', {
+  return request<ContentSnapshot>('/api/manage/content/restore', {
     body: JSON.stringify({ revision, version }),
     method: 'POST',
-  });
+  }).then(requireStructuredScheduleApi);
+}
+
+function requireStructuredScheduleApi(
+  snapshot: ContentSnapshot,
+): ContentSnapshot {
+  if (!Array.isArray(snapshot.content.scheduleItems)) {
+    throw new HttpError(
+      409,
+      'Сервер и страница используют разные версии. Обновите страницу.',
+    );
+  }
+  return snapshot;
 }

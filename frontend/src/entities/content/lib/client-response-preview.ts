@@ -3,6 +3,10 @@ import type {
   ContentDraft,
   FaqItem,
 } from '@frontend/entities/content/model/types';
+import {
+  formatScheduleResponse,
+  normalizeScheduleItems,
+} from './schedule-response';
 
 export interface ClientResponsePreview {
   group: 'custom' | 'information';
@@ -31,7 +35,22 @@ export function buildClientResponsePreviews(
   content: ContentDraft,
 ): ClientResponsePreview[] {
   const responses: ClientResponsePreview[] = [];
-  addStandardResponse(responses, content, 'schedule', 'Расписание');
+  const schedule = normalizeScheduleItems(content.schedule);
+  if (isSectionVisible(content, 'schedule')) {
+    if (schedule.length > 0) {
+      responses.push({
+        group: 'information',
+        label: 'Расписание',
+        text: formatScheduleResponse(schedule),
+      });
+    } else if (content.legacySchedule.trim()) {
+      responses.push({
+        group: 'information',
+        label: 'Расписание',
+        text: formatListResponse('Расписание', content.legacySchedule),
+      });
+    }
+  }
   addStandardResponse(responses, content, 'prices', 'Цены');
   if (isSectionVisible(content, 'address') && content.address.trim()) {
     responses.push({
@@ -91,7 +110,7 @@ export function normalizeFaqItems(items: readonly FaqItem[]): FaqItem[] {
 function addStandardResponse(
   responses: ClientResponsePreview[],
   content: ContentDraft,
-  section: 'prices' | 'schedule',
+  section: 'prices',
   label: string,
 ): void {
   const value = content[section];

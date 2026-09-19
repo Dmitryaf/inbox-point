@@ -44,8 +44,16 @@ const content = {
   ],
   prices:
     'Пробное занятие — 500 ₽.\nРазовое — 900 ₽.\nАбонемент на 8 занятий — 5 600 ₽.',
-  schedule:
-    'North Side Dance · учебный пример\nПн / Ср, 19:00 — бачата с нуля\nВт / Чт, 20:00 — сальса\nСб, 12:00 — практика для всех групп',
+  schedule: '',
+  scheduleItems: [
+    {
+      dayTime: 'Пн / Ср, 19:00',
+      description: 'Учебный пример для начинающих.',
+      title: 'Бачата с нуля',
+    },
+    { dayTime: 'Вт / Чт, 20:00', title: 'Сальса' },
+    { dayTime: 'Сб, 12:00', title: 'Практика для всех групп' },
+  ],
   visibleSections: ['schedule', 'prices', 'address', 'faq'],
 };
 
@@ -112,7 +120,12 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('documentation: populated content management', async ({ page }) => {
-  await expect(page.locator('#schedule')).toHaveValue(content.schedule);
+  await expect(page.locator('#schedule-title-0')).toHaveValue(
+    content.scheduleItems[0]!.title,
+  );
+  await expect(page.locator('#schedule-day-time-0')).toHaveValue(
+    content.scheduleItems[0]!.dayTime,
+  );
   await expect(page.locator('.content-summary')).toContainText('4 из 4');
   await expect(page.locator('.content-summary')).toContainText(
     'Частые вопросы',

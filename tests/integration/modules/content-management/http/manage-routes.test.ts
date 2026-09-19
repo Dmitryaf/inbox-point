@@ -50,7 +50,7 @@ describe('managed content routes', () => {
               question: 'Как записаться?',
             },
           ],
-          schedule: 'Восстановлено',
+          schedule: [{ dayTime: 'Понедельник', title: 'Восстановлено' }],
         });
       },
       save: (content) => {
@@ -147,6 +147,13 @@ describe('managed content routes', () => {
           ],
           prices: '',
           schedule: '',
+          scheduleItems: [
+            {
+              dayTime: ' Вт / Чт, 19:00 ',
+              description: ' Для начинающих. ',
+              title: ' Бачата ',
+            },
+          ],
         },
         version: loadedVersion,
       },
@@ -166,9 +173,58 @@ describe('managed content routes', () => {
           customSections: [],
           faq: [],
           prices: '',
-          schedule: 'Конфликтующая версия',
+          schedule: '',
+          scheduleItems: [
+            { dayTime: 'Вторник', title: 'Конфликтующая версия' },
+          ],
         },
         version: loadedVersion,
+      },
+      remoteAddress: '192.0.2.10',
+      url: '/api/manage/content',
+    });
+    const invalidPartialSchedule = await app.inject({
+      headers: {
+        cookie,
+        host: 'example.test',
+        origin: 'http://example.test',
+      },
+      method: 'POST',
+      payload: {
+        content: {
+          address: '',
+          customSections: [],
+          faq: [],
+          prices: '',
+          schedule: '',
+          scheduleItems: [{ dayTime: '', title: 'Бачата' }],
+        },
+        version: save.json<{ version: string }>().version,
+      },
+      remoteAddress: '192.0.2.10',
+      url: '/api/manage/content',
+    });
+    const oversizedSchedule = await app.inject({
+      headers: {
+        cookie,
+        host: 'example.test',
+        origin: 'http://example.test',
+      },
+      method: 'POST',
+      payload: {
+        content: {
+          address: '',
+          customSections: [],
+          faq: [],
+          prices: '',
+          schedule: '',
+          scheduleItems: Array.from({ length: 5 }, (_, index) => ({
+            dayTime: `День ${index}`,
+            description: 'x'.repeat(800),
+            title: `Группа ${index}`,
+          })),
+        },
+        version: save.json<{ version: string }>().version,
       },
       remoteAddress: '192.0.2.10',
       url: '/api/manage/content',
@@ -207,6 +263,8 @@ describe('managed content routes', () => {
     expect(loadedVersion).toHaveLength(64);
     expect(save.statusCode).toBe(200);
     expect(conflict.statusCode).toBe(409);
+    expect(invalidPartialSchedule.statusCode).toBe(400);
+    expect(oversizedSchedule.statusCode).toBe(400);
     expect(conflict.json<{ message: string }>().message).toContain(
       'другой вкладке',
     );
@@ -218,6 +276,13 @@ describe('managed content routes', () => {
             question: 'Как записаться?',
           },
         ],
+        schedule: [
+          {
+            dayTime: 'Вт / Чт, 19:00',
+            description: 'Для начинающих.',
+            title: 'Бачата',
+          },
+        ],
         visibleSections: ['schedule', 'prices', 'address', 'faq'],
       },
     ]);
@@ -225,6 +290,88 @@ describe('managed content routes', () => {
     expect(readHistory.json()).toEqual({ history });
     expect(restore.statusCode).toBe(200);
     expect(restored).toEqual([7]);
+  });
+
+  it('keeps structured schedule data safe for an older editor', async () => {
+    const app = createApp({ ...config, nodeEnv: 'development' });
+    apps.add(app);
+    const saved: unknown[] = [];
+    const schedule = [{ dayTime: 'Вт / Чт, 19:00', title: 'Бачата' }];
+    const catalog = new ClientInformationCatalog({ schedule });
+    const store: ContentSettingsStore = {
+      load: () => Promise.resolve(undefined),
+      loadHistoricalMenuActions: () => Promise.resolve([]),
+      loadHistory: () => Promise.resolve([]),
+      restore: () => Promise.reject(new Error('not available')),
+      save: (value) => {
+        saved.push(value);
+        return Promise.resolve();
+      },
+    };
+    const access = new PasswordSessionAccess(undefined);
+    const routeAccess = createAdminRouteAccess(app, access, {
+      allowLocalBypass: true,
+      secureCookies: false,
+    });
+    registerManagementRoutes(
+      app,
+      new ContentManagementService(catalog, store),
+      routeAccess,
+    );
+
+    const loaded = await app.inject({
+      method: 'GET',
+      url: '/api/manage/content',
+    });
+    const snapshot = loaded.json<{
+      content: { schedule: string; scheduleItems: unknown[] };
+      version: string;
+    }>();
+    const compatibleSave = await app.inject({
+      method: 'POST',
+      payload: {
+        content: {
+          address: 'ул. Мира, 1',
+          customSections: [],
+          faq: [],
+          prices: '',
+          schedule: snapshot.content.schedule,
+          visibleSections: ['schedule', 'prices', 'address', 'faq'],
+        },
+        version: snapshot.version,
+      },
+      url: '/api/manage/content',
+    });
+    const incompatibleEdit = await app.inject({
+      method: 'POST',
+      payload: {
+        content: {
+          address: 'ул. Мира, 1',
+          customSections: [],
+          faq: [],
+          prices: '',
+          schedule: 'Изменено в старом редакторе',
+          visibleSections: ['schedule', 'prices', 'address', 'faq'],
+        },
+        version: compatibleSave.json<{ version: string }>().version,
+      },
+      url: '/api/manage/content',
+    });
+
+    expect(snapshot.content.schedule).toBe('Бачата — Вт / Чт, 19:00');
+    expect(snapshot.content.scheduleItems).toEqual(schedule);
+    expect(compatibleSave.statusCode).toBe(200);
+    expect(saved).toEqual([
+      {
+        address: 'ул. Мира, 1',
+        schedule,
+        visibleSections: ['schedule', 'prices', 'address', 'faq'],
+      },
+    ]);
+    expect(incompatibleEdit.statusCode).toBe(409);
+    expect(incompatibleEdit.json<{ message: string }>().message).toContain(
+      'Обновите страницу',
+    );
   });
 
   it('stays hidden remotely when no management password is configured', async () => {
