@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { formatScheduleResponse } from '@/core/application/client-information.js';
+import { formatScheduleCompatibilityResponse } from '@/core/application/schedule-response.js';
 import {
   contentInputSchema,
   normalizeContentInput,
@@ -86,7 +87,7 @@ describe('normalizeContentInput', () => {
     ).toBeUndefined();
   });
 
-  it('accepts a formatted response at the channel limit', () => {
+  it('accepts a response at the compatibility-safe channel limit', () => {
     const schedule = Array.from({ length: 5 }, (_, index) => ({
       dayTime: `День ${index}`,
       description: 'a'.repeat(750),
@@ -94,6 +95,12 @@ describe('normalizeContentInput', () => {
     }));
     schedule[0]!.description += 'a'.repeat(
       4_000 - formatScheduleResponse(schedule).length,
+    );
+    const compatibilityOverflow =
+      formatScheduleCompatibilityResponse(schedule).length - 4_000;
+    schedule[0]!.description = schedule[0]!.description.slice(
+      0,
+      -compatibilityOverflow,
     );
 
     const normalized = normalizeContentInput({

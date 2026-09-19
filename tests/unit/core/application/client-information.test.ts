@@ -10,7 +10,10 @@ import {
   pricesButton,
   scheduleButton,
 } from '@/core/application/client-information.js';
-import { formatScheduleCompatibilityText } from '@/core/application/schedule-response.js';
+import {
+  formatScheduleCompatibilityResponse,
+  formatScheduleCompatibilityText,
+} from '@/core/application/schedule-response.js';
 
 describe('client information', () => {
   it('lists only information buttons with configured content', () => {
@@ -76,7 +79,7 @@ describe('client information', () => {
     );
 
     expect(catalog.resolve(scheduleButton)).toBe(
-      'Расписание\n\nБачата — начинающие\nДень / время: Пн / Ср, 19:00\nПодходит начинающим.\n\nБачата — продолжающие\nДень / время: Пятница, 20:00',
+      'Расписание\n\nБачата — начинающие\nПн / Ср, 19:00\nПодходит начинающим.\n\nБачата — продолжающие\nПятница, 20:00',
     );
     expect(catalog.resolve(pricesButton)).toBe(
       'Цены\n\n• Разовое занятие — 500 ₽\n• Абонемент — 3200 ₽',
@@ -196,7 +199,7 @@ describe('client information', () => {
     expect(() => new ClientInformationCatalog({ schedule })).toThrow();
   });
 
-  it('accepts a formatted schedule response at exactly 4000 characters', () => {
+  it('keeps structured and compatibility responses within 4000 characters', () => {
     const schedule = Array.from({ length: 5 }, (_, index) => ({
       dayTime: `День ${index}`,
       description: 'a'.repeat(750),
@@ -207,6 +210,19 @@ describe('client information', () => {
     );
 
     expect(formatScheduleResponse(schedule)).toHaveLength(4_000);
+    expect(
+      formatScheduleCompatibilityResponse(schedule).length,
+    ).toBeGreaterThan(4_000);
+    expect(() => new ClientInformationCatalog({ schedule })).toThrow();
+
+    const compatibilityOverflow =
+      formatScheduleCompatibilityResponse(schedule).length - 4_000;
+    schedule[0]!.description = schedule[0]!.description.slice(
+      0,
+      -compatibilityOverflow,
+    );
+
+    expect(formatScheduleCompatibilityResponse(schedule)).toHaveLength(4_000);
     expect(() => new ClientInformationCatalog({ schedule })).not.toThrow();
     const compatibilityResponse = new ClientInformationCatalog({
       legacySchedule: formatScheduleCompatibilityText(schedule),

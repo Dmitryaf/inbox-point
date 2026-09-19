@@ -1,4 +1,5 @@
 import {
+  formatScheduleCompatibilityResponse,
   formatScheduleResponse,
   scheduleResponseTitle,
   type ScheduleItem,
@@ -233,7 +234,9 @@ export function hasValidScheduleItems(items: readonly ScheduleItem[]): boolean {
         (item.description?.length ?? 0) <= scheduleDescriptionLengthLimit,
     ) &&
     (items.length === 0 ||
-      formatScheduleResponse(items).length <= clientMessageLengthLimit)
+      (formatScheduleResponse(items).length <= clientMessageLengthLimit &&
+        formatScheduleCompatibilityResponse(items).length <=
+          clientMessageLengthLimit))
   );
 }
 

@@ -37,6 +37,7 @@ function move(offset: -1 | 1): void {
       "
       :aria-invalid="Boolean(errors[`schedule-title-${index}`])"
       maxlength="120"
+      placeholder="Бачата — начинающие"
       required
     />
     <FieldError
@@ -56,6 +57,7 @@ function move(offset: -1 | 1): void {
       "
       :aria-invalid="Boolean(errors[`schedule-day-time-${index}`])"
       maxlength="120"
+      placeholder="Вт / Чт, 19:00"
       required
     />
     <FieldError
@@ -77,6 +79,7 @@ function move(offset: -1 | 1): void {
       "
       :aria-invalid="Boolean(errors[`schedule-description-${index}`])"
       maxlength="1000"
+      placeholder="Подходит тем, кто начинает с нуля."
       rows="3"
     />
     <FieldError

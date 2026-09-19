@@ -817,7 +817,7 @@ describe('Telegram handoff integration', () => {
 
     expect(repository.findActiveRequest('telegram', '101')).toBeUndefined();
     expect(gateway.sent.map((message) => message.text)).toEqual([
-      'Расписание\n\nБачата\nДень / время: Понедельник 19:00',
+      'Расписание\n\nБачата\nПонедельник 19:00',
       'Вход со двора.',
     ]);
     const replyMarkup = gateway.sent[0]?.replyMarkup;
@@ -852,7 +852,7 @@ describe('Telegram handoff integration', () => {
     expect(gateway.sent[1]?.text).toContain('Уточнение');
     expect(gateway.sent[2]).toMatchObject({
       chatId: 101,
-      text: 'Расписание\n\nБачата\nДень / время: Понедельник 19:00',
+      text: 'Расписание\n\nБачата\nПонедельник 19:00',
     });
     const activeMenu = gateway.sent[2]?.replyMarkup;
     if (!activeMenu || !('keyboard' in activeMenu)) {
@@ -918,7 +918,7 @@ describe('Telegram handoff integration', () => {
     expect(gateway.sent).toHaveLength(2);
     expect(gateway.sent[1]).toMatchObject({
       chatId: 101,
-      text: 'Расписание\n\nБачата\nДень / время: Понедельник 19:00',
+      text: 'Расписание\n\nБачата\nПонедельник 19:00',
     });
     const activeMenu = gateway.sent[1]?.replyMarkup;
     if (!activeMenu || !('keyboard' in activeMenu)) {
