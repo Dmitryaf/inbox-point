@@ -120,6 +120,9 @@ function registerAsset(
   app.get(
     path,
     { preHandler: access.requireAvailable },
-    async (_request, reply) => reply.type(contentType).send(contents),
+    async (_request, reply) => {
+      void reply.header('cache-control', 'no-store');
+      return reply.type(contentType).send(contents);
+    },
   );
 }

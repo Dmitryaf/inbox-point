@@ -4,6 +4,7 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "paths": {
+      "@core/*": ["../src/core/*"],
       "@frontend/*": ["./src/*"]
     },
     "strict": true,

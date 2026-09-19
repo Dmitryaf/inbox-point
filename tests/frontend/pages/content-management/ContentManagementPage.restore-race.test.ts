@@ -41,7 +41,10 @@ describe('ContentManagementPage restore concurrency', () => {
         }
         return Promise.resolve(
           response({
-            content: { schedule: 'Вторник, 20:00' },
+            content: {
+              schedule: '',
+              scheduleItems: [{ dayTime: 'Вторник, 20:00', title: 'Бачата' }],
+            },
             version: initialVersion,
           }),
         );
@@ -61,19 +64,24 @@ describe('ContentManagementPage restore concurrency', () => {
     await findButton(wrapper.findAll('button'), 'Редактирование').trigger(
       'click',
     );
-    await wrapper.get('#schedule').setValue('Новая несохранённая правка');
+    await wrapper
+      .get('#schedule-title-0')
+      .setValue('Новая несохранённая правка');
 
     restoreResponse.resolve(
       response({
-        content: { schedule: 'Понедельник, 19:00' },
+        content: {
+          schedule: '',
+          scheduleItems: [{ dayTime: 'Понедельник, 19:00', title: 'Бачата' }],
+        },
         version: 'b'.repeat(64),
       }),
     );
     await flushPromises();
 
-    expect(wrapper.get<HTMLTextAreaElement>('#schedule').element.value).toBe(
-      'Новая несохранённая правка',
-    );
+    expect(
+      wrapper.get<HTMLInputElement>('#schedule-title-0').element.value,
+    ).toBe('Новая несохранённая правка');
     expect(wrapper.text()).toContain(
       'Ваши новые правки остались в редакторе и ещё не сохранены',
     );

@@ -40,6 +40,41 @@ afterEach(() => {
 });
 
 describe('ServiceSnapshotService', () => {
+  it('preserves a legacy schedule document without rewriting its text', async () => {
+    const directory = createTemporaryDirectory();
+    const dataDirectory = join(directory, 'data');
+    const databasePath = join(dataDirectory, 'inbox-point.sqlite');
+    const repository = new SqliteSupportRepository(databasePath);
+    const legacyText = '  Старый свободный текст\nбез структуры  ';
+    writeFileSync(
+      join(dataDirectory, 'content-settings.json'),
+      JSON.stringify({
+        content: { schedule: legacyText },
+        history: [
+          {
+            changedAt: '2026-09-01T12:00:00.000Z',
+            content: { schedule: legacyText },
+            revision: 1,
+            sections: ['schedule'],
+          },
+        ],
+      }),
+    );
+
+    const snapshot = await new ServiceSnapshotService(databasePath, {
+      snapshotDirectory: join(directory, 'snapshots'),
+    }).createSnapshot();
+    const restored = await restoreServiceSnapshot(
+      snapshot.path,
+      join(directory, 'restored'),
+    );
+
+    await expect(
+      new FileContentSettingsStore(restored.contentSettingsPath!).load(),
+    ).resolves.toEqual({ legacySchedule: legacyText });
+    repository.close();
+  });
+
   it('restores retained data, content, and pause state without channel secrets', async () => {
     const directory = createTemporaryDirectory();
     const dataDirectory = join(directory, 'data');
@@ -70,7 +105,9 @@ describe('ServiceSnapshotService', () => {
     const contentStore = new FileContentSettingsStore(
       join(dataDirectory, 'content-settings.json'),
     );
-    await contentStore.save({ schedule: 'Monday 18:00' });
+    await contentStore.save({
+      schedule: [{ dayTime: 'Monday 18:00', title: 'Beginners' }],
+    });
     const controlStore = new FileServiceControlStore(
       join(dataDirectory, 'service-control.json'),
     );
@@ -133,7 +170,9 @@ describe('ServiceSnapshotService', () => {
     restoredRepository.close();
     expect(
       await new FileContentSettingsStore(restored.contentSettingsPath!).load(),
-    ).toMatchObject({ schedule: 'Monday 18:00' });
+    ).toMatchObject({
+      schedule: [{ dayTime: 'Monday 18:00', title: 'Beginners' }],
+    });
     expect(
       await new FileServiceControlStore(restored.serviceControlPath!).load(),
     ).toMatchObject({ channels: { telegram: { mode: 'paused' } } });

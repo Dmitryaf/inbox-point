@@ -24,11 +24,11 @@ export function renderCoreSectionsFieldsPart2(
       <details className="field-group" data-r-54db50dd="">
         <summary data-r-54db50dd="">
           <span className="summary-copy" data-r-54db50dd="">
-            <strong data-r-54db50dd="">{'Цены'}</strong>
+            <strong data-r-54db50dd="">{'Адрес'}</strong>
           </span>
           <span className="summary-meta" data-r-54db50dd="">
             <small data-r-54db50dd="">
-              {draft.prices.trim() ? 'Заполнено' : 'Не заполнено'}
+              {draft.address.trim() ? 'Заполнено' : 'Не заполнено'}
             </small>
             <span
               aria-hidden="true"
@@ -37,37 +37,37 @@ export function renderCoreSectionsFieldsPart2(
             />
           </span>
         </summary>
-        <label htmlFor="prices" data-r-54db50dd="">
+        <label htmlFor="address" data-r-54db50dd="">
           {'Текст ответа'}
         </label>
         <textarea
-          id="prices"
-          aria-describedby={$props.errors.prices ? 'prices-error' : undefined}
-          aria-invalid={Boolean($props.errors.prices)}
+          id="address"
+          aria-describedby={$props.errors.address ? 'address-error' : undefined}
+          aria-invalid={Boolean($props.errors.address)}
           maxLength={4000}
-          rows={5}
-          value={draft.prices ?? ''}
-          onChange={$textProperty(() => $state.draft.value, 'prices')}
+          rows={4}
+          value={draft.address ?? ''}
+          onChange={$textProperty(() => $state.draft.value, 'address')}
           data-r-54db50dd=""
         />
         <FieldError
-          id="prices-error"
-          text={$props.errors.prices}
+          id="address-error"
+          text={$props.errors.address}
           data-r-54db50dd=""
         />
         <p
           className={$class('counter', {
-            'counter--error': responseLengths.prices > 4000,
+            'counter--error': responseLengths.address > 4000,
           })}
           data-r-54db50dd=""
         >
           {' Итоговый ответ: '}
-          {responseLengths.prices}
+          {responseLengths.address}
           {' / 4000 '}
         </p>
         <SectionVisibilityControl
-          contentPresent={Boolean(draft.prices.trim())}
-          section="prices"
+          contentPresent={Boolean(draft.address.trim())}
+          section="address"
           modelValue={draft.visibleSections}
           onModelValueChange={$propertySetter(
             () => $state.draft.value,

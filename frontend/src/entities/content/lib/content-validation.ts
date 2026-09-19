@@ -30,6 +30,50 @@ export interface ContentValidationIssue {
 export function validateContentDraft(
   content: ContentDraft,
 ): ContentValidationResult {
+  if (content.schedule.length > 20) {
+    return invalid(
+      'Оставьте не больше 20 направлений в расписании.',
+      'schedule-title-20',
+      'core',
+    );
+  }
+  const oversizedScheduleIndex = content.schedule.findIndex(
+    (item) =>
+      item.title.length > 120 ||
+      item.dayTime.length > 120 ||
+      (item.description?.length ?? 0) > 1_000,
+  );
+  if (oversizedScheduleIndex >= 0) {
+    const item = content.schedule[oversizedScheduleIndex]!;
+    const field =
+      item.title.length > 120
+        ? 'title'
+        : item.dayTime.length > 120
+          ? 'day-time'
+          : 'description';
+    return invalid(
+      'Сократите это поле расписания.',
+      `schedule-${field}-${oversizedScheduleIndex}`,
+      'core',
+    );
+  }
+  const incompleteScheduleIndex = content.schedule.findIndex((item) => {
+    const hasValue = Boolean(
+      item.title.trim() || item.dayTime.trim() || item.description?.trim(),
+    );
+    return hasValue && (!item.title.trim() || !item.dayTime.trim());
+  });
+  if (incompleteScheduleIndex >= 0) {
+    const item = content.schedule[incompleteScheduleIndex]!;
+    return invalid(
+      'Заполните направление / группу и день / время в этой карточке.',
+      item.title.trim()
+        ? `schedule-day-time-${incompleteScheduleIndex}`
+        : `schedule-title-${incompleteScheduleIndex}`,
+      'core',
+    );
+  }
+
   const incompleteFaqIndex = content.faq.findIndex(
     (item) => !item.question.trim() || !item.answer.trim(),
   );

@@ -16,7 +16,14 @@ import { createEmptyContent } from '@frontend/entities/content/model/content-dra
 describe('client response preview', () => {
   it('matches the formatted responses produced by the backend catalog', () => {
     const content = createEmptyContent();
-    content.schedule = 'Пн, 18:00\n- Ср, 19:00';
+    content.schedule = [
+      {
+        dayTime: 'Пн, 18:00',
+        description: 'Для тех, кто начинает с нуля.',
+        title: 'Бачата — начинающие',
+      },
+      { dayTime: 'Ср, 19:00', title: 'Бачата — продолжающие' },
+    ];
     content.address = '  ул. Мира, 1  ';
     content.faq = [{ answer: 'Напишите нам.', question: 'Как записаться?' }];
     const catalog = new ClientInformationCatalog({
@@ -37,7 +44,7 @@ describe('client response preview', () => {
 
   it('uses the same button rows as the initial Telegram menu', () => {
     const content = createEmptyContent();
-    content.schedule = 'Пн, 18:00';
+    content.schedule = [{ dayTime: 'Пн, 18:00', title: 'Бачата' }];
     content.prices = 'Пробное — 500 ₽';
     content.address = 'ул. Мира, 1';
     content.faq = [{ answer: 'Напишите нам.', question: 'Как записаться?' }];
@@ -91,11 +98,15 @@ describe('client response preview', () => {
   it('validates hidden responses and reserved custom button names', () => {
     const content = createEmptyContent();
     content.visibleSections = [];
-    content.schedule = 'x'.repeat(4_000);
+    content.schedule = Array.from({ length: 4 }, (_, index) => ({
+      dayTime: `День ${index}`,
+      description: 'x'.repeat(1_000),
+      title: `Группа ${index}`,
+    }));
 
     expect(validateContentDraft(content).valid).toBe(false);
 
-    content.schedule = '';
+    content.schedule = [];
     content.customSections = [{ label: ' Задать вопрос ', text: 'Ответ' }];
     expect(validateContentDraft(content)).toEqual({
       issues: [

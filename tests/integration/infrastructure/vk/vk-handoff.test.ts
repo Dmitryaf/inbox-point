@@ -462,7 +462,7 @@ describe('VK handoff integration', () => {
   it('keeps configured VK information available while intake is paused', async () => {
     information.replace({
       customSections: [{ label: 'Как добраться', text: 'Вход со двора.' }],
-      schedule: 'Понедельник 19:00',
+      schedule: [{ dayTime: 'Понедельник 19:00', title: 'Бачата' }],
     });
     vkPaused = true;
 
@@ -483,7 +483,7 @@ describe('VK handoff integration', () => {
 
     expect(inbox.opened).toHaveLength(0);
     expect(gateway.sent.map((message) => message.text)).toEqual([
-      'Расписание\n\n• Понедельник 19:00',
+      'Расписание\n\nБачата\nДень / время: Понедельник 19:00',
       'Вход со двора.',
     ]);
     const labels = gateway.sent[0]?.keyboard?.buttons
@@ -526,7 +526,9 @@ describe('VK handoff integration', () => {
   });
 
   it('uses payload for an information click but relays the same manual text', async () => {
-    information.replace({ schedule: 'Понедельник 19:00' });
+    information.replace({
+      schedule: [{ dayTime: 'Понедельник 19:00', title: 'Бачата' }],
+    });
     await router.route(createMessageEvent({ text: 'Первый вопрос' }));
 
     await router.route(
@@ -549,7 +551,9 @@ describe('VK handoff integration', () => {
       'Первый вопрос',
       'Расписание',
     ]);
-    expect(gateway.sent.at(-1)?.text).toBe('Расписание\n\n• Понедельник 19:00');
+    expect(gateway.sent.at(-1)?.text).toBe(
+      'Расписание\n\nБачата\nДень / время: Понедельник 19:00',
+    );
     const labels = gateway.sent
       .at(-1)
       ?.keyboard?.buttons.flat()

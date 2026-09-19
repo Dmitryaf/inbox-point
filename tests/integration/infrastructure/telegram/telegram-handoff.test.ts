@@ -808,7 +808,7 @@ describe('Telegram handoff integration', () => {
   it('keeps configured Telegram information available while intake is paused', async () => {
     information.replace({
       customSections: [{ label: 'Как добраться', text: 'Вход со двора.' }],
-      schedule: 'Понедельник 19:00',
+      schedule: [{ dayTime: 'Понедельник 19:00', title: 'Бачата' }],
     });
     telegramPaused = true;
 
@@ -817,7 +817,7 @@ describe('Telegram handoff integration', () => {
 
     expect(repository.findActiveRequest('telegram', '101')).toBeUndefined();
     expect(gateway.sent.map((message) => message.text)).toEqual([
-      'Расписание\n\n• Понедельник 19:00',
+      'Расписание\n\nБачата\nДень / время: Понедельник 19:00',
       'Вход со двора.',
     ]);
     const replyMarkup = gateway.sent[0]?.replyMarkup;
@@ -836,7 +836,9 @@ describe('Telegram handoff integration', () => {
   });
 
   it('continues an open Telegram conversation after intake is paused', async () => {
-    information.replace({ schedule: 'Понедельник 19:00' });
+    information.replace({
+      schedule: [{ dayTime: 'Понедельник 19:00', title: 'Бачата' }],
+    });
     await router.route(createPrivateUpdate(1, 501, 'Первый вопрос'));
     telegramPaused = true;
 
@@ -850,7 +852,7 @@ describe('Telegram handoff integration', () => {
     expect(gateway.sent[1]?.text).toContain('Уточнение');
     expect(gateway.sent[2]).toMatchObject({
       chatId: 101,
-      text: 'Расписание\n\n• Понедельник 19:00',
+      text: 'Расписание\n\nБачата\nДень / время: Понедельник 19:00',
     });
     const activeMenu = gateway.sent[2]?.replyMarkup;
     if (!activeMenu || !('keyboard' in activeMenu)) {
@@ -907,14 +909,16 @@ describe('Telegram handoff integration', () => {
   });
 
   it('keeps information buttons available during an active request', async () => {
-    information.replace({ schedule: 'Понедельник 19:00' });
+    information.replace({
+      schedule: [{ dayTime: 'Понедельник 19:00', title: 'Бачата' }],
+    });
     await router.route(createPrivateUpdate(1, 501, 'Первый вопрос'));
     await router.route(createPrivateUpdate(2, 502, 'Расписание'));
 
     expect(gateway.sent).toHaveLength(2);
     expect(gateway.sent[1]).toMatchObject({
       chatId: 101,
-      text: 'Расписание\n\n• Понедельник 19:00',
+      text: 'Расписание\n\nБачата\nДень / время: Понедельник 19:00',
     });
     const activeMenu = gateway.sent[1]?.replyMarkup;
     if (!activeMenu || !('keyboard' in activeMenu)) {

@@ -11,7 +11,7 @@ import { contentResponse, findButton } from './content-management-test-helpers';
 describe('ContentManagementPage save recovery', () => {
   it('keeps edits made while a save request is pending unsaved', async () => {
     const pendingSave = Promise.withResolvers<ReturnType<typeof response>>();
-    let submittedSchedule = '';
+    let submittedScheduleTitle = '';
     vi.stubGlobal(
       'fetch',
       vi.fn((input: RequestInfo | URL, options?: RequestInit) => {
@@ -27,9 +27,10 @@ describe('ContentManagementPage save recovery', () => {
             throw new Error('Expected a JSON request body');
           }
           const submitted = JSON.parse(options.body) as {
-            content: { schedule: string };
+            content: { scheduleItems: { title: string }[] };
           };
-          submittedSchedule = submitted.content.schedule;
+          submittedScheduleTitle =
+            submitted.content.scheduleItems[0]?.title ?? '';
           return pendingSave.promise;
         }
         return Promise.resolve(contentResponse('Старое расписание'));
@@ -38,21 +39,26 @@ describe('ContentManagementPage save recovery', () => {
 
     const wrapper = mount(ContentManagementPage);
     await flushPromises();
-    await wrapper.get('#schedule').setValue('Первое изменение');
+    await wrapper.get('#schedule-title-0').setValue('Первое изменение');
     await findButton(wrapper.findAll('button'), 'Сохранить').trigger('click');
-    await wrapper.get('#schedule').setValue('Второе изменение');
+    await wrapper.get('#schedule-title-0').setValue('Второе изменение');
     pendingSave.resolve(
       response({
-        content: { schedule: 'Первое изменение' },
+        content: {
+          schedule: '',
+          scheduleItems: [
+            { dayTime: 'Понедельник, 19:00', title: 'Первое изменение' },
+          ],
+        },
         version: 'b'.repeat(64),
       }),
     );
     await flushPromises();
 
-    expect(submittedSchedule).toBe('Первое изменение');
-    expect(wrapper.get<HTMLTextAreaElement>('#schedule').element.value).toBe(
-      'Второе изменение',
-    );
+    expect(submittedScheduleTitle).toBe('Первое изменение');
+    expect(
+      wrapper.get<HTMLInputElement>('#schedule-title-0').element.value,
+    ).toBe('Второе изменение');
     expect(wrapper.text()).toContain('Есть несохранённые изменения');
   });
 
@@ -90,7 +96,7 @@ describe('ContentManagementPage save recovery', () => {
 
     const { router, wrapper } = await mountAppAt('/manage');
     await flushPromises();
-    await wrapper.get('#schedule').setValue('Несохранённый черновик');
+    await wrapper.get('#schedule-title-0').setValue('Несохранённый черновик');
     await findButton(wrapper.findAll('button'), 'Сохранить').trigger('click');
     await flushPromises();
 
@@ -100,9 +106,9 @@ describe('ContentManagementPage save recovery', () => {
     await wrapper.get('form').trigger('submit');
     await flushPromises();
 
-    expect(wrapper.get<HTMLTextAreaElement>('#schedule').element.value).toBe(
-      'Несохранённый черновик',
-    );
+    expect(
+      wrapper.get<HTMLInputElement>('#schedule-title-0').element.value,
+    ).toBe('Несохранённый черновик');
     expect(wrapper.text()).toContain('Есть несохранённые изменения');
     expect(wrapper.text()).toContain('Несохранённый черновик восстановлен.');
     expect(contentLoads).toBe(2);
