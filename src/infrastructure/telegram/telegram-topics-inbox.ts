@@ -483,8 +483,8 @@ function formatMirroredOperatorMessages(
   message: ChannelOperatorMessage,
 ): readonly string[] {
   const channelName = message.channel === 'telegram' ? 'Telegram' : 'VK';
-  const firstPrefix = `Ответ отправлен из ${channelName}:\n\n`;
-  const continuationPrefix = `Продолжение ответа из ${channelName}:\n\n`;
+  const firstPrefix = `Ответ администратора из ${channelName}:\n\n`;
+  const continuationPrefix = `Продолжение ответа администратора из ${channelName}:\n\n`;
   const characters = Array.from(message.text);
   const messages: string[] = [];
   let offset = 0;
