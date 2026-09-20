@@ -33,6 +33,8 @@ export class VkSetupController {
     private readonly createGateway: (accessToken: string) => VkSetupGateway = (
       accessToken,
     ) => new VkApiClient(accessToken),
+    private readonly setExpected: (expected: boolean) => Promise<void> = () =>
+      Promise.resolve(),
   ) {
     this.source = source;
   }
@@ -62,6 +64,7 @@ export class VkSetupController {
     await assertVkLongPollReady(client, config.groupId);
     await this.runtime.start(config);
     try {
+      await this.setExpected(true);
       await this.settingsStore.save(config);
       this.source = 'local';
     } catch (error: unknown) {
@@ -79,6 +82,7 @@ export class VkSetupController {
     }
     await this.runtime.stop();
     await this.settingsStore.clear();
+    await this.setExpected(false);
     this.source = 'none';
   }
 

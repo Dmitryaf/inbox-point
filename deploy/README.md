@@ -246,10 +246,19 @@ For session lifetimes and connection controls, see
 
 `/health` only confirms that the HTTP process responds; Docker uses it for its
 healthcheck. `/ready` returns 503 when a configured Telegram or VK poller is
-failed, stopped, or stale; when the delivery worker is stopped or stalled;
+failed, stopped, or stale; when a channel previously seen as configured has
+missing or unreadable settings; when the delivery worker is stopped or stalled;
 when deliveries are backlogged or stale; or when unresolved inbound or
-operator-relay incidents exist. An unconfigured channel alone does not fail
-readiness. The independent monitor must check the public HTTPS `/ready` URL.
+operator-relay incidents exist. A channel that has never been configured is
+deliberately optional and does not fail readiness. The expected-channel marker
+is stored in `service-control.json`, contains no credentials, survives service
+snapshots, and is cleared by a successful local disconnect. The independent
+monitor must check the public HTTPS `/ready` URL.
+
+When upgrading an existing instance, valid environment or local settings create
+the marker automatically. If a settings file had already disappeared before
+the first upgraded start, the service cannot infer that earlier intent; verify
+the expected channels once in `/setup` after the upgrade.
 
 Build the same pinned source on an independent host. Copy
 `.env.monitor.example` to `/etc/inbox-point/monitor.env`, set mode `0600`,

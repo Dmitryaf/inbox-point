@@ -38,6 +38,7 @@ export class TelegramClientChannel implements ClientChannel {
           this.intakePolicy,
           'telegram',
           message.conversationId,
+          new Date(),
         ),
       ),
       text: message.text,

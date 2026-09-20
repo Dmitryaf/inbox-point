@@ -31,6 +31,7 @@ import type {
   OperatorActionSummary,
   PendingOperatorAction,
 } from '@/core/model/operator-action.js';
+import { awaitingClientQuestionTtlMs } from '@/core/model/client-conversation.js';
 import { webOperatorTopicPrefix } from '@/core/model/operator-topic.js';
 import type { ClientChannelKind } from '@/core/model/support-message.js';
 import {
@@ -1429,17 +1430,30 @@ export class SqliteSupportRepository implements SupportRepository {
   public isAwaitingClientQuestion(
     channel: ClientChannelKind,
     conversationId: string,
+    checkedAt: Date,
   ): boolean {
     const row = this.database
       .prepare(
-        `SELECT 1
+        `SELECT updated_at
          FROM client_conversation_states
          WHERE channel = ?
            AND external_conversation_id = ?
            AND state = 'awaiting_question'`,
       )
-      .get(channel, conversationId);
-    return row !== undefined;
+      .get(channel, conversationId) as { updated_at: string } | undefined;
+    if (!row) {
+      return false;
+    }
+
+    const updatedAt = Date.parse(row.updated_at);
+    if (
+      !Number.isFinite(updatedAt) ||
+      checkedAt.getTime() >= updatedAt + awaitingClientQuestionTtlMs
+    ) {
+      this.clearAwaitingClientQuestion(channel, conversationId);
+      return false;
+    }
+    return true;
   }
 
   public clearAwaitingClientQuestion(

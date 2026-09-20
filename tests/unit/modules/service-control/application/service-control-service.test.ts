@@ -65,6 +65,30 @@ describe('ServiceControlService', () => {
     await service.resumeDelivery();
     expect(service.isDeliveryPaused()).toBe(false);
   });
+
+  it('persists whether a channel is expected before exposing the change', async () => {
+    const { save, store } = createStore();
+    const service = new ServiceControlService(
+      createDefaultServiceControlState(),
+      store,
+    );
+
+    await service.setChannelExpected('telegram', true);
+
+    expect(service.isChannelExpected('telegram')).toBe(true);
+    expect(service.isChannelExpected('vk')).toBe(false);
+    expect(save).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        expectedChannels: { telegram: true, vk: false },
+      }),
+    );
+
+    save.mockRejectedValueOnce(new Error('disk unavailable'));
+    await expect(service.setChannelExpected('vk', true)).rejects.toThrow(
+      'disk unavailable',
+    );
+    expect(service.isChannelExpected('vk')).toBe(false);
+  });
 });
 
 function createStore() {

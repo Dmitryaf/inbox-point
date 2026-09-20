@@ -41,6 +41,7 @@ export class VkClientChannel implements ClientChannel {
           this.intakePolicy,
           'vk',
           message.conversationId,
+          new Date(),
         ),
       ),
     );

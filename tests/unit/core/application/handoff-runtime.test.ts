@@ -215,6 +215,7 @@ describe('HandoffRuntime', () => {
     repositories.push(repository);
     const errors: string[] = [];
     const runtime = new HandoffRuntime({
+      clock: () => new Date('2026-09-06T12:05:00.000Z'),
       logger: {
         error: (_error, message) => {
           errors.push(message);

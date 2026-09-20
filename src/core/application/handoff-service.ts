@@ -294,6 +294,7 @@ export class HandoffService {
       !this.repository.isAwaitingClientQuestion(
         message.channel,
         message.conversationId,
+        this.clock(),
       )
     ) {
       return;

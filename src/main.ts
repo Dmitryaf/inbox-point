@@ -144,15 +144,23 @@ async function start(): Promise<void> {
       app.log.error({ err: error }, 'Ignoring invalid local content settings');
     }
     let storedTelegram: TelegramRuntimeConfig | undefined;
+    let telegramSettingsInvalid = false;
     if (!config.telegram) {
       try {
         storedTelegram = await settingsStore.load();
       } catch (error: unknown) {
+        telegramSettingsInvalid = true;
         app.log.error(
           { err: error },
           'Ignoring invalid local Telegram settings',
         );
       }
+    }
+    if (
+      (config.telegram || storedTelegram || telegramSettingsInvalid) &&
+      !serviceControl.isChannelExpected('telegram')
+    ) {
+      await serviceControl.setChannelExpected('telegram', true);
     }
     const source = config.telegram
       ? 'environment'
@@ -164,17 +172,36 @@ async function start(): Promise<void> {
       settingsStore,
       source,
       telegramTransport.fetch,
+      async (expected) => {
+        await serviceControl.setChannelExpected('telegram', expected);
+      },
     );
     let storedVk: VkRuntimeConfig | undefined;
+    let vkSettingsInvalid = false;
     if (!config.vk) {
       try {
         storedVk = await vkSettingsStore.load();
       } catch (error: unknown) {
+        vkSettingsInvalid = true;
         app.log.error({ err: error }, 'Ignoring invalid local VK settings');
       }
     }
+    if (
+      (config.vk || storedVk || vkSettingsInvalid) &&
+      !serviceControl.isChannelExpected('vk')
+    ) {
+      await serviceControl.setChannelExpected('vk', true);
+    }
     const vkSource = config.vk ? 'environment' : storedVk ? 'local' : 'none';
-    const vkSetup = new VkSetupController(vkRuntime, vkSettingsStore, vkSource);
+    const vkSetup = new VkSetupController(
+      vkRuntime,
+      vkSettingsStore,
+      vkSource,
+      undefined,
+      async (expected) => {
+        await serviceControl.setChannelExpected('vk', expected);
+      },
+    );
     const contentSetup = new ContentManagementService(
       informationCatalog,
       contentSettingsStore,
@@ -207,8 +234,14 @@ async function start(): Promise<void> {
       operatorActionIncidents: () => repository.findOperatorActionIncidents(20),
       operatorActionSummary: () => repository.getOperatorActionSummary(),
       startedAt,
-      telegramStatus: () => setup.status(),
-      vkStatus: () => vkSetup.status(),
+      telegramStatus: () => ({
+        ...setup.status(),
+        expected: serviceControl.isChannelExpected('telegram'),
+      }),
+      vkStatus: () => ({
+        ...vkSetup.status(),
+        expected: serviceControl.isChannelExpected('vk'),
+      }),
     });
     registerReadinessRoute(app, operationsMonitoring);
     const operatorInbox = new OperatorInboxService(repository, handoffRuntime);

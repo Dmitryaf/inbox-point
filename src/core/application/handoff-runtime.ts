@@ -16,6 +16,7 @@ import type { SupportMessage } from '@/core/model/support-message.js';
 
 export interface HandoffRuntimeDependencies {
   activity?: DeliveryWorkerActivityReporter;
+  clock?: () => Date;
   deliveryPolicy?: OutboundDeliveryPolicy;
   logger: { error(error: unknown, message: string): void };
   repository: SupportRepository;
@@ -43,6 +44,7 @@ export class HandoffRuntime {
         ),
     );
     this.handoffService = new HandoffService({
+      ...(dependencies.clock ? { clock: dependencies.clock } : {}),
       operatorInbox: this.operatorInbox,
       repository: dependencies.repository,
     });

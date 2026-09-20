@@ -38,15 +38,18 @@ export class VkClientMenu implements VkClientMenuHandler {
     private readonly repository: SupportRepository,
     private readonly information: ClientInformationResolver = new ClientInformationCatalog(),
     private readonly intakePolicy: ClientIntakePolicy = acceptingClientIntakePolicy,
+    private readonly clock: () => Date = () => new Date(),
   ) {}
 
   public async handle(message: VkMenuMessage): Promise<boolean> {
+    const now = this.clock();
     const conversationId = String(message.peerId);
     const state = resolveClientConversationState(
       this.repository,
       this.intakePolicy,
       'vk',
       conversationId,
+      now,
     );
     const response = resolveMenuResponse(
       message.text,
@@ -61,7 +64,7 @@ export class VkClientMenu implements VkClientMenuHandler {
     const claimed = this.repository.claimEvent(
       'vk:menu',
       message.externalEventId,
-      new Date(),
+      now,
     );
     if (!claimed) {
       return true;
@@ -72,11 +75,7 @@ export class VkClientMenu implements VkClientMenuHandler {
         this.repository.clearAwaitingClientQuestion('vk', conversationId);
       }
       if (response.beginQuestion) {
-        this.repository.setAwaitingClientQuestion(
-          'vk',
-          conversationId,
-          new Date(),
-        );
+        this.repository.setAwaitingClientQuestion('vk', conversationId, now);
       }
       const responseState: ClientConversationState = response.beginQuestion
         ? { intakePaused: false, stage: 'awaiting_question' }
@@ -86,6 +85,7 @@ export class VkClientMenu implements VkClientMenuHandler {
               this.intakePolicy,
               'vk',
               conversationId,
+              now,
             )
           : state;
       const keyboard = createVkMainKeyboard(this.information, responseState);

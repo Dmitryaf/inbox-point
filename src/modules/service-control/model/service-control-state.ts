@@ -11,6 +11,10 @@ export interface ServiceControlState {
     vk: ChannelIntakeState;
   };
   delivery: OutboundDeliveryState;
+  expectedChannels?: {
+    telegram: boolean;
+    vk: boolean;
+  };
 }
 
 export interface OutboundDeliveryState {
@@ -25,6 +29,10 @@ export function createDefaultServiceControlState(): ServiceControlState {
       vk: { mode: 'active' },
     },
     delivery: { mode: 'active' },
+    expectedChannels: {
+      telegram: false,
+      vk: false,
+    },
   };
 }
 
@@ -37,5 +45,8 @@ export function copyServiceControlState(
       vk: { ...state.channels.vk },
     },
     delivery: { ...state.delivery },
+    ...(state.expectedChannels
+      ? { expectedChannels: { ...state.expectedChannels } }
+      : {}),
   };
 }

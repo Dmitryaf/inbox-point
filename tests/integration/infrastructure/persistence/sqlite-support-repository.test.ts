@@ -30,7 +30,13 @@ describe('SqliteSupportRepository', () => {
     first.close();
 
     const second = new SqliteSupportRepository(databasePath);
-    expect(second.isAwaitingClientQuestion('telegram', 'client-1')).toBe(true);
+    expect(
+      second.isAwaitingClientQuestion(
+        'telegram',
+        'client-1',
+        new Date('2026-09-16T10:01:00.000Z'),
+      ),
+    ).toBe(true);
     second.createRequest({
       channel: 'telegram',
       conversationId: 'client-1',
@@ -39,15 +45,67 @@ describe('SqliteSupportRepository', () => {
       operatorTopicId: 'web:request-1',
       status: 'active',
     });
-    expect(second.isAwaitingClientQuestion('telegram', 'client-1')).toBe(false);
+    expect(
+      second.isAwaitingClientQuestion(
+        'telegram',
+        'client-1',
+        new Date('2026-09-16T10:01:00.000Z'),
+      ),
+    ).toBe(false);
     second.setAwaitingClientQuestion(
       'telegram',
       'client-1',
       new Date('2026-09-16T10:02:00.000Z'),
     );
     second.clearAwaitingClientQuestion('telegram', 'client-1');
-    expect(second.isAwaitingClientQuestion('telegram', 'client-1')).toBe(false);
+    expect(
+      second.isAwaitingClientQuestion(
+        'telegram',
+        'client-1',
+        new Date('2026-09-16T10:03:00.000Z'),
+      ),
+    ).toBe(false);
     second.close();
+  });
+
+  it('expires awaiting-question intent two hours after it was set and removes it across restart', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'inbox-point-test-'));
+    temporaryDirectories.push(directory);
+    const databasePath = join(directory, 'handoff.sqlite');
+    const first = new SqliteSupportRepository(databasePath);
+    first.setAwaitingClientQuestion(
+      'telegram',
+      'client-1',
+      new Date('2026-09-16T10:00:00.000Z'),
+    );
+    first.close();
+
+    const second = new SqliteSupportRepository(databasePath);
+    expect(
+      second.isAwaitingClientQuestion(
+        'telegram',
+        'client-1',
+        new Date('2026-09-16T11:59:00.000Z'),
+      ),
+    ).toBe(true);
+    expect(
+      second.isAwaitingClientQuestion(
+        'telegram',
+        'client-1',
+        new Date('2026-09-16T12:01:00.000Z'),
+      ),
+    ).toBe(false);
+    second.close();
+
+    const third = new SqliteSupportRepository(databasePath);
+    expect(
+      third.isAwaitingClientQuestion(
+        'telegram',
+        'client-1',
+        new Date('2026-09-16T12:01:00.000Z'),
+      ),
+    ).toBe(false);
+    third.close();
   });
 
   it('stores idempotent usage counters without message text', () => {
@@ -1132,7 +1190,13 @@ describe('SqliteSupportRepository', () => {
       ),
     ).toBe(true);
     expect(repository.findRequestById('request-1')?.status).toBe('active');
-    expect(repository.isAwaitingClientQuestion('telegram', '101')).toBe(false);
+    expect(
+      repository.isAwaitingClientQuestion(
+        'telegram',
+        '101',
+        new Date('2026-09-16T08:01:00.000Z'),
+      ),
+    ).toBe(false);
     repository.close();
   });
 

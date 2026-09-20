@@ -17,6 +17,9 @@ const props = defineProps<{
 }>();
 
 const state = computed(() => {
+  if (props.channel.state === 'configuration_missing') {
+    return { label: 'Нужно подключить', tone: 'attention' };
+  }
   if (props.channel.state === 'not_configured') {
     return { label: 'Не настроен', tone: 'neutral' };
   }

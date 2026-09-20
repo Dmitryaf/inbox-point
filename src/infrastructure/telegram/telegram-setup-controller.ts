@@ -23,6 +23,8 @@ export class TelegramSetupController {
     private readonly settingsStore: TelegramSettingsStore,
     source: TelegramSettingsSource,
     private readonly fetchImplementation: TelegramFetch = fetch,
+    private readonly setExpected: (expected: boolean) => Promise<void> = () =>
+      Promise.resolve(),
   ) {
     this.source = source;
   }
@@ -58,6 +60,7 @@ export class TelegramSetupController {
 
     await this.runtime.start(config);
     try {
+      await this.setExpected(true);
       await this.settingsStore.save(config);
       this.source = 'local';
     } catch (error: unknown) {
@@ -75,6 +78,7 @@ export class TelegramSetupController {
     }
     await this.runtime.stop();
     await this.settingsStore.clear();
+    await this.setExpected(false);
     this.source = 'none';
   }
 
