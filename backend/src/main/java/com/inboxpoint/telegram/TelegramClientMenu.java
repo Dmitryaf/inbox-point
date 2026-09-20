@@ -31,7 +31,7 @@ final class TelegramClientMenu {
 
     boolean handle(long chat, String event, String text, Instant now)
             throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
-        var stage = store.clientStage("telegram", chat);
+        var stage = store.clientStage("telegram", chat, now);
         var pausedNow = paused.test("telegram");
         var answer = ClientMenuPolicy.resolve(information, stage, text, pausedNow, "");
         if (answer == null) {
@@ -43,7 +43,7 @@ final class TelegramClientMenu {
         try {
             if (answer.cancel()) {
                 store.clearQuestion("telegram", chat);
-                stage = store.clientStage("telegram", chat);
+                stage = store.clientStage("telegram", chat, now);
             } else if (answer.begin()) {
                 store.beginQuestion("telegram", chat, now);
             }

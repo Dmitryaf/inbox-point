@@ -199,7 +199,14 @@ public final class TelegramRuntime {
     synchronized void connect(String token, long group) throws IOException, SQLException, InterruptedException {
         assertMutable();
         startWorker(new Settings(token, group, 30), true);
-        source = LOCAL;
+        try {
+            serviceControl.setExpected("telegram", true);
+            source = LOCAL;
+        } catch (IOException failure) {
+            stopTelegramPoller();
+            Files.deleteIfExists(settingsFile);
+            throw failure;
+        }
     }
 
     synchronized void disconnectTelegram() throws IOException, InterruptedException {
@@ -210,15 +217,20 @@ public final class TelegramRuntime {
             throw new IllegalStateException("Сначала отключите VK.");
         }
         if (NONE.equals(source)) {
+            if (serviceControl.expected("telegram")) {
+                serviceControl.setExpected("telegram", false);
+            }
             return;
         }
         stopTelegramPoller();
         Files.deleteIfExists(settingsFile);
+        serviceControl.setExpected("telegram", false);
         source = NONE;
     }
 
     synchronized void disconnectVk() throws IOException, InterruptedException {
         vk.disconnect();
+        serviceControl.setExpected("vk", false);
     }
 
     private void assertMutable() {
@@ -275,6 +287,12 @@ public final class TelegramRuntime {
             throw new IllegalStateException("Сначала подключите Telegram.");
         }
         vk.connect(token, community, incomingVk());
+        try {
+            serviceControl.setExpected("vk", true);
+        } catch (IOException failure) {
+            vk.disconnect();
+            throw failure;
+        }
     }
 
     private void receiveVk(OperatorInbox inbox, TelegramStore store, String event, long peer, long message,

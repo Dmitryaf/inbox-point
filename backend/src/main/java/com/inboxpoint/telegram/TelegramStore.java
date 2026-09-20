@@ -46,13 +46,14 @@ final class TelegramStore implements AutoCloseable {
         }
     }
 
-    ClientMenuPolicy.Stage clientStage(String channel, long conversation) throws SQLException {
+    ClientMenuPolicy.Stage clientStage(String channel, long conversation, Instant now) throws SQLException {
         if (activeRequest(channel, conversation) != null) {
             return ClientMenuPolicy.Stage.ACTIVE;
         }
         try (var statement = prepare("""
                 SELECT 1 FROM client_conversation_states WHERE channel = ? AND external_conversation_id = ?
-                """, channel, Long.toString(conversation)); var rows = statement.executeQuery()) {
+                    AND julianday(updated_at) >= julianday(?)
+                """, channel, Long.toString(conversation), now.minus(java.time.Duration.ofHours(2)).toString()); var rows = statement.executeQuery()) {
             if (rows.next()) {
                 return ClientMenuPolicy.Stage.AWAITING;
             }

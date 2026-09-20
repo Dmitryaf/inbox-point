@@ -71,7 +71,7 @@ final class TelegramDeliveryWorker {
             }
             long sent;
             try {
-                var stage = store.clientStage(item.channel(), item.conversation());
+                var stage = store.clientStage(item.channel(), item.conversation(), clock.instant());
                 var hide = stage == ClientMenuPolicy.Stage.AWAITING;
                 sent = "vk".equals(item.channel())
                         ? vkChannel.send(item.conversation(), item.text(), item.key(), hide ? VkClientMenu.hiddenKeyboard() : null)

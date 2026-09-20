@@ -31,20 +31,20 @@ final class VkClientMenu {
 
     boolean handle(TelegramStore store, String event, long peer, String text, String payload)
             throws IOException, SQLException, InterruptedException {
-        var stage = store.clientStage("vk", peer);
+        var now = Instant.now();
+        var stage = store.clientStage("vk", peer, now);
         var pausedNow = paused.test("vk");
         var answer = ClientMenuPolicy.resolve(information, stage, text, pausedNow, action(payload));
         if (answer == null) {
             return false;
         }
-        var now = Instant.now();
         if (!store.claim("vk:menu", event, now)) {
             return true;
         }
         try {
             if (answer.cancel()) {
                 store.clearQuestion("vk", peer);
-                stage = store.clientStage("vk", peer);
+                stage = store.clientStage("vk", peer, now);
             } else if (answer.begin()) {
                 store.beginQuestion("vk", peer, now);
             }

@@ -90,9 +90,10 @@ class OperatorRelayRestartTest {
             assertThat(store.byId(request.id()).active()).isTrue();
             assertThat(store.resolveOperatorAction("close-case", "completed", now)).isTrue();
             assertThat(store.byId(request.id()).active()).isFalse();
-            assertThat(store.clientStage("vk", 123)).isEqualTo(ClientMenuPolicy.Stage.CLOSED);
+            assertThat(store.clientStage("vk", 123, now)).isEqualTo(ClientMenuPolicy.Stage.CLOSED);
             store.beginQuestion("vk", 123, now);
-            assertThat(store.clientStage("vk", 123)).isEqualTo(ClientMenuPolicy.Stage.AWAITING);
+            assertThat(store.clientStage("vk", 123, now)).isEqualTo(ClientMenuPolicy.Stage.AWAITING);
+            assertThat(store.clientStage("vk", 123, now.plusSeconds(7201))).isEqualTo(ClientMenuPolicy.Stage.CLOSED);
         }
     }
 

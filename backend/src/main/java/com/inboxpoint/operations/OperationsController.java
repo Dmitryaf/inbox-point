@@ -41,8 +41,8 @@ final class OperationsController {
         }
         try {
             var now = Instant.now();
-            var telegram = ChannelState.observe(runtime.status(), runtime.telegramPolling(), started, now);
-            var vk = ChannelState.observe(runtime.vkStatus(), runtime.vkPolling(), started, now);
+            var telegram = ChannelState.observe(runtime.status(), runtime.telegramPolling(), started, now, runtime.serviceControl().expected("telegram"));
+            var vk = ChannelState.observe(runtime.vkStatus(), runtime.vkPolling(), started, now, runtime.serviceControl().expected("vk"));
             var delivery = runtime.deliveryState(now);
             var operatorRelays = runtime.operatorRelayStatus();
             var inboundEvents = runtime.inboundStatus();
@@ -188,8 +188,8 @@ final class OperationsController {
         var delivery = runtime.deliveryState(now);
         return "running".equals(delivery.worker().state()) && !"stalled".equals(delivery.state()) && !"backlog".equals(delivery.state())
                 && runtime.operatorRelayStatus().uncertain() == 0 && runtime.inboundStatus().quarantined() == 0 && runtime.openWebRequests() == 0
-                && ChannelState.observe(runtime.status(), runtime.telegramPolling(), started, now).ready()
-                && ChannelState.observe(runtime.vkStatus(), runtime.vkPolling(), started, now).ready();
+                && ChannelState.observe(runtime.status(), runtime.telegramPolling(), started, now, runtime.serviceControl().expected("telegram")).ready()
+                && ChannelState.observe(runtime.vkStatus(), runtime.vkPolling(), started, now, runtime.serviceControl().expected("vk")).ready();
     }
 
     private static ResponseEntity<Map<String, String>> message(int status, String text) {

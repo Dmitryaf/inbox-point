@@ -13,10 +13,15 @@ record ChannelState(boolean configured, boolean running, String source, String s
 
     static ChannelState observe(TelegramRuntime.Status setup, ChannelActivity.Snapshot polling,
             Instant started, Instant now) {
+        return observe(setup, polling, started, now, false);
+    }
+
+    static ChannelState observe(TelegramRuntime.Status setup, ChannelActivity.Snapshot polling,
+            Instant started, Instant now, boolean expected) {
         var configured = !setup.source().equals("none");
         String state;
         if (!configured) {
-            state = "not_configured";
+            state = expected ? "configuration_missing" : "not_configured";
         } else if (polling.failedSinceSuccess()) {
             state = "poll_failed";
         } else if (!setup.connected()) {

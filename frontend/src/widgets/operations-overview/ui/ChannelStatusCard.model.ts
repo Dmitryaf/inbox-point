@@ -20,6 +20,9 @@ type ResolvedProps = WithDefaults<ComponentProps, typeof componentDefaults>;
 export function createComponentModel($props: ResolvedProps) {
   const props = $props;
   const state = computed(() => {
+    if (props.channel.state === 'configuration_missing') {
+      return { label: 'Нужно подключить', tone: 'attention' };
+    }
     if (props.channel.state === 'not_configured') {
       return { label: 'Не настроен', tone: 'neutral' };
     }
