@@ -35,15 +35,18 @@ export class TelegramClientMenu implements TelegramClientMenuHandler {
     private readonly repository: SupportRepository,
     private readonly information: ClientInformationResolver = new ClientInformationCatalog(),
     private readonly intakePolicy: ClientIntakePolicy = acceptingClientIntakePolicy,
+    private readonly clock: () => Date = () => new Date(),
   ) {}
 
   public async handle(message: TelegramMenuMessage): Promise<boolean> {
+    const now = this.clock();
     const conversationId = String(message.chatId);
     const state = resolveClientConversationState(
       this.repository,
       this.intakePolicy,
       'telegram',
       conversationId,
+      now,
     );
     const response = resolveMenuResponse(message.text, state, this.information);
     if (!response) {
@@ -53,7 +56,7 @@ export class TelegramClientMenu implements TelegramClientMenuHandler {
     const claimed = this.repository.claimEvent(
       'telegram:menu',
       message.externalEventId,
-      new Date(),
+      now,
     );
     if (!claimed) {
       return true;
@@ -70,6 +73,7 @@ export class TelegramClientMenu implements TelegramClientMenuHandler {
             this.intakePolicy,
             'telegram',
             conversationId,
+            now,
           ),
         );
       }
@@ -77,7 +81,7 @@ export class TelegramClientMenu implements TelegramClientMenuHandler {
         this.repository.setAwaitingClientQuestion(
           'telegram',
           conversationId,
-          new Date(),
+          now,
         );
       }
       await this.gateway.sendMessage({

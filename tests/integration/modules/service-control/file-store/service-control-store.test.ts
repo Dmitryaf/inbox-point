@@ -67,4 +67,35 @@ describe('FileServiceControlStore', () => {
       'The local service control settings are invalid',
     );
   });
+
+  it('persists channel expectations and keeps legacy state optional', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'inbox-point-'));
+    temporaryDirectories.push(directory);
+    const path = join(directory, 'service-control.json');
+    const store = new FileServiceControlStore(path);
+
+    await store.save({
+      channels: {
+        telegram: { mode: 'active' },
+        vk: { mode: 'active' },
+      },
+      delivery: { mode: 'active' },
+      expectedChannels: { telegram: true, vk: false },
+    });
+    await expect(store.load()).resolves.toMatchObject({
+      expectedChannels: { telegram: true, vk: false },
+    });
+
+    await writeFile(
+      path,
+      JSON.stringify({
+        channels: {
+          telegram: { mode: 'active' },
+          vk: { mode: 'active' },
+        },
+        delivery: { mode: 'active' },
+      }),
+    );
+    await expect(store.load()).resolves.not.toHaveProperty('expectedChannels');
+  });
 });

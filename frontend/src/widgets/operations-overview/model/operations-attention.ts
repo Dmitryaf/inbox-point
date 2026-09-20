@@ -35,6 +35,16 @@ export function channelProblem(
   if (channel.state === 'running' || channel.state === 'starting') {
     return undefined;
   }
+  if (channel.state === 'configuration_missing') {
+    return {
+      action: `Откройте «Каналы» и подключите ${name} заново.`,
+      channel: name,
+      kind: 'setup',
+      name: `${name} требует подключения`,
+      summary:
+        'Канал был обязательным для этого экземпляра, но его настройки сейчас недоступны.',
+    };
+  }
   if (channel.state === 'not_configured') {
     return {
       action:

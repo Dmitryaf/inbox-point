@@ -15,7 +15,10 @@ import {
   faqButton,
   handoffButton,
 } from '@/core/application/client-information.js';
-import { type ClientIntakePolicy } from '@/core/contracts/client-intake-policy.js';
+import {
+  acceptingClientIntakePolicy,
+  type ClientIntakePolicy,
+} from '@/core/contracts/client-intake-policy.js';
 import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-support-repository.js';
 
 import type {
@@ -1047,6 +1050,50 @@ describe('Telegram handoff integration', () => {
     },
   );
 
+  it('clears expired question intent and restores the current menu', async () => {
+    await router.route(createPrivateUpdate(1, 501, 'Первый вопрос'));
+    const firstRequest = repository.findActiveRequest('telegram', '101');
+    await router.route(createOperatorUpdate(2, 601, 900, '/close'));
+    repository.setAwaitingClientQuestion(
+      'telegram',
+      '101',
+      new Date('2026-09-01T10:00:00.000Z'),
+    );
+    const checkedAt = new Date('2026-09-01T12:01:00.000Z');
+    const expiredIntentRouter = new TelegramUpdateRouter(
+      handoff,
+      -1_001,
+      new TelegramClientMenu(
+        gateway,
+        repository,
+        information,
+        acceptingClientIntakePolicy,
+        () => checkedAt,
+      ),
+      gateway,
+    );
+
+    await expiredIntentRouter.route(
+      createPrivateUpdate(3, 502, 'Поздний вопрос'),
+    );
+
+    expect(repository.findActiveRequest('telegram', '101')).toBeUndefined();
+    expect(repository.findLatestRequest('telegram', '101')?.id).toBe(
+      firstRequest?.id,
+    );
+    expect(
+      repository.isAwaitingClientQuestion('telegram', '101', checkedAt),
+    ).toBe(false);
+    expect(gateway.sent.at(-1)?.text).toBe(clientMessages.closedConversation);
+    const replyMarkup = gateway.sent.at(-1)?.replyMarkup;
+    if (!replyMarkup || !('keyboard' in replyMarkup)) {
+      throw new Error('Expected a restored Telegram menu');
+    }
+    expect(replyMarkup.keyboard.flat().map((button) => button.text)).toContain(
+      handoffButton,
+    );
+  });
+
   it('closes and reopens a request only after Telegram confirms the action', async () => {
     await router.route(createPrivateUpdate(1, 501, 'Вопрос'));
 
@@ -1618,7 +1665,11 @@ describe('Telegram handoff integration', () => {
           restartedRepository.findActiveRequest('telegram', '202'),
         ).toBeDefined();
         expect(
-          restartedRepository.isAwaitingClientQuestion('telegram', '202'),
+          restartedRepository.isAwaitingClientQuestion(
+            'telegram',
+            '202',
+            new Date(),
+          ),
         ).toBe(false);
       } finally {
         restartedRepository.close();
@@ -1638,7 +1689,9 @@ describe('Telegram handoff integration', () => {
     await expect(router.route(update)).rejects.toThrow(
       'Temporary Telegram failure',
     );
-    expect(repository.isAwaitingClientQuestion('telegram', '101')).toBe(true);
+    expect(
+      repository.isAwaitingClientQuestion('telegram', '101', new Date()),
+    ).toBe(true);
 
     await router.route(update);
 
@@ -1658,7 +1711,9 @@ describe('Telegram handoff integration', () => {
 
     await router.route(createPrivateUpdate(4, 503, '/menu'));
 
-    expect(repository.isAwaitingClientQuestion('telegram', '101')).toBe(false);
+    expect(
+      repository.isAwaitingClientQuestion('telegram', '101', new Date()),
+    ).toBe(false);
     const menu = gateway.sent.at(-1);
     expect(menu?.text).toBe(clientMessages.menuOpened);
     if (!menu?.replyMarkup || !('keyboard' in menu.replyMarkup)) {

@@ -22,4 +22,34 @@ describe('channel runtime status', () => {
     expect(status.state).toBe('attention');
     expect(monitoring.isReady()).toBe(false);
   });
+
+  it('requires attention when an expected channel loses its configuration', () => {
+    const monitoring = new OperationsMonitoringService({
+      channelActivity: () => ({}),
+      clock: () => new Date('2026-09-05T12:01:00.000Z'),
+      deliveryActivity: () => ({
+        lastCycleAt: new Date('2026-09-05T12:00:59.000Z'),
+        running: true,
+      }),
+      deliverySummary: () => ({ failed: 0, pending: 0 }),
+      startedAt: new Date('2026-09-05T12:00:00.000Z'),
+      telegramStatus: () => ({
+        connected: false,
+        expected: true,
+        source: 'none',
+      }),
+      vkStatus: () => ({ connected: false, source: 'none' }),
+    });
+
+    const status = monitoring.getStatus();
+
+    expect(status.channels.telegram).toMatchObject({
+      configured: false,
+      running: false,
+      state: 'configuration_missing',
+    });
+    expect(status.channels.vk.state).toBe('not_configured');
+    expect(status.state).toBe('attention');
+    expect(monitoring.isReady()).toBe(false);
+  });
 });

@@ -104,6 +104,25 @@ describe('TelegramSetupController', () => {
     ]);
   });
 
+  it('records the required channel before saving and clears it after deletion', async () => {
+    const harness = createHarness({ source: 'none', trackExpectation: true });
+
+    await harness.controller.connect(
+      initialConfig.botToken,
+      initialConfig.operatorChatId,
+    );
+    await harness.controller.disconnect();
+
+    expect(harness.events).toEqual([
+      'start',
+      'expect:true',
+      'save',
+      'stop',
+      'clear',
+      'expect:false',
+    ]);
+  });
+
   it('rejects disconnect for server-managed settings', async () => {
     const harness = createHarness({
       running: true,
@@ -124,6 +143,7 @@ function createHarness(options: {
   source?: TelegramSettingsSource;
   stopError?: Error;
   stored?: TelegramRuntimeConfig;
+  trackExpectation?: boolean;
 }) {
   const events: string[] = [];
   let running = options.running ?? false;
@@ -167,6 +187,13 @@ function createHarness(options: {
       runtime,
       settingsStore,
       options.source ?? 'local',
+      undefined,
+      options.trackExpectation
+        ? (expected) => {
+            events.push(`expect:${expected}`);
+            return Promise.resolve();
+          }
+        : undefined,
     ),
     events,
     stored: () => stored,

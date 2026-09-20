@@ -196,6 +196,35 @@ describe('HTTP service status', () => {
     expect(response.json()).toEqual({ status: 'not_ready' });
     expect(response.body).not.toContain('telegram');
   });
+
+  it('fails readiness without exposing which expected channel lost configuration', async () => {
+    const app = createApp(config);
+    apps.add(app);
+    registerReadinessRoute(
+      app,
+      new OperationsMonitoringService({
+        channelActivity: () => ({}),
+        deliveryActivity: () => ({
+          lastCycleAt: new Date('2026-09-04T12:02:59.000Z'),
+          running: true,
+        }),
+        deliverySummary: () => ({ failed: 0, pending: 0 }),
+        startedAt: new Date('2026-09-04T12:00:00.000Z'),
+        telegramStatus: () => ({
+          connected: false,
+          expected: true,
+          source: 'none',
+        }),
+        vkStatus: () => ({ connected: false, source: 'none' }),
+      }),
+    );
+
+    const response = await app.inject({ method: 'GET', url: '/ready' });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toEqual({ status: 'not_ready' });
+    expect(response.body).not.toContain('telegram');
+  });
 });
 
 function createMonitoringService(

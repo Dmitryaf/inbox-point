@@ -8,7 +8,10 @@ import {
   faqButton,
   handoffButton,
 } from '@/core/application/client-information.js';
-import { type ClientIntakePolicy } from '@/core/contracts/client-intake-policy.js';
+import {
+  acceptingClientIntakePolicy,
+  type ClientIntakePolicy,
+} from '@/core/contracts/client-intake-policy.js';
 import type {
   OpenOperatorRequest,
   OperatorInbox,
@@ -363,7 +366,9 @@ describe('VK handoff integration', () => {
     gateway.failNextSend = true;
 
     await expect(router.route(event)).rejects.toThrow('Temporary VK failure');
-    expect(repository.isAwaitingClientQuestion('vk', '101')).toBe(true);
+    expect(repository.isAwaitingClientQuestion('vk', '101', new Date())).toBe(
+      true,
+    );
 
     await router.route(event);
 
@@ -401,7 +406,9 @@ describe('VK handoff integration', () => {
       }),
     );
 
-    expect(repository.isAwaitingClientQuestion('vk', '101')).toBe(false);
+    expect(repository.isAwaitingClientQuestion('vk', '101', new Date())).toBe(
+      false,
+    );
     expect(gateway.sent.at(-1)?.text).toBe(clientMessages.menuOpened);
     expect(
       gateway.sent
@@ -631,6 +638,57 @@ describe('VK handoff integration', () => {
       firstRequest?.id,
     );
     expect(gateway.sent.at(-1)?.text).toContain('Предыдущий разговор завершён');
+    expect(
+      gateway.sent
+        .at(-1)
+        ?.keyboard?.buttons.flat()
+        .map((button) => button.action.label),
+    ).toContain(handoffButton);
+  });
+
+  it('clears expired question intent and restores the current VK menu', async () => {
+    await router.route(createMessageEvent({ text: 'Первый вопрос' }));
+    const firstRequest = repository.findActiveRequest('vk', '101');
+    await service.handleOperatorMessage('telegram-close-1', {
+      externalMessageId: 'telegram-command-1',
+      operatorTopicId: 'topic-1',
+      receivedAt: new Date('2026-09-01T10:00:00.000Z'),
+      text: '/close',
+    });
+    repository.setAwaitingClientQuestion(
+      'vk',
+      '101',
+      new Date('2026-09-01T10:00:00.000Z'),
+    );
+    const checkedAt = new Date('2026-09-01T12:01:00.000Z');
+    const expiredIntentRouter = new VkUpdateRouter(
+      service,
+      gateway,
+      new VkClientMenu(
+        gateway,
+        repository,
+        information,
+        acceptingClientIntakePolicy,
+        () => checkedAt,
+      ),
+    );
+
+    await expiredIntentRouter.route(
+      createMessageEvent({
+        conversation_message_id: 8,
+        id: 502,
+        text: 'Поздний вопрос',
+      }),
+    );
+
+    expect(repository.findActiveRequest('vk', '101')).toBeUndefined();
+    expect(repository.findLatestRequest('vk', '101')?.id).toBe(
+      firstRequest?.id,
+    );
+    expect(repository.isAwaitingClientQuestion('vk', '101', checkedAt)).toBe(
+      false,
+    );
+    expect(gateway.sent.at(-1)?.text).toBe(clientMessages.closedConversation);
     expect(
       gateway.sent
         .at(-1)

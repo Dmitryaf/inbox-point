@@ -167,6 +167,7 @@ export interface SupportRepository
   isAwaitingClientQuestion(
     channel: ClientChannelKind,
     conversationId: string,
+    checkedAt: Date,
   ): boolean;
   getUsageEventCounts(since: Date): UsageEventCounts;
   getDeliverySummary(): DeliverySummary;

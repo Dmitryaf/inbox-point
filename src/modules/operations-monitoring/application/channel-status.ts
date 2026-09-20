@@ -6,6 +6,7 @@ import type {
 
 export interface ChannelStatusSnapshot {
   connected: boolean;
+  expected?: boolean;
   source: ChannelConnectionSource;
 }
 
@@ -60,7 +61,7 @@ function resolveChannelState(
   pollStaleAfterMs: number,
 ): ChannelOperationsStatus['state'] {
   if (status.source === 'none') {
-    return 'not_configured';
+    return status.expected ? 'configuration_missing' : 'not_configured';
   }
   if (
     activity.lastFailedPollAt &&

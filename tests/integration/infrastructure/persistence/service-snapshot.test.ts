@@ -117,6 +117,7 @@ describe('ServiceSnapshotService', () => {
         vk: { mode: 'active' },
       },
       delivery: { mode: 'active' },
+      expectedChannels: { telegram: true, vk: true },
     });
     writeFileSync(
       join(dataDirectory, 'telegram-settings.json'),
@@ -175,7 +176,10 @@ describe('ServiceSnapshotService', () => {
     });
     expect(
       await new FileServiceControlStore(restored.serviceControlPath!).load(),
-    ).toMatchObject({ channels: { telegram: { mode: 'paused' } } });
+    ).toMatchObject({
+      channels: { telegram: { mode: 'paused' } },
+      expectedChannels: { telegram: true, vk: true },
+    });
     expect(readdirSync(restoreDirectory)).not.toContain(
       'telegram-settings.json',
     );

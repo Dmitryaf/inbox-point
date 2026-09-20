@@ -7,6 +7,7 @@ export interface ChannelOperationsStatus {
   running: boolean;
   source: ConnectionSource;
   state:
+    | 'configuration_missing'
     | 'not_configured'
     | 'poll_failed'
     | 'poll_stale'

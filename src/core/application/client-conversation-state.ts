@@ -8,6 +8,7 @@ export function resolveClientConversationState(
   intakePolicy: ClientIntakePolicy,
   channel: ClientChannelKind,
   conversationId: string,
+  checkedAt: Date,
 ): ClientConversationState {
   if (repository.findActiveRequest(channel, conversationId)) {
     return {
@@ -15,7 +16,7 @@ export function resolveClientConversationState(
       stage: 'active',
     };
   }
-  if (repository.isAwaitingClientQuestion(channel, conversationId)) {
+  if (repository.isAwaitingClientQuestion(channel, conversationId, checkedAt)) {
     return {
       intakePaused: intakePolicy.isPaused(channel),
       stage: 'awaiting_question',

@@ -109,6 +109,25 @@ describe('VkSetupController', () => {
     ]);
   });
 
+  it('records the required channel before saving and clears it after deletion', async () => {
+    const harness = createHarness({ source: 'none', trackExpectation: true });
+
+    await harness.controller.connect(initialConfig.accessToken, 'first');
+    await harness.controller.disconnect();
+
+    expect(harness.events).toEqual([
+      'permissions',
+      'settings',
+      'validate',
+      'start',
+      'expect:true',
+      'save',
+      'stop',
+      'clear',
+      'expect:false',
+    ]);
+  });
+
   it('rejects disconnect for server-managed settings', async () => {
     const harness = createHarness({
       running: true,
@@ -205,6 +224,7 @@ function createHarness(options: {
   source?: VkSettingsSource;
   stopError?: Error;
   stored?: VkRuntimeConfig;
+  trackExpectation?: boolean;
 }) {
   const events: string[] = [];
   let running = options.running ?? false;
@@ -277,6 +297,12 @@ function createHarness(options: {
         getTokenPermissions,
         resolveCommunity,
       }),
+      options.trackExpectation
+        ? (expected) => {
+            events.push(`expect:${expected}`);
+            return Promise.resolve();
+          }
+        : undefined,
     ),
     events,
     getLongPollServer,

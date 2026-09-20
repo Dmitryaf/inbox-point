@@ -370,7 +370,13 @@ describe('HandoffService', () => {
       receivedAt: new Date('2026-08-31T12:03:00.000Z'),
       text: '/reopen',
     });
-    expect(repository.isAwaitingClientQuestion('telegram', '101')).toBe(false);
+    expect(
+      repository.isAwaitingClientQuestion(
+        'telegram',
+        '101',
+        new Date('2026-08-31T12:00:00.000Z'),
+      ),
+    ).toBe(false);
     await service.handleClientMessage(
       'update-2',
       createClientMessage('message-2', 'Message after reopen'),

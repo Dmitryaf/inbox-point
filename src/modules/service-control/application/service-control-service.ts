@@ -34,6 +34,24 @@ export class ServiceControlService
     return this.state.delivery.mode === 'paused';
   }
 
+  public isChannelExpected(channel: ClientChannelKind): boolean {
+    return this.state.expectedChannels?.[channel] ?? false;
+  }
+
+  public setChannelExpected(
+    channel: ClientChannelKind,
+    expected: boolean,
+  ): Promise<ServiceControlState> {
+    return this.update((current) => ({
+      ...current,
+      expectedChannels: {
+        telegram: current.expectedChannels?.telegram ?? false,
+        vk: current.expectedChannels?.vk ?? false,
+        [channel]: expected,
+      },
+    }));
+  }
+
   public pauseDelivery(): Promise<ServiceControlState> {
     return this.update((current) => ({
       ...current,
