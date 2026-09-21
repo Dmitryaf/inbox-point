@@ -12,8 +12,9 @@ monitor.
 - **Foreign egress VPS:** WireGuard and a minimal Tinyproxy process. It is only
   a transport path to `api.telegram.org`; it has no application, database,
   Telegram bot token, VK token, administrator password, or backup.
-- **Independent monitor host:** checks the public HTTPS `/ready` endpoint and
-  sends alerts through a webhook that does not depend on Telegram.
+- **External monitor:** UptimeRobot or an independent monitor host checks the
+  public HTTPS `/ready` endpoint and sends alerts through a channel that does
+  not depend only on Telegram.
 
 Only Telegram Bot API requests use `TELEGRAM_PROXY_URL`. The application does
 not set a global `HTTP_PROXY` or `HTTPS_PROXY`; VK, readiness checks, backup
@@ -248,24 +249,33 @@ For session lifetimes and connection controls, see
 healthcheck. `/ready` returns 503 when a configured Telegram or VK poller is
 failed, stopped, or stale; when a channel previously seen as configured has
 missing or unreadable settings; when the delivery worker is stopped or stalled;
-when deliveries are backlogged or stale; or when unresolved inbound or
-operator-relay incidents exist. A channel that has never been configured is
-deliberately optional and does not fail readiness. The expected-channel marker
-is stored in `service-control.json`, contains no credentials, survives service
-snapshots, and is cleared by a successful local disconnect. The independent
-monitor must check the public HTTPS `/ready` URL.
+when deliveries are backlogged, stale, failed, or have an unknown outcome; or
+when unresolved inbound or operator-relay incidents exist. A channel that has
+never been configured is deliberately optional and does not fail readiness.
+The expected-channel marker is stored in `service-control.json`, contains no
+credentials, survives service snapshots, and is cleared by a successful local
+disconnect. The external monitor must check the public HTTPS `/ready` URL.
 
 When upgrading an existing instance, valid environment or local settings create
 the marker automatically. If a settings file had already disappeared before
 the first upgraded start, the service cannot infer that earlier intent; verify
 the expected channels once in `/setup` after the upgrade.
 
-Build the same pinned source on an independent host. Copy
-`.env.monitor.example` to `/etc/inbox-point/monitor.env`, set mode `0600`,
-and use the same `INSTANCE_ID`. The alert webhook must remain usable when the
-application host or Telegram is unavailable.
+For hosted monitoring, create a UptimeRobot HTTP(s) monitor for
+`https://<instance-domain>/ready` and send alerts to email or another channel
+that does not depend only on Telegram. The free-plan defaults are compatible:
+the endpoint accepts `HEAD` and `GET`, returns 200 while ready, and returns 503
+on a detected failure. If advanced settings are available, prefer `GET` and
+accept only HTTP 200 as up. Exercise one outage and recovery before the pilot.
 
-Install and enable the example service after adapting its user and paths:
+The bundled monitor remains an optional self-hosted alternative. Build the same
+pinned source on an independent host, copy `.env.monitor.example` to
+`/etc/inbox-point/monitor.env`, set mode `0600`, and use the same `INSTANCE_ID`.
+The alert webhook must remain usable when the application host or Telegram is
+unavailable.
+
+For the self-hosted option, install and enable the example service after
+adapting its user and paths:
 
 ```bash
 sudo install -m 0644 deploy/systemd/inbox-point-availability-monitor.service.example /etc/systemd/system/inbox-point-availability-monitor.service
@@ -423,7 +433,8 @@ Use this order for the first production installation:
 14. Complete one test conversation and operator reply in each channel.
 15. Restart with `docker compose -p <instance> --env-file .env restart app`,
     then repeat readiness and active-request checks.
-16. Install the independent monitor and exercise outage and recovery alerts.
+16. Configure UptimeRobot or an independent monitor for `/ready`, then exercise
+    outage and recovery alerts.
 17. Run one external backup, then enable the instance-specific backup timer.
 18. Stop the test instance, restore the snapshot into a new directory, verify
     it in isolation, and record the rollback image/source reference.

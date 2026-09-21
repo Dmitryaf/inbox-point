@@ -176,6 +176,7 @@ describe('OperationsMonitoringService', () => {
         retryAllowed: true,
       },
     ]);
+    expect(monitoring.isReady()).toBe(false);
   });
 
   it('blocks readiness and exposes an uncertain operator relay', () => {
