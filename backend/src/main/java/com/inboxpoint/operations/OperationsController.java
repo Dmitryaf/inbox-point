@@ -187,6 +187,7 @@ final class OperationsController {
         var now = Instant.now();
         var delivery = runtime.deliveryState(now);
         return "running".equals(delivery.worker().state()) && !"stalled".equals(delivery.state()) && !"backlog".equals(delivery.state())
+                && !"failed".equals(delivery.state())
                 && runtime.operatorRelayStatus().uncertain() == 0 && runtime.inboundStatus().quarantined() == 0 && runtime.openWebRequests() == 0
                 && ChannelState.observe(runtime.status(), runtime.telegramPolling(), started, now, runtime.serviceControl().expected("telegram")).ready()
                 && ChannelState.observe(runtime.vkStatus(), runtime.vkPolling(), started, now, runtime.serviceControl().expected("vk")).ready();
