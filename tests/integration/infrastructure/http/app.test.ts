@@ -117,7 +117,7 @@ describe('HTTP service status', () => {
     apps.add(app);
     registerReadinessRoute(
       app,
-      createMonitoringService(() => ({ failed: 2, pending: 3 })),
+      createMonitoringService(() => ({ failed: 0, pending: 0 })),
     );
 
     const response = await app.inject({ method: 'GET', url: '/ready' });
@@ -141,6 +141,29 @@ describe('HTTP service status', () => {
 
     expect(response.statusCode).toBe(503);
     expect(response.json()).toEqual({ status: 'not_ready' });
+  });
+
+  it('fails readiness until an outbound delivery incident is resolved', async () => {
+    const app = createApp(config);
+    apps.add(app);
+    let deliverySummary = { failed: 0, pending: 0, uncertain: 0 };
+    registerReadinessRoute(
+      app,
+      createMonitoringService(() => deliverySummary),
+    );
+
+    const healthy = await app.inject({ method: 'GET', url: '/ready' });
+
+    deliverySummary = { failed: 1, pending: 0, uncertain: 1 };
+    const unresolved = await app.inject({ method: 'GET', url: '/ready' });
+
+    deliverySummary = { failed: 0, pending: 0, uncertain: 0 };
+    const resolved = await app.inject({ method: 'GET', url: '/ready' });
+
+    expect(healthy.statusCode).toBe(200);
+    expect(unresolved.statusCode).toBe(503);
+    expect(unresolved.json()).toEqual({ status: 'not_ready' });
+    expect(resolved.statusCode).toBe(200);
   });
 
   it('fails readiness when the delivery worker stopped with an empty queue', async () => {
