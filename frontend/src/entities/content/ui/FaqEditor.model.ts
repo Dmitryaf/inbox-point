@@ -6,6 +6,7 @@ import {
   type ModelOptions,
   type ModelRef,
 } from '@frontend/shared/lib/component-props';
+import { useCollectionEditor } from '@frontend/entities/content/lib/use-collection-editor';
 import { computed } from '@frontend/shared/lib/model-state';
 import {
   formatFaqResponse,
@@ -35,20 +36,14 @@ export function createComponentModel(
       ? formatFaqResponse(normalizeFaqItems(draft.value.faq)).length
       : 0,
   );
-  function add(): void {
-    if (draft.value.faq.length < 20) {
-      draft.value.faq.push({ answer: '', question: '' });
-    }
-  }
-  function move(index: number, offset: -1 | 1): void {
-    const target = index + offset;
-    if (target < 0 || target >= draft.value.faq.length) {
-      return;
-    }
-    const [item] = draft.value.faq.splice(index, 1);
-    if (item) {
-      draft.value.faq.splice(target, 0, item);
-    }
-  }
-  return { draft, responseLength, add, move };
+  const { add, move, remove, itemKey } = useCollectionEditor({
+    items: () => draft.value.faq,
+    create: () => ({ answer: '', question: '' }),
+    limit: 20,
+    fieldPrefix: 'faq-question',
+    description: (item, index) =>
+      `вопрос «${item.question.trim() || index + 1}»`,
+    hasContent: (item) => !!(item.question.trim() || item.answer.trim()),
+  });
+  return { draft, responseLength, add, move, remove, itemKey };
 }

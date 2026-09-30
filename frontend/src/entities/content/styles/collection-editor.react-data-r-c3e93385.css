@@ -8,9 +8,18 @@
 .section-heading h2[data-r-c3e93385] {
   margin-bottom: 0;
 }
+.section-heading > span[data-r-c3e93385] {
+  flex-shrink: 0;
+  white-space: nowrap;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+}
+.section-heading > p[data-r-c3e93385] {
+  margin-bottom: 0.5rem;
+}
 .counter[data-r-c3e93385] {
   color: var(--color-text-muted);
-  font-size: 0.8rem;
+  font-size: var(--font-size-small);
   text-align: right;
 }
 .counter--error[data-r-c3e93385] {
@@ -64,6 +73,6 @@
     gap: 0.65rem;
   }
   .section-heading h2[data-r-c3e93385] {
-    font-size: 1.25rem;
+    font-size: var(--font-size-section);
   }
 }

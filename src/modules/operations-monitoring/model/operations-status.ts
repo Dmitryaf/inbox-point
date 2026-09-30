@@ -64,6 +64,8 @@ export interface OperatorRelayOperationsStatus {
 }
 
 export interface OperatorRelayIncident {
+  displayName?: string;
+  messageText?: string;
   action:
     | 'close_request'
     | 'mirror_operator_message'
@@ -117,6 +119,8 @@ export interface DeliveryOperationsStatus {
 }
 
 export interface DeliveryIncident {
+  displayName?: string;
+  messageText?: string;
   attempts: number;
   channel: 'Telegram' | 'VK';
   createdAt: string;

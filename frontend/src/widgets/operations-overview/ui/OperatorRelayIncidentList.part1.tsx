@@ -1,9 +1,11 @@
+import { renderOperatorRelayIncidentListPart1Layout1 } from './OperatorRelayIncidentList.part1.layout1';
 import {
   classNames as $class,
   renderList as $renderList,
 } from '@frontend/shared/lib/component-view';
 
 import { unref as $unref } from '@frontend/shared/lib/model-state';
+import { logicalOr as $or } from '@frontend/shared/lib/component-bindings';
 
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 import { formatShortDateTime } from '@frontend/shared/lib/format-date-time';
@@ -11,7 +13,6 @@ import {
   isLifecycle,
   operationLabel,
 } from '@frontend/widgets/operations-overview/model/operator-action-presentation';
-import OperatorRelayIncidentActions from './OperatorRelayIncidentActions';
 
 import type { WithDefaults } from '@frontend/shared/lib/component-model';
 import type {
@@ -42,19 +43,15 @@ export function renderOperatorRelayIncidentListPart1(
             {'Проверьте ситуацию и выберите доступное безопасное действие.'}
           </p>
           <ol data-r-e2822c38="">
-            {$renderList($props.incidents, (incident) => (
-              <li key={incident.id} data-r-e2822c38="">
-                <div className="delivery-incident-heading" data-r-e2822c38="">
-                  <strong data-r-e2822c38="">
-                    {$unref(isLifecycle)(incident)
-                      ? 'Состояние темы требует решения'
-                      : `Обращение из ${incident.channel} требует решения`}
-                  </strong>
-                  <time dateTime={incident.createdAt} data-r-e2822c38="">
-                    {$unref(formatShortDateTime)(incident.createdAt)}
-                  </time>
-                </div>
-                {incident.heldReplyCount > 0 ? (
+            {$renderList($props.incidents, (incident) =>
+              renderOperatorRelayIncidentListPart1Layout1(
+                { key: incident.id },
+                $unref(isLifecycle)(incident)
+                  ? 'Состояние темы требует решения'
+                  : `Обращение из ${incident.channel} требует решения`,
+                { dateTime: incident.createdAt },
+                $unref(formatShortDateTime)(incident.createdAt),
+                incident.heldReplyCount > 0 ? (
                   <p data-r-e2822c38="">{incident.reason}</p>
                 ) : (
                   <p data-r-e2822c38="">
@@ -62,57 +59,54 @@ export function renderOperatorRelayIncidentListPart1(
                       ? 'Не удалось точно определить, изменилось ли состояние темы.'
                       : 'Не удалось точно определить, появилось ли сообщение у администраторов.'}
                   </p>
-                )}
-                {incident.heldReplyCount > 1 ? (
+                ),
+                incident.heldReplyCount > 1 ? (
                   <p data-r-e2822c38="">
                     {' Сохранено ответов: '}
                     {incident.heldReplyCount}
                     {'. Они будут отправлены по порядку. '}
                   </p>
-                ) : null}
-                <details className="technical-details" data-r-e2822c38="">
-                  <summary data-r-e2822c38="">{'Технические данные'}</summary>
-                  <dl className="delivery-incident-context" data-r-e2822c38="">
-                    <div data-r-e2822c38="">
-                      <dt data-r-e2822c38="">{'ID обращения'}</dt>
-                      <dd data-r-e2822c38="">{incident.requestId}</dd>
-                    </div>
-                    <div data-r-e2822c38="">
-                      <dt data-r-e2822c38="">{'Причина'}</dt>
-                      <dd data-r-e2822c38="">{incident.reason}</dd>
-                    </div>
-                    <div data-r-e2822c38="">
-                      <dt data-r-e2822c38="">
-                        {incident.action === 'mirror_operator_message'
-                          ? 'ID ответа VK'
-                          : 'ID сообщения клиента'}
-                      </dt>
-                      <dd data-r-e2822c38="">{incident.clientMessageId}</dd>
-                    </div>
-                    {incident.action !== 'open_request' ? (
-                      <div data-r-e2822c38="">
-                        <dt data-r-e2822c38="">{'ID темы Telegram'}</dt>
-                        <dd data-r-e2822c38="">{incident.operatorTopicId}</dd>
-                      </div>
-                    ) : null}
-                    <div data-r-e2822c38="">
-                      <dt data-r-e2822c38="">{'Операция'}</dt>
-                      <dd data-r-e2822c38="">
-                        {$unref(operationLabel)(incident)}
-                      </dd>
-                    </div>
-                  </dl>
-                </details>
-                <OperatorRelayIncidentActions
-                  incident={incident}
-                  pendingActionId={$props.pendingActionId}
-                  onResolve={(id, resolution) =>
-                    $emit('resolve', id, resolution)
-                  }
-                  data-r-e2822c38=""
-                />
-              </li>
-            ))}
+                ) : null,
+                $or(incident.displayName, () => 'Имя не указано'),
+                incident.channel,
+                !$unref(isLifecycle)(incident) ? (
+                  <div className="incident-message" data-r-e2822c38="">
+                    <strong data-r-e2822c38="">
+                      {incident.action === 'mirror_operator_message'
+                        ? 'Исходный ответ из VK'
+                        : 'Исходное сообщение клиента'}
+                    </strong>
+                    <p data-r-e2822c38="">
+                      {incident.messageText ?? 'Текст сообщения недоступен'}
+                    </p>
+                    <small data-r-e2822c38="">
+                      {' Проверяется часть '}
+                      {incident.sequence + 1}
+                      {' сообщения. '}
+                    </small>
+                  </div>
+                ) : null,
+                incident.requestId,
+                incident.reason,
+                incident.action === 'mirror_operator_message'
+                  ? 'ID ответа VK'
+                  : 'ID сообщения клиента',
+                incident.clientMessageId,
+                incident.action !== 'open_request' ? (
+                  <div data-r-e2822c38="">
+                    <dt data-r-e2822c38="">{'ID темы Telegram'}</dt>
+                    <dd data-r-e2822c38="">{incident.operatorTopicId}</dd>
+                  </div>
+                ) : null,
+                $unref(operationLabel)(incident),
+                {
+                  incident: incident,
+                  pendingActionId: $props.pendingActionId,
+                  onResolve: (id, resolution) =>
+                    $emit('resolve', id, resolution),
+                },
+              ),
+            )}
           </ol>
         </section>
       ) : null}

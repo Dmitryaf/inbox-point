@@ -18,6 +18,14 @@ export async function loadContentHistory(): Promise<ContentChange[]> {
   return result.history;
 }
 
+export async function loadContentRevision(
+  revision: number,
+): Promise<ContentSnapshot> {
+  return requireStructuredScheduleApi(
+    await request<ContentSnapshot>(`/api/manage/content/history/${revision}`),
+  );
+}
+
 export function saveContent(
   content: ContentDraft,
   version: string,

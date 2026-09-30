@@ -10,6 +10,7 @@ import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 import { renderOperatorConversationPart1 } from './OperatorConversation.part1';
 import { renderOperatorConversationPart2 } from './OperatorConversation.part2';
 import { renderOperatorConversationPart3 } from './OperatorConversation.part3';
+import { renderOperatorConversationPart4 } from './OperatorConversation.part4';
 import {
   createComponentModel,
   componentDefaults,
@@ -37,6 +38,7 @@ export default function OperatorConversation($incomingProps: ComponentProps) {
         {renderOperatorConversationPart1($state, $props)}
         {renderOperatorConversationPart2($state, $props)}
         {renderOperatorConversationPart3($state, $props)}
+        {renderOperatorConversationPart4($state, $props)}
       </article>
     </ModelScopeProvider>
   );

@@ -1,0 +1,22 @@
+.revision-content[data-r-b485ff3e] {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  padding: 1rem;
+  margin-block: 1rem;
+}
+.revision-content section + section[data-r-b485ff3e] {
+  border-top: 1px solid var(--color-border);
+  padding-top: 1rem;
+}
+.revision-content p[data-r-b485ff3e] {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.revision-content small[data-r-b485ff3e] {
+  display: block;
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+.revision-content ul[data-r-b485ff3e] {
+  padding-left: 1.25rem;
+}

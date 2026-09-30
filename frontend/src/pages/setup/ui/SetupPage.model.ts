@@ -14,11 +14,15 @@ export function createComponentModel() {
   const session = useAdminShellSession();
   const status = ref<SetupStatus>();
   const error = ref('');
+  const loading = ref(false);
+  let loadVersion = 0;
   watch(
     session.authenticated,
     (authenticated) => {
       status.value = undefined;
       error.value = '';
+      loadVersion += 1;
+      loading.value = false;
       if (authenticated) {
         void loadStatus();
       }
@@ -26,10 +30,22 @@ export function createComponentModel() {
     { immediate: true },
   );
   async function loadStatus(): Promise<void> {
+    const version = ++loadVersion;
+    loading.value = true;
+    error.value = '';
     try {
-      status.value = await readSetupStatus();
+      const result = await readSetupStatus();
+      if (version === loadVersion) {
+        status.value = result;
+      }
     } catch (cause: unknown) {
-      error.value = requestErrorMessage(cause, session.expireSession);
+      if (version === loadVersion) {
+        error.value = requestErrorMessage(cause, session.expireSession);
+      }
+    } finally {
+      if (version === loadVersion) {
+        loading.value = false;
+      }
     }
   }
   function markTelegramConnected(): void {
@@ -64,6 +80,8 @@ export function createComponentModel() {
     session,
     status,
     error,
+    loading,
+    loadStatus,
     markTelegramConnected,
     markVkConnected,
     markTelegramDisconnected,

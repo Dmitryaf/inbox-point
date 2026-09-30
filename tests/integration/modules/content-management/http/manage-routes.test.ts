@@ -40,6 +40,16 @@ describe('managed content routes', () => {
     const store: ContentSettingsStore = {
       load: () => Promise.resolve(undefined),
       loadHistoricalMenuActions: () => Promise.resolve([]),
+      loadRevision: (revision) =>
+        Promise.resolve(
+          revision === 1
+            ? {
+                legacySchedule: 'Legacy schedule',
+                address: 'Hidden address',
+                visibleSections: [],
+              }
+            : undefined,
+        ),
       loadHistory: () => Promise.resolve(history),
       restore: (revision) => {
         restored.push(revision);
@@ -128,6 +138,47 @@ describe('managed content routes', () => {
       url: '/api/manage/content',
     });
     const loadedVersion = loaded.json<{ version: string }>().version;
+    const preview = await app.inject({
+      headers: { cookie },
+      method: 'GET',
+      remoteAddress: '192.0.2.10',
+      url: '/api/manage/content/history/1',
+    });
+    expect(preview.statusCode).toBe(200);
+    expect(preview.json<{ content: unknown }>().content).toMatchObject({
+      schedule: 'Legacy schedule',
+      scheduleItems: [],
+      address: 'Hidden address',
+      visibleSections: [],
+    });
+    expect(saved).toHaveLength(0);
+    expect(restored).toHaveLength(0);
+    for (const [revision, statusCode] of [
+      ['999', 404],
+      ['0', 400],
+      ['abc', 400],
+      ['1.5', 400],
+    ] as const) {
+      expect(
+        (
+          await app.inject({
+            headers: { cookie },
+            method: 'GET',
+            remoteAddress: '192.0.2.10',
+            url: `/api/manage/content/history/${revision}`,
+          })
+        ).statusCode,
+      ).toBe(statusCode);
+    }
+    expect(
+      (
+        await app.inject({
+          method: 'GET',
+          remoteAddress: '192.0.2.10',
+          url: '/api/manage/content/history/1',
+        })
+      ).statusCode,
+    ).toBe(401);
     const save = await app.inject({
       headers: {
         cookie,
@@ -301,6 +352,7 @@ describe('managed content routes', () => {
     const store: ContentSettingsStore = {
       load: () => Promise.resolve(undefined),
       loadHistoricalMenuActions: () => Promise.resolve([]),
+      loadRevision: () => Promise.resolve(undefined),
       loadHistory: () => Promise.resolve([]),
       restore: () => Promise.reject(new Error('not available')),
       save: (value) => {
@@ -380,6 +432,7 @@ describe('managed content routes', () => {
     const store: ContentSettingsStore = {
       load: () => Promise.resolve(undefined),
       loadHistoricalMenuActions: () => Promise.resolve([]),
+      loadRevision: () => Promise.resolve(undefined),
       loadHistory: () => Promise.resolve([]),
       restore: () => Promise.reject(new Error('not available')),
       save: () => Promise.resolve(),
@@ -417,6 +470,7 @@ describe('managed content routes', () => {
     const store: ContentSettingsStore = {
       load: () => Promise.resolve(undefined),
       loadHistoricalMenuActions: () => Promise.resolve([]),
+      loadRevision: () => Promise.resolve(undefined),
       loadHistory: () => Promise.resolve([]),
       restore: () => Promise.reject(new Error('not available')),
       save: () => Promise.resolve(),

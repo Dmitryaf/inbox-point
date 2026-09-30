@@ -4,7 +4,7 @@
 
 .counter {
   color: var(--color-text-muted);
-  font-size: 0.8rem;
+  font-size: var(--font-size-small);
   text-align: right;
 }
 
@@ -77,7 +77,7 @@
 
 .summary-copy span {
   color: var(--color-text-muted);
-  font-size: 0.8rem;
+  font-size: var(--font-size-small);
   font-weight: 500;
 }
 
@@ -121,7 +121,15 @@
 }
 
 @media (max-width: 520px) {
+  .card > .step {
+    display: none;
+  }
+  .card {
+    border: 0;
+    padding: 0;
+    background: transparent;
+  }
   .card > h2 {
-    font-size: 1.25rem;
+    font-size: var(--font-size-section);
   }
 }

@@ -3,8 +3,10 @@ import { unref as $unref } from '@frontend/shared/lib/model-state';
 import { requiredValue as $required } from '@frontend/shared/lib/component-bindings';
 
 import AsyncMessage from '@frontend/shared/ui/AsyncMessage';
-import OperatorConversation from './OperatorConversation';
+
 import OperatorRequestList from './OperatorRequestList';
+
+import { renderOperatorInboxPart2 } from './OperatorInbox.part2';
 
 import type { createComponentModel } from './OperatorInbox.model';
 export function renderOperatorInboxPart1(
@@ -59,17 +61,7 @@ export function renderOperatorInboxPart1(
               onSelect={$callback($required($unref($state.inbox)).select)}
               data-r-ae8be5db=""
             />
-            {inbox.selectedRequest.value ? (
-              <OperatorConversation
-                key={inbox.selectedRequest.value.id}
-                actionPending={inbox.actionPending.value}
-                messages={inbox.messages.value}
-                onClose={inbox.close}
-                onReply={inbox.reply}
-                request={inbox.selectedRequest.value}
-                data-r-ae8be5db=""
-              />
-            ) : null}
+            {renderOperatorInboxPart2($state)}
           </div>
         </section>
       ) : null}

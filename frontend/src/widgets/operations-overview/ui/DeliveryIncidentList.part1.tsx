@@ -1,9 +1,11 @@
+import { renderDeliveryIncidentListPart1Layout1 } from './DeliveryIncidentList.part1.layout1';
 import {
   classNames as $class,
   renderList as $renderList,
 } from '@frontend/shared/lib/component-view';
 
 import { unref as $unref } from '@frontend/shared/lib/model-state';
+import { logicalOr as $or } from '@frontend/shared/lib/component-bindings';
 
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
@@ -38,19 +40,15 @@ export function renderDeliveryIncidentListPart1(
             {'Эти ответы не дошли или требуют ручной проверки.'}
           </p>
           <ol data-r-d17d69f5="">
-            {$renderList($props.incidents, (incident) => (
-              <li key={incident.id} data-r-d17d69f5="">
-                <div className="delivery-incident-heading" data-r-d17d69f5="">
-                  <strong data-r-d17d69f5="">
-                    {incident.retryAllowed
-                      ? `Ответ в ${incident.channel} не доставлен`
-                      : `Доставку в ${incident.channel} нужно проверить`}
-                  </strong>
-                  <time dateTime={incident.createdAt} data-r-d17d69f5="">
-                    {$unref(formatShortDateTime)(incident.createdAt)}
-                  </time>
-                </div>
-                {incident.retryAllowed ? (
+            {$renderList($props.incidents, (incident) =>
+              renderDeliveryIncidentListPart1Layout1(
+                { key: incident.id },
+                incident.retryAllowed
+                  ? `Ответ в ${incident.channel} не доставлен`
+                  : `Доставку в ${incident.channel} нужно проверить`,
+                { dateTime: incident.createdAt },
+                $unref(formatShortDateTime)(incident.createdAt),
+                incident.retryAllowed ? (
                   <p data-r-d17d69f5="">
                     {
                       ' Ответ не дошёл до клиента. Попробуйте отправить его ещё раз. '
@@ -62,31 +60,20 @@ export function renderDeliveryIncidentListPart1(
                       ' Не удалось узнать, получил ли клиент ответ. Сначала проверьте переписку, затем выберите подходящее действие. '
                     }
                   </p>
-                )}
-                <details className="technical-details" data-r-d17d69f5="">
-                  <summary data-r-d17d69f5="">{'Технические данные'}</summary>
-                  <dl className="delivery-incident-context" data-r-d17d69f5="">
-                    <div data-r-d17d69f5="">
-                      <dt data-r-d17d69f5="">{'ID обращения'}</dt>
-                      <dd data-r-d17d69f5="">{incident.requestId}</dd>
-                    </div>
-                    <div data-r-d17d69f5="">
-                      <dt data-r-d17d69f5="">{'ID темы в Telegram'}</dt>
-                      <dd data-r-d17d69f5="">{incident.operatorTopicId}</dd>
-                    </div>
-                    {incident.operatorMessageId ? (
-                      <div data-r-d17d69f5="">
-                        <dt data-r-d17d69f5="">{'ID сообщения'}</dt>
-                        <dd data-r-d17d69f5="">{incident.operatorMessageId}</dd>
-                      </div>
-                    ) : null}
-                    <div data-r-d17d69f5="">
-                      <dt data-r-d17d69f5="">{'Причина'}</dt>
-                      <dd data-r-d17d69f5="">{incident.reason}</dd>
-                    </div>
-                  </dl>
-                </details>
-                {incident.retryAllowed ? (
+                ),
+                $or(incident.displayName, () => 'Имя не указано'),
+                incident.channel,
+                incident.messageText ?? 'Текст ответа недоступен',
+                incident.requestId,
+                incident.operatorTopicId,
+                incident.operatorMessageId ? (
+                  <div data-r-d17d69f5="">
+                    <dt data-r-d17d69f5="">{'ID сообщения'}</dt>
+                    <dd data-r-d17d69f5="">{incident.operatorMessageId}</dd>
+                  </div>
+                ) : null,
+                incident.reason,
+                incident.retryAllowed ? (
                   <button
                     type="button"
                     disabled={Boolean($props.pendingDeliveryId)}
@@ -131,9 +118,9 @@ export function renderDeliveryIncidentListPart1(
                         : 'Не получено — повторить'}
                     </button>
                   </div>
-                )}
-              </li>
-            ))}
+                ),
+              ),
+            )}
           </ol>
         </section>
       ) : null}

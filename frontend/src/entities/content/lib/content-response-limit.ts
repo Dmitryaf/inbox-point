@@ -67,7 +67,10 @@ export function getCoreResponseLengths(content: ContentDraft): {
       : 0,
     prices:
       createListResponse('prices', 'Цены', content.prices)?.text.length ?? 0,
-    schedule: createScheduleResponse(content)?.text.length ?? 0,
+    schedule: Math.max(
+      createScheduleResponse(content)?.text.length ?? 0,
+      createScheduleCompatibilityResponse(content)?.text.length ?? 0,
+    ),
   };
 }
 

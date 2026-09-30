@@ -27,7 +27,7 @@ export function renderOperatorConversationPart1(
         </div>
         <button
           type="button"
-          disabled={$props.actionPending}
+          disabled={$or($props.actionPending, () => !$props.messagesReady)}
           onClick={$nativeHandler(closeRequest)}
           className="secondary-button"
           data-r-e21483db=""

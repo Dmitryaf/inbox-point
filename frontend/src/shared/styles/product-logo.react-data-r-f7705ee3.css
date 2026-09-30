@@ -36,7 +36,7 @@
   stroke: var(--color-primary-hover);
 }
 .product-logo__wordmark[data-r-f7705ee3] {
-  font-size: 1rem;
+  font-size: var(--font-size-body);
   font-weight: 800;
   letter-spacing: -0.025em;
   white-space: nowrap;

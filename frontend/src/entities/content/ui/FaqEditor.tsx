@@ -5,7 +5,7 @@ import {
 } from '@frontend/shared/lib/component-model';
 import { classNames as $class } from '@frontend/shared/lib/component-view';
 import { nativeHandler as $nativeHandler } from '@frontend/shared/lib/component-events';
-
+import { unref as $unref } from '@frontend/shared/lib/model-state';
 import { propertySetter as $propertySetter } from '@frontend/shared/lib/component-bindings';
 
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
@@ -30,7 +30,6 @@ export default function FaqEditor($incomingProps: ComponentProps) {
     componentDefaults,
     createComponentModel,
   );
-  const { add } = $state;
   const draft = $state.draft.value;
   const responseLength = $state.responseLength.value;
   const $attributes = inheritedAttributes($props);
@@ -73,9 +72,10 @@ export default function FaqEditor($incomingProps: ComponentProps) {
         ) : null}
         {renderFaqEditorPart2($state, $props)}
         <button
+          id="add-faq-question"
           disabled={draft.faq.length >= 20}
           type="button"
-          onClick={$nativeHandler(add)}
+          onClick={$nativeHandler($unref($state.add))}
           data-r-0b16243c=""
         >
           {' Добавить вопрос '}

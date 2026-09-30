@@ -1,5 +1,8 @@
 import { classNames as $class } from '@frontend/shared/lib/component-view';
-import { eventCallback as $callback } from '@frontend/shared/lib/component-events';
+import {
+  eventCallback as $callback,
+  nativeHandler as $nativeHandler,
+} from '@frontend/shared/lib/component-events';
 import { unref as $unref } from '@frontend/shared/lib/model-state';
 
 import TelegramSetupCard from '@frontend/features/setup-telegram/ui/TelegramSetupCard';
@@ -14,19 +17,31 @@ export function renderSetupPagePart2(
     markTelegramDisconnected,
     markVkConnected,
     markVkDisconnected,
+    loadStatus,
   } = $state;
   const session = $unref($state.session);
+  const error = $state.error.value;
   const status = $state.status.value;
+  const loading = $state.loading.value;
   if (!session.authenticated.value) {
     return null;
   }
   return (
     <>
-      {!status ? (
+      {loading ? (
         <p role="status" className="state-card card" data-r-ad468c1b="">
           {' Проверяем подключения… '}
         </p>
-      ) : (
+      ) : error ? (
+        <button
+          type="button"
+          onClick={$nativeHandler(loadStatus)}
+          className="secondary-button"
+          data-r-ad468c1b=""
+        >
+          {' Повторить проверку подключений '}
+        </button>
+      ) : status ? (
         <div className="setup-workspace" data-r-ad468c1b="">
           <div
             className={$class('setup-channel-grid', {
@@ -51,7 +66,7 @@ export function renderSetupPagePart2(
             />
           </div>
         </div>
-      )}
+      ) : null}
     </>
   );
 }

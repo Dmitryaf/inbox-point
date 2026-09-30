@@ -16,6 +16,23 @@ afterEach(async () => {
 });
 
 describe('FileContentSettingsStore', () => {
+  it('reads a revision including hidden content without changing the file', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'inbox-point-content-'));
+    directories.push(directory);
+    const path = join(directory, 'content-settings.json');
+    const store = new FileContentSettingsStore(path);
+    await store.save({ address: 'Old hidden address', visibleSections: [] });
+    await store.save({ address: 'Current address' });
+    const before = await readFile(path, 'utf8');
+    const revision = await store.loadRevision(1);
+    expect(revision).toMatchObject({
+      address: 'Old hidden address',
+      visibleSections: [],
+    });
+    await expect(store.loadRevision(999)).resolves.toBeUndefined();
+    expect(await readFile(path, 'utf8')).toBe(before);
+    expect((await store.load())?.address).toBe('Current address');
+  });
   it('persists content and records restorable revisions', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'inbox-point-content-'));
     directories.push(directory);

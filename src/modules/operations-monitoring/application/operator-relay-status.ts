@@ -10,6 +10,10 @@ export function mapOperatorRelayStatus(
 ): OperatorRelayOperationsStatus {
   return {
     incidents: incidents.map((incident) => ({
+      ...(incident.displayName ? { displayName: incident.displayName } : {}),
+      ...(incident.messageText !== undefined
+        ? { messageText: incident.messageText }
+        : {}),
       action: incident.kind,
       channel: incident.channel === 'telegram' ? 'Telegram' : 'VK',
       clientMessageId: incident.clientMessageId,

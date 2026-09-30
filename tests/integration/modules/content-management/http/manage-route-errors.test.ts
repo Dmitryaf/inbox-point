@@ -35,6 +35,7 @@ describe('managed content read errors', () => {
       load: () => Promise.reject(new Error(internalMessage)),
       loadHistoricalMenuActions: () =>
         Promise.reject(new Error(internalMessage)),
+      loadRevision: () => Promise.reject(new Error(internalMessage)),
       loadHistory: () => Promise.reject(new Error(internalMessage)),
       restore: () => Promise.reject(new Error('not used')),
       save: () => Promise.reject(new Error('not used')),
@@ -60,5 +61,11 @@ describe('managed content read errors', () => {
       message: 'Не удалось загрузить историю изменений. Попробуйте ещё раз.',
     });
     expect(history.body).not.toContain(internalMessage);
+    const revision = await app.inject({
+      method: 'GET',
+      url: '/api/manage/content/history/1',
+    });
+    expect(revision.statusCode).toBe(500);
+    expect(revision.body).not.toContain(internalMessage);
   });
 });

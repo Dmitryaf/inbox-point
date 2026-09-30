@@ -1,6 +1,7 @@
 import { renderList as $renderList } from '@frontend/shared/lib/component-view';
 
-import { requiredValue as $required } from '@frontend/shared/lib/component-bindings';
+import { unref as $unref } from '@frontend/shared/lib/model-state';
+
 import { textProperty as $textProperty } from '@frontend/shared/lib/component-inputs';
 
 import FieldError from '@frontend/shared/ui/FieldError';
@@ -15,13 +16,13 @@ export function renderFaqEditorPart2(
   $state: ReturnType<typeof createComponentModel>,
   $props: WithDefaults<ComponentProps, typeof componentDefaults>,
 ) {
-  const { move } = $state;
+  const itemKey = $unref($state.itemKey);
   const draft = $state.draft.value;
 
   return (
     <>
       {$renderList(draft.faq, (item, index) => (
-        <fieldset key={index} className="item-card" data-r-0b16243c="">
+        <fieldset key={itemKey(item)} className="item-card" data-r-0b16243c="">
           <legend data-r-0b16243c="">
             {'Вопрос '}
             {index + 1}
@@ -84,7 +85,8 @@ export function renderFaqEditorPart2(
               type="button"
               disabled={index === 0}
               aria-label={`Переместить вопрос ${index + 1} выше`}
-              onClick={() => void move(index, -1)}
+              data-move="-1"
+              onClick={() => void $unref($state.move)(index, -1)}
               className="quiet"
               data-r-0b16243c=""
             >
@@ -94,7 +96,8 @@ export function renderFaqEditorPart2(
               type="button"
               disabled={index === draft.faq.length - 1}
               aria-label={`Переместить вопрос ${index + 1} ниже`}
-              onClick={() => void move(index, 1)}
+              data-move="1"
+              onClick={() => void $unref($state.move)(index, 1)}
               className="quiet"
               data-r-0b16243c=""
             >
@@ -102,9 +105,7 @@ export function renderFaqEditorPart2(
             </button>
             <button
               type="button"
-              onClick={() =>
-                void $required($state.draft.value).faq.splice(index, 1)
-              }
+              onClick={() => void $unref($state.remove)(index)}
               className="danger"
               data-r-0b16243c=""
             >

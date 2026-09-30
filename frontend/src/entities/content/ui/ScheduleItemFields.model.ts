@@ -7,6 +7,10 @@ import {
   type ModelRef,
 } from '@frontend/shared/lib/component-props';
 import { computed } from '@frontend/shared/lib/model-state';
+import {
+  focusEditorField,
+  focusMovedItem,
+} from '@frontend/entities/content/lib/editor-focus';
 import type { ContentDraft } from '@frontend/entities/content/model/types';
 
 export type ComponentProps = {
@@ -37,7 +41,27 @@ export function createComponentModel(
     const [moved] = draft.value.schedule.splice(props.index, 1);
     if (moved) {
       draft.value.schedule.splice(target, 0, moved);
+      void focusMovedItem(`schedule-title-${target}`, offset);
     }
   }
-  return { draft, item, move };
+  function remove(): void {
+    if (
+      (item.value.title.trim() ||
+        item.value.dayTime.trim() ||
+        item.value.description?.trim()) &&
+      !window.confirm(
+        `Удалить направление «${item.value.title.trim() || props.index + 1}»? Остальные изменения сохранятся в черновике.`,
+      )
+    ) {
+      return;
+    }
+    const index = props.index;
+    draft.value.schedule.splice(index, 1);
+    void focusEditorField(
+      draft.value.schedule.length
+        ? `schedule-title-${Math.min(index, draft.value.schedule.length - 1)}`
+        : 'add-schedule',
+    );
+  }
+  return { draft, item, move, remove };
 }

@@ -51,11 +51,11 @@
 .operator-reply-actions span[data-r-e21483db],
 .operator-conversation-heading p[data-r-e21483db] {
   color: var(--color-text-muted);
-  font-size: 0.82rem;
+  font-size: var(--font-size-small);
 }
 .operator-message-delivery[data-r-e21483db] {
   color: var(--color-text-muted);
-  font-size: 0.78rem;
+  font-size: var(--font-size-small);
   font-weight: 700;
 }
 .operator-message-delivery--failed[data-r-e21483db] {

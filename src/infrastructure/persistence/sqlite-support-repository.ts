@@ -932,6 +932,8 @@ export class SqliteSupportRepository implements SupportRepository {
            delivery.last_error,
            delivery.created_at,
            delivery.outcome_unknown,
+           delivery.text AS message_text,
+           request.client_display_name,
            request.operator_topic_id
          FROM deliveries AS delivery
          JOIN support_requests AS request ON request.id = delivery.request_id
@@ -941,6 +943,10 @@ export class SqliteSupportRepository implements SupportRepository {
 
     return rows.map((row) => ({
       attempts: row.attempts,
+      ...(row.client_display_name
+        ? { displayName: row.client_display_name }
+        : {}),
+      messageText: row.message_text,
       channel: row.channel,
       createdAt: new Date(row.created_at),
       id: row.id,
@@ -1084,9 +1090,19 @@ export class SqliteSupportRepository implements SupportRepository {
                     AND blocking_action.id != action.id
                     AND blocking_action.status IN ('pending', 'sending', 'failed')
                 ) THEN 1 ELSE 0 END AS confirmable,
-                request.external_conversation_id
+                request.external_conversation_id,
+                request.client_display_name,
+                message.text AS message_text
          FROM operator_actions AS action
          JOIN support_requests AS request ON request.id = action.request_id
+         LEFT JOIN conversation_messages AS message
+           ON message.request_id = action.request_id
+          AND message.external_message_id = action.client_message_id
+          AND message.processing_state = 'accepted'
+          AND (
+            (action.kind IN ('relay_message', 'open_request') AND message.direction = 'client_to_operator')
+            OR (action.kind = 'mirror_operator_message' AND message.direction = 'operator_to_client')
+          )
          ${whereClause}`,
       )
       .all(...parameters) as unknown as OperatorActionIncidentRow[];

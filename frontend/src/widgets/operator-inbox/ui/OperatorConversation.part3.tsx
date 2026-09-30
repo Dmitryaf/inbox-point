@@ -1,7 +1,12 @@
-import { nativeHandler as $nativeHandler } from '@frontend/shared/lib/component-events';
+import {
+  classNames as $class,
+  renderList as $renderList,
+} from '@frontend/shared/lib/component-view';
 
+import { unref as $unref } from '@frontend/shared/lib/model-state';
 import { logicalOr as $or } from '@frontend/shared/lib/component-bindings';
-import { textModel as $textModel } from '@frontend/shared/lib/component-inputs';
+
+import { formatShortDateTime } from '@frontend/shared/lib/format-date-time';
 
 import type { WithDefaults } from '@frontend/shared/lib/component-model';
 import type {
@@ -13,43 +18,55 @@ export function renderOperatorConversationPart3(
   $state: ReturnType<typeof createComponentModel>,
   $props: WithDefaults<ComponentProps, typeof componentDefaults>,
 ) {
-  const { submitReply } = $state;
-  const replyText = $state.replyText.value;
+  const { deliveryLabel } = $state;
 
   return (
     <>
-      <form
-        onSubmit={$nativeHandler(submitReply, { prevent: true })}
-        className="operator-reply-form"
-        data-r-e21483db=""
-      >
-        <label htmlFor="operator-reply" data-r-e21483db="">
-          {'Ответ'}
-        </label>
-        <textarea
-          id="operator-reply"
-          maxLength={4000}
-          required
-          rows={4}
-          disabled={$props.actionPending}
-          value={replyText ?? ''}
-          onChange={$textModel($state, 'replyText')}
+      {$props.messages.length ? (
+        <ol
+          aria-label="Переписка"
+          className="operator-message-list"
           data-r-e21483db=""
-        />
-        <div className="operator-reply-actions" data-r-e21483db="">
-          <span data-r-e21483db="">
-            {replyText.length}
-            {' / 4000'}
-          </span>
-          <button
-            type="submit"
-            disabled={$or($props.actionPending, () => !replyText.trim())}
-            data-r-e21483db=""
-          >
-            {$props.actionPending ? 'Готовим к отправке…' : 'Отправить'}
-          </button>
-        </div>
-      </form>
+        >
+          {$renderList($props.messages, (message) => (
+            <li
+              key={message.id}
+              className={$class(
+                'operator-message',
+                `operator-message--${message.direction}`,
+              )}
+              data-r-e21483db=""
+            >
+              <div className="operator-message-meta" data-r-e21483db="">
+                <strong data-r-e21483db="">
+                  {message.direction === 'client_to_operator'
+                    ? $or(message.senderName, () => 'Отправитель')
+                    : 'Администратор'}
+                </strong>
+                <time dateTime={message.createdAt} data-r-e21483db="">
+                  {$unref(formatShortDateTime)(message.createdAt)}
+                </time>
+              </div>
+              <p data-r-e21483db="">{message.text}</p>
+              {deliveryLabel(message) ? (
+                <span
+                  className={$class('operator-message-delivery', {
+                    'operator-message-delivery--failed':
+                      message.deliveryStatus === 'failed',
+                  })}
+                  data-r-e21483db=""
+                >
+                  {deliveryLabel(message)}
+                </span>
+              ) : null}
+            </li>
+          ))}
+        </ol>
+      ) : $props.messagesReady ? (
+        <p className="operator-inbox-empty" data-r-e21483db="">
+          {' Сообщений пока нет. '}
+        </p>
+      ) : null}
     </>
   );
 }

@@ -5,6 +5,7 @@ import {
 } from '@frontend/shared/lib/component-model';
 import { classNames as $class } from '@frontend/shared/lib/component-view';
 import { nativeHandler as $nativeHandler } from '@frontend/shared/lib/component-events';
+import { unref as $unref } from '@frontend/shared/lib/model-state';
 
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
@@ -26,7 +27,6 @@ export default function CustomSectionsEditor($incomingProps: ComponentProps) {
     componentDefaults,
     createComponentModel,
   );
-  const { add } = $state;
   const sections = $state.sections.value;
   const $attributes = inheritedAttributes($props);
   return (
@@ -44,9 +44,10 @@ export default function CustomSectionsEditor($incomingProps: ComponentProps) {
         ) : null}
         {renderCustomSectionsEditorPart2($state, $props)}
         <button
+          id="add-section-label"
           disabled={sections.length >= 6}
           type="button"
-          onClick={$nativeHandler(add)}
+          onClick={$nativeHandler($unref($state.add))}
           data-r-c3e93385=""
         >
           {' Добавить раздел '}

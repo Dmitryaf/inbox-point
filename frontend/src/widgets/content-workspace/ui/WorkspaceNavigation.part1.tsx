@@ -34,7 +34,11 @@ export function renderWorkspaceNavigationPart1(
           >
             {$renderList($unref(workspaceViews), (view) => (
               <option key={view.id} value={view.id} data-r-e6e22060="">
-                {view.label}
+                {view.id === 'edit'
+                  ? 'Редактор'
+                  : view.id === 'preview'
+                    ? 'Просмотр'
+                    : view.label}
               </option>
             ))}
           </select>
@@ -54,7 +58,7 @@ export function renderWorkspaceNavigationPart1(
             </option>
             {$renderList($unref(editorSections), (section) => (
               <option key={section.id} value={section.id} data-r-e6e22060="">
-                {section.label}
+                {section.id === 'faq' ? 'Вопросы' : section.label}
               </option>
             ))}
           </select>

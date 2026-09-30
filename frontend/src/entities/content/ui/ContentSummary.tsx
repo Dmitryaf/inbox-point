@@ -30,26 +30,26 @@ export default function ContentSummary($incomingProps: ComponentProps) {
   const $attributes = inheritedAttributes($props);
   return (
     <ModelScopeProvider scope={$scope}>
-      <section
+      <details
         {...$attributes}
-        aria-labelledby="content-summary-title"
         className={$class('content-summary', $attributes.className)}
         data-r-109c0780=""
       >
-        <div className="summary-heading" data-r-109c0780="">
-          <div data-r-109c0780="">
-            <p data-r-109c0780="">{'Готовность ответов'}</p>
-            <h3 id="content-summary-title" data-r-109c0780="">
-              {totalCount ? 'Готово к показу' : 'Пока не заполнено'}
-            </h3>
-          </div>
-        </div>
+        <summary data-r-109c0780="">
+          <span className="summary-title" data-r-109c0780="">
+            {totalCount ? 'Готово к показу' : 'Пока не заполнено'}
+          </span>
+          <span data-r-109c0780="">
+            {' · Кнопок: '}
+            {totalCount}
+          </span>
+        </summary>
         {renderContentSummaryPart1($state, $props)}
         <p className="channel-note" data-r-109c0780="">
           <AppIcon name="check" data-r-109c0780="" />
           {' После сохранения изменения появятся в Telegram и VK. '}
         </p>
-      </section>
+      </details>
     </ModelScopeProvider>
   );
 }
