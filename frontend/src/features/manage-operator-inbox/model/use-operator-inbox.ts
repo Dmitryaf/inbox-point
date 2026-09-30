@@ -1,40 +1,40 @@
 import { computed, ref } from 'vue';
 
-import {
-  closeOperatorInboxRequest,
-  readOperatorInboxMessages,
-  readOperatorInboxRequests,
-  sendOperatorInboxReply,
-} from '@frontend/entities/operations/api/operations-api';
-import type {
-  OperatorInboxMessage,
-  OperatorInboxRequest,
-} from '@frontend/entities/operations/model/types';
+import { readOperatorInboxRequests } from '@frontend/entities/operations/api/operations-api';
+import type { OperatorInboxRequest } from '@frontend/entities/operations/model/types';
 import { requestErrorMessage } from '@frontend/shared/lib/request-error-message';
-import { resolveOperatorInboxActionError } from './operator-inbox-action-error';
-
-type ReplyAttempt = Parameters<typeof sendOperatorInboxReply>[1] & {
-  requestId: string;
-};
+import { useOperatorMessages } from './use-operator-messages';
+import { useOperatorActions } from './use-operator-actions';
 
 export function useOperatorInbox(onUnauthorized: () => void) {
-  const actionPending = ref(false);
-  const actionError = ref('');
   const loading = ref(false);
-  const messages = ref<readonly OperatorInboxMessage[]>([]);
-  const notice = ref('');
+  const drafts = ref<Record<string, string>>({});
   const requests = ref<readonly OperatorInboxRequest[]>([]);
   const selectedRequestId = ref('');
-  let failedReply: ReplyAttempt | undefined;
+  let refreshVersion = 0;
+
+  const messageState = useOperatorMessages(selectedRequestId, onUnauthorized);
+  const { refreshMessages, messagesReady } = messageState;
+  const actions = useOperatorActions(
+    selectedRequestId,
+    messagesReady,
+    drafts,
+    refresh,
+    onUnauthorized,
+  );
 
   const selectedRequest = computed(() =>
     requests.value.find((request) => request.id === selectedRequestId.value),
   );
 
   async function refresh(): Promise<string> {
+    const version = ++refreshVersion;
     loading.value = true;
     try {
       const result = await readOperatorInboxRequests();
+      if (version !== refreshVersion) {
+        return '';
+      }
       requests.value = Array.isArray(result.requests) ? result.requests : [];
       if (
         !requests.value.some(
@@ -46,104 +46,37 @@ export function useOperatorInbox(onUnauthorized: () => void) {
       await refreshMessages();
       return '';
     } catch (cause: unknown) {
+      if (version !== refreshVersion) {
+        return '';
+      }
       return requestErrorMessage(cause, onUnauthorized);
     } finally {
-      loading.value = false;
+      if (version === refreshVersion) {
+        loading.value = false;
+      }
     }
   }
 
   async function select(requestId: string): Promise<void> {
     selectedRequestId.value = requestId;
-    actionError.value = '';
-    try {
-      await refreshMessages();
-    } catch (cause: unknown) {
-      await handleActionError(cause);
-    }
+    actions.actionError.value = '';
+    actions.notice.value = '';
+    await refreshMessages();
   }
 
-  async function reply(text: string): Promise<boolean> {
-    const requestId = selectedRequestId.value;
-    if (!requestId || actionPending.value) {
-      return false;
-    }
-    const attempt =
-      failedReply?.requestId === requestId && failedReply.text === text.trim()
-        ? failedReply
-        : {
-            idempotencyKey: crypto.randomUUID(),
-            requestId,
-            text: text.trim(),
-          };
-    actionPending.value = true;
-    actionError.value = '';
-    notice.value = '';
-    try {
-      await sendOperatorInboxReply(requestId, {
-        idempotencyKey: attempt.idempotencyKey,
-        text: attempt.text,
-      });
-      failedReply = undefined;
-      notice.value =
-        'Ответ сохранён для отправки. Результат появится рядом с сообщением.';
-      actionError.value = await refresh();
-      return true;
-    } catch (cause: unknown) {
-      failedReply = attempt;
-      await handleActionError(cause);
-      return false;
-    } finally {
-      actionPending.value = false;
-    }
-  }
-
-  async function close(): Promise<void> {
-    const requestId = selectedRequestId.value;
-    if (!requestId || actionPending.value) {
-      return;
-    }
-    actionPending.value = true;
-    actionError.value = '';
-    notice.value = '';
-    try {
-      await closeOperatorInboxRequest(requestId, crypto.randomUUID());
-      notice.value = 'Обращение закрыто.';
-      actionError.value = await refresh();
-    } catch (cause: unknown) {
-      await handleActionError(cause);
-    } finally {
-      actionPending.value = false;
-    }
-  }
-
-  async function refreshMessages(): Promise<void> {
-    if (!selectedRequestId.value) {
-      messages.value = [];
-      return;
-    }
-    const result = await readOperatorInboxMessages(selectedRequestId.value);
-    messages.value = Array.isArray(result.messages) ? result.messages : [];
-  }
-
-  async function handleActionError(cause: unknown): Promise<void> {
-    actionError.value = await resolveOperatorInboxActionError(
-      cause,
-      onUnauthorized,
-      refresh,
-    );
+  function setDraft(requestId: string, text: string): void {
+    drafts.value[requestId] = text;
   }
 
   return {
-    actionError,
-    actionPending,
-    close,
+    ...messageState,
+    ...actions,
+    drafts,
     loading,
-    messages,
-    notice,
     refresh,
-    reply,
     requests,
     select,
+    setDraft,
     selectedRequest,
     selectedRequestId,
   };

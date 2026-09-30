@@ -19,13 +19,15 @@ export function createContentWorkspaceState(onUnauthorized: () => void) {
   const notice = ref('');
   const dirty = computed(() => snapshotContent(draft) !== savedSnapshot.value);
 
+  function expireSession(): void {
+    if (dirty.value) {
+      preserveContentDraft(draft, savedSnapshot.value, version.value);
+    }
+    onUnauthorized();
+  }
+
   function reportFailure(cause: unknown): string {
-    const message = requestErrorMessage(cause, () => {
-      if (dirty.value) {
-        preserveContentDraft(draft, savedSnapshot.value, version.value);
-      }
-      onUnauthorized();
-    });
+    const message = requestErrorMessage(cause, expireSession);
     error.value = message;
     return message;
   }
@@ -34,6 +36,7 @@ export function createContentWorkspaceState(onUnauthorized: () => void) {
     dirty,
     draft,
     error,
+    expireSession,
     loaded,
     loading,
     notice,

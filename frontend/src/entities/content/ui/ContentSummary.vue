@@ -26,15 +26,13 @@ const totalCount = computed(
 </script>
 
 <template>
-  <section class="content-summary" aria-labelledby="content-summary-title">
-    <div class="summary-heading">
-      <div>
-        <p>Готовность ответов</p>
-        <h3 id="content-summary-title">
-          {{ totalCount ? 'Готово к показу' : 'Пока не заполнено' }}
-        </h3>
-      </div>
-    </div>
+  <details class="content-summary">
+    <summary>
+      <span class="summary-title">
+        {{ totalCount ? 'Готово к показу' : 'Пока не заполнено' }}
+      </span>
+      <span> · Кнопок: {{ totalCount }}</span>
+    </summary>
 
     <dl class="content-facts">
       <div>
@@ -55,7 +53,7 @@ const totalCount = computed(
       <AppIcon name="check" /> После сохранения изменения появятся в Telegram и
       VK.
     </p>
-  </section>
+  </details>
 </template>
 
 <style scoped src="../styles/content-summary.css"></style>

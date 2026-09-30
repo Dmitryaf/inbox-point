@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useCollectionEditor } from '@frontend/entities/content/lib/use-collection-editor';
 import type { CustomSection } from '@frontend/entities/content/model/types';
 import FieldError from '@frontend/shared/ui/FieldError.vue';
 
@@ -8,22 +9,14 @@ withDefaults(
   { errors: () => ({}) },
 );
 
-function add(): void {
-  if (sections.value.length < 6) {
-    sections.value.push({ label: '', text: '' });
-  }
-}
-
-function move(index: number, offset: -1 | 1): void {
-  const target = index + offset;
-  if (target < 0 || target >= sections.value.length) {
-    return;
-  }
-  const [section] = sections.value.splice(index, 1);
-  if (section) {
-    sections.value.splice(target, 0, section);
-  }
-}
+const { add, move, remove, itemKey } = useCollectionEditor({
+  items: () => sections.value,
+  create: () => ({ label: '', text: '' }),
+  limit: 6,
+  fieldPrefix: 'section-label',
+  description: (item, index) => `раздел «${item.label.trim() || index + 1}»`,
+  hasContent: (item) => !!(item.label.trim() || item.text.trim()),
+});
 </script>
 
 <template>
@@ -40,7 +33,7 @@ function move(index: number, offset: -1 | 1): void {
     </p>
     <fieldset
       v-for="(section, index) in sections"
-      :key="index"
+      :key="itemKey(section)"
       class="item-card"
     >
       <legend>Раздел {{ index + 1 }}</legend>
@@ -87,6 +80,7 @@ function move(index: number, offset: -1 | 1): void {
           type="button"
           :disabled="index === 0"
           :aria-label="`Переместить раздел ${index + 1} выше`"
+          data-move="-1"
           @click="move(index, -1)"
         >
           Выше
@@ -96,16 +90,22 @@ function move(index: number, offset: -1 | 1): void {
           type="button"
           :disabled="index === sections.length - 1"
           :aria-label="`Переместить раздел ${index + 1} ниже`"
+          data-move="1"
           @click="move(index, 1)"
         >
           Ниже
         </button>
-        <button class="danger" type="button" @click="sections.splice(index, 1)">
+        <button class="danger" type="button" @click="remove(index)">
           Удалить раздел
         </button>
       </div>
     </fieldset>
-    <button :disabled="sections.length >= 6" type="button" @click="add">
+    <button
+      id="add-section-label"
+      :disabled="sections.length >= 6"
+      type="button"
+      @click="add"
+    >
       Добавить раздел
     </button>
   </section>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useCollectionEditor } from '@frontend/entities/content/lib/use-collection-editor';
 import { computed } from 'vue';
 
 import {
@@ -20,22 +21,14 @@ const responseLength = computed(() =>
     : 0,
 );
 
-function add(): void {
-  if (draft.value.faq.length < 20) {
-    draft.value.faq.push({ answer: '', question: '' });
-  }
-}
-
-function move(index: number, offset: -1 | 1): void {
-  const target = index + offset;
-  if (target < 0 || target >= draft.value.faq.length) {
-    return;
-  }
-  const [item] = draft.value.faq.splice(index, 1);
-  if (item) {
-    draft.value.faq.splice(target, 0, item);
-  }
-}
+const { add, move, remove, itemKey } = useCollectionEditor({
+  items: () => draft.value.faq,
+  create: () => ({ answer: '', question: '' }),
+  limit: 20,
+  fieldPrefix: 'faq-question',
+  description: (item, index) => `вопрос «${item.question.trim() || index + 1}»`,
+  hasContent: (item) => !!(item.question.trim() || item.answer.trim()),
+});
 </script>
 
 <template>
@@ -63,7 +56,11 @@ function move(index: number, offset: -1 | 1): void {
     <p v-if="draft.faq.length === 0" class="empty">
       Добавьте хотя бы один вопрос и ответ, чтобы показать этот раздел.
     </p>
-    <fieldset v-for="(item, index) in draft.faq" :key="index" class="item-card">
+    <fieldset
+      v-for="(item, index) in draft.faq"
+      :key="itemKey(item)"
+      class="item-card"
+    >
       <legend>Вопрос {{ index + 1 }}</legend>
       <label :for="`faq-question-${index}`">Вопрос</label>
       <input
@@ -108,6 +105,7 @@ function move(index: number, offset: -1 | 1): void {
           type="button"
           :disabled="index === 0"
           :aria-label="`Переместить вопрос ${index + 1} выше`"
+          data-move="-1"
           @click="move(index, -1)"
         >
           Выше
@@ -117,20 +115,22 @@ function move(index: number, offset: -1 | 1): void {
           type="button"
           :disabled="index === draft.faq.length - 1"
           :aria-label="`Переместить вопрос ${index + 1} ниже`"
+          data-move="1"
           @click="move(index, 1)"
         >
           Ниже
         </button>
-        <button
-          class="danger"
-          type="button"
-          @click="draft.faq.splice(index, 1)"
-        >
+        <button class="danger" type="button" @click="remove(index)">
           Удалить
         </button>
       </div>
     </fieldset>
-    <button :disabled="draft.faq.length >= 20" type="button" @click="add">
+    <button
+      id="add-faq-question"
+      :disabled="draft.faq.length >= 20"
+      type="button"
+      @click="add"
+    >
       Добавить вопрос
     </button>
   </section>

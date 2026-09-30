@@ -23,6 +23,7 @@ export interface ContentSettingsStore {
   load(): Promise<ClientInformationContent | undefined>;
   loadHistoricalMenuActions(): Promise<readonly string[]>;
   loadHistory(): Promise<readonly ContentChange[]>;
+  loadRevision(revision: number): Promise<ClientInformationContent | undefined>;
   restore(revision: number): Promise<ClientInformationContent>;
   save(content: ClientInformationContent): Promise<void>;
 }

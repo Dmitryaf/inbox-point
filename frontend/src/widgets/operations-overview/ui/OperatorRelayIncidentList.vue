@@ -48,6 +48,23 @@ defineEmits<OperatorRelayIncidentListEmits>();
           Сохранено ответов: {{ incident.heldReplyCount }}. Они будут отправлены
           по порядку.
         </p>
+        <p class="incident-client">
+          <strong>
+            Клиент: {{ incident.displayName || 'Имя не указано' }} ·
+            {{ incident.channel }}
+          </strong>
+        </p>
+        <div v-if="!isLifecycle(incident)" class="incident-message">
+          <strong>{{
+            incident.action === 'mirror_operator_message'
+              ? 'Исходный ответ из VK'
+              : 'Исходное сообщение клиента'
+          }}</strong>
+          <p>{{ incident.messageText ?? 'Текст сообщения недоступен' }}</p>
+          <small>
+            Проверяется часть {{ incident.sequence + 1 }} сообщения.
+          </small>
+        </div>
         <details class="technical-details">
           <summary>Технические данные</summary>
           <dl class="delivery-incident-context">

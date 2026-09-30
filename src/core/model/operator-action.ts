@@ -32,6 +32,8 @@ export interface OperatorAction extends PendingOperatorAction {
 }
 
 export interface OperatorActionIncident extends OperatorAction {
+  displayName?: string;
+  messageText?: string;
   channel: ClientChannelKind;
   confirmable: boolean;
   conversationId: string;

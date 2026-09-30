@@ -16,20 +16,20 @@
 }
 
 .status-card h3 {
-  font-size: 1rem;
+  font-size: var(--font-size-body);
   margin-bottom: 0.55rem;
 }
 
 .status-card p {
   color: var(--color-text-muted);
-  font-size: 0.88rem;
+  font-size: var(--font-size-small);
   line-height: 1.5;
   margin-bottom: 0;
 }
 
 .status-pill {
   border-radius: 999px;
-  font-size: 0.75rem;
+  font-size: var(--font-size-small);
   font-weight: 600;
   max-width: 100%;
   padding: 0.3rem 0.55rem;
@@ -57,7 +57,7 @@
 .technical-details summary {
   color: var(--color-text-muted);
   cursor: pointer;
-  font-size: 0.82rem;
+  font-size: var(--font-size-small);
   font-weight: 600;
 }
 

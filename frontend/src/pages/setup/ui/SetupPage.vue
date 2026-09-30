@@ -12,12 +12,16 @@ import AsyncMessage from '@frontend/shared/ui/AsyncMessage.vue';
 const session = useAdminShellSession();
 const status = ref<SetupStatus>();
 const error = ref('');
+const loading = ref(false);
+let loadVersion = 0;
 
 watch(
   session.authenticated,
   (authenticated) => {
     status.value = undefined;
     error.value = '';
+    loadVersion += 1;
+    loading.value = false;
     if (authenticated) {
       void loadStatus();
     }
@@ -26,10 +30,22 @@ watch(
 );
 
 async function loadStatus(): Promise<void> {
+  const version = ++loadVersion;
+  loading.value = true;
+  error.value = '';
   try {
-    status.value = await readSetupStatus();
+    const result = await readSetupStatus();
+    if (version === loadVersion) {
+      status.value = result;
+    }
   } catch (cause: unknown) {
-    error.value = requestErrorMessage(cause, session.expireSession);
+    if (version === loadVersion) {
+      error.value = requestErrorMessage(cause, session.expireSession);
+    }
+  } finally {
+    if (version === loadVersion) {
+      loading.value = false;
+    }
   }
 }
 
@@ -70,10 +86,18 @@ function markVkDisconnected(): void {
   <section class="setup-page">
     <template v-if="session.authenticated.value">
       <AsyncMessage kind="error" :text="session.error.value || error" />
-      <p v-if="!status" class="state-card card" role="status">
+      <p v-if="loading" class="state-card card" role="status">
         Проверяем подключения…
       </p>
-      <div v-else class="setup-workspace">
+      <button
+        v-else-if="error"
+        type="button"
+        class="secondary-button"
+        @click="loadStatus"
+      >
+        Повторить проверку подключений
+      </button>
+      <div v-else-if="status" class="setup-workspace">
         <div
           class="setup-channel-grid"
           :class="{

@@ -110,6 +110,7 @@ function openSection(section: EditorSection): void {
             :loading="workspace.historyLoading.value"
             :restoring="workspace.restoring.value"
             @restore="workspace.restore"
+            @unauthorized="workspace.expireSession"
           />
         </div>
       </section>

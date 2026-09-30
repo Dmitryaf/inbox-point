@@ -12,7 +12,7 @@ defineProps<{
   loading: boolean;
   restoring: boolean;
 }>();
-defineEmits<{ restore: [revision: number] }>();
+defineEmits<{ restore: [revision: number]; unauthorized: [] }>();
 </script>
 
 <template>
@@ -27,6 +27,7 @@ defineEmits<{ restore: [revision: number] }>();
         :key="`${change.changedAt}-${change.revision ?? 'old'}`"
       >
         <strong>{{ formatChangeDate(change.changedAt) }}</strong>
+        <span v-if="change.revision">Версия {{ change.revision }}</span>
         <span>{{ formatSections(change.sections) }}</span>
         <small v-if="index === 0">Текущая версия</small>
         <RestoreAction
@@ -35,6 +36,7 @@ defineEmits<{ restore: [revision: number] }>();
           :pending="restoring"
           :revision="change.revision"
           @restore="$emit('restore', $event)"
+          @unauthorized="$emit('unauthorized')"
         />
         <small v-else>Старая запись: восстановление недоступно</small>
       </li>

@@ -36,7 +36,7 @@
   border-bottom: 2px solid transparent;
   color: var(--color-text-muted);
   display: flex;
-  font-size: 0.9rem;
+  font-size: var(--font-size-small);
   font-weight: 600;
   padding: 0.25rem 0.7rem;
   text-decoration: none;
@@ -67,7 +67,7 @@ button.admin-session-actions__all {
   background: transparent;
   border-color: transparent;
   color: var(--color-text-muted);
-  font-size: 0.8rem;
+  font-size: var(--font-size-small);
   font-weight: 500;
   padding-inline: 0.4rem;
 }
@@ -96,7 +96,7 @@ button.admin-session-actions__all:disabled {
 
 .page-intro {
   color: var(--color-text-muted);
-  font-size: 0.94rem;
+  font-size: var(--font-size-small);
   line-height: 1.5;
   margin-top: 0.3rem;
 }

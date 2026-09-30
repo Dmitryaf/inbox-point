@@ -1,3 +1,4 @@
+import { registerContentHistoryRoutes } from './content-history-routes.js';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
@@ -37,21 +38,7 @@ export function registerManagementContentRoutes(
     { preHandler: access.requireAuthorization },
     () => createContentOutput(content.get()),
   );
-  app.get(
-    '/api/manage/content/history',
-    { preHandler: access.requireAuthorization },
-    async (_request, reply) => {
-      try {
-        return { history: await content.getHistory() };
-      } catch (error: unknown) {
-        app.log.error({ err: error }, 'Managed content history load failed');
-        return reply.code(500).send({
-          message:
-            'Не удалось загрузить историю изменений. Попробуйте ещё раз.',
-        });
-      }
-    },
-  );
+  registerContentHistoryRoutes(app, content, access);
   app.post(
     '/api/manage/content',
     {

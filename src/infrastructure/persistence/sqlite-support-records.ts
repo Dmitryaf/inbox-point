@@ -66,6 +66,8 @@ export interface DeliveryRow {
 }
 
 export interface FailedDeliveryRow {
+  client_display_name: string | null;
+  message_text: string;
   attempts: number;
   channel: ClientChannelKind;
   created_at: string;
@@ -92,6 +94,8 @@ export interface OperatorActionRow {
 }
 
 export interface OperatorActionIncidentRow extends OperatorActionRow {
+  client_display_name: string | null;
+  message_text: string | null;
   channel: ClientChannelKind;
   confirmable: number;
   external_conversation_id: string;
@@ -135,6 +139,10 @@ export function mapOperatorActionIncident(
 ): OperatorActionIncident {
   return {
     ...mapOperatorAction(row),
+    ...(row.client_display_name
+      ? { displayName: row.client_display_name }
+      : {}),
+    ...(row.message_text !== null ? { messageText: row.message_text } : {}),
     channel: row.channel,
     confirmable: row.confirmable === 1,
     conversationId: row.external_conversation_id,

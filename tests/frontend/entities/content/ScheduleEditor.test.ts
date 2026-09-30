@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { mount } from '@vue/test-utils';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { validateContentDraft } from '@frontend/entities/content/lib/content-validation';
 import { createEmptyContent } from '@frontend/entities/content/model/content-draft';
@@ -9,6 +9,7 @@ import ScheduleEditor from '@frontend/entities/content/ui/ScheduleEditor.vue';
 
 describe('ScheduleEditor', () => {
   it('adds, reorders, and removes schedule items', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
     const content = createEmptyContent();
     const wrapper = mount(ScheduleEditor, {
       props: { modelValue: content },

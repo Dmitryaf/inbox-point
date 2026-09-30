@@ -25,6 +25,13 @@ export class ContentManagementService {
     return this.store.loadHistory();
   }
 
+  public async getRevision(
+    revision: number,
+  ): Promise<ManagedContentSnapshot | undefined> {
+    const content = await this.store.loadRevision(revision);
+    return content ? createSnapshot(content) : undefined;
+  }
+
   public async save(
     content: ClientInformationContent,
     expectedVersion: string,

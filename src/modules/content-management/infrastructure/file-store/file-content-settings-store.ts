@@ -40,6 +40,15 @@ export class FileContentSettingsStore implements ContentSettingsStore {
     );
   }
 
+  public async loadRevision(
+    revision: number,
+  ): Promise<ClientInformationContent | undefined> {
+    const entry = (await this.readDocument())?.history.find(
+      (item) => item.revision === revision,
+    );
+    return entry ? copyClientInformationContent(entry.content) : undefined;
+  }
+
   public async loadHistoricalMenuActions(): Promise<readonly string[]> {
     const document = await this.readDocument();
     if (!document) {

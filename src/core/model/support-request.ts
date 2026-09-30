@@ -67,6 +67,8 @@ export interface QueuedDelivery extends PendingDelivery {
 }
 
 export interface FailedDelivery {
+  displayName?: string;
+  messageText?: string;
   attempts: number;
   channel: ClientChannelKind;
   createdAt: Date;

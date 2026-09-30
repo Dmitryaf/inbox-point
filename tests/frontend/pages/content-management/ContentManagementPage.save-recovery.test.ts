@@ -62,59 +62,89 @@ describe('ContentManagementPage save recovery', () => {
     expect(wrapper.text()).toContain('Есть несохранённые изменения');
   });
 
-  it('preserves an unsaved draft across session renewal', async () => {
-    window.sessionStorage.clear();
-    window.history.replaceState(null, '', '/manage');
-    let authenticated = true;
-    let contentLoads = 0;
-    vi.stubGlobal(
-      'fetch',
-      vi.fn((input: RequestInfo | URL, options?: RequestInit) => {
-        const url = requestUrl(input);
-        if (url.endsWith('/session')) {
-          return Promise.resolve(response({ authenticated, mode: 'password' }));
-        }
-        if (url.endsWith('/login') && options?.method === 'POST') {
-          authenticated = true;
-          return Promise.resolve(
-            response({ authenticated: true, mode: 'password' }),
-          );
-        }
-        if (url.endsWith('/history')) {
-          return Promise.resolve(response({ history: [] }));
-        }
-        if (options?.method === 'POST') {
-          authenticated = false;
-          return Promise.resolve(
-            response({ message: 'Сессия завершилась.' }, 401),
-          );
-        }
-        contentLoads += 1;
-        return Promise.resolve(contentResponse('Старое расписание'));
-      }),
-    );
+  it.each(['save', 'preview'])(
+    'preserves an unsaved draft when %s expires the session',
+    async (action) => {
+      window.sessionStorage.clear();
+      window.history.replaceState(null, '', '/manage');
+      let authenticated = true;
+      let contentLoads = 0;
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((input: RequestInfo | URL, options?: RequestInit) => {
+          const url = requestUrl(input);
+          if (url.endsWith('/session')) {
+            return Promise.resolve(
+              response({ authenticated, mode: 'password' }),
+            );
+          }
+          if (url.endsWith('/login') && options?.method === 'POST') {
+            authenticated = true;
+            return Promise.resolve(
+              response({ authenticated: true, mode: 'password' }),
+            );
+          }
+          if (url.endsWith('/history')) {
+            return Promise.resolve(
+              response({
+                history: [
+                  {
+                    revision: 2,
+                    changedAt: '2026-09-02T12:00:00Z',
+                    sections: ['schedule'],
+                  },
+                  {
+                    revision: 1,
+                    changedAt: '2026-09-01T12:00:00Z',
+                    sections: ['schedule'],
+                  },
+                ],
+              }),
+            );
+          }
+          if (options?.method === 'POST' || url.endsWith('/history/1')) {
+            authenticated = false;
+            return Promise.resolve(
+              response({ message: 'Сессия завершилась.' }, 401),
+            );
+          }
+          contentLoads += 1;
+          return Promise.resolve(contentResponse('Старое расписание'));
+        }),
+      );
 
-    const { router, wrapper } = await mountAppAt('/manage');
-    await flushPromises();
-    await wrapper.get('#schedule-title-0').setValue('Несохранённый черновик');
-    await findButton(wrapper.findAll('button'), 'Сохранить').trigger('click');
-    await flushPromises();
+      const { router, wrapper } = await mountAppAt('/manage');
+      await flushPromises();
+      await wrapper.get('#schedule-title-0').setValue('Несохранённый черновик');
+      if (action === 'save') {
+        await findButton(wrapper.findAll('button'), 'Сохранить').trigger(
+          'click',
+        );
+      } else {
+        await findButton(wrapper.findAll('button'), 'История').trigger('click');
+        await findButton(
+          wrapper.findAll('button'),
+          'Посмотреть версию',
+        ).trigger('click');
+      }
+      await flushPromises();
 
-    expect(router.currentRoute.value.path).toBe('/login');
-    expect(wrapper.get('h1').text()).toBe('Вход в управление');
-    await wrapper.get('input[type="password"]').setValue('owner-password');
-    await wrapper.get('form').trigger('submit');
-    await flushPromises();
+      expect(router.currentRoute.value.path).toBe('/login');
+      expect(wrapper.get('h1').text()).toBe('Вход в управление');
+      await wrapper.get('input[type="password"]').setValue('owner-password');
+      await wrapper.get('form').trigger('submit');
+      await flushPromises();
 
-    expect(
-      wrapper.get<HTMLInputElement>('#schedule-title-0').element.value,
-    ).toBe('Несохранённый черновик');
-    expect(wrapper.text()).toContain('Есть несохранённые изменения');
-    expect(wrapper.text()).toContain('Несохранённый черновик восстановлен.');
-    expect(contentLoads).toBe(2);
+      expect(
+        wrapper.get<HTMLInputElement>('#schedule-title-0').element.value,
+      ).toBe('Несохранённый черновик');
+      expect(wrapper.text()).toContain('Есть несохранённые изменения');
+      expect(wrapper.text()).toContain('Несохранённый черновик восстановлен.');
+      expect(contentLoads).toBe(2);
 
-    wrapper.unmount();
-    window.history.replaceState(null, '', '/');
-    window.sessionStorage.clear();
-  });
+      wrapper.unmount();
+      window.history.replaceState(null, '', '/');
+      window.sessionStorage.clear();
+    },
+  );
 });

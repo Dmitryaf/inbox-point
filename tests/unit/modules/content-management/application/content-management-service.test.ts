@@ -13,6 +13,7 @@ describe('ContentManagementService', () => {
     const store: ContentSettingsStore = {
       load: () => Promise.resolve(undefined),
       loadHistoricalMenuActions: () => Promise.resolve([]),
+      loadRevision: () => Promise.resolve(undefined),
       loadHistory: () => Promise.resolve([]),
       restore: () => Promise.reject(new Error('not used')),
       save: (content) => {

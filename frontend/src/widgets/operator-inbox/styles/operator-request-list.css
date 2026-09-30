@@ -26,7 +26,7 @@
 .operator-request-button span,
 .operator-request-button time {
   color: var(--color-text-muted);
-  font-size: 0.82rem;
+  font-size: var(--font-size-small);
 }
 
 .operator-request-button .channel-badge {

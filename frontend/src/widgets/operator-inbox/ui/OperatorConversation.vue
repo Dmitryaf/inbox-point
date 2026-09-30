@@ -1,31 +1,41 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed } from 'vue';
 
 import type {
   OperatorInboxMessage,
   OperatorInboxRequest,
 } from '@frontend/entities/operations/model/types';
 import { formatShortDateTime } from '@frontend/shared/lib/format-date-time';
+import AsyncMessage from '@frontend/shared/ui/AsyncMessage.vue';
 
 const props = defineProps<{
   actionPending: boolean;
   messages: readonly OperatorInboxMessage[];
+  messagesLoading: boolean;
+  messagesError: string;
+  messagesReady: boolean;
+  draft: string;
   onClose: () => Promise<void>;
   onReply: (text: string) => Promise<boolean>;
   request: OperatorInboxRequest;
 }>();
-const replyText = ref('');
+const emit = defineEmits<{
+  draft: [requestId: string, text: string];
+  retry: [];
+}>();
+const replyText = computed({
+  get: () => props.draft,
+  set: (text: string) => emit('draft', props.request.id, text),
+});
 
 async function submitReply(): Promise<void> {
-  if (await props.onReply(replyText.value)) {
-    replyText.value = '';
-  }
+  await props.onReply(replyText.value);
 }
 
 async function closeRequest(): Promise<void> {
   if (
     window.confirm(
-      'Закрыть обращение? Следующее новое сообщение создаст новое обращение.',
+      'Закрыть обращение? Чтобы обратиться снова, клиенту нужно будет выбрать «Задать вопрос» и написать сообщение.',
     )
   ) {
     await props.onClose();
@@ -58,13 +68,20 @@ function deliveryLabel(message: OperatorInboxMessage): string | undefined {
       <button
         class="secondary-button"
         type="button"
-        :disabled="actionPending"
+        :disabled="actionPending || !messagesReady"
         @click="closeRequest"
       >
         Закрыть обращение
       </button>
     </header>
 
+    <p v-if="messagesLoading" role="status">Загружаем переписку…</p>
+    <div v-else-if="messagesError">
+      <AsyncMessage kind="error" :text="messagesError" />
+      <button type="button" class="secondary-button" @click="emit('retry')">
+        Повторить загрузку переписки
+      </button>
+    </div>
     <ol
       v-if="messages.length"
       class="operator-message-list"
@@ -101,7 +118,9 @@ function deliveryLabel(message: OperatorInboxMessage): string | undefined {
         </span>
       </li>
     </ol>
-    <p v-else class="operator-inbox-empty">Сообщений пока нет.</p>
+    <p v-else-if="messagesReady" class="operator-inbox-empty">
+      Сообщений пока нет.
+    </p>
 
     <form class="operator-reply-form" @submit.prevent="submitReply">
       <label for="operator-reply">Ответ</label>
@@ -115,7 +134,10 @@ function deliveryLabel(message: OperatorInboxMessage): string | undefined {
       />
       <div class="operator-reply-actions">
         <span>{{ replyText.length }} / 4000</span>
-        <button type="submit" :disabled="actionPending || !replyText.trim()">
+        <button
+          type="submit"
+          :disabled="actionPending || !messagesReady || !replyText.trim()"
+        >
           {{ actionPending ? 'Готовим к отправке…' : 'Отправить' }}
         </button>
       </div>

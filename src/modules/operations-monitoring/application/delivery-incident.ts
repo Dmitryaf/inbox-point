@@ -5,6 +5,10 @@ export function mapDeliveryIncident(
   delivery: FailedDelivery,
 ): DeliveryIncident {
   return {
+    ...(delivery.displayName ? { displayName: delivery.displayName } : {}),
+    ...(delivery.messageText !== undefined
+      ? { messageText: delivery.messageText }
+      : {}),
     attempts: delivery.attempts,
     channel: delivery.channel === 'telegram' ? 'Telegram' : 'VK',
     createdAt: delivery.createdAt.toISOString(),

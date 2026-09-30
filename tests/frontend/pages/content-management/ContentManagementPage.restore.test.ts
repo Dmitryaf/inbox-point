@@ -69,9 +69,10 @@ describe('ContentManagementPage restore', () => {
     await flushPromises();
     await findButton(wrapper.findAll('button'), 'История').trigger('click');
     await flushPromises();
-    await findButton(wrapper.findAll('button'), 'Восстановить').trigger(
+    await findButton(wrapper.findAll('button'), 'Посмотреть версию').trigger(
       'click',
     );
+    await flushPromises();
     await findButton(wrapper.findAll('button'), 'Да, восстановить').trigger(
       'click',
     );

@@ -49,9 +49,15 @@ defineExpose({ refresh: inbox.refresh });
         :key="inbox.selectedRequest.value.id"
         :action-pending="inbox.actionPending.value"
         :messages="inbox.messages.value"
+        :messages-loading="inbox.messagesLoading.value"
+        :messages-error="inbox.messagesError.value"
+        :messages-ready="inbox.messagesReady.value"
+        :draft="inbox.drafts.value[inbox.selectedRequest.value.id] ?? ''"
         :on-close="inbox.close"
         :on-reply="inbox.reply"
         :request="inbox.selectedRequest.value"
+        @draft="inbox.setDraft"
+        @retry="inbox.refreshMessages"
       />
     </div>
   </section>

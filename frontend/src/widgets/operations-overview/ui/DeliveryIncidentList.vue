@@ -41,6 +41,16 @@ defineEmits<{
           Не удалось узнать, получил ли клиент ответ. Сначала проверьте
           переписку, затем выберите подходящее действие.
         </p>
+        <p class="incident-client">
+          <strong>
+            Клиент: {{ incident.displayName || 'Имя не указано' }} ·
+            {{ incident.channel }}
+          </strong>
+        </p>
+        <div class="incident-message">
+          <strong>Ответ клиенту</strong>
+          <p>{{ incident.messageText ?? 'Текст ответа недоступен' }}</p>
+        </div>
         <details class="technical-details">
           <summary>Технические данные</summary>
           <dl class="delivery-incident-context">

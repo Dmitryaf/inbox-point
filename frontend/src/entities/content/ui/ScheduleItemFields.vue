@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import {
+  focusEditorField,
+  focusMovedItem,
+} from '@frontend/entities/content/lib/editor-focus';
 
 import type { ContentDraft } from '@frontend/entities/content/model/types';
 import FieldError from '@frontend/shared/ui/FieldError.vue';
@@ -19,7 +23,27 @@ function move(offset: -1 | 1): void {
   const [moved] = draft.value.schedule.splice(props.index, 1);
   if (moved) {
     draft.value.schedule.splice(target, 0, moved);
+    void focusMovedItem(`schedule-title-${target}`, offset);
   }
+}
+function remove(): void {
+  if (
+    (item.value.title.trim() ||
+      item.value.dayTime.trim() ||
+      item.value.description?.trim()) &&
+    !window.confirm(
+      `Удалить направление «${item.value.title.trim() || props.index + 1}»? Остальные изменения сохранятся в черновике.`,
+    )
+  ) {
+    return;
+  }
+  const index = props.index;
+  draft.value.schedule.splice(index, 1);
+  void focusEditorField(
+    draft.value.schedule.length
+      ? `schedule-title-${Math.min(index, draft.value.schedule.length - 1)}`
+      : 'add-schedule',
+  );
 }
 </script>
 
@@ -94,6 +118,7 @@ function move(offset: -1 | 1): void {
         type="button"
         :disabled="index === 0"
         :aria-label="`Переместить направление ${index + 1} выше`"
+        data-move="-1"
         @click="move(-1)"
       >
         Выше
@@ -103,17 +128,12 @@ function move(offset: -1 | 1): void {
         type="button"
         :disabled="index === draft.schedule.length - 1"
         :aria-label="`Переместить направление ${index + 1} ниже`"
+        data-move="1"
         @click="move(1)"
       >
         Ниже
       </button>
-      <button
-        class="danger"
-        type="button"
-        @click="draft.schedule.splice(index, 1)"
-      >
-        Удалить
-      </button>
+      <button class="danger" type="button" @click="remove">Удалить</button>
     </div>
   </fieldset>
 </template>

@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import {
+  createItemKey,
+  focusEditorField,
+} from '@frontend/entities/content/lib/editor-focus';
 
 import { formatListResponse } from '@frontend/entities/content/lib/client-response-preview';
 import { normalizeScheduleItems } from '@frontend/entities/content/lib/schedule-response';
@@ -13,6 +17,7 @@ const props = withDefaults(
   defineProps<{ errors?: Readonly<Record<string, string | undefined>> }>(),
   { errors: () => ({}) },
 );
+const itemKey = createItemKey();
 const itemLimit = 20;
 const responseLength = computed(
   () => getCoreResponseLengths(draft.value).schedule,
@@ -31,6 +36,7 @@ const legacyResponse = computed(() =>
 function add(): void {
   if (draft.value.schedule.length < itemLimit) {
     draft.value.schedule.push({ dayTime: '', title: '' });
+    void focusEditorField(`schedule-title-${draft.value.schedule.length - 1}`);
   }
 }
 </script>
@@ -76,13 +82,14 @@ function add(): void {
       расписание.
     </p>
     <ScheduleItemFields
-      v-for="index in draft.schedule.length"
-      :key="index"
+      v-for="(item, index) in draft.schedule"
+      :key="itemKey(item)"
       v-model="draft"
       :errors="props.errors"
-      :index="index - 1"
+      :index="index"
     />
     <button
+      id="add-schedule"
       :disabled="draft.schedule.length >= itemLimit"
       type="button"
       @click="add"

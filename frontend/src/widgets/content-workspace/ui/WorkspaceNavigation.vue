@@ -47,7 +47,13 @@ function changeSection(event: Event): void {
       <label for="workspace-view">Режим</label>
       <select id="workspace-view" :value="activeView" @change="changeView">
         <option v-for="view in workspaceViews" :key="view.id" :value="view.id">
-          {{ view.label }}
+          {{
+            view.id === 'edit'
+              ? 'Редактор'
+              : view.id === 'preview'
+                ? 'Просмотр'
+                : view.label
+          }}
         </option>
       </select>
     </div>
@@ -64,7 +70,7 @@ function changeSection(event: Event): void {
           :key="section.id"
           :value="section.id"
         >
-          {{ section.label }}
+          {{ section.id === 'faq' ? 'Вопросы' : section.label }}
         </option>
       </select>
     </div>
