@@ -26,13 +26,13 @@ article > div[data-r-0bf4defe] {
 }
 p[data-r-0bf4defe] {
   color: var(--color-text-muted);
-  font-size: 0.88rem;
+  font-size: var(--font-size-small);
   line-height: 1.45;
   margin: 0;
 }
 .intake-status[data-r-0bf4defe] {
   color: var(--color-success);
-  font-size: 0.8rem;
+  font-size: var(--font-size-small);
   font-weight: 700;
 }
 .intake-status--paused[data-r-0bf4defe] {

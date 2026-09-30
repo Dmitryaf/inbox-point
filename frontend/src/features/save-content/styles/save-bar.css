@@ -20,13 +20,13 @@
 .save-bar-label {
   color: var(--color-text-muted);
   display: block;
-  font-size: 0.72rem;
+  font-size: var(--font-size-small);
   font-weight: 600;
 }
 
 .save-bar p {
   color: var(--color-text-muted);
-  font-size: 0.88rem;
+  font-size: var(--font-size-small);
   margin: 0;
 }
 

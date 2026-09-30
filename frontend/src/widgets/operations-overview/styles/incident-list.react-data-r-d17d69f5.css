@@ -36,7 +36,7 @@
 }
 .delivery-incident-heading time[data-r-d17d69f5] {
   color: var(--color-text-muted);
-  font-size: 0.82rem;
+  font-size: var(--font-size-small);
 }
 .delivery-incident-context[data-r-d17d69f5] {
   display: grid;
@@ -46,7 +46,7 @@
 .technical-details summary[data-r-d17d69f5] {
   color: var(--color-text-muted);
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: var(--font-size-small);
   font-weight: 700;
 }
 .technical-details summary[data-r-d17d69f5]:focus-visible {
@@ -55,7 +55,7 @@
 }
 .delivery-incident-context dd[data-r-d17d69f5] {
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 0.9rem;
+  font-size: var(--font-size-small);
   overflow-wrap: anywhere;
 }
 .delivery-incidents button[data-r-d17d69f5] {
@@ -69,4 +69,18 @@
 }
 .delivery-resolution-actions p[data-r-d17d69f5] {
   flex-basis: 100%;
+}
+.incident-client[data-r-d17d69f5] {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.incident-message[data-r-d17d69f5] {
+  background: var(--color-surface);
+  border-radius: var(--radius-control);
+  padding: 0.75rem;
+}
+.incident-message p[data-r-d17d69f5] {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 0.5rem 0 0;
 }

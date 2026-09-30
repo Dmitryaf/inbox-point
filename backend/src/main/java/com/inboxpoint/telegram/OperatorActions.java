@@ -133,7 +133,11 @@ final class OperatorActions {
     private List<TelegramRuntime.OperatorRelayIncident> incidents(String where, Object... args) throws SQLException {
         var sql = """
                 SELECT action.id, action.kind, action.client_message_id, action.created_at, action.initial,
-                    action.operator_topic_id, action.request_id, action.sequence, request.channel, action.status,
+                    action.operator_topic_id, action.request_id, action.sequence, request.channel, action.status, request.client_display_name,
+                    (SELECT m.text FROM conversation_messages m WHERE m.request_id = action.request_id AND (
+                        (m.direction = 'client_to_operator' AND m.external_message_id = action.client_message_id)
+                        OR (m.processing_state = 'held' AND m.prerequisite_action_id = action.id)
+                    ) ORDER BY m.rowid LIMIT 1) AS message_text,
                     (SELECT COUNT(*) FROM conversation_messages m WHERE m.prerequisite_action_id = action.id
                         AND m.processing_state = 'held') AS held_count,
                 """ + "(" + CONFIRMABLE + ") AS confirmable " + """
@@ -162,7 +166,8 @@ final class OperatorActions {
                         "telegram".equals(rows.getString("channel")) ? "Telegram" : "VK",
                         rows.getString("client_message_id"), rows.getBoolean("confirmable"), rows.getString("created_at"),
                         rows.getBoolean("initial"), rows.getString("operator_topic_id"), reason,
-                        rows.getString("request_id"), rows.getInt("sequence"), held, status));
+                        rows.getString("request_id"), rows.getInt("sequence"), held, status,
+                        rows.getString("client_display_name"), rows.getString("message_text")));
             }
             return incidents;
         }

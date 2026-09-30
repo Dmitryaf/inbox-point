@@ -38,6 +38,7 @@ export default function ScheduleEditor($incomingProps: ComponentProps) {
   );
   const { props, add } = $state;
   const itemLimit = $unref($state.itemLimit);
+  const itemKey = $unref($state.itemKey);
   const hasContent = $state.hasContent.value;
   const draft = $state.draft.value;
   const responseLength = $state.responseLength.value;
@@ -105,17 +106,18 @@ export default function ScheduleEditor($incomingProps: ComponentProps) {
             }
           </p>
         ) : null}
-        {$renderList(draft.schedule.length, (index) => (
+        {$renderList(draft.schedule, (item, index) => (
           <ScheduleItemFields
-            key={index}
+            key={itemKey(item)}
             errors={props.errors}
-            index={index - 1}
+            index={index}
             modelValue={draft}
             onModelValueChange={$setter($state, 'draft')}
             data-r-e7737cb0=""
           />
         ))}
         <button
+          id="add-schedule"
           disabled={draft.schedule.length >= itemLimit}
           type="button"
           onClick={$nativeHandler(add)}

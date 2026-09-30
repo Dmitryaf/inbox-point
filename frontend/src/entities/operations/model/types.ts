@@ -1,3 +1,7 @@
+export type {
+  OperatorInboxRequest,
+  OperatorInboxMessage,
+} from './operator-inbox-types';
 export type ConnectionSource = 'environment' | 'local' | 'none';
 
 export interface ChannelOperationsStatus {
@@ -80,6 +84,8 @@ export type OperatorActionResolution =
   'completed' | 'not_completed' | 'received' | 'retry' | 'use_web';
 
 export interface OperatorRelayIncident {
+  displayName?: string;
+  messageText?: string;
   action:
     | 'close_request'
     | 'mirror_operator_message'
@@ -113,6 +119,8 @@ export interface OutboundDeliveryOperationsStatus {
 }
 
 export interface DeliveryIncident {
+  displayName?: string;
+  messageText?: string;
   attempts: number;
   channel: 'Telegram' | 'VK';
   createdAt: string;
@@ -128,23 +136,4 @@ export interface DeliveryIncident {
 export interface ClientIntakeOperationsStatus {
   changedAt?: string;
   mode: 'active' | 'paused';
-}
-
-export interface OperatorInboxRequest {
-  channel: 'telegram' | 'vk';
-  createdAt: string;
-  displayName?: string;
-  id: string;
-  latestMessageAt?: string;
-  status: 'active' | 'closed';
-}
-
-export interface OperatorInboxMessage {
-  createdAt: string;
-  deliveryOutcomeUnknown?: boolean;
-  deliveryStatus?: 'failed' | 'pending' | 'sent';
-  direction: 'client_to_operator' | 'operator_to_client';
-  id: string;
-  senderName?: string;
-  text: string;
 }

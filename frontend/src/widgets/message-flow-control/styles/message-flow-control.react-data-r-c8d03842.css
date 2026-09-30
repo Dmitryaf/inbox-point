@@ -35,7 +35,7 @@
 }
 .message-flow-summary-action[data-r-c8d03842] {
   color: var(--color-primary);
-  font-size: 0.82rem;
+  font-size: var(--font-size-small);
   font-weight: 750;
 }
 .message-flow-action--close[data-r-c8d03842],
@@ -70,7 +70,7 @@
     padding: 0.85rem;
   }
   .message-flow-summary h2[data-r-c8d03842] {
-    font-size: 1.2rem;
+    font-size: var(--font-size-section);
   }
   .message-flow-summary-meta[data-r-c8d03842] {
     justify-content: space-between;

@@ -6,6 +6,7 @@ import {
   type ModelOptions,
   type ModelRef,
 } from '@frontend/shared/lib/component-props';
+import { useCollectionEditor } from '@frontend/entities/content/lib/use-collection-editor';
 import type { CustomSection } from '@frontend/entities/content/model/types';
 
 export type ComponentProps = {
@@ -25,20 +26,13 @@ export function createComponentModel(
   ) => ModelRef<Value>,
 ) {
   const sections = $model<CustomSection[]>('modelValue', { required: true });
-  function add(): void {
-    if (sections.value.length < 6) {
-      sections.value.push({ label: '', text: '' });
-    }
-  }
-  function move(index: number, offset: -1 | 1): void {
-    const target = index + offset;
-    if (target < 0 || target >= sections.value.length) {
-      return;
-    }
-    const [section] = sections.value.splice(index, 1);
-    if (section) {
-      sections.value.splice(target, 0, section);
-    }
-  }
-  return { sections, add, move };
+  const { add, move, remove, itemKey } = useCollectionEditor({
+    items: () => sections.value,
+    create: () => ({ label: '', text: '' }),
+    limit: 6,
+    fieldPrefix: 'section-label',
+    description: (item, index) => `раздел «${item.label.trim() || index + 1}»`,
+    hasContent: (item) => !!(item.label.trim() || item.text.trim()),
+  });
+  return { sections, add, move, remove, itemKey };
 }

@@ -79,7 +79,7 @@
   border-radius: 0.5rem;
   color: var(--color-text);
   display: grid;
-  font-size: 0.9rem;
+  font-size: var(--font-size-small);
   font-weight: 600;
   justify-items: center;
   min-height: 2.6rem;
@@ -89,7 +89,7 @@
 
 .preview-service-message {
   color: var(--color-text);
-  font-size: 0.95rem;
+  font-size: var(--font-size-small);
   line-height: 1.55;
   overflow-wrap: anywhere;
   white-space: pre-wrap;

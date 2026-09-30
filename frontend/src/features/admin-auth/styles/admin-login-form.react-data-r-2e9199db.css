@@ -15,7 +15,7 @@
   line-height: 1.5;
 }
 .auth-card label[data-r-2e9199db] {
-  font-size: 0.88rem;
+  font-size: var(--font-size-small);
   margin-bottom: -0.4rem;
 }
 .auth-card .remember-device[data-r-2e9199db] {

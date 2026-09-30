@@ -370,8 +370,10 @@ public final class TelegramRuntime {
 
     public record OperatorRelayStatus(String state, long uncertain, List<OperatorRelayIncident> incidents) { }
 
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
     public record OperatorRelayIncident(String id, String action, String channel, String clientMessageId, boolean confirmable,
-            String createdAt, boolean initial, String operatorTopicId, String reason, String requestId, int sequence, long heldReplyCount, String status) { }
+            String createdAt, boolean initial, String operatorTopicId, String reason, String requestId, int sequence, long heldReplyCount, String status,
+            String displayName, String messageText) { }
 
     public Map<String, Long> usageCounts(Instant since) throws IOException, SQLException {
         try (var store = new TelegramStore(database)) {
@@ -456,7 +458,7 @@ public final class TelegramRuntime {
 
     @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
     public record DeliveryIncident(String id, String channel, int attempts, String createdAt, String reason,
-            boolean retryAllowed, boolean outcomeUnknown, String requestId, String operatorTopicId, String operatorMessageId) { }
+            boolean retryAllowed, boolean outcomeUnknown, String requestId, String operatorTopicId, String operatorMessageId, String displayName, String messageText) { }
 
     @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
     public record DeliveryProcess(String lastCycleAt, boolean running, String state) { }

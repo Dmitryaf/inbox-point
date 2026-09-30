@@ -3,14 +3,28 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-panel);
   display: grid;
-  gap: 0.75rem;
-  padding: 0.8rem;
+  gap: 0.5rem;
+  padding: 0.6rem;
 }
 
 .mobile-navigation-field label {
   color: var(--color-text-muted);
-  font-size: 0.8rem;
+  font-size: var(--font-size-small);
   margin-bottom: 0.35rem;
+}
+
+.mobile-navigation-field select {
+  padding-block: 0.5rem;
+}
+
+.mobile-navigation-field {
+  min-width: 0;
+}
+
+@media (min-width: 360px) and (max-width: 899px) {
+  .mobile-workspace-navigation {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
 }
 
 .desktop-workspace-navigation,
@@ -29,7 +43,7 @@
   border-color: transparent;
   box-shadow: none;
   color: var(--color-text-muted);
-  font-size: 0.9rem;
+  font-size: var(--font-size-small);
   min-height: 2.35rem;
 }
 
@@ -70,7 +84,7 @@
 
 .sidebar-group > p {
   color: var(--color-text-muted);
-  font-size: 0.75rem;
+  font-size: var(--font-size-small);
   font-weight: 600;
   margin: 0 0 0.35rem 0.65rem;
 }

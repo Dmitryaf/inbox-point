@@ -14,11 +14,11 @@
 
 .delivery-facts dt {
   color: var(--color-text-muted);
-  font-size: 0.82rem;
+  font-size: var(--font-size-small);
 }
 
 .delivery-facts dd {
-  font-size: 1.05rem;
+  font-size: var(--font-size-card);
   font-weight: 750;
   margin: 0;
 }

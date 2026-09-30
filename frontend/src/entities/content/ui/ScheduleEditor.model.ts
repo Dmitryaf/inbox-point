@@ -7,6 +7,10 @@ import {
   type ModelRef,
 } from '@frontend/shared/lib/component-props';
 import { computed } from '@frontend/shared/lib/model-state';
+import {
+  createItemKey,
+  focusEditorField,
+} from '@frontend/entities/content/lib/editor-focus';
 import { formatListResponse } from '@frontend/entities/content/lib/client-response-preview';
 import { normalizeScheduleItems } from '@frontend/entities/content/lib/schedule-response';
 import { getCoreResponseLengths } from '@frontend/entities/content/lib/content-response-limit';
@@ -30,6 +34,7 @@ export function createComponentModel(
 ) {
   const draft = $model<ContentDraft>('modelValue', { required: true });
   const props = $props;
+  const itemKey = createItemKey();
   const itemLimit = 20;
   const responseLength = computed(
     () => getCoreResponseLengths(draft.value).schedule,
@@ -47,11 +52,15 @@ export function createComponentModel(
   function add(): void {
     if (draft.value.schedule.length < itemLimit) {
       draft.value.schedule.push({ dayTime: '', title: '' });
+      void focusEditorField(
+        `schedule-title-${draft.value.schedule.length - 1}`,
+      );
     }
   }
   return {
     draft,
     props,
+    itemKey,
     itemLimit,
     responseLength,
     hasContent,

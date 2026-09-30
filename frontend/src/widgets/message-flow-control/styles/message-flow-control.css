@@ -41,7 +41,7 @@
 
 .message-flow-summary-action {
   color: var(--color-primary);
-  font-size: 0.82rem;
+  font-size: var(--font-size-small);
   font-weight: 750;
 }
 
@@ -83,7 +83,7 @@
   }
 
   .message-flow-summary h2 {
-    font-size: 1.2rem;
+    font-size: var(--font-size-section);
   }
 
   .message-flow-summary-meta {

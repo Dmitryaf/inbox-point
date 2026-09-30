@@ -1,9 +1,15 @@
 import { classNames as $class } from '@frontend/shared/lib/component-view';
-
+import { nativeHandler as $nativeHandler } from '@frontend/shared/lib/component-events';
 import { unref as $unref } from '@frontend/shared/lib/model-state';
-import { setModelValue as $set } from '@frontend/shared/lib/component-bindings';
+import {
+  setModelValue as $set,
+  logicalOr as $or,
+} from '@frontend/shared/lib/component-bindings';
 
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
+
+import ContentRevision from '@frontend/entities/content/ui/ContentRevision';
+import AsyncMessage from '@frontend/shared/ui/AsyncMessage';
 
 import type { WithDefaults } from '@frontend/shared/lib/component-model';
 import type {
@@ -15,7 +21,10 @@ export function renderRestoreActionPart1(
   $state: ReturnType<typeof createComponentModel>,
   $props: WithDefaults<ComponentProps, typeof componentDefaults>,
 ) {
-  const { props } = $state;
+  const { review, props } = $state;
+  const loading = $state.loading.value;
+  const error = $state.error.value;
+  const snapshot = $state.snapshot.value;
   const confirming = $state.confirming.value;
   const $attributes = inheritedAttributes($props);
 
@@ -27,8 +36,29 @@ export function renderRestoreActionPart1(
           className={$class('restore-confirm', $attributes.className)}
           data-r-b537467e=""
         >
+          {loading ? (
+            <p role="status" data-r-b537467e="">
+              {'Загружаем версию…'}
+            </p>
+          ) : null}
+          <AsyncMessage kind="error" text={error} data-r-b537467e="" />
+          {error ? (
+            <button
+              type="button"
+              onClick={$nativeHandler(review)}
+              className="quiet"
+              data-r-b537467e=""
+            >
+              {' Повторить загрузку версии '}
+            </button>
+          ) : null}
+          {snapshot ? (
+            <ContentRevision snapshot={snapshot} data-r-b537467e="" />
+          ) : null}
           <p data-r-b537467e="">
-            {'Заменить текущую информацию этой версией?'}
+            {
+              ' Заменить все разделы, включая скрытые, этой версией? После восстановления информация сразу появится в Telegram и VK. '
+            }
           </p>
           {$props.hasUnsavedChanges ? (
             <p className="warning-text" data-r-b537467e="">
@@ -36,7 +66,10 @@ export function renderRestoreActionPart1(
             </p>
           ) : null}
           <button
-            disabled={$props.pending}
+            disabled={$or(
+              $or($props.pending, () => loading),
+              () => !snapshot,
+            )}
             type="button"
             onClick={() => void $unref($state.emit)('restore', props.revision)}
             data-r-b537467e=""
@@ -57,11 +90,12 @@ export function renderRestoreActionPart1(
         <button
           {...$attributes}
           type="button"
-          onClick={() => void $set($state, 'confirming', true)}
+          disabled={$props.pending}
+          onClick={$nativeHandler(review)}
           className={$class('quiet', $attributes.className)}
           data-r-b537467e=""
         >
-          {' Восстановить '}
+          {' Посмотреть версию '}
         </button>
       )}
     </>

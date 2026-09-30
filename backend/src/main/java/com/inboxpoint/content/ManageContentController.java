@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -41,6 +42,22 @@ final class ManageContentController {
         }
         return admin.authorized(request, response)
                 ? ResponseEntity.ok(Map.of("history", information.history())) : unauthorized();
+    }
+
+    @GetMapping("/content/history/{revision}")
+    ResponseEntity<?> revision(@PathVariable String revision, HttpServletRequest request, HttpServletResponse response) {
+        if (!admin.available(request, response)) {
+            return missing();
+        }
+        if (!admin.authorized(request, response)) {
+            return unauthorized();
+        }
+        if (!revision.matches("[1-9][0-9]{0,8}")) {
+            return error(400, "Версия указана неверно.");
+        }
+        var saved = information.revision(Integer.parseInt(revision));
+        return saved == null ? error(404, "Эта версия больше недоступна.")
+                : ResponseEntity.ok(ClientInformation.editorSnapshot(saved));
     }
 
     @PostMapping("/content")

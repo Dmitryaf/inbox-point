@@ -40,6 +40,12 @@ export function renderChangeHistoryPart1(
               <strong data-r-1c9d9933="">
                 {$unref(formatChangeDate)(change.changedAt)}
               </strong>
+              {change.revision ? (
+                <span data-r-1c9d9933="">
+                  {'Версия '}
+                  {change.revision}
+                </span>
+              ) : null}
               <span data-r-1c9d9933="">
                 {$unref(formatSections)(change.sections)}
               </span>
@@ -51,6 +57,7 @@ export function renderChangeHistoryPart1(
                   pending={$props.restoring}
                   revision={change.revision}
                   onRestore={($event) => void $emit('restore', $event)}
+                  onUnauthorized={() => void $emit('unauthorized')}
                   data-r-1c9d9933=""
                 />
               ) : (

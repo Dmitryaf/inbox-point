@@ -1,6 +1,7 @@
 import { renderList as $renderList } from '@frontend/shared/lib/component-view';
 
-import { requiredValue as $required } from '@frontend/shared/lib/component-bindings';
+import { unref as $unref } from '@frontend/shared/lib/model-state';
+
 import { textProperty as $textProperty } from '@frontend/shared/lib/component-inputs';
 
 import FieldError from '@frontend/shared/ui/FieldError';
@@ -15,13 +16,17 @@ export function renderCustomSectionsEditorPart2(
   $state: ReturnType<typeof createComponentModel>,
   $props: WithDefaults<ComponentProps, typeof componentDefaults>,
 ) {
-  const { move } = $state;
+  const itemKey = $unref($state.itemKey);
   const sections = $state.sections.value;
 
   return (
     <>
       {$renderList(sections, (section, index) => (
-        <fieldset key={index} className="item-card" data-r-c3e93385="">
+        <fieldset
+          key={itemKey(section)}
+          className="item-card"
+          data-r-c3e93385=""
+        >
           <legend data-r-c3e93385="">
             {'Раздел '}
             {index + 1}
@@ -84,7 +89,8 @@ export function renderCustomSectionsEditorPart2(
               type="button"
               disabled={index === 0}
               aria-label={`Переместить раздел ${index + 1} выше`}
-              onClick={() => void move(index, -1)}
+              data-move="-1"
+              onClick={() => void $unref($state.move)(index, -1)}
               className="quiet"
               data-r-c3e93385=""
             >
@@ -94,7 +100,8 @@ export function renderCustomSectionsEditorPart2(
               type="button"
               disabled={index === sections.length - 1}
               aria-label={`Переместить раздел ${index + 1} ниже`}
-              onClick={() => void move(index, 1)}
+              data-move="1"
+              onClick={() => void $unref($state.move)(index, 1)}
               className="quiet"
               data-r-c3e93385=""
             >
@@ -102,9 +109,7 @@ export function renderCustomSectionsEditorPart2(
             </button>
             <button
               type="button"
-              onClick={() =>
-                void $required($state.sections.value).splice(index, 1)
-              }
+              onClick={() => void $unref($state.remove)(index)}
               className="danger"
               data-r-c3e93385=""
             >

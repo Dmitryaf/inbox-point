@@ -45,6 +45,9 @@ export function renderContentWorkspacePart2(
           loading={workspace.historyLoading.value}
           restoring={workspace.restoring.value}
           onRestore={$callback($required($unref($state.workspace)).restore)}
+          onUnauthorized={$callback(
+            $required($unref($state.workspace)).expireSession,
+          )}
           data-r-09629bd3=""
         />
       )}

@@ -59,7 +59,7 @@
   border-radius: 50%;
   color: var(--color-surface-raised);
   display: inline-flex;
-  font-size: 0.8rem;
+  font-size: var(--font-size-small);
   font-weight: 800;
   height: 1.8rem;
   justify-content: center;
@@ -67,7 +67,7 @@
 }
 .connection-step-status[data-r-cf5827f2] {
   color: var(--color-text-muted);
-  font-size: 0.78rem;
+  font-size: var(--font-size-small);
   font-weight: 700;
 }
 .connection-guide-action[data-r-cf5827f2] {
@@ -92,7 +92,7 @@
   outline-offset: 2px;
 }
 .connection-guide-note[data-r-cf5827f2] {
-  font-size: 0.84rem;
+  font-size: var(--font-size-small);
 }
 @media (max-width: 520px) {
   .connection-guide[data-r-cf5827f2] {

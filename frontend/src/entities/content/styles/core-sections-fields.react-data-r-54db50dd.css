@@ -3,7 +3,7 @@
 }
 .counter[data-r-54db50dd] {
   color: var(--color-text-muted);
-  font-size: 0.8rem;
+  font-size: var(--font-size-small);
   text-align: right;
 }
 .counter--error[data-r-54db50dd] {
@@ -64,7 +64,7 @@
 }
 .summary-copy span[data-r-54db50dd] {
   color: var(--color-text-muted);
-  font-size: 0.8rem;
+  font-size: var(--font-size-small);
   font-weight: 500;
 }
 .summary-action--close[data-r-54db50dd],
@@ -100,7 +100,15 @@
   margin: 0.8rem 0 0.4rem;
 }
 @media (max-width: 520px) {
+  .card > .step[data-r-54db50dd] {
+    display: none;
+  }
+  .card[data-r-54db50dd] {
+    border: 0;
+    padding: 0;
+    background: transparent;
+  }
   .card > h2[data-r-54db50dd] {
-    font-size: 1.25rem;
+    font-size: var(--font-size-section);
   }
 }

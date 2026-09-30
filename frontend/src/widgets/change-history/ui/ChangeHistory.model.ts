@@ -13,6 +13,7 @@ export type ComponentProps = {
   restoring: boolean;
 } & EventProps<{
   restore: [revision: number];
+  unauthorized: [];
 }> &
   ComponentAttributes;
 export const componentDefaults = {};

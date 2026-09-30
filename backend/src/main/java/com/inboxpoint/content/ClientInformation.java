@@ -64,7 +64,16 @@ public final class ClientInformation {
     }
 
     public ManagedSnapshot snapshot() {
-        var current = state.content();
+        return snapshot(state.content());
+    }
+
+    ManagedSnapshot revision(int revision) {
+        return state.history().stream().filter(change -> change.revision() != null && change.revision() == revision)
+                .map(Change::content).filter(java.util.Objects::nonNull).findFirst()
+                .map(content -> snapshot(normalize(JsonMapper.shared().valueToTree(content)))).orElse(null);
+    }
+
+    private static ManagedSnapshot snapshot(Snapshot current) {
         var canonical = JsonMapper.shared().createObjectNode();
         var fields = new java.util.TreeMap<String, Object>(current.jsonFields());
         fields.forEach((key, value) -> {

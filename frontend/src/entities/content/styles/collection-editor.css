@@ -10,9 +10,20 @@
   margin-bottom: 0;
 }
 
+.section-heading > span {
+  flex-shrink: 0;
+  white-space: nowrap;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+}
+
+.section-heading > p {
+  margin-bottom: 0.5rem;
+}
+
 .counter {
   color: var(--color-text-muted);
-  font-size: 0.8rem;
+  font-size: var(--font-size-small);
   text-align: right;
 }
 
@@ -77,6 +88,6 @@
   }
 
   .section-heading h2 {
-    font-size: 1.25rem;
+    font-size: var(--font-size-section);
   }
 }

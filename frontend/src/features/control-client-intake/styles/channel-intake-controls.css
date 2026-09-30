@@ -30,14 +30,14 @@ article > div {
 
 p {
   color: var(--color-text-muted);
-  font-size: 0.88rem;
+  font-size: var(--font-size-small);
   line-height: 1.45;
   margin: 0;
 }
 
 .intake-status {
   color: var(--color-success);
-  font-size: 0.8rem;
+  font-size: var(--font-size-small);
   font-weight: 700;
 }
 

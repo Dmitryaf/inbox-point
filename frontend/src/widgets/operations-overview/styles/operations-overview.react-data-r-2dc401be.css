@@ -24,7 +24,7 @@
 }
 .summary-description[data-r-2dc401be] {
   color: var(--color-text-muted);
-  font-size: 0.9rem;
+  font-size: var(--font-size-small);
   line-height: 1.5;
   margin-top: 0.25rem;
 }
@@ -45,10 +45,10 @@
 }
 .summary-facts dt[data-r-2dc401be] {
   color: var(--color-text-muted);
-  font-size: 0.75rem;
+  font-size: var(--font-size-small);
 }
 .summary-facts dd[data-r-2dc401be] {
-  font-size: 0.9rem;
+  font-size: var(--font-size-small);
   font-weight: 600;
   margin: 0;
 }

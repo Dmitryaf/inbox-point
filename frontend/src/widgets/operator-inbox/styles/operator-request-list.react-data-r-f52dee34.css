@@ -23,7 +23,7 @@
 .operator-request-button span[data-r-f52dee34],
 .operator-request-button time[data-r-f52dee34] {
   color: var(--color-text-muted);
-  font-size: 0.82rem;
+  font-size: var(--font-size-small);
 }
 .operator-request-button .channel-badge[data-r-f52dee34] {
   background: var(--color-primary-soft);

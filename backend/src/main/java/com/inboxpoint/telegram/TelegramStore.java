@@ -873,7 +873,7 @@ final class TelegramStore implements AutoCloseable {
     private List<TelegramRuntime.DeliveryIncident> incidents(String selection, Object... parameters) throws SQLException {
         try (var statement = prepare("""
                 SELECT d.id, d.channel, d.attempts, d.created_at, d.last_error, d.outcome_unknown,
-                    d.operator_message_id, d.request_id, request.operator_topic_id
+                    d.operator_message_id, d.request_id, request.operator_topic_id, request.client_display_name, d.text
                 FROM deliveries d JOIN support_requests request ON request.id = d.request_id
                 """ + selection, parameters); var rows = statement.executeQuery()) {
             var result = new ArrayList<TelegramRuntime.DeliveryIncident>();
@@ -885,7 +885,8 @@ final class TelegramStore implements AutoCloseable {
                         : failureReason(rows.getString("last_error"), telegram);
                 result.add(new TelegramRuntime.DeliveryIncident(rows.getString("id"), telegram ? "Telegram" : "VK",
                         rows.getInt("attempts"), rows.getString("created_at"), reason, !uncertain, uncertain,
-                        rows.getString("request_id"), rows.getString("operator_topic_id"), rows.getString("operator_message_id")));
+                        rows.getString("request_id"), rows.getString("operator_topic_id"), rows.getString("operator_message_id"),
+                        rows.getString("client_display_name"), rows.getString("text")));
             }
             return result;
         }
