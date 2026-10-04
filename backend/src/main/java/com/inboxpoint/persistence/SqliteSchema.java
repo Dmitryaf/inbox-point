@@ -17,7 +17,7 @@ public final class SqliteSchema {
             int previous;
             try (var version = statement.executeQuery("PRAGMA user_version")) {
                 previous = version.next() ? version.getInt(1) : 0;
-                if (previous > 11) {
+                if (previous > 12) {
                     throw new SQLException("Unsupported SQLite schema version");
                 }
             }
@@ -88,7 +88,10 @@ public final class SqliteSchema {
             if (previous > 0 && previous < 11) {
                 migrateNativeMirroring(statement);
             }
-            statement.execute("PRAGMA user_version = 11");
+            if (previous > 0 && previous < 12) {
+                migrateUsageDetails(statement);
+            }
+            statement.execute("PRAGMA user_version = 12");
         }
     }
 
@@ -303,6 +306,44 @@ public final class SqliteSchema {
             }
         } finally {
             statement.execute("PRAGMA foreign_keys = ON");
+        }
+    }
+
+    private static void migrateUsageDetails(java.sql.Statement statement) throws SQLException {
+        statement.execute("BEGIN IMMEDIATE");
+        try {
+            boolean required;
+            try (var version = statement.executeQuery("PRAGMA user_version")) {
+                required = version.next() && version.getInt(1) < 12;
+            }
+            if (required) {
+                statement.execute("""
+                        CREATE TABLE usage_events_v12 (
+                          id TEXT PRIMARY KEY,
+                          event_type TEXT NOT NULL CHECK (event_type IN (
+                            'new_request', 'information_section', 'menu_action', 'first_reply', 'delivery_failure', 'web_takeover'
+                          )),
+                          channel TEXT NOT NULL CHECK (channel IN ('telegram', 'vk')),
+                          request_id TEXT,
+                          occurred_at TEXT NOT NULL,
+                          action_key TEXT,
+                          action_label TEXT,
+                          CHECK (event_type != 'menu_action' OR (action_key IS NOT NULL AND action_label IS NOT NULL))
+                        ) STRICT
+                        """);
+                statement.execute("""
+                        INSERT INTO usage_events_v12 (id, event_type, channel, request_id, occurred_at)
+                        SELECT id, event_type, channel, request_id, occurred_at FROM usage_events
+                        """);
+                statement.execute("DROP TABLE usage_events");
+                statement.execute("ALTER TABLE usage_events_v12 RENAME TO usage_events");
+                statement.execute("CREATE INDEX usage_events_by_time ON usage_events(occurred_at, event_type)");
+                statement.execute("PRAGMA user_version = 12");
+            }
+            statement.execute("COMMIT");
+        } catch (SQLException | RuntimeException failure) {
+            statement.execute("ROLLBACK");
+            throw failure;
         }
     }
 

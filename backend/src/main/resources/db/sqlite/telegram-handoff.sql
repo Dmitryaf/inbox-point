@@ -77,11 +77,14 @@ CREATE INDEX IF NOT EXISTS operator_actions_by_status ON operator_actions(status
 CREATE TABLE IF NOT EXISTS usage_events (
   id TEXT PRIMARY KEY,
   event_type TEXT NOT NULL CHECK (event_type IN (
-    'new_request', 'information_section', 'first_reply', 'delivery_failure', 'web_takeover'
+    'new_request', 'information_section', 'menu_action', 'first_reply', 'delivery_failure', 'web_takeover'
   )),
   channel TEXT NOT NULL CHECK (channel IN ('telegram', 'vk')),
   request_id TEXT,
-  occurred_at TEXT NOT NULL
+  occurred_at TEXT NOT NULL,
+  action_key TEXT,
+  action_label TEXT,
+  CHECK (event_type != 'menu_action' OR (action_key IS NOT NULL AND action_label IS NOT NULL))
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS usage_events_by_time ON usage_events(occurred_at, event_type);

@@ -627,9 +627,32 @@ final class TelegramStore implements AutoCloseable {
                 id, type, channel, request, now.toString());
     }
 
+    void recordMenuAction(String id, String channel, com.inboxpoint.content.ClientInformation.MenuAction action,
+            Instant now) throws SQLException {
+        update("""
+                INSERT OR IGNORE INTO usage_events (id, event_type, channel, occurred_at, action_key, action_label)
+                VALUES (?, 'menu_action', ?, ?, ?, ?)
+                """, id, channel, now.toString(), action.key(), action.label());
+    }
+
+    com.inboxpoint.persistence.SqliteUsageAnalytics.Report usageReport(int days, String channel, Instant observed)
+            throws SQLException {
+        connection.setAutoCommit(false);
+        try {
+            var result = com.inboxpoint.persistence.SqliteUsageAnalytics.report(connection, days, channel, observed);
+            connection.commit();
+            return result;
+        } catch (SQLException | RuntimeException failure) {
+            connection.rollback();
+            throw failure;
+        } finally {
+            connection.setAutoCommit(true);
+        }
+    }
+
     java.util.Map<String, Long> usageCounts(Instant since) throws SQLException {
         var result = new java.util.LinkedHashMap<String, Long>();
-        for (var type : List.of("new_request", "information_section", "first_reply", "delivery_failure", "web_takeover")) {
+        for (var type : List.of("new_request", "information_section", "menu_action", "first_reply", "delivery_failure", "web_takeover")) {
             result.put(type, 0L);
         }
         try (var statement = prepare("""

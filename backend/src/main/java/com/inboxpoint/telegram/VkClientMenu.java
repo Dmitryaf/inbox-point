@@ -50,8 +50,10 @@ final class VkClientMenu {
             }
             var hidden = stage == ClientMenuPolicy.Stage.AWAITING || answer.begin();
             api.send(peer, answer.text(), "vk-menu:" + event, hidden ? hiddenKeyboard() : keyboard(pausedNow));
-            if (answer.information()) {
-                store.usageEvent("information:vk:" + event, "information_section", "vk", null, now);
+            var selected = answer.information() ? information.action(text.strip())
+                    : answer.begin() ? new ClientInformation.MenuAction("handoff", ClientInformation.ASK) : null;
+            if (selected != null) {
+                store.recordMenuAction("menu:vk:" + event, "vk", selected, now);
             }
             store.completeEvent("vk:menu", event, now);
             return true;

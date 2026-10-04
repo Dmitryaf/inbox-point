@@ -375,6 +375,13 @@ public final class TelegramRuntime {
             String createdAt, boolean initial, String operatorTopicId, String reason, String requestId, int sequence, long heldReplyCount, String status,
             String displayName, String messageText) { }
 
+    public com.inboxpoint.persistence.SqliteUsageAnalytics.Report usageReport(int days, String channel, Instant observed)
+            throws IOException, SQLException {
+        try (var store = new TelegramStore(database)) {
+            return store.usageReport(days, channel, observed);
+        }
+    }
+
     public Map<String, Long> usageCounts(Instant since) throws IOException, SQLException {
         try (var store = new TelegramStore(database)) {
             return store.usageCounts(since);

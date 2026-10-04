@@ -199,7 +199,7 @@ public final class ClientInformation {
         if (!next.custom().isEmpty()) {
             var values = payload.putArray("customSections");
             for (var section : next.custom()) {
-                values.addObject().put("label", section.label()).put("text", section.text());
+                values.addObject().put("id", section.id()).put("label", section.label()).put("text", section.text());
             }
         }
         if (!next.faq().isEmpty()) {
@@ -286,7 +286,31 @@ public final class ClientInformation {
         };
     }
 
-    public record Section(String label, String text) { }
+    public record Section(String label, String text, String id) {
+        public Section(String label, String text) { this(label, text, sectionId(label)); }
+    }
+
+    public record MenuAction(String key, String label) { }
+
+    public MenuAction action(String label) {
+        for (var item : sections()) {
+            if (item.label().equals(label)) {
+                return new MenuAction("custom:" + item.id(), item.label());
+            }
+        }
+        var key = switch (label) {
+            case SCHEDULE -> "schedule";
+            case PRICES -> "prices";
+            case ADDRESS -> "address";
+            case FAQ -> "faq";
+            default -> null;
+        };
+        return key == null ? null : new MenuAction("information:" + key, label);
+    }
+
+    private static String sectionId(String label) {
+        return java.util.UUID.nameUUIDFromBytes(label.getBytes(StandardCharsets.UTF_8)).toString();
+    }
 
     public record Faq(String question, String answer) { }
 
@@ -452,6 +476,7 @@ public final class ClientInformation {
         }
         var names = new HashSet<String>();
         var sections = new ArrayList<Section>();
+        var ids = new HashSet<String>();
         for (var row : entries) {
             var rawLabel = row.path("label");
             var rawText = row.path("text");
@@ -471,7 +496,11 @@ public final class ClientInformation {
             if (row.has("format")) {
                 throw new IllegalArgumentException("Custom sections contain plain text");
             }
-            sections.add(new Section(label, text));
+            var id = row.path("id").asString(sectionId(label));
+            if (!id.matches("[0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}") || !ids.add(id)) {
+                throw new IllegalArgumentException("Invalid content section identity");
+            }
+            sections.add(new Section(label, text, id));
         }
         return List.copyOf(sections);
     }

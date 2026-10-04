@@ -8,6 +8,7 @@ export interface FaqItem {
 }
 
 export interface CustomSection {
+  id?: string;
   label: string;
   text: string;
 }

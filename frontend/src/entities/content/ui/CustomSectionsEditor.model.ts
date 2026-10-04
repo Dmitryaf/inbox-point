@@ -28,7 +28,7 @@ export function createComponentModel(
   const sections = $model<CustomSection[]>('modelValue', { required: true });
   const { add, move, remove, itemKey } = useCollectionEditor({
     items: () => sections.value,
-    create: () => ({ label: '', text: '' }),
+    create: () => ({ id: crypto.randomUUID(), label: '', text: '' }),
     limit: 6,
     fieldPrefix: 'section-label',
     description: (item, index) => `раздел «${item.label.trim() || index + 1}»`,

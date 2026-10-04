@@ -49,8 +49,10 @@ final class TelegramClientMenu {
             }
             var hidden = stage == ClientMenuPolicy.Stage.AWAITING || answer.begin();
             api.sendMessage(chat, null, answer.text(), hidden ? removeKeyboard() : keyboard(information, pausedNow));
-            if (answer.information()) {
-                store.usageEvent("information:telegram:" + event, "information_section", "telegram", null, now);
+            var selected = answer.information() ? information.action(text.strip())
+                    : answer.begin() ? new ClientInformation.MenuAction("handoff", ClientInformation.ASK) : null;
+            if (selected != null) {
+                store.recordMenuAction("menu:telegram:" + event, "telegram", selected, now);
             }
             store.completeEvent(SOURCE, event, now);
         } catch (TelegramBotApi.RequestFailed failure) {

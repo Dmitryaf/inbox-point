@@ -1,0 +1,119 @@
+.analytics-overview[data-r-b5a5a8db] {
+  display: grid;
+  gap: 1.25rem;
+  min-width: 0;
+}
+.analytics-summary[data-r-b5a5a8db] {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.metric-value[data-r-b5a5a8db] {
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1.1;
+  margin-block: 0.75rem;
+}
+.muted[data-r-b5a5a8db] {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+}
+.analytics-table[data-r-b5a5a8db] {
+  border-collapse: collapse;
+  width: 100%;
+  table-layout: fixed;
+}
+.analytics-table caption[data-r-b5a5a8db] {
+  text-align: left;
+  padding-bottom: 0.75rem;
+}
+.analytics-table th[data-r-b5a5a8db],
+.analytics-table td[data-r-b5a5a8db] {
+  border-bottom: 1px solid var(--color-border);
+  padding: 0.75rem 0.35rem;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.analytics-table th[data-r-b5a5a8db]:first-child {
+  text-align: left;
+  width: 46%;
+}
+.analytics-table tbody th[data-r-b5a5a8db] {
+  font-weight: 500;
+}
+.question-path[data-r-b5a5a8db] {
+  display: grid;
+  gap: 0.75rem;
+}
+.question-path div[data-r-b5a5a8db] {
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+.question-path dd[data-r-b5a5a8db] {
+  flex-shrink: 0;
+  font-weight: 700;
+  margin: 0;
+}
+.activity-chart[data-r-b5a5a8db] {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.activity-chart text[data-r-b5a5a8db] {
+  fill: var(--color-text-muted);
+  font-size: 14px;
+}
+.grid-line[data-r-b5a5a8db] {
+  stroke: var(--color-border);
+}
+.menu-line[data-r-b5a5a8db],
+.request-line[data-r-b5a5a8db] {
+  fill: none;
+  stroke-width: 3;
+  vector-effect: non-scaling-stroke;
+}
+.menu-line[data-r-b5a5a8db] {
+  stroke: var(--color-primary);
+}
+.request-line[data-r-b5a5a8db] {
+  stroke: var(--color-text);
+  stroke-dasharray: 6 5;
+}
+.chart-legend[data-r-b5a5a8db] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  font-size: var(--font-size-small);
+}
+.chart-legend span[data-r-b5a5a8db]:first-child {
+  color: var(--color-primary);
+}
+.daily-values[data-r-b5a5a8db] {
+  max-height: 22rem;
+  overflow-y: auto;
+  margin-top: 1rem;
+}
+summary[data-r-b5a5a8db] {
+  cursor: pointer;
+}
+@media (max-width: 600px) {
+  .analytics-summary[data-r-b5a5a8db] {
+    grid-template-columns: 1fr;
+  }
+  .analytics-table[data-r-b5a5a8db] {
+    font-size: var(--font-size-small);
+  }
+  .analytics-table th[data-r-b5a5a8db]:first-child {
+    width: 36%;
+  }
+  .analytics-table th[data-r-b5a5a8db]:nth-child(2) {
+    width: 20%;
+  }
+  .analytics-table th[data-r-b5a5a8db]:nth-child(3) {
+    width: 30%;
+  }
+  .activity-chart text[data-r-b5a5a8db] {
+    font-size: 26px;
+  }
+}

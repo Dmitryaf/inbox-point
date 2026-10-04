@@ -121,11 +121,12 @@ button.admin-session-actions__all:disabled {
 
   .admin-navigation {
     flex-basis: 100%;
+    flex-wrap: wrap;
     order: 3;
   }
 
   .admin-navigation a {
-    flex: 1 1 0;
+    flex: 1 1 auto;
     justify-content: center;
     min-height: 2.8rem;
     padding-inline: 0.35rem;

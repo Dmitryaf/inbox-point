@@ -102,10 +102,11 @@ button.admin-session-actions__all[data-r-e15afcb7]:disabled {
   }
   .admin-navigation[data-r-e15afcb7] {
     flex-basis: 100%;
+    flex-wrap: wrap;
     order: 3;
   }
   .admin-navigation a[data-r-e15afcb7] {
-    flex: 1 1 0;
+    flex: 1 1 auto;
     justify-content: center;
     min-height: 2.8rem;
     padding-inline: 0.35rem;
