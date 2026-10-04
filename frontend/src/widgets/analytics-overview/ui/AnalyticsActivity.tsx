@@ -39,9 +39,6 @@ export default function AnalyticsActivity($incomingProps: ComponentProps) {
           <span data-r-163b6de6="">{'┄ Обращения'}</span>
         </p>
         {renderAnalyticsActivityPart1($state, $props)}
-        <p className="muted" data-r-163b6de6="">
-          {'Дни и время показаны по UTC.'}
-        </p>
         {renderAnalyticsActivityPart2($state, $props)}
       </section>
     </ModelScopeProvider>

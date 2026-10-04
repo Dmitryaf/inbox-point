@@ -25,7 +25,6 @@ describe('daily activity chart', () => {
       }
       expect(wrapper.findAll('svg > text')).toHaveLength(3);
       expect(wrapper.findAll('tbody tr')).toHaveLength(days);
-      expect(wrapper.text()).toContain('UTC');
       wrapper.unmount();
     },
   );
