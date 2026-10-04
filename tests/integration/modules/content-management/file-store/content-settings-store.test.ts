@@ -16,6 +16,87 @@ afterEach(async () => {
 });
 
 describe('FileContentSettingsStore', () => {
+  it('assigns persistent IDs to legacy sections without losing revisions, old labels or schedule text', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'inbox-point-content-'));
+    directories.push(directory);
+    const path = join(directory, 'content-settings.json');
+    const content = {
+      customSections: [{ label: 'Пробное занятие', text: 'Старый ответ.' }],
+      schedule: 'Старое расписание\nв свободной форме',
+    };
+    await writeFile(
+      path,
+      JSON.stringify({
+        content,
+        previousMenuActions: ['Старая кнопка'],
+        history: [
+          {
+            content,
+            revision: 1,
+            changedAt: '2026-09-01T00:00:00Z',
+            sections: ['customSections', 'schedule'],
+          },
+        ],
+      }),
+    );
+    const store = new FileContentSettingsStore(path);
+    const [loaded, revision] = await Promise.all([
+      store.load(),
+      store.loadRevision(1),
+    ]);
+    const id = loaded?.customSections?.[0]?.id;
+    expect(id).toMatch(/^[a-f\d-]{36}$/u);
+    expect(revision?.customSections?.[0]?.id).toBe(id);
+    expect(loaded?.legacySchedule).toBe(content.schedule);
+    const bytes = await readFile(path, 'utf8');
+    expect(bytes).toContain('Старая кнопка');
+    expect(
+      (await new FileContentSettingsStore(path).load())?.customSections?.[0]
+        ?.id,
+    ).toBe(id);
+    expect(await readFile(path, 'utf8')).toBe(bytes);
+    if (!loaded || !id) {
+      throw new Error('Expected legacy content');
+    }
+    await store.save({
+      ...loaded,
+      customSections: [
+        { id, label: 'Записаться на пробное', text: 'Новый ответ.' },
+      ],
+    });
+    expect((await store.load())?.customSections?.[0]?.id).toBe(id);
+    await store.restore(1);
+    expect((await store.load())?.customSections?.[0]).toEqual({
+      id,
+      label: 'Пробное занятие',
+      text: 'Старый ответ.',
+    });
+    expect(await store.loadHistory()).toHaveLength(3);
+    expect(await store.loadHistoricalMenuActions()).toEqual(
+      expect.arrayContaining(['Записаться на пробное']),
+    );
+  });
+
+  it('rejects duplicate or malformed custom section IDs', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'inbox-point-content-'));
+    directories.push(directory);
+    const store = new FileContentSettingsStore(
+      join(directory, 'content-settings.json'),
+    );
+    await expect(
+      store.save({
+        customSections: [
+          { id: 'same', label: 'Один', text: 'Ответ' },
+          { id: 'same', label: 'Другой', text: 'Ответ' },
+        ],
+      }),
+    ).rejects.toThrow();
+    await expect(
+      store.save({
+        customSections: [{ id: 'invalid:id', label: 'Один', text: 'Ответ' }],
+      }),
+    ).rejects.toThrow();
+  });
   it('reads a revision including hidden content without changing the file', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'inbox-point-content-'));
     directories.push(directory);
@@ -84,6 +165,7 @@ describe('FileContentSettingsStore', () => {
       address: 'Main street, 1',
       customSections: [
         {
+          id: expect.any(String) as string,
           label: 'First visit',
           text: 'Come ten minutes early.',
         },
@@ -336,7 +418,13 @@ describe('FileContentSettingsStore', () => {
     await store.restore(1);
 
     await expect(store.load()).resolves.toEqual({
-      customSections: [{ label: 'Абонементы', text: 'Первый ответ.' }],
+      customSections: [
+        {
+          id: expect.any(String) as string,
+          label: 'Абонементы',
+          text: 'Первый ответ.',
+        },
+      ],
     });
     await expect(store.loadHistoricalMenuActions()).resolves.toEqual([
       'Цены занятий',

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   existsSync,
   mkdtempSync,
@@ -40,6 +41,61 @@ afterEach(() => {
 });
 
 describe('ServiceSnapshotService', () => {
+  it('restores a v11 snapshot through the analytics migration without changing the source snapshot', async () => {
+    const directory = createTemporaryDirectory();
+    const source = new SqliteSupportRepository(
+      join(directory, 'data', 'inbox-point.sqlite'),
+    );
+    source.recordUsageEvent({
+      id: 'legacy',
+      channel: 'vk',
+      type: 'information_section',
+      occurredAt: new Date('2026-10-04T12:00:00Z'),
+    });
+    const snapshot = await new ServiceSnapshotService(
+      join(directory, 'data', 'inbox-point.sqlite'),
+    ).createSnapshot();
+    source.close();
+    const snapshotDatabasePath = join(snapshot.path, 'database.sqlite');
+    const database = new DatabaseSync(snapshotDatabasePath);
+    database.exec(`ALTER TABLE usage_events RENAME TO new_usage_events;
+      CREATE TABLE usage_events (id TEXT PRIMARY KEY, event_type TEXT NOT NULL, channel TEXT NOT NULL, request_id TEXT, occurred_at TEXT NOT NULL) STRICT;
+      INSERT INTO usage_events SELECT id,event_type,channel,request_id,occurred_at FROM new_usage_events;
+      DROP TABLE new_usage_events; PRAGMA user_version = 11;`);
+    database.close();
+    const bytes = readFileSync(snapshotDatabasePath);
+    const manifest = {
+      ...snapshot.manifest,
+      sqliteSchemaVersion: 11,
+      files: snapshot.manifest.files.map((file) =>
+        file.name === 'database.sqlite'
+          ? {
+              ...file,
+              size: bytes.length,
+              sha256: createHash('sha256').update(bytes).digest('hex'),
+            }
+          : file,
+      ),
+    };
+    writeFileSync(
+      join(snapshot.path, 'manifest.json'),
+      JSON.stringify(manifest),
+    );
+    expect(
+      (await verifyServiceSnapshot(snapshot.path)).sqliteSchemaVersion,
+    ).toBe(11);
+    const restored = await restoreServiceSnapshot(
+      snapshot.path,
+      join(directory, 'restored'),
+    );
+    const repository = new SqliteSupportRepository(restored.databasePath);
+    expect(
+      repository.getUsageEventCounts(new Date('2026-01-01'))
+        .information_section,
+    ).toBe(1);
+    repository.close();
+    expect(readFileSync(snapshotDatabasePath)).toEqual(bytes);
+  });
   it('preserves a legacy schedule document without rewriting its text', async () => {
     const directory = createTemporaryDirectory();
     const dataDirectory = join(directory, 'data');
@@ -139,7 +195,7 @@ describe('ServiceSnapshotService', () => {
       formatVersion: 1,
       instanceId: 'default',
       secretsIncluded: false,
-      sqliteSchemaVersion: 11,
+      sqliteSchemaVersion: 12,
     });
     expect(manifest.files.map((file) => file.name)).toEqual([
       'database.sqlite',
@@ -228,7 +284,7 @@ describe('ServiceSnapshotService', () => {
       readOnly: true,
     });
     expect(restoredDatabase.prepare('PRAGMA user_version').get()).toEqual({
-      user_version: 11,
+      user_version: 12,
     });
     restoredDatabase.close();
     const restoredSessionStore = new SqliteAdminSessionStore(

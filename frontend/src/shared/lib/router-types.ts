@@ -6,7 +6,7 @@ export interface RouterHistory {
   kind: 'browser' | 'memory';
   base?: string;
 }
-export type AdminSection = 'answers' | 'channels' | 'monitoring';
+export type AdminSection = 'answers' | 'channels' | 'analytics' | 'monitoring';
 export interface RouteMeta {
   [key: string]: unknown;
   documentTitle?: string;

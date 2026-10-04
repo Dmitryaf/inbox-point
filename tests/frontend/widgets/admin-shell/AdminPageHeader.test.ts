@@ -27,11 +27,13 @@ describe('AdminPageHeader', () => {
     expect(links.map((link) => link.text())).toEqual([
       'Ответы',
       'Каналы',
+      'Аналитика',
       'Мониторинг',
     ]);
     expect(links.map((link) => link.attributes('href'))).toEqual([
       '/manage',
       '/setup',
+      '/analytics',
       '/ops',
     ]);
     expect(links[1]?.attributes('aria-current')).toBe('page');

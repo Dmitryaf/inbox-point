@@ -98,12 +98,15 @@ function isAdminUrl(url: string): boolean {
     path === '/manage' ||
     path.startsWith('/manage/') ||
     path === '/ops' ||
+    path === '/analytics' ||
+    path.startsWith('/analytics/') ||
     path.startsWith('/ops/') ||
     path === '/setup' ||
     path.startsWith('/setup/') ||
     path.startsWith('/api/admin/') ||
     path.startsWith('/api/manage/') ||
     path.startsWith('/api/ops/') ||
+    path === '/api/analytics' ||
     path.startsWith('/api/setup/')
   );
 }

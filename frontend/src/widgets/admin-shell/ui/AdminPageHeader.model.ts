@@ -4,7 +4,7 @@ import {
   type WithDefaults,
 } from '@frontend/shared/lib/component-model';
 
-export type AdminSection = 'answers' | 'channels' | 'monitoring';
+export type AdminSection = 'answers' | 'channels' | 'analytics' | 'monitoring';
 export type ComponentProps = {
   current: AdminSection;
   intro: string;
@@ -29,6 +29,7 @@ export function createComponentModel(
   }[] = [
     { href: '/manage', id: 'answers', label: 'Ответы' },
     { href: '/setup', id: 'channels', label: 'Каналы' },
+    { href: '/analytics', id: 'analytics', label: 'Аналитика' },
     { href: '/ops', id: 'monitoring', label: 'Мониторинг' },
   ];
   return { $emit, sections };

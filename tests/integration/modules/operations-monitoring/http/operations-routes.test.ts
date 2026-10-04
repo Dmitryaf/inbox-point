@@ -74,6 +74,7 @@ describe('operations monitoring routes', () => {
       serviceControl: createServiceControl(),
       usageMetrics: {
         getUsageEventCounts: () => ({
+          menu_action: 0,
           delivery_failure: 2,
           first_reply: 7,
           information_section: 11,

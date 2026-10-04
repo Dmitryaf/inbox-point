@@ -13,7 +13,13 @@ const frontendContentSecurityPolicy = [
   `form-action 'self'`,
 ].join('; ');
 
-const frontendPagePaths = ['/login', '/manage', '/setup', '/ops'] as const;
+const frontendPagePaths = [
+  '/login',
+  '/manage',
+  '/setup',
+  '/analytics',
+  '/ops',
+] as const;
 
 export function registerFrontendRoutes(
   app: FastifyInstance,

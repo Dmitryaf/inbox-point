@@ -32,7 +32,9 @@ export function pickContent(value: ContentPayload): ClientInformationContent {
     ...(value.customSections
       ? {
           customSections: value.customSections.map((section) => ({
-            ...section,
+            label: section.label,
+            text: section.text,
+            ...(section.id ? { id: section.id } : {}),
           })),
         }
       : {}),

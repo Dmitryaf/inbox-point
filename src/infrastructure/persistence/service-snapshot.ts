@@ -46,7 +46,7 @@ const snapshotManifestSchema = z.object({
   formatVersion: z.literal(1),
   instanceId: instanceIdSchema.optional(),
   secretsIncluded: z.literal(false),
-  sqliteSchemaVersion: z.literal(sqliteSchemaVersion),
+  sqliteSchemaVersion: z.union([z.literal(11), z.literal(sqliteSchemaVersion)]),
 });
 
 export type ServiceSnapshotManifest = z.infer<typeof snapshotManifestSchema>;
@@ -225,7 +225,10 @@ export async function verifyServiceSnapshot(
   if (!database) {
     throw new Error('Service snapshot does not contain a database');
   }
-  verifySqliteBackup(join(snapshotPath, database.name));
+  verifySqliteBackup(
+    join(snapshotPath, database.name),
+    parsed.data.sqliteSchemaVersion,
+  );
   verifyRetentionApplied(
     join(snapshotPath, database.name),
     new Date(parsed.data.createdAt),
@@ -264,7 +267,7 @@ export async function restoreServiceSnapshot(
         restored.serviceControlPath = target;
       }
     }
-    verifySqliteBackup(restored.databasePath);
+    verifySqliteBackup(restored.databasePath, manifest.sqliteSchemaVersion);
     invalidateRestoredAdminSessions(restored.databasePath);
     verifySqliteBackup(restored.databasePath);
     return restored;

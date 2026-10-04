@@ -7,6 +7,7 @@ import {
 } from '@frontend/shared/lib/router';
 
 import AdminLoginPage from '@frontend/pages/admin-login/ui/AdminLoginPage';
+import AnalyticsPage from '@frontend/pages/analytics/ui/AnalyticsPage';
 import ContentManagementPage from '@frontend/pages/content-management/ui/ContentManagementPage';
 import NotFoundPage from '@frontend/pages/not-found/ui/NotFoundPage';
 import OperationsDashboardPage from '@frontend/pages/operations-dashboard/ui/OperationsDashboardPage';
@@ -45,6 +46,17 @@ const routes: readonly RouteRecordRaw[] = [
           description: 'Подключения Telegram и VK.',
           documentTitle: 'Каналы — Inbox Point',
           pageTitle: 'Каналы',
+        },
+      },
+      {
+        path: 'analytics',
+        name: 'analytics',
+        component: AnalyticsPage,
+        meta: {
+          adminSection: 'analytics',
+          description: 'Как пользователи взаимодействуют с ботами.',
+          documentTitle: 'Аналитика — Inbox Point',
+          pageTitle: 'Аналитика',
         },
       },
       {

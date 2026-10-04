@@ -15,7 +15,7 @@ function mergeRouteMeta(target: RouteMeta, source: object): void {
     if (
       key === 'adminSection' &&
       value !== undefined &&
-      !['answers', 'channels', 'monitoring'].some(
+      !['answers', 'channels', 'analytics', 'monitoring'].some(
         (section) => section === value,
       )
     ) {

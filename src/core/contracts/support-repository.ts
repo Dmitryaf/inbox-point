@@ -15,7 +15,11 @@ import type {
   OperatorActionSummary,
   PendingOperatorAction,
 } from '@/core/model/operator-action.js';
-import type { UsageEvent, UsageEventCounts } from '@/core/model/usage-event.js';
+import type {
+  UsageEvent,
+  UsageEventCounts,
+  UsageAnalytics,
+} from '@/core/model/usage-event.js';
 import type {
   InboundEventFailureOutcome,
   InboundEventIncident,
@@ -170,6 +174,11 @@ export interface SupportRepository
     checkedAt: Date,
   ): boolean;
   getUsageEventCounts(since: Date): UsageEventCounts;
+  getUsageAnalytics(
+    since: Date,
+    until: Date,
+    channel?: ClientChannelKind,
+  ): UsageAnalytics;
   getDeliverySummary(): DeliverySummary;
   getOperatorActionSummary(): OperatorActionSummary;
   getWebOperatorRequestSummary(): WebOperatorRequestSummary;

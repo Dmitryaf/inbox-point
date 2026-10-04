@@ -4,6 +4,8 @@ import {
   type ClientInformationResolver,
   isHandoffRequest,
   newQuestionButton,
+  resolveMenuAction,
+  resolveMenuActionByKey,
 } from '@/core/application/client-information.js';
 import { resolveClientConversationState } from '@/core/application/client-conversation-state.js';
 import { clientMessages } from '@/core/application/client-messages.js';
@@ -51,12 +53,23 @@ export class VkClientMenu implements VkClientMenuHandler {
       conversationId,
       now,
     );
-    const response = resolveMenuResponse(
-      message.text,
-      message.payload,
-      state,
-      this.information,
-    );
+    const payloadAction = parseMenuAction(message.payload);
+    const keyedAction = payloadAction
+      ? resolveMenuActionByKey(this.information, payloadAction)
+      : undefined;
+    const stableInformation =
+      payloadAction !== undefined &&
+      (['schedule', 'prices', 'address', 'faq'].includes(payloadAction) ||
+        payloadAction.startsWith('custom:'));
+    const response =
+      stableInformation && !keyedAction
+        ? { text: clientMessages.menuUpdated }
+        : resolveMenuResponse(
+            keyedAction?.label ?? message.text,
+            message.payload,
+            state,
+            this.information,
+          );
     if (!response) {
       return false;
     }
@@ -71,6 +84,30 @@ export class VkClientMenu implements VkClientMenuHandler {
     }
 
     try {
+      const action = stableInformation
+        ? keyedAction
+        : (keyedAction ?? resolveMenuAction(this.information, message.text));
+      if (
+        action &&
+        (('informationRequested' in response &&
+          response.informationRequested) ||
+          action.key === 'handoff' ||
+          action.key === 'new_question')
+      ) {
+        const requestId = this.repository.findActiveRequest(
+          'vk',
+          conversationId,
+        )?.id;
+        this.repository.recordUsageEvent({
+          channel: 'vk',
+          id: `menu:vk:${message.externalEventId}`,
+          occurredAt: now,
+          ...(requestId ? { requestId } : {}),
+          type: 'menu_action',
+          actionKey: action.key,
+          actionLabel: action.label,
+        });
+      }
       if (response.cancelAwaitingQuestion) {
         this.repository.clearAwaitingClientQuestion('vk', conversationId);
       }
@@ -95,14 +132,6 @@ export class VkClientMenu implements VkClientMenuHandler {
         createVkRandomId('vk-menu:' + message.externalEventId),
         keyboard,
       );
-      if (response.informationRequested) {
-        this.repository.recordUsageEvent({
-          channel: 'vk',
-          id: `information:vk:${message.externalEventId}`,
-          occurredAt: new Date(),
-          type: 'information_section',
-        });
-      }
       this.repository.completeEvent(
         'vk:menu',
         message.externalEventId,
@@ -128,11 +157,18 @@ export function createVkMainKeyboard(
   }
   const informationButtons = information
     .getInformationButtons()
-    .map((label, index) => createButton(label, 'information-' + index));
+    .map((label) =>
+      createButton(
+        label,
+        resolveMenuAction(information, label)?.key ?? 'information',
+      ),
+    );
   const informationRows = createButtonRows(informationButtons);
   const customRows = information
     .getCustomSections()
-    .map((section, index) => [createButton(section.label, 'custom-' + index)]);
+    .map((section) => [
+      createButton(section.label, `custom:${section.id ?? ''}`),
+    ]);
   return {
     buttons: [
       ...informationRows,
@@ -172,15 +208,22 @@ function resolveMenuResponse(
   const normalized = text.trim();
   const menuAction = parseMenuAction(payload);
   const command = normalized.toLowerCase();
+  const structuredInformation =
+    (menuAction ?? '').startsWith('information-') ||
+    (menuAction ?? '').startsWith('custom-') ||
+    (menuAction ?? '').startsWith('custom:') ||
+    ['schedule', 'prices', 'address', 'faq'].includes(menuAction ?? '');
 
   if (state.stage === 'active') {
-    if (
-      menuAction?.startsWith('information-') ||
-      menuAction?.startsWith('custom-')
-    ) {
+    if (structuredInformation) {
       return resolveStructuredInformation(normalized, informationResolver);
     }
-    if (menuAction === 'handoff') {
+    if (
+      menuAction === 'handoff' ||
+      menuAction === 'new_question' ||
+      isHandoffRequest(normalized) ||
+      normalized === newQuestionButton
+    ) {
       return { text: clientMessages.questionPrompt };
     }
     if (command === '/start' || command === '/menu' || command === 'начать') {
@@ -210,10 +253,7 @@ function resolveMenuResponse(
     };
   }
 
-  if (
-    menuAction?.startsWith('information-') ||
-    menuAction?.startsWith('custom-')
-  ) {
+  if (structuredInformation) {
     const information = resolveStructuredInformation(
       normalized,
       informationResolver,

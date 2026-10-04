@@ -1,12 +1,14 @@
 import {
   copyClientInformationContent,
-  getMenuActionValues,
   type ClientInformationContent,
 } from '@/core/application/client-information.js';
 import {
   readOptionalTextFile,
   writePrivateTextFile,
 } from '@/infrastructure/file-system/local-state-file.js';
+import { identifyCustomSections } from '@/modules/content-management/application/custom-section-identity.js';
+import { migrateCustomSectionIds } from './custom-section-migration.js';
+import { findHistoricalMenuActions, nextRevision } from './content-history.js';
 import type {
   ContentChange,
   ContentSettingsDocument,
@@ -20,6 +22,7 @@ import {
 } from './document-codec.js';
 
 export class FileContentSettingsStore implements ContentSettingsStore {
+  private readQueue: Promise<void> = Promise.resolve();
   public constructor(
     private readonly path: string,
     private readonly now: () => Date = () => new Date(),
@@ -58,8 +61,10 @@ export class FileContentSettingsStore implements ContentSettingsStore {
   }
 
   public async save(content: ClientInformationContent): Promise<void> {
-    const validated = validateContentInput(content);
     const current = await this.readDocument();
+    const validated = validateContentInput(
+      identifyCustomSections(content, current?.content),
+    );
     const sections = findChangedSections(current?.content ?? {}, validated);
     if (sections.length === 0) {
       return;
@@ -93,11 +98,27 @@ export class FileContentSettingsStore implements ContentSettingsStore {
   }
 
   private async readDocument(): Promise<ContentSettingsDocument | undefined> {
+    const read = this.readQueue.then(() => this.readDocumentNow());
+    this.readQueue = read.then(
+      () => undefined,
+      () => undefined,
+    );
+    return read;
+  }
+
+  private async readDocumentNow(): Promise<
+    ContentSettingsDocument | undefined
+  > {
     try {
       const contents = await readOptionalTextFile(this.path);
-      return contents === undefined
-        ? undefined
-        : parseContentDocument(contents);
+      if (contents === undefined) {
+        return undefined;
+      }
+      const migrated = migrateCustomSectionIds(parseContentDocument(contents));
+      if (migrated.changed) {
+        await this.writeDocument(migrated.document);
+      }
+      return migrated.document;
     } catch (error: unknown) {
       if (
         error instanceof Error &&
@@ -116,33 +137,4 @@ export class FileContentSettingsStore implements ContentSettingsStore {
   ): Promise<void> {
     await writePrivateTextFile(this.path, serializeContentDocument(document));
   }
-}
-
-function findHistoricalMenuActions(
-  document: ContentSettingsDocument | undefined,
-): readonly string[] {
-  if (!document) {
-    return [];
-  }
-  const currentMenuActions = new Set(getMenuActionValues(document.content));
-  const historicalMenuActions = new Set<string>();
-  for (const entry of document.history) {
-    for (const action of getMenuActionValues(entry.content)) {
-      if (!currentMenuActions.has(action)) {
-        historicalMenuActions.add(action);
-      }
-    }
-  }
-  for (const action of document.legacyPreviousMenuActions ?? []) {
-    if (!currentMenuActions.has(action)) {
-      historicalMenuActions.add(action);
-    }
-  }
-  return [...historicalMenuActions];
-}
-
-function nextRevision(document: ContentSettingsDocument | undefined): number {
-  return (
-    Math.max(0, ...(document?.history.map((entry) => entry.revision) ?? [])) + 1
-  );
 }

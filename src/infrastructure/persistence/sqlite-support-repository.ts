@@ -39,8 +39,10 @@ import {
   type UsageEvent,
   type UsageEventCounts,
   type UsageEventType,
+  type UsageAnalytics,
 } from '@/core/model/usage-event.js';
 import { initializeSqliteSchema } from '@/infrastructure/persistence/sqlite-schema.js';
+import { getUsageAnalytics } from '@/infrastructure/persistence/sqlite-usage-analytics.js';
 import { purgeClosedConversationContent as purgeRetainedContent } from '@/infrastructure/persistence/sqlite-retention.js';
 import { recoverInterruptedSqliteWork } from '@/infrastructure/persistence/sqlite-startup-recovery.js';
 import {
@@ -149,6 +151,12 @@ export class SqliteSupportRepository implements SupportRepository {
   }
 
   public recordUsageEvent(event: UsageEvent): void {
+    if (
+      event.type === 'menu_action' &&
+      (!event.actionKey || !event.actionLabel)
+    ) {
+      throw new Error('Menu action requires a key and label');
+    }
     this.database
       .prepare(
         `INSERT OR IGNORE INTO usage_events (
@@ -156,16 +164,28 @@ export class SqliteSupportRepository implements SupportRepository {
           event_type,
           channel,
           request_id,
+          action_key,
+          action_label,
           occurred_at
-        ) VALUES (?, ?, ?, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         event.id,
         event.type,
         event.channel,
         event.requestId ?? null,
+        event.actionKey ?? null,
+        event.actionLabel ?? null,
         event.occurredAt.toISOString(),
       );
+  }
+
+  public getUsageAnalytics(
+    since: Date,
+    until: Date,
+    channel?: ClientChannelKind,
+  ): UsageAnalytics {
+    return getUsageAnalytics(this.database, since, until, channel);
   }
 
   public claimEvent(
