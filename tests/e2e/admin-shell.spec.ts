@@ -243,15 +243,12 @@ for (const viewport of [
       await page.getByLabel('Раздел', { exact: true }).selectOption('custom');
     }
 
-    const heading = await requiredBox(
-      page.getByRole('heading', { name: 'Дополнительные разделы' }),
-    );
-    const emptyState = await requiredBox(
-      page.getByText('Дополнительных разделов пока нет.'),
-    );
-    expect(emptyState.y - (heading.y + heading.height)).toBeGreaterThanOrEqual(
-      12,
-    );
+    expect(
+      await requiredVerticalGap(
+        page.getByRole('heading', { name: 'Дополнительные разделы' }),
+        page.getByText('Дополнительных разделов пока нет.'),
+      ),
+    ).toBeGreaterThanOrEqual(12);
   });
 }
 
@@ -293,14 +290,11 @@ for (const viewport of [
     await expect(
       page.getByRole('heading', { name: 'Предыдущие версии' }),
     ).toBeVisible();
-    const historyHeading = await requiredBox(
-      page.getByRole('heading', { name: 'Предыдущие версии' }),
-    );
-    const emptyHistory = await requiredBox(
-      page.getByText('Изменений пока нет.'),
-    );
     expect(
-      emptyHistory.y - (historyHeading.y + historyHeading.height),
+      await requiredVerticalGap(
+        page.getByRole('heading', { name: 'Предыдущие версии' }),
+        page.getByText('Изменений пока нет.'),
+      ),
     ).toBeGreaterThanOrEqual(12);
     expectStablePlacement(await requiredBox(workspaceMain), initialMainBox);
     expectStableBox(await requiredBox(navigation), initialNavigationBox);
@@ -437,6 +431,29 @@ async function requiredBox(locator: ReturnType<Page['locator']>) {
     throw new Error('Expected the element to have a bounding box');
   }
   return box;
+}
+
+async function requiredVerticalGap(
+  before: ReturnType<Page['locator']>,
+  after: ReturnType<Page['locator']>,
+): Promise<number> {
+  await expect(before).toBeVisible();
+  await expect(after).toBeVisible();
+  const afterElement = await after.elementHandle();
+  if (!afterElement) {
+    throw new Error('Expected the following element to exist');
+  }
+  try {
+    // Read both rectangles in one frame while their parent may be moving.
+    return await before.evaluate(
+      (element, following) =>
+        following.getBoundingClientRect().top -
+        element.getBoundingClientRect().bottom,
+      afterElement,
+    );
+  } finally {
+    await afterElement.dispose();
+  }
 }
 
 async function expectTelegramKeyboardLayout(page: Page): Promise<void> {
