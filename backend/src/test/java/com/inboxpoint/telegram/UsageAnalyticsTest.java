@@ -25,8 +25,8 @@ class UsageAnalyticsTest {
             var report = store.usageReport(7, "vk", now);
             assertThat(report.daily()).hasSize(7);
             assertThat(report.summary().requests()).isEqualTo(1);
-            assertThat(report.summary().menuActions()).isEqualTo(3);
-            assertThat(report.actions().getFirst().label()).isEqualTo("Latest label");
+            assertThat(report.summary().menuActions()).isEqualTo(2);
+            assertThat(report.actions()).singleElement().satisfies(action -> assertThat(action.label()).isEqualTo("Latest label"));
         }
     }
 }

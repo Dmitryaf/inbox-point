@@ -13,13 +13,6 @@ export function renderAnalyticsOverviewPart2(
       <section className="card" data-r-b5a5a8db="">
         <h2 data-r-b5a5a8db="">{'Популярные действия'}</h2>
         {renderAnalyticsOverviewPart3($props)}
-        {$props.report.actions.some(
-          (action) => action.key === 'legacy_information',
-        ) ? (
-          <p className="muted" data-r-b5a5a8db="">
-            {' В старой статистике названия разделов не сохранялись. '}
-          </p>
-        ) : null}
       </section>
     </>
   );

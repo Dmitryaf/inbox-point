@@ -18,7 +18,7 @@ public final class SqliteUsageAnalytics {
                 SELECT id, event_type, channel, occurred_at, action_key, action_label
                 FROM usage_events
                 WHERE julianday(occurred_at) >= julianday(?) AND julianday(occurred_at) <= julianday(?) AND (? IS NULL OR channel = ?)
-                    AND event_type IN ('new_request', 'menu_action', 'information_section')
+                    AND event_type IN ('new_request', 'menu_action')
             )
             """;
     private SqliteUsageAnalytics() { }
@@ -33,7 +33,7 @@ public final class SqliteUsageAnalytics {
         String lastRequestAt = null;
         try (var statement = filtered(connection, since, until, filter, """
                 SELECT substr(occurred_at, 1, 10) AS day, channel,
-                    SUM(event_type = 'new_request') AS requests, SUM(event_type != 'new_request') AS menu_actions,
+                    SUM(event_type = 'new_request') AS requests, SUM(event_type = 'menu_action') AS menu_actions,
                     MAX(CASE WHEN event_type = 'new_request' THEN occurred_at END) AS last_request
                 FROM filtered GROUP BY day, channel
                 """); var rows = statement.executeQuery()) {
@@ -63,10 +63,9 @@ public final class SqliteUsageAnalytics {
         var actions = new ArrayList<Action>();
         try (var statement = filtered(connection, since, until, channel, """
                 , menu AS (
-                    SELECT COALESCE(action_key, 'legacy_information') AS action_key,
-                        COALESCE(action_label, 'Разделы без названия') AS action_label, channel,
-                        ROW_NUMBER() OVER (PARTITION BY COALESCE(action_key, 'legacy_information') ORDER BY occurred_at DESC, id DESC) AS latest
-                    FROM filtered WHERE event_type != 'new_request'
+                    SELECT action_key, action_label, channel,
+                        ROW_NUMBER() OVER (PARTITION BY action_key ORDER BY occurred_at DESC, id DESC) AS latest
+                    FROM filtered WHERE event_type = 'menu_action'
                 )
                 SELECT action_key, MAX(CASE WHEN latest = 1 THEN action_label END) AS label,
                     COUNT(*) AS count, SUM(channel = 'telegram') AS telegram, SUM(channel = 'vk') AS vk
