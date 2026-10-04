@@ -69,13 +69,12 @@ function label(date: string): string {
         {{ daily[index] ? label(daily[index]!.date) : '' }}
       </text>
     </svg>
-    <p class="muted">Дни и время показаны по UTC.</p>
     <details>
       <summary>Показать значения по дням</summary>
       <div class="daily-values">
         <table class="analytics-table">
           <caption>
-            Активность по дням (UTC)
+            Активность по дням
           </caption>
           <thead>
             <tr>

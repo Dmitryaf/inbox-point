@@ -31,7 +31,7 @@ const lastRequest = computed(() =>
           {{ report.channels.vk.requests }}
         </p>
         <p v-if="lastRequest" class="muted">
-          Последнее за период: {{ lastRequest }} UTC
+          Последнее за период: {{ lastRequest }}
         </p>
       </section>
       <section class="card">
