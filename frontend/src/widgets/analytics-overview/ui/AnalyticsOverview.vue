@@ -73,14 +73,6 @@ const lastRequest = computed(() =>
           </tr>
         </tbody>
       </table>
-      <p
-        v-if="
-          report.actions.some((action) => action.key === 'legacy_information')
-        "
-        class="muted"
-      >
-        В старой статистике названия разделов не сохранялись.
-      </p>
     </section>
     <section v-if="questionChoices" class="card">
       <h2>Путь до обращения</h2>

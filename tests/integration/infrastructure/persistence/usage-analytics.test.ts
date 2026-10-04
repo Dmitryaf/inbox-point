@@ -189,7 +189,7 @@ describe('usage analytics', () => {
     ].forEach((value) => store.recordUsageEvent(value));
     const service = new AnalyticsService(store, () => now);
     const report = service.get('7d');
-    expect(report.summary).toEqual({ requests: 2, menuActions: 4 });
+    expect(report.summary).toEqual({ requests: 2, menuActions: 3 });
     expect(report.daily).toHaveLength(7);
     expect(report.daily[0]).toEqual({
       date: '2026-09-28',
@@ -214,13 +214,13 @@ describe('usage analytics', () => {
       telegram: 1,
       vk: 1,
     });
-    expect(report.actions).toContainEqual({
-      key: 'legacy_information',
-      label: 'Разделы без названия',
-      count: 1,
-      telegram: 1,
-      vk: 0,
-    });
+    expect(report.actions).toHaveLength(2);
+    expect(report.channels.telegram.menuActions).toBe(1);
+    expect(report.daily[5]?.menuActions).toBe(0);
+    expect(report.daily.reduce((sum, day) => sum + day.menuActions, 0)).toBe(3);
+    expect(
+      store.getUsageEventCounts(new Date('2026-01-01')).information_section,
+    ).toBe(1);
     expect(service.get('7d', 'vk').summary).toEqual({
       requests: 1,
       menuActions: 2,
@@ -238,11 +238,20 @@ describe('usage analytics', () => {
 
   it('returns zero-filled empty periods and rejects incomplete menu events', () => {
     const store = repository();
+    store.recordUsageEvent(
+      event(
+        'legacy-only',
+        'information_section',
+        'telegram',
+        now.toISOString(),
+      ),
+    );
     expect(new AnalyticsService(store, () => now).get().daily).toHaveLength(30);
     expect(new AnalyticsService(store, () => now).get().summary).toEqual({
       requests: 0,
       menuActions: 0,
     });
+    expect(new AnalyticsService(store, () => now).get().actions).toEqual([]);
     expect(() =>
       store.recordUsageEvent(
         event('bad', 'menu_action', 'vk', now.toISOString()),
