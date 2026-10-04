@@ -833,8 +833,7 @@ describe('Telegram handoff integration', () => {
     );
     expect(labels).not.toContain(handoffButton);
     expect(
-      repository.getUsageEventCounts(new Date('2026-01-01'))
-        .information_section,
+      repository.getUsageEventCounts(new Date('2026-01-01')).menu_action,
     ).toBe(2);
   });
 
@@ -932,8 +931,7 @@ describe('Telegram handoff integration', () => {
       handoffButton,
     ]);
     expect(
-      repository.getUsageEventCounts(new Date('2026-01-01'))
-        .information_section,
+      repository.getUsageEventCounts(new Date('2026-01-01')).menu_action,
     ).toBe(1);
   });
 

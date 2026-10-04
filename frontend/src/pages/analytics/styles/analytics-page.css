@@ -1,0 +1,24 @@
+.analytics-page {
+  display: grid;
+  gap: 1.25rem;
+}
+.analytics-filters {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.analytics-filters [role='group'] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.analytics-filters button[aria-pressed='true'] {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+}
+.analytics-empty p {
+  color: var(--color-text-muted);
+  max-width: 42rem;
+}

@@ -11,6 +11,7 @@ import {
   type ClientInformationResolver,
   isHandoffRequest,
   newQuestionButton,
+  resolveMenuAction,
 } from '@/core/application/client-information.js';
 import type { ClientConversationState } from '@/core/model/client-conversation.js';
 
@@ -63,6 +64,27 @@ export class TelegramClientMenu implements TelegramClientMenuHandler {
     }
 
     try {
+      const action = resolveMenuAction(this.information, message.text);
+      if (
+        action &&
+        (response.informationRequested ||
+          action.key === 'handoff' ||
+          action.key === 'new_question')
+      ) {
+        const requestId = this.repository.findActiveRequest(
+          'telegram',
+          conversationId,
+        )?.id;
+        this.repository.recordUsageEvent({
+          channel: 'telegram',
+          id: `menu:telegram:${message.externalEventId}`,
+          occurredAt: now,
+          ...(requestId ? { requestId } : {}),
+          type: 'menu_action',
+          actionKey: action.key,
+          actionLabel: action.label,
+        });
+      }
       let replyMarkup = response.replyMarkup;
       if (response.cancelAwaitingQuestion) {
         this.repository.clearAwaitingClientQuestion('telegram', conversationId);
@@ -89,14 +111,6 @@ export class TelegramClientMenu implements TelegramClientMenuHandler {
         replyMarkup,
         text: response.text,
       });
-      if (response.informationRequested) {
-        this.repository.recordUsageEvent({
-          channel: 'telegram',
-          id: `information:telegram:${message.externalEventId}`,
-          occurredAt: new Date(),
-          type: 'information_section',
-        });
-      }
       this.repository.completeEvent(
         'telegram:menu',
         message.externalEventId,

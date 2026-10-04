@@ -8,6 +8,10 @@ import {
 } from '@/core/application/client-information.js';
 
 const customSectionSchema = z.object({
+  id: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]{1,80}$/u)
+    .optional(),
   label: z.string().min(1).max(40),
   text: z.string().min(1).max(4_000),
 });

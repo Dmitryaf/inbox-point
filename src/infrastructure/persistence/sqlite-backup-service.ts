@@ -117,7 +117,10 @@ export class SqliteBackupService {
   }
 }
 
-export function verifySqliteBackup(path: string): void {
+export function verifySqliteBackup(
+  path: string,
+  expectedVersion = sqliteSchemaVersion,
+): void {
   const database = new DatabaseSync(path, {
     readOnly: true,
     timeout: 5_000,
@@ -150,7 +153,7 @@ export function verifySqliteBackup(path: string): void {
     const version = database.prepare('PRAGMA user_version').get() as {
       user_version: number;
     };
-    if (version.user_version !== sqliteSchemaVersion) {
+    if (version.user_version !== expectedVersion) {
       throw new Error('SQLite backup has an unsupported schema version');
     }
   } finally {

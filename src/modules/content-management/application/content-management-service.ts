@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { identifyCustomSections } from './custom-section-identity.js';
 
 import type {
   ClientInformationContent,
@@ -38,12 +39,16 @@ export class ContentManagementService {
   ): Promise<ManagedContentSnapshot> {
     const save = this.saveQueue.then(async () => {
       this.assertVersion(expectedVersion);
-      await this.store.save(content);
-      this.catalog.replace(
+      const identified = identifyCustomSections(
         content,
+        this.catalog.getContent(),
+      );
+      await this.store.save(identified);
+      this.catalog.replace(
+        identified,
         await this.store.loadHistoricalMenuActions(),
       );
-      return createSnapshot(content);
+      return createSnapshot(identified);
     });
     this.saveQueue = save.then(
       () => undefined,

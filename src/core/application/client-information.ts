@@ -56,6 +56,7 @@ export interface ClientInformationContent {
 }
 
 export interface CustomInformationSection {
+  id?: string;
   label: string;
   text: string;
 }
@@ -72,6 +73,49 @@ export interface ClientInformationResolver {
   resolve(text: string): string | undefined;
 }
 
+export interface MenuAction {
+  key: string;
+  label: string;
+}
+
+export function resolveMenuAction(
+  information: ClientInformationResolver,
+  text: string,
+): MenuAction | undefined {
+  const label = text.trim();
+  const standard = [
+    ...informationSectionIds.map((key, index) => ({
+      key,
+      label: informationButtons[index] ?? '',
+    })),
+    { key: 'handoff', label: handoffButton },
+    { key: 'new_question', label: newQuestionButton },
+  ].find((action) => action.label === label);
+  if (standard) {
+    return standard;
+  }
+  const custom = information
+    .getCustomSections()
+    .find((section) => section.label === label);
+  return custom?.id
+    ? { key: `custom:${custom.id}`, label: custom.label }
+    : undefined;
+}
+
+export function resolveMenuActionByKey(
+  information: ClientInformationResolver,
+  key: string,
+): MenuAction | undefined {
+  return [
+    ...informationButtons,
+    handoffButton,
+    newQuestionButton,
+    ...information.getCustomSections().map((section) => section.label),
+  ]
+    .map((label) => resolveMenuAction(information, label))
+    .find((action) => action?.key === key);
+}
+
 export class ClientInformationCatalog implements ClientInformationResolver {
   private content: ClientInformationContent;
   private historicalMenuActions: readonly string[];
@@ -80,7 +124,7 @@ export class ClientInformationCatalog implements ClientInformationResolver {
     content: ClientInformationContent = {},
     historicalMenuActions: readonly string[] = [],
   ) {
-    this.content = copyClientInformationContent(content);
+    this.content = identifyCatalogContent(content);
     this.historicalMenuActions = [...historicalMenuActions];
   }
 
@@ -102,7 +146,7 @@ export class ClientInformationCatalog implements ClientInformationResolver {
     content: ClientInformationContent,
     historicalMenuActions: readonly string[] = [],
   ): void {
-    this.content = copyClientInformationContent(content);
+    this.content = identifyCatalogContent(content);
     this.historicalMenuActions = [...historicalMenuActions];
   }
 
@@ -110,7 +154,7 @@ export class ClientInformationCatalog implements ClientInformationResolver {
     content: ClientInformationContent,
     historicalMenuActions: readonly string[] = [],
   ): void {
-    this.content = copyClientInformationContent(content);
+    this.content = identifyCatalogContent(content, this.content);
     this.historicalMenuActions = [...historicalMenuActions];
   }
 
@@ -154,6 +198,25 @@ export class ClientInformationCatalog implements ClientInformationResolver {
     }
     return section.text;
   }
+}
+
+function identifyCatalogContent(
+  content: ClientInformationContent,
+  previous: ClientInformationContent = {},
+): ClientInformationContent {
+  const copy = copyClientInformationContent(content);
+  if (copy.customSections) {
+    copy.customSections = copy.customSections.map((section) => ({
+      ...section,
+      id:
+        section.id ??
+        previous.customSections?.find(
+          (candidate) => candidate.label === section.label,
+        )?.id ??
+        crypto.randomUUID(),
+    }));
+  }
+  return copy;
 }
 
 export function getMenuActionValues(
@@ -351,6 +414,8 @@ export function hasValidCustomSections(
   return (
     sections.every(
       (section) =>
+        (section.id === undefined ||
+          /^[A-Za-z0-9_-]{1,80}$/u.test(section.id)) &&
         section.label === section.label.trim() &&
         section.text === section.text.trim() &&
         section.label.length > 0 &&
@@ -359,6 +424,8 @@ export function hasValidCustomSections(
         section.text.length <= 4_000,
     ) &&
     new Set(normalizedLabels).size === normalizedLabels.length &&
+    new Set(sections.flatMap((section) => (section.id ? [section.id] : [])))
+      .size === sections.filter((section) => section.id !== undefined).length &&
     normalizedLabels.every((label) => !reserved.includes(label))
   );
 }

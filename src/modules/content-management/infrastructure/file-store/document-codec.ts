@@ -42,6 +42,9 @@ export function serializeContentDocument(
   document: ContentSettingsDocument,
 ): string {
   const validated = storedContentSchema.parse({
+    ...(document.legacyPreviousMenuActions
+      ? { previousMenuActions: [...document.legacyPreviousMenuActions] }
+      : {}),
     content: toContentPayload(document.content),
     history: document.history.map((entry) => ({
       ...entry,

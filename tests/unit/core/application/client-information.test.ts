@@ -105,7 +105,11 @@ describe('client information', () => {
 
     expect(catalog.resolve('Первое занятие')).toBe('Приходите за 10 минут.');
     expect(catalog.getCustomSections()).toEqual([
-      { label: 'Первое занятие', text: 'Приходите за 10 минут.' },
+      {
+        id: expect.any(String) as string,
+        label: 'Первое занятие',
+        text: 'Приходите за 10 минут.',
+      },
     ]);
   });
 

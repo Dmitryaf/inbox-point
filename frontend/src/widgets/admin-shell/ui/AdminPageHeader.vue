@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import ProductLogo from '@frontend/shared/ui/ProductLogo.vue';
 
-export type AdminSection = 'answers' | 'channels' | 'monitoring';
+export type AdminSection = 'answers' | 'channels' | 'analytics' | 'monitoring';
 
 defineProps<{
   current: AdminSection;
@@ -19,6 +19,7 @@ const sections: readonly {
 }[] = [
   { href: '/manage', id: 'answers', label: 'Ответы' },
   { href: '/setup', id: 'channels', label: 'Каналы' },
+  { href: '/analytics', id: 'analytics', label: 'Аналитика' },
   { href: '/ops', id: 'monitoring', label: 'Мониторинг' },
 ];
 </script>

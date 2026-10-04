@@ -4,6 +4,9 @@ import { createApp } from '@/infrastructure/http/app.js';
 import { registerFrontendRoutes } from '@/infrastructure/http/frontend-asset-routes.js';
 import { loadFrontendAssets } from '@/infrastructure/http/frontend-assets.js';
 import { PasswordSessionAccess } from '@/infrastructure/security/password-session-access.js';
+import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-support-repository.js';
+import { AnalyticsService } from '@/modules/analytics/application/analytics-service.js';
+import { registerAnalyticsRoute } from '@/modules/analytics/presentation/http/analytics-route.js';
 
 const port = readArgument('port', 4174);
 const password = readArgument('password');
@@ -24,6 +27,38 @@ const routeAccess = createAdminRouteAccess(app, passwordAccess, {
 const requireAdmin = { preHandler: routeAccess.requireAuthorization };
 
 registerAdminSessionRoutes(app, passwordAccess, routeAccess, false);
+const analyticsRepository = new SqliteSupportRepository(':memory:');
+const analyticsNow = new Date('2026-10-04T12:00:00Z');
+for (let index = 0; index < 14; index++) {
+  analyticsRepository.recordUsageEvent({
+    id: `request:${index}`,
+    channel: index < 8 ? 'telegram' : 'vk',
+    type: 'new_request',
+    occurredAt: new Date(analyticsNow.getTime() - (index % 7) * 86_400_000),
+  });
+}
+for (let index = 0; index < 83; index++) {
+  analyticsRepository.recordUsageEvent({
+    id: `menu:${index}`,
+    channel: index < 52 ? 'telegram' : 'vk',
+    type: 'menu_action',
+    actionKey:
+      index < 50 ? 'prices' : index < 70 ? 'custom:synthetic-id' : 'handoff',
+    actionLabel:
+      index < 50
+        ? 'Цены'
+        : index < 70
+          ? 'Записаться на первое пробное занятие'
+          : 'Задать вопрос',
+    occurredAt: new Date(analyticsNow.getTime() - (index % 7) * 86_400_000),
+  });
+}
+registerAnalyticsRoute(
+  app,
+  new AnalyticsService(analyticsRepository, () => analyticsNow),
+  routeAccess,
+);
+app.addHook('onClose', () => Promise.resolve(analyticsRepository.close()));
 
 app.get('/api/manage/content', requireAdmin, () => ({
   content: {

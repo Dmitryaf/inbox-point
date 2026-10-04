@@ -7,6 +7,7 @@ import {
 } from 'vue-router';
 
 import AdminLoginPage from '@frontend/pages/admin-login/ui/AdminLoginPage.vue';
+import AnalyticsPage from '@frontend/pages/analytics/ui/AnalyticsPage.vue';
 import ContentManagementPage from '@frontend/pages/content-management/ui/ContentManagementPage.vue';
 import NotFoundPage from '@frontend/pages/not-found/ui/NotFoundPage.vue';
 import OperationsDashboardPage from '@frontend/pages/operations-dashboard/ui/OperationsDashboardPage.vue';
@@ -45,6 +46,17 @@ const routes: readonly RouteRecordRaw[] = [
           description: 'Подключения Telegram и VK.',
           documentTitle: 'Каналы — Inbox Point',
           pageTitle: 'Каналы',
+        },
+      },
+      {
+        path: 'analytics',
+        name: 'analytics',
+        component: AnalyticsPage,
+        meta: {
+          adminSection: 'analytics',
+          description: 'Как пользователи взаимодействуют с ботами.',
+          documentTitle: 'Аналитика — Inbox Point',
+          pageTitle: 'Аналитика',
         },
       },
       {

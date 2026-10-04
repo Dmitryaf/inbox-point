@@ -12,6 +12,8 @@ import { InboundEventIncidentService } from '@/core/application/inbound-event-in
 import { OperatorActionIncidentService } from '@/core/application/operator-action-incident-service.js';
 import { createAdminRouteAccess } from '@/infrastructure/http/admin-route-access.js';
 import { registerAdminSessionRoutes } from '@/infrastructure/http/admin-session-routes.js';
+import { AnalyticsService } from '@/modules/analytics/application/analytics-service.js';
+import { registerAnalyticsRoute } from '@/modules/analytics/presentation/http/analytics-route.js';
 import { registerFrontendRoutes } from '@/infrastructure/http/frontend-asset-routes.js';
 import { loadFrontendAssets } from '@/infrastructure/http/frontend-assets.js';
 import { createApp } from '@/infrastructure/http/app.js';
@@ -221,6 +223,11 @@ async function start(): Promise<void> {
     );
     registerSetupRoutes(app, setup, vkSetup, adminRouteAccess);
     registerManagementRoutes(app, contentSetup, adminRouteAccess);
+    registerAnalyticsRoute(
+      app,
+      new AnalyticsService(repository),
+      adminRouteAccess,
+    );
     const operationsMonitoring = new OperationsMonitoringService({
       webOperatorRequests: () => repository.getWebOperatorRequestSummary(),
       channelActivity: (channel) => channelActivity.snapshot(channel),
