@@ -30,7 +30,6 @@ export function renderAnalyticsOverviewPart1(
             <p className="muted" data-r-b5a5a8db="">
               {' Последнее за период: '}
               {lastRequest}
-              {' UTC '}
             </p>
           ) : null}
         </section>

@@ -18,7 +18,7 @@ export function renderAnalyticsActivityPart2(
         <summary data-r-163b6de6="">{'Показать значения по дням'}</summary>
         <div className="daily-values" data-r-163b6de6="">
           <table className="analytics-table" data-r-163b6de6="">
-            <caption data-r-163b6de6="">{' Активность по дням (UTC) '}</caption>
+            <caption data-r-163b6de6="">{' Активность по дням '}</caption>
             <thead data-r-163b6de6="">
               <tr data-r-163b6de6="">
                 <th scope="col" data-r-163b6de6="">
