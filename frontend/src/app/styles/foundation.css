@@ -30,17 +30,9 @@ button {
   padding: 0.6rem 0.95rem;
 }
 
-button:hover {
+button:hover:not(:disabled) {
   background: var(--color-primary-hover);
   border-color: var(--color-primary-hover);
-}
-
-button:disabled {
-  background: var(--color-disabled);
-  border-color: var(--color-border);
-  color: var(--color-disabled-text);
-  cursor: not-allowed;
-  opacity: 1;
 }
 
 .secondary-button,
@@ -50,8 +42,8 @@ button.quiet {
   color: var(--color-primary);
 }
 
-.secondary-button:hover,
-button.quiet:hover {
+.secondary-button:hover:not(:disabled),
+button.quiet:hover:not(:disabled) {
   background: var(--color-primary-soft);
   border-color: var(--color-primary-hover);
   color: var(--color-primary-hover);
@@ -70,9 +62,42 @@ button.quiet-danger {
   color: var(--color-danger);
 }
 
-button.quiet-danger:hover {
+button.quiet-danger:hover:not(:disabled) {
   background: var(--color-danger-soft);
   border-color: var(--color-danger);
+}
+
+button:disabled,
+.secondary-button:disabled {
+  background: var(--color-disabled);
+  border-color: var(--color-border);
+  color: var(--color-disabled-text);
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.status-pill {
+  border-radius: 999px;
+  font-size: var(--font-size-small);
+  font-weight: 600;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  padding: 0.3rem 0.55rem;
+}
+
+.status-pill--healthy {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+.status-pill--attention {
+  background: var(--color-attention-soft);
+  color: var(--color-attention);
+}
+
+.status-pill--neutral {
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
 }
 
 button:focus-visible,
@@ -203,7 +228,7 @@ li {
       transform 120ms ease;
   }
 
-  button:active {
+  button:active:not(:disabled) {
     transform: translateY(1px);
   }
 }

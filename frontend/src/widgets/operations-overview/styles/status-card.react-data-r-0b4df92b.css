@@ -23,25 +23,6 @@
   line-height: 1.5;
   margin-bottom: 0;
 }
-.status-pill[data-r-0b4df92b] {
-  border-radius: 999px;
-  font-size: var(--font-size-small);
-  font-weight: 600;
-  max-width: 100%;
-  padding: 0.3rem 0.55rem;
-}
-.status-pill--healthy[data-r-0b4df92b] {
-  background: var(--color-success-soft);
-  color: var(--color-success);
-}
-.status-pill--attention[data-r-0b4df92b] {
-  background: var(--color-attention-soft);
-  color: var(--color-attention);
-}
-.status-pill--neutral[data-r-0b4df92b] {
-  background: var(--color-surface-muted);
-  color: var(--color-text-muted);
-}
 .delivery-card[data-r-0b4df92b] {
   grid-column: 1 / -1;
 }

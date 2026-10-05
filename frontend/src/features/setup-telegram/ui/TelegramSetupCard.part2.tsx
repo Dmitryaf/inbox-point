@@ -1,4 +1,4 @@
-import { renderTelegramSetupCardPart3 } from './TelegramSetupCard.part3';
+import { setModelValue as $set } from '@frontend/shared/lib/component-bindings';
 
 import type { WithDefaults } from '@frontend/shared/lib/component-model';
 import type {
@@ -14,20 +14,20 @@ export function renderTelegramSetupCardPart2(
 
   return (
     <>
-      {expanded ? (
-        <div className="setup-details" data-r-44d690ea="">
-          {$props.status.connected ? (
-            <p
-              role="status"
-              className="setup-status setup-status--success"
-              data-r-44d690ea=""
-            >
-              {' Подключение активно. '}
-            </p>
-          ) : null}
-          {renderTelegramSetupCardPart3($state, $props)}
-        </div>
-      ) : null}
+      <button
+        type="button"
+        aria-expanded={expanded}
+        aria-controls="telegram-setup-details"
+        onClick={() => void $set($state, 'expanded', !$state.expanded.value)}
+        className="quiet setup-toggle"
+        data-r-44d690ea=""
+      >
+        {expanded
+          ? 'Скрыть'
+          : $props.status.source !== 'none'
+            ? 'Сведения'
+            : 'Подключить Telegram'}
+      </button>
     </>
   );
 }

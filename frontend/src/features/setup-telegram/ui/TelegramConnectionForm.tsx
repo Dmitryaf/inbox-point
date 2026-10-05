@@ -26,6 +26,11 @@ export default function TelegramConnectionForm($incomingProps: ComponentProps) {
 
   return (
     <ModelScopeProvider scope={$scope}>
+      <p className="setup-technical-note" data-r-4c039fa9="">
+        {
+          ' Для этой настройки нужны права владельца бота и группы, а также токен от @BotFather. Если вы отвечаете клиентам, попросите владельца подключения выполнить эти шаги. '
+        }
+      </p>
       <TelegramSetupInstructions data-r-4c039fa9="" />
       {renderTelegramConnectionFormPart1($state, $props)}
     </ModelScopeProvider>

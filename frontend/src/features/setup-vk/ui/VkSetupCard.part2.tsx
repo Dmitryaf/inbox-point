@@ -14,11 +14,14 @@ export function renderVkSetupCardPart2(
 
   return (
     <>
-      {expanded ? (
-        <div className="setup-details" data-r-712bbad4="">
-          {renderVkSetupCardPart3($state, $props)}
-        </div>
-      ) : null}
+      <div
+        id="vk-setup-details"
+        className="setup-details"
+        style={Object.assign({}, { display: expanded ? undefined : 'none' })}
+        data-r-712bbad4=""
+      >
+        {renderVkSetupCardPart3($state, $props)}
+      </div>
     </>
   );
 }

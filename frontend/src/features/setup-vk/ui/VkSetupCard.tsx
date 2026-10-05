@@ -50,6 +50,8 @@ export default function VkSetupCard($incomingProps: ComponentProps) {
         <button
           disabled={!$props.telegramConnected && !$props.status.connected}
           type="button"
+          aria-expanded={expanded}
+          aria-controls="vk-setup-details"
           onClick={() => void $set($state, 'expanded', !$state.expanded.value)}
           className="quiet setup-toggle"
           data-r-712bbad4=""

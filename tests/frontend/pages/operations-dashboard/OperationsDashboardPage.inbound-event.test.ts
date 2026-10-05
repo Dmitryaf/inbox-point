@@ -53,12 +53,12 @@ describe('OperationsDashboardPage inbound event quarantine', () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain('Необработанные сообщения');
-    expect(wrapper.text()).toContain('Сообщение VK требует решения');
+    expect(wrapper.text()).toContain('Нужна проверка: VK');
     expect(wrapper.text()).not.toContain('Quarantine VK');
     expect(
       wrapper
         .findAll('button')
-        .find((button) => button.text() === 'Пропустить событие')
+        .find((button) => button.text() === 'Не обрабатывать')
         ?.classes(),
     ).toContain('quiet-danger');
     await wrapper
@@ -125,7 +125,7 @@ describe('OperationsDashboardPage inbound event quarantine', () => {
     });
     await flushPromises();
 
-    expect(wrapper.text()).toContain('Сообщение Telegram требует решения');
+    expect(wrapper.text()).toContain('Нужна проверка: Telegram');
     expect(wrapper.text()).toContain(
       'Перед повтором проверьте чат: предыдущий ответ бота мог быть отправлен.',
     );

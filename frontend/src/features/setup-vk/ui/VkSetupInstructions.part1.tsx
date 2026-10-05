@@ -23,6 +23,11 @@ export function renderVkSetupInstructionsPart1(
       ) : (
         <>
           <div className="setup-intro" data-r-aa9e848d="">
+            <p data-r-aa9e848d="">
+              {
+                ' Настройку выполняет владелец подключения: нужны права владельца сообщества и ключ доступа VK. '
+              }
+            </p>
             <strong data-r-aa9e848d="">{'Что вы настраиваете'}</strong>
             <p data-r-aa9e848d="">
               {

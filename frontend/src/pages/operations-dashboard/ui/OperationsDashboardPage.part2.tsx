@@ -51,9 +51,15 @@ export function renderOperationsDashboardPagePart2(
           )}
           data-r-fef838bc=""
         />
-      ) : (
+      ) : operations.loading.value ? (
         <section role="status" className="card loading-card" data-r-fef838bc="">
           <p data-r-fef838bc="">{'Проверяем работу каналов…'}</p>
+        </section>
+      ) : (
+        <section className="card unavailable-card" data-r-fef838bc="">
+          <p data-r-fef838bc="">
+            {'Состояние каналов неизвестно. Повторите проверку.'}
+          </p>
         </section>
       )}
     </>

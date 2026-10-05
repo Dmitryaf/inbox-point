@@ -9,12 +9,13 @@ export function renderContentSummaryPart1(
   $props: WithDefaults<ComponentProps, typeof componentDefaults>,
 ) {
   const standardCount = $state.standardCount.value;
+  const customCount = $state.customCount.value;
 
   return (
     <>
       <dl className="content-facts" data-r-109c0780="">
         <div data-r-109c0780="">
-          <dt data-r-109c0780="">{'Основные кнопки'}</dt>
+          <dt data-r-109c0780="">{'Основные ответы'}</dt>
           <dd data-r-109c0780="">
             {standardCount}
             {' из 4'}
@@ -26,7 +27,7 @@ export function renderContentSummaryPart1(
         </div>
         <div data-r-109c0780="">
           <dt data-r-109c0780="">{'Свои разделы'}</dt>
-          <dd data-r-109c0780="">{$props.content.customSections.length}</dd>
+          <dd data-r-109c0780="">{customCount}</dd>
         </div>
       </dl>
     </>

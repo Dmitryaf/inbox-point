@@ -9,6 +9,7 @@
 .setup-card-heading[data-r-712bbad4] {
   align-items: flex-start;
   display: flex;
+  flex-wrap: wrap;
   gap: 0.75rem;
   justify-content: space-between;
 }
@@ -28,6 +29,11 @@
 .setup-details[data-r-712bbad4] {
   border-top: 1px solid var(--color-border);
   padding-top: 0.9rem;
+}
+.setup-technical-note[data-r-712bbad4] {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+  margin-bottom: 0.75rem;
 }
 .setup-details > label[data-r-712bbad4],
 .setup-form label[data-r-712bbad4] {

@@ -26,7 +26,8 @@ export default function ContentSummary($incomingProps: ComponentProps) {
     componentDefaults,
     createComponentModel,
   );
-  const totalCount = $state.totalCount.value;
+  const summaryTitle = $state.summaryTitle.value;
+  const responses = $state.responses.value;
   const $attributes = inheritedAttributes($props);
   return (
     <ModelScopeProvider scope={$scope}>
@@ -37,11 +38,11 @@ export default function ContentSummary($incomingProps: ComponentProps) {
       >
         <summary data-r-109c0780="">
           <span className="summary-title" data-r-109c0780="">
-            {totalCount ? 'Готово к показу' : 'Пока не заполнено'}
+            {summaryTitle}
           </span>
           <span data-r-109c0780="">
-            {' · Кнопок: '}
-            {totalCount}
+            {' · Ответов в меню: '}
+            {responses.length}
           </span>
         </summary>
         {renderContentSummaryPart1($state, $props)}

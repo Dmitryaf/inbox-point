@@ -3,6 +3,10 @@ import {
   renderList as $renderList,
 } from '@frontend/shared/lib/component-view';
 
+import { unref as $unref } from '@frontend/shared/lib/model-state';
+
+import { clientMessages } from '@core/application/client-messages';
+
 import type { createComponentModel } from './ContentPreview.model';
 export function renderContentPreviewPart1(
   $state: ReturnType<typeof createComponentModel>,
@@ -23,7 +27,7 @@ export function renderContentPreviewPart1(
           data-r-e038eaba=""
         >
           <div className="message-preview-menu" data-r-e038eaba="">
-            <p data-r-e038eaba="">{'Здравствуйте! Чем помочь?'}</p>
+            <p data-r-e038eaba="">{$unref(clientMessages).greeting}</p>
           </div>
           {$renderList(responses, (response) => (
             <article
