@@ -245,6 +245,68 @@ For session lifetimes and connection controls, see
 
 ## 6. Configure monitoring
 
+### Retain diagnostic logs across container replacement
+
+The application writes JSON logs with an instance label. External API failures
+include a unique `operationId`, channel, API method, request duration, HTTP/API
+codes when available, and recognized transport codes from nested causes. Request
+URLs, headers, bodies, arbitrary exception messages and stacks are not logged.
+Unknown transport codes are omitted rather than recorded as free text. The same
+operation ID appears in the authenticated `/ops` technical details. Channel
+failure counters and recovery timestamps describe the current process; retained
+logs are the history after a restart. Logs are operational evidence, not backups.
+
+The default `json-file` driver is bounded but its history belongs to a container.
+On a Linux production host, enable the additional journald configuration to keep
+logs after that container is removed. It requires Docker Compose 2.24.4 or newer
+for `!override` and a persistent systemd journal:
+
+```bash
+sudo systemd-analyze cat-config systemd/journald.conf
+sudo journalctl --disk-usage
+```
+
+Review the host's existing journal policy first. If no persistent, bounded policy
+is configured, the example below sets a seven-day maximum age and a 256 MiB cap.
+**These limits apply to the host journal, including other services.** The size cap
+can evict records earlier; this is not a guarantee of seven days of history.
+
+```bash
+sudo install -d -m 0755 /etc/systemd/journald.conf.d
+sudo install -m 0644 deploy/systemd/journald-inbox-point.conf.example /etc/systemd/journald.conf.d/inbox-point.conf
+sudo systemctl restart systemd-journald
+sudo journalctl --flush
+```
+
+Set this value in the Linux instance's environment file so the updater, backups,
+and subsequent Compose commands keep using the same configuration:
+
+```dotenv
+COMPOSE_FILE=compose.yaml:deploy/compose.journald.yaml
+```
+
+Validate it from the checkout, then apply it during an authorized deployment:
+
+```bash
+docker compose -p <compose-project> --env-file <instance-env> config --quiet
+docker compose -p <compose-project> --env-file <instance-env> up -d --build app
+```
+
+No global Docker logging-driver change is needed. Each instance must have its own
+`INSTANCE_ID`; journald uses `SYSLOG_IDENTIFIER=inbox-point-<instance-id>`.
+
+```bash
+sudo journalctl SYSLOG_IDENTIFIER=inbox-point-<instance-id> --since '1 hour ago' -o cat
+docker compose -p <compose-project> --env-file <instance-env> logs --tail=100 app
+```
+
+Before relying on retention, write a synthetic log from a disposable container
+using the same driver, remove it, and confirm that the marker remains readable
+through `journalctl`. Do not stop a real channel merely to test log retention.
+Check access permissions and never publish unreviewed log exports.
+
+### Availability alerts
+
 `/health` only confirms that the HTTP process responds; Docker uses it for its
 healthcheck. `/ready` returns 503 when a configured Telegram or VK poller is
 failed, stopped, or stale; when a channel previously seen as configured has
@@ -287,6 +349,18 @@ sudo journalctl -u inbox-point-availability-monitor -f
 Stop the application long enough to confirm one outage alert, restart it, and
 confirm one recovery alert. Both the alert message and webhook JSON carry the
 instance label.
+
+An incident entry alone does not prove notification delivery. For a hosted
+monitor, verify that both outage and recovery notifications have an enabled
+recipient, test that recipient, and check the actual delivery. Use an independent
+channel such as email. Exercise readiness failures on a disposable test instance;
+schedule any production outage test separately. The bundled monitor sends one
+outage notification and one recovery notification per observed outage, retrying
+failed alert delivery; it does not send a new notification for every failed poll.
+An HTTP 503 describes a readiness failure, not its underlying cause. Diagnose it
+with the authenticated channel details and matching operation IDs in retained
+logs. Proxy or WireGuard failures may also require host-side network logs from
+the same time window.
 
 ## 7. Back up and restore
 

@@ -1,0 +1,6 @@
+# Host-wide journal limits: review other services before installing.
+[Journal]
+Storage=persistent
+MaxRetentionSec=7day
+SystemMaxUse=256M
+SystemKeepFree=1G
