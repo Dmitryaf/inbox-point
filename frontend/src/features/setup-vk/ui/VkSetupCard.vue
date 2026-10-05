@@ -46,7 +46,9 @@ const toggleLabel = computed(() => {
     <header class="setup-card-heading">
       <div>
         <h2 id="vk-setup-title">VK</h2>
-        <p>Сообщество, из которого приходят сообщения клиентов.</p>
+        <p>
+          Сообщения клиентов из сообщества приходят в ту же группу Telegram.
+        </p>
       </div>
       <span
         class="status-pill"

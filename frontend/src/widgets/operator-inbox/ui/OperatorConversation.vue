@@ -59,7 +59,7 @@ function deliveryLabel(message: OperatorInboxMessage): string | undefined {
 </script>
 
 <template>
-  <article class="operator-conversation">
+  <article class="operator-conversation" aria-label="Выбранное обращение">
     <header class="operator-conversation-heading">
       <div>
         <h3>{{ request.displayName || 'Без имени' }}</h3>
@@ -86,6 +86,7 @@ function deliveryLabel(message: OperatorInboxMessage): string | undefined {
       v-if="messages.length"
       class="operator-message-list"
       aria-label="Переписка"
+      tabindex="0"
     >
       <li
         v-for="message in messages"

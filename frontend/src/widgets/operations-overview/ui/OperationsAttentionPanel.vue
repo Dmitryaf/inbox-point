@@ -61,9 +61,6 @@ const hasAttention = computed(
     aria-live="polite"
   >
     <header class="attention-panel-heading">
-      <p class="eyebrow">
-        {{ hasOperationalProblems ? 'Сначала проверьте это' : 'Первый запуск' }}
-      </p>
       <h2 id="attention-title">
         {{
           hasOperationalProblems ? 'Требует внимания' : 'Закончите подключение'

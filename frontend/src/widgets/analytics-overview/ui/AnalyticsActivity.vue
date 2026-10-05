@@ -32,8 +32,8 @@ function label(date: string): string {
 }
 </script>
 <template>
-  <section class="card">
-    <h2>Активность по дням</h2>
+  <section class="analytics-activity" aria-labelledby="activity-title">
+    <h2 id="activity-title">Активность по дням</h2>
     <p class="chart-legend">
       <span>━ Выборы в меню</span><span>┄ Обращения</span>
     </p>
@@ -69,7 +69,7 @@ function label(date: string): string {
         {{ daily[index] ? label(daily[index]!.date) : '' }}
       </text>
     </svg>
-    <details>
+    <details class="daily-disclosure">
       <summary>Показать значения по дням</summary>
       <div class="daily-values">
         <table class="analytics-table">

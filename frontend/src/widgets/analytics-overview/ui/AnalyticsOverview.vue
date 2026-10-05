@@ -21,76 +21,93 @@ const lastRequest = computed(() =>
 );
 </script>
 <template>
-  <div class="analytics-overview" aria-live="polite">
-    <div class="analytics-summary">
-      <section class="card">
-        <h2>Обращения</h2>
-        <p class="metric-value">{{ report.summary.requests }}</p>
-        <p v-if="report.channel === 'all'" class="muted">
-          Telegram: {{ report.channels.telegram.requests }} · VK:
-          {{ report.channels.vk.requests }}
+  <article
+    class="analytics-overview"
+    aria-live="polite"
+    aria-label="Отчёт об использовании"
+  >
+    <header class="analytics-summary">
+      <h2>Использование за период</h2>
+      <dl class="usage-totals">
+        <div>
+          <dt>Обращения</dt>
+          <dd class="metric-value">{{ report.summary.requests }}</dd>
+        </div>
+        <div>
+          <dt>Выборы в меню</dt>
+          <dd class="metric-value">{{ report.summary.menuActions }}</dd>
+        </div>
+      </dl>
+      <dl
+        v-if="report.channel === 'all'"
+        class="usage-channels"
+        aria-label="Использование каналов"
+      >
+        <div v-for="(counts, channel) in report.channels" :key="channel">
+          <dt>{{ channel === 'telegram' ? 'Telegram' : 'VK' }}</dt>
+          <dd>
+            Обращения: {{ counts.requests }} · Выборы в меню:
+            {{ counts.menuActions }}
+          </dd>
+        </div>
+      </dl>
+    </header>
+    <div class="analytics-reading">
+      <section class="menu-usage" aria-labelledby="menu-usage-title">
+        <h2 id="menu-usage-title">Что выбирают в меню</h2>
+        <p v-if="!report.actions.length" class="muted">
+          За этот период действий меню пока нет.
+        </p>
+        <table v-else class="analytics-table">
+          <caption class="muted">
+            Действия по частоте выбора
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Действие</th>
+              <th scope="col">Всего</th>
+              <th v-if="report.channel === 'all'" scope="col">Telegram</th>
+              <th v-if="report.channel === 'all'" scope="col">VK</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="action in report.actions" :key="action.key">
+              <th scope="row">{{ action.label }}</th>
+              <td>{{ action.count }}</td>
+              <td v-if="report.channel === 'all'">{{ action.telegram }}</td>
+              <td v-if="report.channel === 'all'">{{ action.vk }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <p v-if="report.channel !== 'vk'" class="muted">
+          В Telegram учитывается и ввод текста, совпадающего с действием меню.
+        </p>
+      </section>
+      <section
+        class="question-context"
+        aria-labelledby="question-context-title"
+      >
+        <h2 id="question-context-title">Начало вопроса</h2>
+        <dl class="question-path">
+          <div>
+            <dt>Выбрали «Задать вопрос» или «Начать новый вопрос»</dt>
+            <dd>{{ questionChoices }}</dd>
+          </div>
+        </dl>
+        <p class="muted">
+          Это отдельный счётчик выбора меню. Обращение создаётся после сообщения
+          клиента; оно может начаться и с первого сообщения без выбора меню.
+        </p>
+        <p class="muted">
+          Эти данные не показывают, какие выборы меню привели к обращению.
         </p>
         <p v-if="lastRequest" class="muted">
           Последнее за период: {{ lastRequest }}
         </p>
-      </section>
-      <section class="card">
-        <h2>Выборы в меню</h2>
-        <p class="metric-value">{{ report.summary.menuActions }}</p>
-        <p v-if="report.channel === 'all'" class="muted">
-          Telegram: {{ report.channels.telegram.menuActions }} · VK:
-          {{ report.channels.vk.menuActions }}
-        </p>
-        <p class="muted">
-          В Telegram учитывается и ввод текста, совпадающего с действием меню.
-        </p>
+        <p v-else class="muted">За этот период обращений пока нет.</p>
       </section>
     </div>
     <AnalyticsActivity :daily="report.daily" />
-    <section class="card">
-      <h2>Популярные действия</h2>
-      <p v-if="!report.actions.length" class="muted">
-        За этот период действий меню пока нет.
-      </p>
-      <table v-else class="analytics-table">
-        <caption class="muted">
-          Действия по частоте выбора
-        </caption>
-        <thead>
-          <tr>
-            <th scope="col">Действие</th>
-            <th scope="col">Всего</th>
-            <th v-if="report.channel === 'all'" scope="col">Telegram</th>
-            <th v-if="report.channel === 'all'" scope="col">VK</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="action in report.actions" :key="action.key">
-            <th scope="row">{{ action.label }}</th>
-            <td>{{ action.count }}</td>
-            <td v-if="report.channel === 'all'">{{ action.telegram }}</td>
-            <td v-if="report.channel === 'all'">{{ action.vk }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
-    <section v-if="questionChoices" class="card">
-      <h2>Путь до обращения</h2>
-      <dl class="question-path">
-        <div>
-          <dt>Выбрали «Задать вопрос» или «Начать новый вопрос»</dt>
-          <dd>{{ questionChoices }}</dd>
-        </div>
-        <div>
-          <dt>Создали обращение</dt>
-          <dd>{{ report.summary.requests }}</dd>
-        </div>
-      </dl>
-      <p class="muted">
-        Это отдельные счётчики действий, без сопоставления людей. Обращение
-        можно создать и первым сообщением.
-      </p>
-    </section>
-  </div>
+  </article>
 </template>
 <style scoped src="../styles/analytics-overview.css"></style>

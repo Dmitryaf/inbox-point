@@ -28,7 +28,6 @@ defineExpose({
   <details class="message-flow-control card">
     <summary class="message-flow-summary">
       <div>
-        <p class="eyebrow">Потоки сообщений</p>
         <h2>Управление сообщениями</h2>
       </div>
       <div class="message-flow-summary-meta">
@@ -51,7 +50,6 @@ defineExpose({
         class="message-flow-outbound"
         aria-labelledby="outbound-flow-title"
       >
-        <p class="eyebrow">Администратор → клиент</p>
         <h3 id="outbound-flow-title">Ответы клиентам</h3>
         <OutboundDeliveryControl
           :outbound="outbound"
