@@ -15,6 +15,12 @@ describe('VkSetupCard', () => {
     });
 
     await wrapper.get('.setup-toggle').trigger('click');
+    expect(wrapper.get('.setup-toggle').attributes('aria-expanded')).toBe(
+      'true',
+    );
+    expect(wrapper.get('.setup-toggle').attributes('aria-controls')).toBe(
+      'vk-setup-details',
+    );
 
     expect(wrapper.text()).toContain('Подключение активно.');
     expect(wrapper.text()).not.toContain('Для переноса ручных ответов');

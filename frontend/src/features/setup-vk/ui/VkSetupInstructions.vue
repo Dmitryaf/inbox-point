@@ -17,6 +17,10 @@ withDefaults(defineProps<{ compact?: boolean; connected?: boolean }>(), {
   </template>
   <template v-else>
     <div class="setup-intro">
+      <p>
+        Настройку выполняет владелец подключения: нужны права владельца
+        сообщества и ключ доступа VK.
+      </p>
       <strong>Что вы настраиваете</strong>
       <p>
         Клиенты продолжат писать в сообщения вашего сообщества VK. Inbox Point

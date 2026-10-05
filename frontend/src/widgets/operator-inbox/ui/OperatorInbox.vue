@@ -22,7 +22,7 @@ defineExpose({ refresh: inbox.refresh });
       <div>
         <p>
           <span class="status-pill status-pill--attention">
-            Резервный интерфейс
+            Ответы через приложение
           </span>
         </p>
         <h2 id="operator-inbox-title">Входящие обращения</h2>

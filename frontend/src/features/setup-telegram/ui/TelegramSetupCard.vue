@@ -46,7 +46,7 @@ async function disconnect(): Promise<void> {
     <header class="setup-card-heading">
       <div>
         <h2 id="telegram-setup-title">Telegram</h2>
-        <p>Группа администраторов и бот для передачи обращений.</p>
+        <p>Бот для клиентов и группа, где сотрудники отвечают на вопросы.</p>
       </div>
       <span
         class="status-pill"
@@ -60,6 +60,8 @@ async function disconnect(): Promise<void> {
     <button
       class="quiet setup-toggle"
       type="button"
+      :aria-expanded="expanded"
+      aria-controls="telegram-setup-details"
       @click="expanded = !expanded"
     >
       {{
@@ -70,47 +72,49 @@ async function disconnect(): Promise<void> {
             : 'Подключить Telegram'
       }}
     </button>
-    <div v-if="expanded" class="setup-details">
-      <p
-        v-if="status.connected"
-        class="setup-status setup-status--success"
-        role="status"
-      >
-        Подключение активно.
-      </p>
-      <template v-if="status.source !== 'none'">
+    <div v-show="expanded" id="telegram-setup-details" class="setup-details">
+      <template v-if="expanded">
         <p
-          v-if="status.source === 'environment'"
-          class="setup-status setup-status--info"
+          v-if="status.connected"
+          class="setup-status setup-status--success"
+          role="status"
         >
-          Управляется на сервере.
+          Подключение активно.
         </p>
-        <template v-else>
-          <p v-if="vkConfigured" class="setup-status setup-status--info">
-            Чтобы отключить Telegram, сначала отключите VK.
-          </p>
-          <button
-            class="danger"
-            type="button"
-            :disabled="disconnecting || vkConfigured"
-            @click="disconnect"
-          >
-            {{ disconnecting ? 'Отключаем…' : 'Отключить Telegram' }}
-          </button>
+        <template v-if="status.source !== 'none'">
           <p
-            v-if="disconnectError"
-            class="setup-status setup-status--error"
-            role="alert"
+            v-if="status.source === 'environment'"
+            class="setup-status setup-status--info"
           >
-            {{ disconnectError }}
+            Управляется на сервере.
           </p>
+          <template v-else>
+            <p v-if="vkConfigured" class="setup-status setup-status--info">
+              Чтобы отключить Telegram, сначала отключите VK.
+            </p>
+            <button
+              class="danger"
+              type="button"
+              :disabled="disconnecting || vkConfigured"
+              @click="disconnect"
+            >
+              {{ disconnecting ? 'Отключаем…' : 'Отключить Telegram' }}
+            </button>
+            <p
+              v-if="disconnectError"
+              class="setup-status setup-status--error"
+              role="alert"
+            >
+              {{ disconnectError }}
+            </p>
+          </template>
         </template>
+        <TelegramConnectionForm
+          v-else
+          :locked="status.locked"
+          @connected="$emit('connected')"
+        />
       </template>
-      <TelegramConnectionForm
-        v-else
-        :locked="status.locked"
-        @connected="$emit('connected')"
-      />
     </div>
   </section>
 </template>

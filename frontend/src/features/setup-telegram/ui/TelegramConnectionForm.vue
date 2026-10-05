@@ -65,6 +65,11 @@ async function connect(): Promise<void> {
 </script>
 
 <template>
+  <p class="setup-technical-note">
+    Для этой настройки нужны права владельца бота и группы, а также токен от
+    @BotFather. Если вы отвечаете клиентам, попросите владельца подключения
+    выполнить эти шаги.
+  </p>
   <TelegramSetupInstructions />
   <p v-if="locked" class="setup-status setup-status--info">
     Telegram подключён при установке. Если он не работает, откройте раздел

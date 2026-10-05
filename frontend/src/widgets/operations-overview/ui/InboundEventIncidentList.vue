@@ -17,26 +17,28 @@ defineEmits<{
     class="delivery-incidents"
     aria-labelledby="inbound-event-incidents-title"
   >
-    <h3 id="inbound-event-incidents-title">Необработанные сообщения</h3>
+    <h3 id="inbound-event-incidents-title">
+      Необработанные сообщения и действия
+    </h3>
     <p>
-      Некоторые входящие события не удалось обработать автоматически. Проверьте
-      сведения и выберите подходящее действие.
+      Некоторые сообщения или действия в каналах не удалось обработать
+      автоматически. Проверьте сведения и выберите подходящее действие.
     </p>
     <ol>
       <li v-for="incident in incidents" :key="incident.eventId">
         <div class="delivery-incident-heading">
-          <strong>Сообщение {{ incident.channel }} требует решения</strong>
+          <strong>Нужна проверка: {{ incident.channel }}</strong>
           <time :datetime="incident.receivedAt">
             {{ formatShortDateTime(incident.receivedAt) }}
           </time>
         </div>
         <p v-if="incident.channel === 'Telegram'">
           Перед повтором проверьте чат: предыдущий ответ бота мог быть
-          отправлен. Если он уже есть, пропустите событие.
+          отправлен. Если он уже есть, выберите «Не обрабатывать».
         </p>
         <p v-else>
           После повторной обработки сообщение может появиться у администратора.
-          Если событие точно не нужно, его можно пропустить.
+          Если повтор точно не нужен, выберите «Не обрабатывать».
         </p>
         <details class="technical-details">
           <summary>Технические данные</summary>
@@ -82,7 +84,7 @@ defineEmits<{
             {{
               pendingEventId === incident.eventId
                 ? 'Сохраняем…'
-                : 'Пропустить событие'
+                : 'Не обрабатывать'
             }}
           </button>
         </div>

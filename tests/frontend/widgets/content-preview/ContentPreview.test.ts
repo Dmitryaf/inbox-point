@@ -4,6 +4,7 @@ import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 
 import { createEmptyContent } from '@frontend/entities/content/model/content-draft';
+import { clientMessages } from '@core/application/client-messages';
 import ContentPreview from '@frontend/widgets/content-preview/ui/ContentPreview.vue';
 
 describe('ContentPreview', () => {
@@ -23,6 +24,9 @@ describe('ContentPreview', () => {
       .map((row) => row.findAll('span').map((item) => item.text()));
 
     expect(wrapper.get('h2').text()).toBe('Предпросмотр ответов');
+    expect(wrapper.get('.message-preview-menu').text()).toBe(
+      clientMessages.greeting,
+    );
     expect(wrapper.get('.preview-intro').text()).toBe(
       'Здесь показаны содержание и порядок ответов',
     );

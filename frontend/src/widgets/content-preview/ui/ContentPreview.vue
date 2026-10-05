@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { clientMessages } from '@core/application/client-messages';
 
 import {
   buildClientResponsePreviews,
@@ -16,7 +17,6 @@ const buttonRows = computed(() =>
 
 <template>
   <section class="card preview" aria-labelledby="preview-title">
-    <p class="step">Предпросмотр</p>
     <h2 id="preview-title">Предпросмотр ответов</h2>
     <p class="preview-intro">Здесь показаны содержание и порядок ответов</p>
     <p v-if="responses.length === 0" class="empty">
@@ -24,7 +24,7 @@ const buttonRows = computed(() =>
     </p>
     <div v-else class="message-preview" aria-label="Пример переписки">
       <div class="message-preview-menu">
-        <p>Здравствуйте! Чем помочь?</p>
+        <p>{{ clientMessages.greeting }}</p>
       </div>
       <article
         v-for="response in responses"

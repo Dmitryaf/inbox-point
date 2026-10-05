@@ -18,7 +18,9 @@ export function useInboundEventResolution(
   ): Promise<void> {
     if (
       resolution === 'skip' &&
-      !window.confirm('Пропустить это событие? Оно больше не будет обработано.')
+      !window.confirm(
+        'Отказаться от обработки? Повторной попытки для этих данных не будет.',
+      )
     ) {
       return;
     }
@@ -30,7 +32,7 @@ export function useInboundEventResolution(
       notice.value =
         resolution === 'retry'
           ? 'Повторная обработка началась.'
-          : 'Событие пропущено.';
+          : 'Повторной обработки не будет.';
       await refresh();
     } catch (cause: unknown) {
       error.value = requestErrorMessage(cause, onUnauthorized);

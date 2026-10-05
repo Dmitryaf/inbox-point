@@ -78,8 +78,15 @@ const {
       @resolve-operator-action="operatorResolution.resolve"
       @resolve-inbound-event="inboundEventResolution.resolve"
     />
-    <section v-else class="card loading-card" role="status">
+    <section
+      v-else-if="operations.loading.value"
+      class="card loading-card"
+      role="status"
+    >
       <p>Проверяем работу каналов…</p>
+    </section>
+    <section v-else class="card unavailable-card">
+      <p>Состояние каналов неизвестно. Повторите проверку.</p>
     </section>
 
     <MessageFlowControl

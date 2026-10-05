@@ -92,9 +92,9 @@ const overallDescription = computed(() => {
     <article
       class="service-summary"
       :class="{
-        'summary-card--attention':
+        'service-summary--attention':
           statusUnavailable || status.state === 'attention',
-        'summary-card--maintenance': status.state === 'maintenance',
+        'service-summary--maintenance': status.state === 'maintenance',
       }"
     >
       <div>

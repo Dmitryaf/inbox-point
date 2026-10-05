@@ -1,42 +1,44 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import { isSectionVisible } from '@frontend/entities/content/model/content-draft';
-import { normalizeScheduleItems } from '@frontend/entities/content/lib/schedule-response';
+import { buildClientResponsePreviews } from '@frontend/entities/content/lib/client-response-preview';
+import { validateContentDraft } from '@frontend/entities/content/lib/content-validation';
 import type { ContentDraft } from '@frontend/entities/content/model/types';
 import AppIcon from '@frontend/shared/ui/AppIcon.vue';
 
 const props = defineProps<{ content: ContentDraft }>();
 
-const standardCount = computed(() => {
-  const sections = [
-    isSectionVisible(props.content, 'schedule') &&
-      (normalizeScheduleItems(props.content.schedule).length > 0 ||
-        props.content.legacySchedule.trim()),
-    isSectionVisible(props.content, 'prices') && props.content.prices.trim(),
-    isSectionVisible(props.content, 'address') && props.content.address.trim(),
-    isSectionVisible(props.content, 'faq') && props.content.faq.length > 0,
-  ];
-  return sections.filter(Boolean).length;
-});
-
-const totalCount = computed(
-  () => standardCount.value + props.content.customSections.length,
+const responses = computed(() => buildClientResponsePreviews(props.content));
+const validation = computed(() => validateContentDraft(props.content));
+const standardCount = computed(
+  () =>
+    responses.value.filter((response) => response.group === 'information')
+      .length,
 );
+const customCount = computed(
+  () =>
+    responses.value.filter((response) => response.group === 'custom').length,
+);
+const summaryTitle = computed(() => {
+  if (!validation.value.valid) {
+    return 'Нужно исправить поля';
+  }
+  return responses.value.length ? 'Готово к показу' : 'Пока не заполнено';
+});
 </script>
 
 <template>
   <details class="content-summary">
     <summary>
       <span class="summary-title">
-        {{ totalCount ? 'Готово к показу' : 'Пока не заполнено' }}
+        {{ summaryTitle }}
       </span>
-      <span> · Кнопок: {{ totalCount }}</span>
+      <span> · Ответов в меню: {{ responses.length }}</span>
     </summary>
 
     <dl class="content-facts">
       <div>
-        <dt>Основные кнопки</dt>
+        <dt>Основные ответы</dt>
         <dd>{{ standardCount }} из 4</dd>
       </div>
       <div>
@@ -45,7 +47,7 @@ const totalCount = computed(
       </div>
       <div>
         <dt>Свои разделы</dt>
-        <dd>{{ content.customSections.length }}</dd>
+        <dd>{{ customCount }}</dd>
       </div>
     </dl>
 

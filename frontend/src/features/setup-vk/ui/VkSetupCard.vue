@@ -61,74 +61,78 @@ const toggleLabel = computed(() => {
       class="quiet setup-toggle"
       :disabled="!telegramConnected && !status.connected"
       type="button"
+      :aria-expanded="expanded"
+      aria-controls="vk-setup-details"
       @click="expanded = !expanded"
     >
       {{ toggleLabel }}
     </button>
-    <div v-if="expanded" class="setup-details">
-      <template v-if="status.source !== 'none'">
-        <VkSetupInstructions compact :connected="status.connected" />
-        <p
-          v-if="status.source === 'environment'"
-          class="setup-status setup-status--info"
-        >
-          Управляется на сервере.
-        </p>
-        <template v-else>
-          <button
-            class="danger"
-            type="button"
-            :disabled="disconnecting"
-            @click="disconnect"
-          >
-            {{ disconnecting ? 'Отключаем…' : 'Отключить VK' }}
-          </button>
+    <div v-show="expanded" id="vk-setup-details" class="setup-details">
+      <template v-if="expanded">
+        <template v-if="status.source !== 'none'">
+          <VkSetupInstructions compact :connected="status.connected" />
           <p
-            v-if="messageKind === 'error'"
-            class="setup-status setup-status--error"
-            role="alert"
+            v-if="status.source === 'environment'"
+            class="setup-status setup-status--info"
           >
-            {{ message }}
+            Управляется на сервере.
           </p>
+          <template v-else>
+            <button
+              class="danger"
+              type="button"
+              :disabled="disconnecting"
+              @click="disconnect"
+            >
+              {{ disconnecting ? 'Отключаем…' : 'Отключить VK' }}
+            </button>
+            <p
+              v-if="messageKind === 'error'"
+              class="setup-status setup-status--error"
+              role="alert"
+            >
+              {{ message }}
+            </p>
+          </template>
         </template>
-      </template>
-      <template v-else>
-        <VkSetupInstructions />
-        <p v-if="status.locked" class="setup-status setup-status--info">
-          VK подключён при установке. Если он не работает, откройте раздел
-          «Мониторинг».
-        </p>
-        <form v-else class="setup-form" @submit.prevent="connect">
-          <label for="vk-community">Ссылка на страницу сообщества VK</label>
-          <input
-            id="vk-community"
-            v-model="community"
-            placeholder="https://vk.com/your_community"
-            required
-            type="text"
-          />
-          <label for="vk-token">Ключ с правами управления и сообщений</label>
-          <input
-            id="vk-token"
-            v-model="accessToken"
-            autocomplete="off"
-            required
-            type="password"
-          />
-          <button
-            :disabled="pending || accessToken.trim().length < 20"
-            type="submit"
-          >
-            {{ pending ? 'Подключаем…' : 'Подключить VK' }}
-          </button>
-          <p
-            class="setup-status"
-            :class="`setup-status--${messageKind}`"
-            :role="messageKind === 'error' ? 'alert' : 'status'"
-          >
-            {{ message }}
+        <template v-else>
+          <VkSetupInstructions />
+          <p v-if="status.locked" class="setup-status setup-status--info">
+            VK подключён при установке. Если он не работает, откройте раздел
+            «Мониторинг».
           </p>
-        </form>
+          <form v-else class="setup-form" @submit.prevent="connect">
+            <label for="vk-community">Ссылка на страницу сообщества VK</label>
+            <input
+              id="vk-community"
+              v-model="community"
+              placeholder="https://vk.com/your_community"
+              required
+              type="text"
+            />
+            <label for="vk-token">Ключ с правами управления и сообщений</label>
+            <input
+              id="vk-token"
+              v-model="accessToken"
+              autocomplete="off"
+              required
+              type="password"
+            />
+            <button
+              :disabled="pending || accessToken.trim().length < 20"
+              type="submit"
+            >
+              {{ pending ? 'Подключаем…' : 'Подключить VK' }}
+            </button>
+            <p
+              class="setup-status"
+              :class="`setup-status--${messageKind}`"
+              :role="messageKind === 'error' ? 'alert' : 'status'"
+            >
+              {{ message }}
+            </p>
+          </form>
+        </template>
       </template>
     </div>
   </section>
