@@ -73,15 +73,12 @@
   width: 100%;
   table-layout: fixed;
 }
-.analytics-table caption[data-r-b5a5a8db] {
-  text-align: left;
-  padding-bottom: 0.75rem;
-}
 .analytics-table th[data-r-b5a5a8db],
 .analytics-table td[data-r-b5a5a8db] {
   border-bottom: 1px solid var(--color-border);
   padding: 0.75rem 0.35rem;
-  text-align: right;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
 .analytics-table th[data-r-b5a5a8db]:first-child {
@@ -90,6 +87,10 @@
 }
 .analytics-table tbody th[data-r-b5a5a8db] {
   font-weight: 500;
+}
+.channel-name-short[data-r-b5a5a8db] {
+  display: none;
+  text-decoration: none;
 }
 .question-path[data-r-b5a5a8db] {
   display: grid;
@@ -140,15 +141,25 @@
   color: var(--color-primary);
 }
 .daily-values[data-r-b5a5a8db] {
+  display: none;
   max-height: 22rem;
   overflow-y: auto;
   margin-top: 1rem;
   padding-inline: 0.25rem;
 }
-summary[data-r-b5a5a8db] {
-  cursor: pointer;
+.daily-values--expanded[data-r-b5a5a8db] {
+  display: block;
 }
-.daily-disclosure summary[data-r-b5a5a8db]:focus-visible {
+.daily-values th[data-r-b5a5a8db]:first-child {
+  width: 34%;
+}
+.daily-values thead th[data-r-b5a5a8db] {
+  background: var(--color-surface);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.daily-values[data-r-b5a5a8db]:focus-visible {
   outline: 3px solid var(--color-focus);
   outline-offset: 2px;
 }
@@ -172,23 +183,26 @@ summary[data-r-b5a5a8db] {
   .menu-usage
     .analytics-table:has(th:nth-child(4))
     th[data-r-b5a5a8db]:first-child {
-    width: 32%;
-  }
-  .menu-usage
-    .analytics-table:has(th:nth-child(4))
-    th[data-r-b5a5a8db]:nth-child(2) {
-    width: 22%;
-  }
-  .menu-usage
-    .analytics-table:has(th:nth-child(4))
-    th[data-r-b5a5a8db]:nth-child(3) {
-    width: 32%;
+    width: 34%;
   }
   .menu-usage .analytics-table th[data-r-b5a5a8db],
   .menu-usage .analytics-table td[data-r-b5a5a8db] {
     padding-inline: 0.15rem;
   }
-  .activity-chart text[data-r-b5a5a8db] {
-    font-size: 26px;
+  .channel-name-full[data-r-b5a5a8db] {
+    display: none;
+  }
+  .channel-name-short[data-r-b5a5a8db] {
+    display: inline;
+  }
+  .activity-chart[data-r-b5a5a8db],
+  .chart-legend[data-r-b5a5a8db],
+  .daily-toggle[data-r-b5a5a8db] {
+    display: none;
+  }
+  .daily-values[data-r-b5a5a8db] {
+    display: block;
+    max-height: 18rem;
+    margin-top: 0;
   }
 }

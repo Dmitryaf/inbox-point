@@ -73,15 +73,12 @@
   width: 100%;
   table-layout: fixed;
 }
-.analytics-table caption {
-  text-align: left;
-  padding-bottom: 0.75rem;
-}
 .analytics-table th,
 .analytics-table td {
   border-bottom: 1px solid var(--color-border);
   padding: 0.75rem 0.35rem;
-  text-align: right;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
 .analytics-table th:first-child {
@@ -90,6 +87,10 @@
 }
 .analytics-table tbody th {
   font-weight: 500;
+}
+.channel-name-short {
+  display: none;
+  text-decoration: none;
 }
 .question-path {
   display: grid;
@@ -140,15 +141,25 @@
   color: var(--color-primary);
 }
 .daily-values {
+  display: none;
   max-height: 22rem;
   overflow-y: auto;
   margin-top: 1rem;
   padding-inline: 0.25rem;
 }
-summary {
-  cursor: pointer;
+.daily-values--expanded {
+  display: block;
 }
-.daily-disclosure summary:focus-visible {
+.daily-values th:first-child {
+  width: 34%;
+}
+.daily-values thead th {
+  background: var(--color-surface);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.daily-values:focus-visible {
   outline: 3px solid var(--color-focus);
   outline-offset: 2px;
 }
@@ -170,19 +181,26 @@ summary {
     font-size: var(--font-size-small);
   }
   .menu-usage .analytics-table:has(th:nth-child(4)) th:first-child {
-    width: 32%;
-  }
-  .menu-usage .analytics-table:has(th:nth-child(4)) th:nth-child(2) {
-    width: 22%;
-  }
-  .menu-usage .analytics-table:has(th:nth-child(4)) th:nth-child(3) {
-    width: 32%;
+    width: 34%;
   }
   .menu-usage .analytics-table th,
   .menu-usage .analytics-table td {
     padding-inline: 0.15rem;
   }
-  .activity-chart text {
-    font-size: 26px;
+  .channel-name-full {
+    display: none;
+  }
+  .channel-name-short {
+    display: inline;
+  }
+  .activity-chart,
+  .chart-legend,
+  .daily-toggle {
+    display: none;
+  }
+  .daily-values {
+    display: block;
+    max-height: 18rem;
+    margin-top: 0;
   }
 }

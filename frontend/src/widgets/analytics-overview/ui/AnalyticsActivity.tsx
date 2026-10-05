@@ -5,6 +5,8 @@ import {
 } from '@frontend/shared/lib/component-model';
 import { classNames as $class } from '@frontend/shared/lib/component-view';
 
+import { setModelValue as $set } from '@frontend/shared/lib/component-bindings';
+
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
 import { renderAnalyticsActivityPart1 } from './AnalyticsActivity.part1';
@@ -25,6 +27,7 @@ export default function AnalyticsActivity($incomingProps: ComponentProps) {
     componentDefaults,
     createComponentModel,
   );
+  const dailyExpanded = $state.dailyExpanded.value;
   const $attributes = inheritedAttributes($props);
   return (
     <ModelScopeProvider scope={$scope}>
@@ -42,7 +45,21 @@ export default function AnalyticsActivity($incomingProps: ComponentProps) {
           <span data-r-163b6de6="">{'┄ Обращения'}</span>
         </p>
         {renderAnalyticsActivityPart1($state, $props)}
-        {renderAnalyticsActivityPart2($state, $props)}
+        <button
+          type="button"
+          aria-controls="daily-values"
+          aria-expanded={dailyExpanded}
+          onClick={() =>
+            void $set($state, 'dailyExpanded', !$state.dailyExpanded.value)
+          }
+          className="daily-toggle secondary-button"
+          data-r-163b6de6=""
+        >
+          {dailyExpanded
+            ? 'Скрыть значения по дням'
+            : 'Показать значения по дням'}
+        </button>
+        {renderAnalyticsActivityPart2($state)}
       </section>
     </ModelScopeProvider>
   );

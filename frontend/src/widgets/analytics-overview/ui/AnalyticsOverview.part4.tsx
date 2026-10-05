@@ -16,9 +16,6 @@ export function renderAnalyticsOverviewPart4(
         </p>
       ) : (
         <table className="analytics-table" data-r-b5a5a8db="">
-          <caption className="muted" data-r-b5a5a8db="">
-            {' Действия по частоте выбора '}
-          </caption>
           <thead data-r-b5a5a8db="">
             <tr data-r-b5a5a8db="">
               <th scope="col" data-r-b5a5a8db="">
@@ -28,8 +25,17 @@ export function renderAnalyticsOverviewPart4(
                 {'Всего'}
               </th>
               {$props.report.channel === 'all' ? (
-                <th scope="col" data-r-b5a5a8db="">
-                  {'Telegram'}
+                <th scope="col" aria-label="Telegram" data-r-b5a5a8db="">
+                  <span className="channel-name-full" data-r-b5a5a8db="">
+                    {'Telegram'}
+                  </span>
+                  <abbr
+                    title="Telegram"
+                    className="channel-name-short"
+                    data-r-b5a5a8db=""
+                  >
+                    {'TG'}
+                  </abbr>
                 </th>
               ) : null}
               {$props.report.channel === 'all' ? (
