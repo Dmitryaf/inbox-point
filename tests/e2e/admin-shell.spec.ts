@@ -300,7 +300,7 @@ for (const viewport of [
       await page.getByLabel('Раздел', { exact: true }).selectOption('core');
     }
     await expect(
-      page.getByRole('heading', { name: 'Основные ответы' }),
+      page.getByRole('region', { name: 'Основные ответы' }),
     ).toBeVisible();
     expectStablePlacement(await requiredBox(workspaceMain), initialMainBox);
     expectStableBox(await requiredBox(navigation), initialNavigationBox);
