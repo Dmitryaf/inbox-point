@@ -1,46 +1,17 @@
 .connection-guide {
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-panel);
   display: grid;
   gap: 1rem;
-  padding: 1rem;
 }
 
-.connection-guide-heading {
-  align-items: flex-start;
-  display: flex;
-  gap: 0.8rem;
-}
-
-.connection-guide-heading h3,
-.connection-guide-heading p,
 .connection-guide-steps p,
 .connection-guide-note {
   margin: 0;
 }
 
-.connection-guide-heading p,
 .connection-guide-steps p,
 .connection-guide-note {
   color: var(--color-text-muted);
   line-height: 1.5;
-}
-
-.connection-guide-heading p {
-  margin-top: 0.3rem;
-}
-
-.connection-guide-icon {
-  align-items: center;
-  background: var(--color-primary-soft);
-  border-radius: var(--radius-control);
-  color: var(--color-primary);
-  display: inline-flex;
-  flex: 0 0 auto;
-  justify-content: center;
-  min-height: 2.5rem;
-  width: 2.5rem;
 }
 
 .connection-guide-steps {
@@ -53,12 +24,16 @@
 
 .connection-guide-steps li {
   align-items: center;
-  background: var(--color-surface-muted);
-  border-radius: var(--radius-control);
+  border-top: 1px solid var(--color-border);
   display: grid;
   gap: 0.75rem;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  padding: 0.8rem;
+  padding: 0.8rem 0;
+}
+
+.connection-guide-steps li:first-child {
+  border-top: 0;
+  padding-top: 0;
 }
 
 .connection-step-number {
@@ -109,10 +84,6 @@
 }
 
 @media (max-width: 520px) {
-  .connection-guide {
-    padding: 0.85rem;
-  }
-
   .connection-guide-steps li {
     align-items: start;
     grid-template-columns: auto minmax(0, 1fr);

@@ -1,4 +1,9 @@
-.card > .step + h2[data-r-54db50dd] {
+.card[data-r-54db50dd] {
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+.card > h2[data-r-54db50dd] {
   margin-bottom: 0;
 }
 .counter[data-r-54db50dd] {
@@ -25,7 +30,7 @@
   margin-top: 0.75rem;
 }
 .card > h2 + .field-group[data-r-54db50dd] {
-  margin-top: 1.15rem;
+  margin-top: 0.75rem;
 }
 .field-group summary[data-r-54db50dd] {
   align-items: center;

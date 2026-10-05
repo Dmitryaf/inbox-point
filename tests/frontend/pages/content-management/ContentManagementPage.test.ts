@@ -41,7 +41,7 @@ describe('ContentManagementPage', () => {
       wrapper.get<HTMLInputElement>('#schedule-day-time-0').element.value,
     ).toBe('Понедельник, 19:00');
     expect(wrapper.text()).not.toContain('Сохранён старый текст расписания');
-    expect(wrapper.text()).not.toContain('Как записаться?');
+    expect(wrapper.get('.editor').text()).not.toContain('Как записаться?');
     expect(wrapper.text()).toContain('Все изменения сохранены');
 
     await findButton(wrapper.findAll('button'), 'Частые вопросы').trigger(

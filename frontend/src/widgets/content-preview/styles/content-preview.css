@@ -1,4 +1,4 @@
-.card > .step + h2 {
+.card > h2 {
   margin-bottom: 0.35rem;
 }
 
@@ -15,13 +15,12 @@
 
 .message-preview {
   background: var(--color-surface-muted);
-  border: 1px solid var(--color-border);
-  border-radius: 1rem;
+  border-radius: var(--radius-control);
   display: grid;
   gap: 1rem;
   margin-top: 1rem;
   min-width: 0;
-  padding: 1rem;
+  padding: 0.75rem;
 }
 
 .message-preview-menu,

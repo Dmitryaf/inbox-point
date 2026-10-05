@@ -43,7 +43,7 @@ export default function SectionVisibilityControl(
           data-r-73781f5e=""
         />
         <span data-r-73781f5e="">
-          {' Показывать кнопку в каналах '}
+          {' Показывать клиентам '}
           {!$props.contentPresent ? (
             <small data-r-73781f5e="">
               {' Пустой раздел всё равно не появится в меню. '}

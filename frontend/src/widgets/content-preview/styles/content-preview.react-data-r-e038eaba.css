@@ -1,4 +1,4 @@
-.card > .step + h2[data-r-e038eaba] {
+.card > h2[data-r-e038eaba] {
   margin-bottom: 0.35rem;
 }
 .preview-intro[data-r-e038eaba] {
@@ -12,13 +12,12 @@
 }
 .message-preview[data-r-e038eaba] {
   background: var(--color-surface-muted);
-  border: 1px solid var(--color-border);
-  border-radius: 1rem;
+  border-radius: var(--radius-control);
   display: grid;
   gap: 1rem;
   margin-top: 1rem;
   min-width: 0;
-  padding: 1rem;
+  padding: 0.75rem;
 }
 .message-preview-menu[data-r-e038eaba],
 .preview-response[data-r-e038eaba] {
