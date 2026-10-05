@@ -7,9 +7,16 @@ import { PasswordSessionAccess } from '@/infrastructure/security/password-sessio
 import { SqliteSupportRepository } from '@/infrastructure/persistence/sqlite-support-repository.js';
 import { AnalyticsService } from '@/modules/analytics/application/analytics-service.js';
 import { registerAnalyticsRoute } from '@/modules/analytics/presentation/http/analytics-route.js';
+import {
+  emergencyOperations,
+  designContent,
+  designRequests,
+  designMessages,
+} from './design-fixtures.js';
 
 const port = readArgument('port', 4174);
 const password = readArgument('password');
+const designScenario = readArgument('scenario') === 'design';
 const app = createApp({
   closedRequestRetentionDays: 7,
   databasePath: './data/e2e-unused.sqlite',
@@ -60,26 +67,30 @@ registerAnalyticsRoute(
 );
 app.addHook('onClose', () => Promise.resolve(analyticsRepository.close()));
 
-app.get('/api/manage/content', requireAdmin, () => ({
-  content: {
-    address: 'ул. Примерная, 10',
-    faq: [
-      {
-        answer: 'Напишите нам в мессенджере.',
-        question: 'Как записаться?',
+app.get('/api/manage/content', requireAdmin, () =>
+  designScenario
+    ? { content: designContent, version: 'a'.repeat(64) }
+    : {
+        content: {
+          address: 'ул. Примерная, 10',
+          faq: [
+            {
+              answer: 'Напишите нам в мессенджере.',
+              question: 'Как записаться?',
+            },
+          ],
+          prices: 'Пробное занятие — бесплатно.',
+          schedule: '',
+          scheduleItems: [
+            {
+              dayTime: 'Понедельник и среда, 19:00.',
+              title: 'Бачата — начинающие',
+            },
+          ],
+        },
+        version: 'a'.repeat(64),
       },
-    ],
-    prices: 'Пробное занятие — бесплатно.',
-    schedule: '',
-    scheduleItems: [
-      {
-        dayTime: 'Понедельник и среда, 19:00.',
-        title: 'Бачата — начинающие',
-      },
-    ],
-  },
-  version: 'a'.repeat(64),
-}));
+);
 app.get('/api/manage/content/history', requireAdmin, () => ({ history: [] }));
 app.get('/api/setup/status', requireAdmin, () => ({
   connected: false,
@@ -87,48 +98,61 @@ app.get('/api/setup/status', requireAdmin, () => ({
   source: 'none',
   vk: { connected: false, locked: false, source: 'none' },
 }));
-app.get('/api/ops/status', requireAdmin, () => ({
-  channels: {
-    telegram: {
-      configured: false,
-      running: false,
-      source: 'none',
-      state: 'not_configured',
-    },
-    vk: {
-      configured: false,
-      running: false,
-      source: 'none',
-      state: 'not_configured',
-    },
-  },
-  deliveries: {
-    failed: 0,
-    incidents: [],
-    pending: 0,
-    state: 'healthy',
-    uncertain: 0,
-    worker: { running: true, state: 'running' },
-  },
-  inboundEvents: { incidents: [], quarantined: 0, state: 'healthy' },
-  intake: { telegram: { mode: 'active' }, vk: { mode: 'active' } },
-  observedAt: '2026-09-10T08:00:00.000Z',
-  operatorInbox: {
-    recoverableWebRequests: 0,
-    state: 'healthy',
-    webOwnedRequests: 0,
-  },
-  operatorRelays: { incidents: [], state: 'healthy', uncertain: 0 },
-  outbound: { mode: 'active' },
-  startedAt: '2026-09-10T07:00:00.000Z',
-  state: 'attention',
-  uptimeSeconds: 3_600,
-}));
+app.get('/api/ops/status', requireAdmin, () =>
+  designScenario
+    ? emergencyOperations
+    : {
+        channels: {
+          telegram: {
+            configured: false,
+            running: false,
+            source: 'none',
+            state: 'not_configured',
+          },
+          vk: {
+            configured: false,
+            running: false,
+            source: 'none',
+            state: 'not_configured',
+          },
+        },
+        deliveries: {
+          failed: 0,
+          incidents: [],
+          pending: 0,
+          state: 'healthy',
+          uncertain: 0,
+          worker: { running: true, state: 'running' },
+        },
+        inboundEvents: { incidents: [], quarantined: 0, state: 'healthy' },
+        intake: { telegram: { mode: 'active' }, vk: { mode: 'active' } },
+        observedAt: '2026-09-10T08:00:00.000Z',
+        operatorInbox: {
+          recoverableWebRequests: 0,
+          state: 'healthy',
+          webOwnedRequests: 0,
+        },
+        operatorRelays: { incidents: [], state: 'healthy', uncertain: 0 },
+        outbound: { mode: 'active' },
+        startedAt: '2026-09-10T07:00:00.000Z',
+        state: 'attention',
+        uptimeSeconds: 3_600,
+      },
+);
 app.get('/api/ops/service-control', requireAdmin, () => ({
   channels: { telegram: { mode: 'active' }, vk: { mode: 'active' } },
   delivery: { mode: 'active' },
 }));
-app.get('/api/ops/inbox/requests', requireAdmin, () => ({ requests: [] }));
+app.get('/api/ops/inbox/requests', requireAdmin, () => ({
+  requests: designScenario ? designRequests : [],
+}));
+app.get<{ Params: { id: string } }>(
+  '/api/ops/inbox/requests/:id/messages',
+  requireAdmin,
+  (request) => ({
+    messages: designScenario ? designMessages(request.params.id) : [],
+  }),
+);
 
 registerFrontendRoutes(app, routeAccess, loadFrontendAssets());
 await app.listen({ host: '127.0.0.1', port });

@@ -33,9 +33,14 @@
   gap: 0.65rem;
   list-style: none;
   margin: 0;
-  max-height: 32rem;
+  max-height: min(32rem, 50vh);
   overflow-y: auto;
   padding: 0;
+}
+
+.operator-message-list:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
 }
 
 .operator-message {
@@ -73,11 +78,9 @@
 
 .operator-reply-form {
   background: var(--color-surface);
-  bottom: 0;
   display: grid;
   gap: 0.5rem;
   padding-top: 0.5rem;
-  position: sticky;
 }
 
 .operator-reply-form textarea {

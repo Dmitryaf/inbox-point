@@ -25,6 +25,7 @@ export function renderOperatorConversationPart3(
       {$props.messages.length ? (
         <ol
           aria-label="Переписка"
+          tabIndex={0}
           className="operator-message-list"
           data-r-e21483db=""
         >

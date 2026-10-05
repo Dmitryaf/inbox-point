@@ -10,8 +10,7 @@ import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 import AnalyticsActivity from './AnalyticsActivity';
 
 import { renderAnalyticsOverviewPart1 } from './AnalyticsOverview.part1';
-import { renderAnalyticsOverviewPart2 } from './AnalyticsOverview.part2';
-import { renderAnalyticsOverviewPart4 } from './AnalyticsOverview.part4';
+import { renderAnalyticsOverviewPart3 } from './AnalyticsOverview.part3';
 import {
   createComponentModel,
   componentDefaults,
@@ -31,17 +30,17 @@ export default function AnalyticsOverview($incomingProps: ComponentProps) {
   const $attributes = inheritedAttributes($props);
   return (
     <ModelScopeProvider scope={$scope}>
-      <div
+      <article
         {...$attributes}
         aria-live="polite"
+        aria-label="Отчёт об использовании"
         className={$class('analytics-overview', $attributes.className)}
         data-r-b5a5a8db=""
       >
-        {renderAnalyticsOverviewPart1($state, $props)}
+        {renderAnalyticsOverviewPart1($props)}
+        {renderAnalyticsOverviewPart3($state, $props)}
         <AnalyticsActivity daily={$props.report.daily} data-r-b5a5a8db="" />
-        {renderAnalyticsOverviewPart2($props)}
-        {renderAnalyticsOverviewPart4($state, $props)}
-      </div>
+      </article>
     </ModelScopeProvider>
   );
 }

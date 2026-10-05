@@ -1,6 +1,11 @@
 .operator-request-list {
+  align-content: start;
   display: grid;
   gap: 0.5rem;
+  grid-auto-rows: max-content;
+  max-height: 14rem;
+  overflow-y: auto;
+  padding: 0.25rem;
 }
 
 .operator-request-button {
@@ -39,8 +44,6 @@
 
 @media (min-width: 700px) {
   .operator-request-list {
-    align-content: start;
     max-height: 38rem;
-    overflow-y: auto;
   }
 }

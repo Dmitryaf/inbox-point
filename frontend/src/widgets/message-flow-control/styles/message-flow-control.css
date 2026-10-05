@@ -27,8 +27,7 @@
 
 .message-flow-summary h2,
 .message-flow-summary p,
-.message-flow-outbound h3,
-.message-flow-outbound .eyebrow {
+.message-flow-outbound h3 {
   margin-bottom: 0;
 }
 

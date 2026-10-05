@@ -29,7 +29,8 @@ describe('AnalyticsPage', () => {
     expect(router.currentRoute.value.name).toBe('analytics');
     expect(wrapper.get('nav a[aria-current="page"]').text()).toBe('Аналитика');
     expect(wrapper.text()).toContain('Выборы в меню');
-    expect(wrapper.text()).toContain('Telegram: 8 · VK: 6');
+    expect(wrapper.get('.usage-channels').text()).toContain('Обращения: 8');
+    expect(wrapper.get('.usage-channels').text()).toContain('Обращения: 6');
     expect(wrapper.text()).toContain('Записаться на пробное');
     expect(wrapper.text()).not.toContain('synthetic-id');
     expect(wrapper.find('svg.activity-chart').exists()).toBe(true);

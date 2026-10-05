@@ -1,4 +1,4 @@
-import { renderAnalyticsOverviewPart3 } from './AnalyticsOverview.part3';
+import { renderList as $renderList } from '@frontend/shared/lib/component-view';
 
 import type { WithDefaults } from '@frontend/shared/lib/component-model';
 import type {
@@ -10,10 +10,27 @@ export function renderAnalyticsOverviewPart2(
 ) {
   return (
     <>
-      <section className="card" data-r-b5a5a8db="">
-        <h2 data-r-b5a5a8db="">{'Популярные действия'}</h2>
-        {renderAnalyticsOverviewPart3($props)}
-      </section>
+      {$props.report.channel === 'all' ? (
+        <dl
+          aria-label="Использование каналов"
+          className="usage-channels"
+          data-r-b5a5a8db=""
+        >
+          {$renderList($props.report.channels, (counts, channel) => (
+            <div key={channel} data-r-b5a5a8db="">
+              <dt data-r-b5a5a8db="">
+                {channel === 'telegram' ? 'Telegram' : 'VK'}
+              </dt>
+              <dd data-r-b5a5a8db="">
+                {' Обращения: '}
+                {counts.requests}
+                {' · Выборы в меню: '}
+                {counts.menuActions}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
     </>
   );
 }
