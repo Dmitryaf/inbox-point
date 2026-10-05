@@ -29,9 +29,13 @@
   gap: 0.65rem;
   list-style: none;
   margin: 0;
-  max-height: 32rem;
+  max-height: min(32rem, 50vh);
   overflow-y: auto;
   padding: 0;
+}
+.operator-message-list[data-r-e21483db]:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
 }
 .operator-message[data-r-e21483db] {
   background: var(--color-surface-muted);
@@ -63,11 +67,9 @@
 }
 .operator-reply-form[data-r-e21483db] {
   background: var(--color-surface);
-  bottom: 0;
   display: grid;
   gap: 0.5rem;
   padding-top: 0.5rem;
-  position: sticky;
 }
 .operator-reply-form textarea[data-r-e21483db] {
   min-height: 6.5rem;

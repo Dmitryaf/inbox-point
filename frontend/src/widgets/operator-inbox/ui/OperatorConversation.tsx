@@ -32,6 +32,7 @@ export default function OperatorConversation($incomingProps: ComponentProps) {
     <ModelScopeProvider scope={$scope}>
       <article
         {...$attributes}
+        aria-label="Выбранное обращение"
         className={$class('operator-conversation', $attributes.className)}
         data-r-e21483db=""
       >

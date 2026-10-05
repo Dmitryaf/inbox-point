@@ -42,11 +42,6 @@ export function renderOperationsAttentionPanelPart1(
           data-r-a910a991=""
         >
           <header className="attention-panel-heading" data-r-a910a991="">
-            <p className="eyebrow" data-r-a910a991="">
-              {hasOperationalProblems
-                ? 'Сначала проверьте это'
-                : 'Первый запуск'}
-            </p>
             <h2 id="attention-title" data-r-a910a991="">
               {hasOperationalProblems
                 ? 'Требует внимания'

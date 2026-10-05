@@ -1,62 +1,76 @@
-import { renderList as $renderList } from '@frontend/shared/lib/component-view';
+import { renderAnalyticsOverviewPart4 } from './AnalyticsOverview.part4';
 
 import type { WithDefaults } from '@frontend/shared/lib/component-model';
 import type {
+  createComponentModel,
   ComponentProps,
   componentDefaults,
 } from './AnalyticsOverview.model';
 export function renderAnalyticsOverviewPart3(
+  $state: ReturnType<typeof createComponentModel>,
   $props: WithDefaults<ComponentProps, typeof componentDefaults>,
 ) {
+  const questionChoices = $state.questionChoices.value;
+  const lastRequest = $state.lastRequest.value;
+
   return (
     <>
-      {!$props.report.actions.length ? (
-        <p className="muted" data-r-b5a5a8db="">
-          {' За этот период действий меню пока нет. '}
-        </p>
-      ) : (
-        <table className="analytics-table" data-r-b5a5a8db="">
-          <caption className="muted" data-r-b5a5a8db="">
-            {' Действия по частоте выбора '}
-          </caption>
-          <thead data-r-b5a5a8db="">
-            <tr data-r-b5a5a8db="">
-              <th scope="col" data-r-b5a5a8db="">
-                {'Действие'}
-              </th>
-              <th scope="col" data-r-b5a5a8db="">
-                {'Всего'}
-              </th>
-              {$props.report.channel === 'all' ? (
-                <th scope="col" data-r-b5a5a8db="">
-                  {'Telegram'}
-                </th>
-              ) : null}
-              {$props.report.channel === 'all' ? (
-                <th scope="col" data-r-b5a5a8db="">
-                  {'VK'}
-                </th>
-              ) : null}
-            </tr>
-          </thead>
-          <tbody data-r-b5a5a8db="">
-            {$renderList($props.report.actions, (action) => (
-              <tr key={action.key} data-r-b5a5a8db="">
-                <th scope="row" data-r-b5a5a8db="">
-                  {action.label}
-                </th>
-                <td data-r-b5a5a8db="">{action.count}</td>
-                {$props.report.channel === 'all' ? (
-                  <td data-r-b5a5a8db="">{action.telegram}</td>
-                ) : null}
-                {$props.report.channel === 'all' ? (
-                  <td data-r-b5a5a8db="">{action.vk}</td>
-                ) : null}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      <div className="analytics-reading" data-r-b5a5a8db="">
+        <section
+          aria-labelledby="menu-usage-title"
+          className="menu-usage"
+          data-r-b5a5a8db=""
+        >
+          <h2 id="menu-usage-title" data-r-b5a5a8db="">
+            {'Что выбирают в меню'}
+          </h2>
+          {renderAnalyticsOverviewPart4($props)}
+          {$props.report.channel !== 'vk' ? (
+            <p className="muted" data-r-b5a5a8db="">
+              {
+                ' В Telegram учитывается и ввод текста, совпадающего с действием меню. '
+              }
+            </p>
+          ) : null}
+        </section>
+        <section
+          aria-labelledby="question-context-title"
+          className="question-context"
+          data-r-b5a5a8db=""
+        >
+          <h2 id="question-context-title" data-r-b5a5a8db="">
+            {'Начало вопроса'}
+          </h2>
+          <dl className="question-path" data-r-b5a5a8db="">
+            <div data-r-b5a5a8db="">
+              <dt data-r-b5a5a8db="">
+                {'Выбрали «Задать вопрос» или «Начать новый вопрос»'}
+              </dt>
+              <dd data-r-b5a5a8db="">{questionChoices}</dd>
+            </div>
+          </dl>
+          <p className="muted" data-r-b5a5a8db="">
+            {
+              ' Это отдельный счётчик выбора меню. Обращение создаётся после сообщения клиента; оно может начаться и с первого сообщения без выбора меню. '
+            }
+          </p>
+          <p className="muted" data-r-b5a5a8db="">
+            {
+              ' Эти данные не показывают, какие выборы меню привели к обращению. '
+            }
+          </p>
+          {lastRequest ? (
+            <p className="muted" data-r-b5a5a8db="">
+              {' Последнее за период: '}
+              {lastRequest}
+            </p>
+          ) : (
+            <p className="muted" data-r-b5a5a8db="">
+              {'За этот период обращений пока нет.'}
+            </p>
+          )}
+        </section>
+      </div>
     </>
   );
 }

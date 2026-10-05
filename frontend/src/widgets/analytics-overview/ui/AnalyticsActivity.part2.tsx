@@ -14,7 +14,7 @@ export function renderAnalyticsActivityPart2(
 
   return (
     <>
-      <details data-r-163b6de6="">
+      <details className="daily-disclosure" data-r-163b6de6="">
         <summary data-r-163b6de6="">{'Показать значения по дням'}</summary>
         <div className="daily-values" data-r-163b6de6="">
           <table className="analytics-table" data-r-163b6de6="">

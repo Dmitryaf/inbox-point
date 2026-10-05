@@ -59,7 +59,7 @@ content above; a failed VK reply, retry action, and service state below.
 
 ## Stack
 
-Java 25 · Spring Boot · SQLite · React · TypeScript · Playwright
+Java · Spring Boot · SQLite · React · TypeScript · Playwright
 
 ## Run locally
 

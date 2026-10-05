@@ -30,10 +30,13 @@ export default function AnalyticsActivity($incomingProps: ComponentProps) {
     <ModelScopeProvider scope={$scope}>
       <section
         {...$attributes}
-        className={$class('card', $attributes.className)}
+        aria-labelledby="activity-title"
+        className={$class('analytics-activity', $attributes.className)}
         data-r-163b6de6=""
       >
-        <h2 data-r-163b6de6="">{'Активность по дням'}</h2>
+        <h2 id="activity-title" data-r-163b6de6="">
+          {'Активность по дням'}
+        </h2>
         <p className="chart-legend" data-r-163b6de6="">
           <span data-r-163b6de6="">{'━ Выборы в меню'}</span>
           <span data-r-163b6de6="">{'┄ Обращения'}</span>
