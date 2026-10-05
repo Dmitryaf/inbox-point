@@ -17,8 +17,7 @@ const responseLengths = computed(() => getCoreResponseLengths(draft.value));
 
 <template>
   <section class="card">
-    <p class="step">Основные разделы</p>
-    <h2>Расписание, цены и адрес</h2>
+    <h2>Основные ответы</h2>
 
     <ScheduleEditor v-model="draft" :errors="errors" />
 

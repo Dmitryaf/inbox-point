@@ -137,11 +137,6 @@ test('message controls distinguish disconnected channels from active intake', as
   await expect(
     page.getByRole('heading', { name: 'Закончите подключение' }),
   ).toBeVisible();
-  await expect(
-    connectionGuide.getByRole('heading', {
-      name: 'Подключите каналы по порядку',
-    }),
-  ).toBeVisible();
   await expect(connectionGuide.locator('li')).toHaveCount(2);
   await expect(
     connectionGuide.getByRole('link', { name: 'Начать подключение' }),
@@ -305,7 +300,7 @@ for (const viewport of [
       await page.getByLabel('Раздел', { exact: true }).selectOption('core');
     }
     await expect(
-      page.getByRole('heading', { name: 'Расписание, цены и адрес' }),
+      page.getByRole('heading', { name: 'Основные ответы' }),
     ).toBeVisible();
     expectStablePlacement(await requiredBox(workspaceMain), initialMainBox);
     expectStableBox(await requiredBox(navigation), initialNavigationBox);

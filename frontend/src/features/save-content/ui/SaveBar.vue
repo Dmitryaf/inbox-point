@@ -23,7 +23,7 @@ const statusMessage = computed(() => {
 <template>
   <div class="save-bar">
     <div>
-      <span class="save-bar-label">Публикация</span>
+      <span class="save-bar-label">Сохранение обновит ответы</span>
       <p :class="{ changed: dirty }" role="status">
         {{ statusMessage }}
       </p>

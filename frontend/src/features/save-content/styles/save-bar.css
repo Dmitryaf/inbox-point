@@ -1,6 +1,6 @@
 .save-bar {
   align-items: center;
-  background: color-mix(in srgb, var(--color-surface) 94%, transparent);
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-panel);
   bottom: max(0.5rem, env(safe-area-inset-bottom));

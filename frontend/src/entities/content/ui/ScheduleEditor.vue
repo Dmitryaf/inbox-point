@@ -51,23 +51,6 @@ function add(): void {
       </span>
     </summary>
 
-    <div class="section-heading">
-      <p>Направления и группы показываются в этом порядке.</p>
-      <span>{{ draft.schedule.length }} / {{ itemLimit }}</span>
-    </div>
-    <p
-      class="counter"
-      :class="{ 'counter--error': responseLength > 4000 }"
-      aria-live="polite"
-    >
-      Итоговый ответ: {{ responseLength }} / 4000
-    </p>
-    <SectionVisibilityControl
-      v-model="draft.visibleSections"
-      :content-present="hasContent"
-      section="schedule"
-    />
-
     <aside v-if="draft.legacySchedule" class="legacy-schedule">
       <strong>Сохранён старый текст расписания</strong>
       <p>
@@ -88,6 +71,10 @@ function add(): void {
       :errors="props.errors"
       :index="index"
     />
+    <div class="section-heading">
+      <p>Клиенты увидят направления в этом порядке.</p>
+      <span>{{ draft.schedule.length }} / {{ itemLimit }}</span>
+    </div>
     <button
       id="add-schedule"
       :disabled="draft.schedule.length >= itemLimit"
@@ -96,6 +83,18 @@ function add(): void {
     >
       Добавить направление
     </button>
+    <p
+      class="counter"
+      :class="{ 'counter--error': responseLength > 4000 }"
+      aria-live="polite"
+    >
+      Итоговый ответ: {{ responseLength }} / 4000
+    </p>
+    <SectionVisibilityControl
+      v-model="draft.visibleSections"
+      :content-present="hasContent"
+      section="schedule"
+    />
   </details>
 </template>
 

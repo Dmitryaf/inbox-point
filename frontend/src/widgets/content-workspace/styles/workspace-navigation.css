@@ -1,10 +1,6 @@
 .mobile-workspace-navigation {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-panel);
   display: grid;
   gap: 0.5rem;
-  padding: 0.6rem;
 }
 
 .mobile-navigation-field label {
@@ -69,7 +65,6 @@
   justify-content: flex-start;
   padding-inline: 0.65rem;
   text-align: left;
-  width: 100%;
 }
 
 .section-button.active {
@@ -78,15 +73,13 @@
 }
 
 .sidebar-group {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.25rem;
 }
 
 .sidebar-group > p {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-small);
-  font-weight: 600;
-  margin: 0 0 0.35rem 0.65rem;
+  display: none;
 }
 
 @media (min-width: 900px) {
@@ -99,16 +92,12 @@
   }
 
   .workspace-tabs {
-    grid-column: 2;
     grid-row: 1;
   }
 
   .dashboard-sidebar {
     align-self: start;
     display: block;
-    grid-column: 1;
     grid-row: 2;
-    position: sticky;
-    top: 1rem;
   }
 }

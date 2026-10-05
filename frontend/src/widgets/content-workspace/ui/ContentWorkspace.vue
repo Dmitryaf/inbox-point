@@ -90,15 +90,21 @@ function openSection(section: EditorSection): void {
     />
 
     <div class="workspace-main">
-      <ContentSummary :content="workspace.draft" />
       <section class="workspace-panel" aria-label="Рабочая область">
-        <div :key="activeView" class="workspace-view">
+        <div
+          :key="activeView"
+          class="workspace-view"
+          :class="{ 'workspace-view--editing': activeView === 'edit' }"
+        >
           <ContentEditor
             v-if="activeView === 'edit'"
             v-model="workspace.draft"
             :active-section="activeSection"
             :errors="fieldErrors"
           />
+          <aside v-if="activeView === 'edit'" class="workspace-live-preview">
+            <ContentPreview :content="workspace.draft" />
+          </aside>
           <ContentPreview
             v-else-if="activeView === 'preview'"
             :content="workspace.draft"
@@ -114,6 +120,7 @@ function openSection(section: EditorSection): void {
           />
         </div>
       </section>
+      <ContentSummary :content="workspace.draft" />
       <SaveBar
         :dirty="workspace.dirty.value"
         :saving="workspace.saving.value"
