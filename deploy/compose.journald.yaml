@@ -1,0 +1,7 @@
+# Opt in on a Linux host with a persistent systemd journal.
+services:
+  app:
+    logging: !override
+      driver: journald
+      options:
+        tag: 'inbox-point-${INSTANCE_ID:-default}'
