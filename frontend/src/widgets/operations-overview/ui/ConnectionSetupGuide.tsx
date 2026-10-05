@@ -6,11 +6,9 @@ import {
 import { classNames as $class } from '@frontend/shared/lib/component-view';
 
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
-
 import { RouterLink } from '@frontend/shared/lib/router';
 
 import { renderConnectionSetupGuidePart1 } from './ConnectionSetupGuide.part1';
-import { renderConnectionSetupGuidePart2 } from './ConnectionSetupGuide.part2';
 import {
   createComponentModel,
   componentDefaults,
@@ -28,12 +26,11 @@ export default function ConnectionSetupGuide($incomingProps: ComponentProps) {
     <ModelScopeProvider scope={$scope}>
       <section
         {...$attributes}
-        aria-labelledby="connection-guide-title"
+        aria-label="Порядок подключения"
         className={$class('connection-guide', $attributes.className)}
         data-r-cf5827f2=""
       >
         {renderConnectionSetupGuidePart1($props)}
-        {renderConnectionSetupGuidePart2($props)}
         <RouterLink
           to="/setup"
           className="connection-guide-action"
@@ -43,7 +40,7 @@ export default function ConnectionSetupGuide($incomingProps: ComponentProps) {
         </RouterLink>
         <p className="connection-guide-note" data-r-cf5827f2="">
           {
-            ' На следующей странице будут подробные шаги. Команды сервера и ручной поиск идентификаторов не понадобятся. '
+            ' На странице «Каналы» указаны шаги для владельца подключения. Для Telegram потребуется токен бота, для VK — ключ доступа сообщества. '
           }
         </p>
       </section>

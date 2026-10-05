@@ -38,10 +38,7 @@ export default function CoreSectionsFields($incomingProps: ComponentProps) {
         className={$class('card', $attributes.className)}
         data-r-54db50dd=""
       >
-        <p className="step" data-r-54db50dd="">
-          {'Основные разделы'}
-        </p>
-        <h2 data-r-54db50dd="">{'Расписание, цены и адрес'}</h2>
+        <h2 data-r-54db50dd="">{'Основные ответы'}</h2>
         <ScheduleEditor
           errors={$props.errors}
           modelValue={draft}

@@ -1,9 +1,6 @@
 .setup-intro[data-r-aa9e848d] {
-  background: var(--color-primary-soft);
-  border-radius: var(--radius-control);
   color: var(--color-text);
-  margin-top: 0.9rem;
-  padding: 0.8rem;
+  margin-top: 1rem;
 }
 .setup-intro p[data-r-aa9e848d] {
   color: var(--color-text-muted);

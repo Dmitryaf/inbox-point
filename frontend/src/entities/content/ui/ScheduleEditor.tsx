@@ -37,12 +37,12 @@ export default function ScheduleEditor($incomingProps: ComponentProps) {
     createComponentModel,
   );
   const { props, add } = $state;
-  const itemLimit = $unref($state.itemLimit);
   const itemKey = $unref($state.itemKey);
+  const itemLimit = $unref($state.itemLimit);
   const hasContent = $state.hasContent.value;
+  const legacyResponse = $state.legacyResponse.value;
   const draft = $state.draft.value;
   const responseLength = $state.responseLength.value;
-  const legacyResponse = $state.legacyResponse.value;
   const $attributes = inheritedAttributes($props);
   return (
     <ModelScopeProvider scope={$scope}>
@@ -53,37 +53,6 @@ export default function ScheduleEditor($incomingProps: ComponentProps) {
         data-r-e7737cb0=""
       >
         {renderScheduleEditorPart1($state)}
-        <div className="section-heading" data-r-e7737cb0="">
-          <p data-r-e7737cb0="">
-            {'Направления и группы показываются в этом порядке.'}
-          </p>
-          <span data-r-e7737cb0="">
-            {draft.schedule.length}
-            {' / '}
-            {itemLimit}
-          </span>
-        </div>
-        <p
-          aria-live="polite"
-          className={$class('counter', {
-            'counter--error': responseLength > 4000,
-          })}
-          data-r-e7737cb0=""
-        >
-          {' Итоговый ответ: '}
-          {responseLength}
-          {' / 4000 '}
-        </p>
-        <SectionVisibilityControl
-          contentPresent={hasContent}
-          section="schedule"
-          modelValue={draft.visibleSections}
-          onModelValueChange={$propertySetter(
-            () => $state.draft.value,
-            'visibleSections',
-          )}
-          data-r-e7737cb0=""
-        />
         {draft.legacySchedule ? (
           <aside className="legacy-schedule" data-r-e7737cb0="">
             <strong data-r-e7737cb0="">
@@ -116,6 +85,16 @@ export default function ScheduleEditor($incomingProps: ComponentProps) {
             data-r-e7737cb0=""
           />
         ))}
+        <div className="section-heading" data-r-e7737cb0="">
+          <p data-r-e7737cb0="">
+            {'Клиенты увидят направления в этом порядке.'}
+          </p>
+          <span data-r-e7737cb0="">
+            {draft.schedule.length}
+            {' / '}
+            {itemLimit}
+          </span>
+        </div>
         <button
           id="add-schedule"
           disabled={draft.schedule.length >= itemLimit}
@@ -125,6 +104,27 @@ export default function ScheduleEditor($incomingProps: ComponentProps) {
         >
           {' Добавить направление '}
         </button>
+        <p
+          aria-live="polite"
+          className={$class('counter', {
+            'counter--error': responseLength > 4000,
+          })}
+          data-r-e7737cb0=""
+        >
+          {' Итоговый ответ: '}
+          {responseLength}
+          {' / 4000 '}
+        </p>
+        <SectionVisibilityControl
+          contentPresent={hasContent}
+          section="schedule"
+          modelValue={draft.visibleSections}
+          onModelValueChange={$propertySetter(
+            () => $state.draft.value,
+            'visibleSections',
+          )}
+          data-r-e7737cb0=""
+        />
       </details>
     </ModelScopeProvider>
   );

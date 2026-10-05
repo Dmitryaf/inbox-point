@@ -1,10 +1,6 @@
 .mobile-workspace-navigation[data-r-e6e22060] {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-panel);
   display: grid;
   gap: 0.5rem;
-  padding: 0.6rem;
 }
 .mobile-navigation-field label[data-r-e6e22060] {
   color: var(--color-text-muted);
@@ -59,21 +55,18 @@
   justify-content: flex-start;
   padding-inline: 0.65rem;
   text-align: left;
-  width: 100%;
 }
 .section-button.active[data-r-e6e22060] {
   background: var(--color-primary-soft);
   color: var(--color-primary-hover);
 }
 .sidebar-group[data-r-e6e22060] {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.25rem;
 }
 .sidebar-group > p[data-r-e6e22060] {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-small);
-  font-weight: 600;
-  margin: 0 0 0.35rem 0.65rem;
+  display: none;
 }
 @media (min-width: 900px) {
   .mobile-workspace-navigation[data-r-e6e22060] {
@@ -83,15 +76,11 @@
     display: flex;
   }
   .workspace-tabs[data-r-e6e22060] {
-    grid-column: 2;
     grid-row: 1;
   }
   .dashboard-sidebar[data-r-e6e22060] {
     align-self: start;
     display: block;
-    grid-column: 1;
     grid-row: 2;
-    position: sticky;
-    top: 1rem;
   }
 }

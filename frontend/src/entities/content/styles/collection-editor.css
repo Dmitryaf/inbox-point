@@ -42,18 +42,18 @@
 
 .item-card {
   background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
-  border-radius: 1rem;
+  border: 0;
+  border-top: 1px solid var(--color-border);
   margin: 1rem 0;
   min-width: 0;
-  padding: 1rem;
+  padding: 0.75rem 0;
 }
 
 .item-card legend {
-  font-weight: 800;
+  font-weight: 600;
   max-width: 100%;
   overflow-wrap: anywhere;
-  padding: 0 0.5rem;
+  padding: 0 0.5rem 0 0;
 }
 
 .item-card > label {
@@ -71,16 +71,9 @@
   margin-top: 0.9rem;
 }
 
-@media (min-width: 900px) {
-  .item-card {
-    padding: 1.1rem;
-  }
-}
-
 @media (max-width: 520px) {
   .item-card {
     margin: 0.8rem 0;
-    padding: 0.75rem;
   }
 
   .section-heading {

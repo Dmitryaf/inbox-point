@@ -1,3 +1,4 @@
+import { classNames as $class } from '@frontend/shared/lib/component-view';
 import {
   eventCallback as $callback,
   nativeHandler as $nativeHandler,
@@ -5,11 +6,14 @@ import {
 import { unref as $unref } from '@frontend/shared/lib/model-state';
 import {
   modelSetter as $setter,
+  propertySetter as $propertySetter,
   requiredValue as $required,
 } from '@frontend/shared/lib/component-bindings';
 
 import SaveBar from '@frontend/features/save-content/ui/SaveBar';
 import ContentSummary from '@frontend/entities/content/ui/ContentSummary';
+
+import ContentEditor from '@frontend/widgets/content-editor/ui/ContentEditor';
 
 import WorkspaceNavigation from './WorkspaceNavigation';
 
@@ -23,6 +27,7 @@ export function renderContentWorkspacePart1(
   const workspace = $unref($state.workspace);
   const activeSection = $state.activeSection.value;
   const activeView = $state.activeView.value;
+  const fieldErrors = $state.fieldErrors.value;
   const validation = $state.validation.value;
 
   return (
@@ -53,7 +58,6 @@ export function renderContentWorkspacePart1(
             data-r-09629bd3=""
           />
           <div className="workspace-main" data-r-09629bd3="">
-            <ContentSummary content={workspace.draft} data-r-09629bd3="" />
             <section
               aria-label="Рабочая область"
               className="workspace-panel"
@@ -61,12 +65,27 @@ export function renderContentWorkspacePart1(
             >
               <div
                 key={activeView}
-                className="workspace-view"
+                className={$class('workspace-view', {
+                  'workspace-view--editing': activeView === 'edit',
+                })}
                 data-r-09629bd3=""
               >
+                {activeView === 'edit' ? (
+                  <ContentEditor
+                    activeSection={activeSection}
+                    errors={fieldErrors}
+                    modelValue={workspace.draft}
+                    onModelValueChange={$propertySetter(
+                      () => $unref($state.workspace),
+                      'draft',
+                    )}
+                    data-r-09629bd3=""
+                  />
+                ) : null}
                 {renderContentWorkspacePart2($state)}
               </div>
             </section>
+            <ContentSummary content={workspace.draft} data-r-09629bd3="" />
             <SaveBar
               dirty={workspace.dirty.value}
               saving={workspace.saving.value}
