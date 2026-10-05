@@ -3,7 +3,7 @@ import {
   type WithDefaults,
 } from '@frontend/shared/lib/component-model';
 
-import { computed } from '@frontend/shared/lib/model-state';
+import { computed, ref } from '@frontend/shared/lib/model-state';
 import type { UsageDailyCount } from '@core/model/usage-event';
 
 export type ComponentProps = {
@@ -13,6 +13,8 @@ export const componentDefaults = {};
 type ResolvedProps = WithDefaults<ComponentProps, typeof componentDefaults>;
 export function createComponentModel($props: ResolvedProps) {
   const props = $props;
+  const dailyExpanded = ref(false);
+  const recentDays = computed(() => [...props.daily].reverse());
   const maximum = computed(() =>
     Math.max(
       1,
@@ -44,5 +46,5 @@ export function createComponentModel($props: ResolvedProps) {
       timeZone: 'UTC',
     }).format(new Date(`${date}T00:00:00Z`));
   }
-  return { maximum, points, x, ticks, label };
+  return { dailyExpanded, recentDays, maximum, points, x, ticks, label };
 }

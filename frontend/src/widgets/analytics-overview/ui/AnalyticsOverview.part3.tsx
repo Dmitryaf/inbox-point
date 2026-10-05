@@ -25,13 +25,6 @@ export function renderAnalyticsOverviewPart3(
             {'Что выбирают в меню'}
           </h2>
           {renderAnalyticsOverviewPart4($props)}
-          {$props.report.channel !== 'vk' ? (
-            <p className="muted" data-r-b5a5a8db="">
-              {
-                ' В Telegram учитывается и ввод текста, совпадающего с действием меню. '
-              }
-            </p>
-          ) : null}
         </section>
         <section
           aria-labelledby="question-context-title"
@@ -39,26 +32,16 @@ export function renderAnalyticsOverviewPart3(
           data-r-b5a5a8db=""
         >
           <h2 id="question-context-title" data-r-b5a5a8db="">
-            {'Начало вопроса'}
+            {'Кнопки для вопросов'}
           </h2>
           <dl className="question-path" data-r-b5a5a8db="">
             <div data-r-b5a5a8db="">
               <dt data-r-b5a5a8db="">
-                {'Выбрали «Задать вопрос» или «Начать новый вопрос»'}
+                {'Выборы «Задать вопрос» и «Начать новый вопрос»'}
               </dt>
               <dd data-r-b5a5a8db="">{questionChoices}</dd>
             </div>
           </dl>
-          <p className="muted" data-r-b5a5a8db="">
-            {
-              ' Это отдельный счётчик выбора меню. Обращение создаётся после сообщения клиента; оно может начаться и с первого сообщения без выбора меню. '
-            }
-          </p>
-          <p className="muted" data-r-b5a5a8db="">
-            {
-              ' Эти данные не показывают, какие выборы меню привели к обращению. '
-            }
-          </p>
           {lastRequest ? (
             <p className="muted" data-r-b5a5a8db="">
               {' Последнее за период: '}

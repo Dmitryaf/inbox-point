@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 for (const width of [1440, 390]) {
-  test(`analytics filters and chart remain usable at ${width}px`, async ({
+  test(`analytics filters and daily activity remain usable at ${width}px`, async ({
     page,
   }, testInfo) => {
     await page.setViewportSize({ width, height: 1000 });
@@ -34,11 +34,22 @@ for (const width of [1440, 390]) {
       await expect(button).toBeFocused();
       await page.keyboard.press('Space');
       await expect(button).toHaveAttribute('aria-pressed', 'true');
-      await page
-        .getByText('Показать значения по дням', { exact: true })
-        .click();
+      const dailyToggle = page.locator('.daily-toggle');
+      if (width > 600) {
+        await dailyToggle.click();
+        await expect(dailyToggle).toHaveAttribute('aria-expanded', 'true');
+        await expect(page.locator('.activity-chart')).toBeVisible();
+      } else {
+        await expect(dailyToggle).toBeHidden();
+        await expect(page.locator('.activity-chart')).toBeHidden();
+      }
+      await expect(page.locator('.daily-values')).toBeVisible();
       await expect(page.locator('.daily-values tbody tr')).toHaveCount(rows);
-      await expect(page.locator('.activity-chart')).toBeVisible();
+      const dates = await page
+        .locator('.daily-values tbody th')
+        .allTextContents();
+      expect(dates[0]).toBe('4 окт.');
+      expect(new Set(dates).size).toBe(rows);
     }
     await page.getByRole('button', { name: 'Telegram', exact: true }).click();
     await expect(page.locator('.metric-value').first()).toHaveText('8');
@@ -61,9 +72,14 @@ for (const width of [1440, 390]) {
       path: testInfo.outputPath(`analytics-${width}.png`),
       fullPage: true,
     });
-    await page.evaluate(() => {
-      document.documentElement.style.fontSize = '200%';
-    });
+    await page.route('**/test-enlarged-text.css', (route) =>
+      route.fulfill({
+        body: ':root { font-size: 200%; }',
+        contentType: 'text/css',
+      }),
+    );
+    await page.addStyleTag({ url: '/test-enlarged-text.css' });
+    await expect(page.locator('html')).toHaveCSS('font-size', '32px');
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth,
