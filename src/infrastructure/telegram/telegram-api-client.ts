@@ -2,6 +2,10 @@ import { z } from 'zod';
 
 import { DeliveryOutcomeUnknownError } from '@/core/contracts/client-channel.js';
 import {
+  beginApiRequest,
+  type ApiFailureObserver,
+} from '@/infrastructure/diagnostics/api-request-diagnostic.js';
+import {
   telegramMessageSchema,
   telegramUpdateSchema,
   type TelegramMessage,
@@ -9,6 +13,7 @@ import {
 } from './telegram-types.js';
 
 const apiEnvelopeSchema = z.object({
+  error_code: z.number().int().optional(),
   description: z.string().optional(),
   ok: z.boolean(),
   result: z.unknown().optional(),
@@ -113,6 +118,7 @@ export class TelegramApiClient implements TelegramGateway {
   public constructor(
     token: string,
     fetchImplementation: TelegramFetch = fetch,
+    private readonly onApiFailure: ApiFailureObserver = () => undefined,
   ) {
     this.baseUrl = `https://api.telegram.org/bot${token}`;
     this.fetchImplementation = fetchImplementation;
@@ -273,6 +279,7 @@ export class TelegramApiClient implements TelegramGateway {
     resultSchema: z.ZodType<Result>,
     signal?: AbortSignal,
   ): Promise<Result> {
+    const failure = beginApiRequest('telegram', method, this.onApiFailure);
     let response: Response;
     try {
       response = await this.fetchImplementation(`${this.baseUrl}/${method}`, {
@@ -286,34 +293,81 @@ export class TelegramApiClient implements TelegramGateway {
         throw error;
       }
       if (hasUncertainSideEffect(method)) {
-        throw new DeliveryOutcomeUnknownError('telegram');
+        throw failure(
+          new DeliveryOutcomeUnknownError('telegram'),
+          'transport',
+          { cause: error },
+        );
       }
-      throw new Error(`Telegram API request failed for ${method}`);
+      throw failure(
+        new Error(`Telegram API request failed for ${method}`),
+        'transport',
+        { cause: error },
+      );
     }
 
     let body: unknown;
     try {
       body = await response.json();
     } catch {
-      throw responseValidationError(method, 'invalid JSON');
+      throw failure(
+        responseValidationError(method, 'invalid JSON'),
+        'invalid_response',
+        { httpStatus: response.status },
+      );
     }
 
     const envelope = apiEnvelopeSchema.safeParse(body);
     if (!envelope.success) {
-      throw responseValidationError(method, 'an invalid response');
+      throw failure(
+        responseValidationError(method, 'an invalid response'),
+        'invalid_response',
+        { httpStatus: response.status },
+      );
     }
     if (!response.ok || !envelope.data.ok) {
-      const description =
-        envelope.data.description?.slice(0, 300) ?? 'request rejected';
-      throw new Error(`Telegram API ${method} failed: ${description}`);
+      const description = safeTelegramDescription(envelope.data.description);
+      throw failure(
+        new Error(`Telegram API ${method} failed: ${description}`),
+        'api',
+        {
+          httpStatus: response.status,
+          ...(envelope.data.error_code === undefined
+            ? {}
+            : { apiCode: envelope.data.error_code }),
+        },
+      );
     }
 
     const result = resultSchema.safeParse(envelope.data.result);
     if (!result.success) {
-      throw responseValidationError(method, 'an invalid result');
+      throw failure(
+        responseValidationError(method, 'an invalid result'),
+        'invalid_response',
+        { httpStatus: response.status },
+      );
     }
     return result.data;
   }
+}
+
+function safeTelegramDescription(description: string | undefined): string {
+  const known = [
+    'Unauthorized',
+    'TOPIC_CLOSED',
+    'TOPIC_NOT_MODIFIED',
+    'TOPIC_DELETED',
+    'message thread not found',
+    'chat not found',
+    'bot was blocked by the user',
+    'bot was kicked',
+    'not enough rights',
+  ];
+  return (
+    known.find((value) =>
+      description?.toLowerCase().includes(value.toLowerCase()),
+    ) ?? 'request rejected'
+  );
 }
 
 function responseValidationError(method: string, problem: string): Error {

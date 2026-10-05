@@ -1,6 +1,11 @@
+import type { ChannelFailureDiagnostic } from '@/core/contracts/channel-activity-reporter.js';
+
 export type ChannelConnectionSource = 'environment' | 'local' | 'none';
 
 export interface ChannelOperationsStatus {
+  consecutiveFailures?: number;
+  lastFailure?: ChannelFailureDiagnostic;
+  lastRecoveredAt?: string;
   configured: boolean;
   lastFailedPollAt?: string;
   lastSuccessfulPollAt?: string;

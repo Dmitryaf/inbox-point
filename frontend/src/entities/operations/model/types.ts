@@ -2,23 +2,11 @@ export type {
   OperatorInboxRequest,
   OperatorInboxMessage,
 } from './operator-inbox-types';
-export type ConnectionSource = 'environment' | 'local' | 'none';
-
-export interface ChannelOperationsStatus {
-  configured: boolean;
-  lastFailedPollAt?: string;
-  lastSuccessfulPollAt?: string;
-  running: boolean;
-  source: ConnectionSource;
-  state:
-    | 'configuration_missing'
-    | 'not_configured'
-    | 'poll_failed'
-    | 'poll_stale'
-    | 'running'
-    | 'starting'
-    | 'stopped';
-}
+import type { ChannelOperationsStatus } from './channel-status-types';
+export type {
+  ChannelOperationsStatus,
+  ConnectionSource,
+} from './channel-status-types';
 
 export interface OperationsStatus {
   channels: {

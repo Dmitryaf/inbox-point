@@ -17,6 +17,7 @@ import type { SupportMessage } from '@/core/model/support-message.js';
 import type { ChannelOperatorMessage } from '@/core/model/operator-message.js';
 
 import { VkApiClient, type VkGateway } from './vk-api-client.js';
+import { getApiRequestDiagnostic } from '@/infrastructure/diagnostics/api-request-diagnostic.js';
 import { VkClientChannel } from './vk-client-channel.js';
 import { VkClientMenu } from './vk-client-menu.js';
 import { VkPoller } from './vk-poller.js';
@@ -68,6 +69,18 @@ export class VkRuntime {
     if (this.running) {
       throw new Error('VK is already connected');
     }
+    try {
+      await this.startConfigured(config);
+    } catch (error: unknown) {
+      this.activity.recordPollFailed('vk', new Date(), {
+        stage: 'startup',
+        request: getApiRequestDiagnostic(error),
+      });
+      throw error;
+    }
+  }
+
+  private async startConfigured(config: VkRuntimeConfig): Promise<void> {
     const gateway = this.createGateway(config.accessToken);
     await assertVkLongPollReady(gateway, config.groupId);
     const clientChannel = new VkClientChannel(
@@ -92,7 +105,10 @@ export class VkRuntime {
       this.repository,
       {
         onError: (error) => {
-          this.activity.recordPollFailed('vk', new Date());
+          this.activity.recordPollFailed('vk', new Date(), {
+            stage: 'poll',
+            request: getApiRequestDiagnostic(error),
+          });
           this.logger.error(error, 'VK update failed; retrying');
         },
         onSuccess: () => {
@@ -112,7 +128,10 @@ export class VkRuntime {
     });
     void this.pollerPromise.catch((error: unknown) => {
       if (!abortController.signal.aborted) {
-        this.activity.recordPollFailed('vk', new Date());
+        this.activity.recordPollFailed('vk', new Date(), {
+          stage: 'poll',
+          request: getApiRequestDiagnostic(error),
+        });
         this.logger.error(error, 'VK poller stopped unexpectedly');
       }
     });

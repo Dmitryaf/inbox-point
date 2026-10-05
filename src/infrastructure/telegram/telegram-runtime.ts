@@ -22,6 +22,10 @@ import {
 import { TelegramClientChannel } from '@/infrastructure/telegram/telegram-client-channel.js';
 import { TelegramClientMenu } from '@/infrastructure/telegram/telegram-client-menu.js';
 import { TelegramPoller } from '@/infrastructure/telegram/telegram-poller.js';
+import {
+  getApiRequestDiagnostic,
+  type ApiFailureObserver,
+} from '@/infrastructure/diagnostics/api-request-diagnostic.js';
 import { TelegramTopicsInbox } from '@/infrastructure/telegram/telegram-topics-inbox.js';
 import {
   type TelegramUpdateHandler,
@@ -60,6 +64,7 @@ export class TelegramRuntime implements TelegramRuntimeControl {
     private readonly activity: ChannelActivityReporter = silentChannelActivityReporter,
     private readonly intakePolicy: ClientIntakePolicy = acceptingClientIntakePolicy,
     private readonly fetchImplementation: TelegramFetch = fetch,
+    private readonly onApiFailure: ApiFailureObserver = () => undefined,
   ) {}
 
   public get running(): boolean {
@@ -71,9 +76,22 @@ export class TelegramRuntime implements TelegramRuntimeControl {
       throw new Error('Telegram is already connected');
     }
 
+    try {
+      await this.startConfigured(config);
+    } catch (error: unknown) {
+      this.activity.recordPollFailed('telegram', new Date(), {
+        stage: 'startup',
+        request: getApiRequestDiagnostic(error),
+      });
+      throw error;
+    }
+  }
+
+  private async startConfigured(config: TelegramRuntimeConfig): Promise<void> {
     const gateway = new TelegramApiClient(
       config.botToken,
       this.fetchImplementation,
+      this.onApiFailure,
     );
     await gateway.verifySetup(config.operatorChatId);
     const clientChannel = new TelegramClientChannel(
@@ -104,7 +122,10 @@ export class TelegramRuntime implements TelegramRuntimeControl {
       this.repository,
       {
         onError: (error) => {
-          this.activity.recordPollFailed('telegram', new Date());
+          this.activity.recordPollFailed('telegram', new Date(), {
+            stage: 'poll',
+            request: getApiRequestDiagnostic(error),
+          });
           this.logger.error(error, 'Telegram update processing failed');
         },
         onSuccess: () => {
@@ -139,7 +160,10 @@ export class TelegramRuntime implements TelegramRuntimeControl {
     });
     void this.pollerPromise.catch((error: unknown) => {
       if (!abortController.signal.aborted) {
-        this.activity.recordPollFailed('telegram', new Date());
+        this.activity.recordPollFailed('telegram', new Date(), {
+          stage: 'poll',
+          request: getApiRequestDiagnostic(error),
+        });
         this.logger.error(error, 'Telegram poller stopped unexpectedly');
       }
     });

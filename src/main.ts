@@ -42,6 +42,8 @@ import { TelegramRuntime } from '@/infrastructure/telegram/telegram-runtime.js';
 import { TelegramSetupController } from '@/infrastructure/telegram/telegram-setup-controller.js';
 import { createTelegramHttpTransport } from '@/infrastructure/telegram/telegram-http-transport.js';
 import { VkRuntime } from '@/infrastructure/vk/vk-runtime.js';
+import { VkApiClient } from '@/infrastructure/vk/vk-api-client.js';
+import type { ApiFailureObserver } from '@/infrastructure/diagnostics/api-request-diagnostic.js';
 import { VkSetupController } from '@/infrastructure/vk/vk-setup-controller.js';
 import { registerSetupRoutes } from '@/modules/channel-setup/presentation/http/routes.js';
 
@@ -59,6 +61,10 @@ async function start(): Promise<void> {
   const repository = new SqliteSupportRepository(config.databasePath);
   const adminSessionStore = new SqliteAdminSessionStore(config.databasePath);
   const app = createApp(config);
+  const onApiFailure: ApiFailureObserver = (diagnostic) =>
+    app.log.warn({ apiFailure: diagnostic }, 'External API request failed');
+  const createVkGateway = (token: string) =>
+    new VkApiClient(token, fetch, onApiFailure);
   const retention = new DataRetentionService(
     repository,
     config.closedRequestRetentionDays,
@@ -72,7 +78,9 @@ async function start(): Promise<void> {
     resolve(dirname(config.databasePath), 'content-settings.json'),
   );
   const informationCatalog = new ClientInformationCatalog();
-  const channelActivity = new ChannelActivityMonitor();
+  const channelActivity = new ChannelActivityMonitor((details) =>
+    app.log.info(details, 'Channel connection recovered'),
+  );
   const deliveryActivity = new DeliveryWorkerActivityMonitor();
   const settingsStore = new FileTelegramSettingsStore(
     resolve(dirname(config.databasePath), 'telegram-settings.json'),
@@ -102,6 +110,7 @@ async function start(): Promise<void> {
     channelActivity,
     serviceControl,
     telegramTransport.fetch,
+    onApiFailure,
   );
   const vkRuntime = new VkRuntime(
     handoffRuntime,
@@ -112,6 +121,7 @@ async function start(): Promise<void> {
     informationCatalog,
     channelActivity,
     serviceControl,
+    createVkGateway,
   );
   let closing = false;
 
@@ -177,6 +187,7 @@ async function start(): Promise<void> {
       async (expected) => {
         await serviceControl.setChannelExpected('telegram', expected);
       },
+      onApiFailure,
     );
     let storedVk: VkRuntimeConfig | undefined;
     let vkSettingsInvalid = false;
@@ -199,7 +210,7 @@ async function start(): Promise<void> {
       vkRuntime,
       vkSettingsStore,
       vkSource,
-      undefined,
+      createVkGateway,
       async (expected) => {
         await serviceControl.setChannelExpected('vk', expected);
       },

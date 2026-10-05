@@ -55,7 +55,7 @@ const state = computed(() => {
       v-if="channel.configured"
       class="technical-details channel-details"
     >
-      <summary>Подробности</summary>
+      <summary>Технические данные</summary>
       <dl class="channel-activity">
         <div>
           <dt>Последняя успешная проверка</dt>
@@ -65,6 +65,67 @@ const state = computed(() => {
           <dt>Последняя ошибка связи</dt>
           <dd>{{ formatStatusTime(channel.lastFailedPollAt) }}</dd>
         </div>
+        <div v-if="channel.consecutiveFailures">
+          <dt>Ошибок подряд</dt>
+          <dd>{{ channel.consecutiveFailures }}</dd>
+        </div>
+        <div v-if="channel.lastRecoveredAt">
+          <dt>Связь восстановлена</dt>
+          <dd>{{ formatStatusTime(channel.lastRecoveredAt) }}</dd>
+        </div>
+        <template v-if="channel.lastFailure">
+          <div>
+            <dt>Последний сбой</dt>
+            <dd>
+              {{
+                channel.lastFailure.stage === 'startup'
+                  ? 'При подключении'
+                  : 'При получении данных'
+              }}
+            </dd>
+          </div>
+          <template v-if="channel.lastFailure.request">
+            <div>
+              <dt>Метод API</dt>
+              <dd>{{ channel.lastFailure.request.method }}</dd>
+            </div>
+            <div>
+              <dt>Тип ошибки</dt>
+              <dd>
+                {{
+                  {
+                    transport: 'Ошибка соединения',
+                    http: 'Отказ HTTP',
+                    api: 'Отказ API',
+                    invalid_response: 'Некорректный ответ',
+                  }[channel.lastFailure.request.kind]
+                }}
+              </dd>
+            </div>
+            <div>
+              <dt>Длительность запроса</dt>
+              <dd>{{ channel.lastFailure.request.durationMs }} мс</dd>
+            </div>
+            <div v-if="channel.lastFailure.request.transportCodes.length">
+              <dt>Сетевой код</dt>
+              <dd>
+                {{ channel.lastFailure.request.transportCodes.join(', ') }}
+              </dd>
+            </div>
+            <div v-if="channel.lastFailure.request.httpStatus">
+              <dt>HTTP</dt>
+              <dd>{{ channel.lastFailure.request.httpStatus }}</dd>
+            </div>
+            <div v-if="channel.lastFailure.request.apiCode !== undefined">
+              <dt>Код API</dt>
+              <dd>{{ channel.lastFailure.request.apiCode }}</dd>
+            </div>
+            <div>
+              <dt>ID операции</dt>
+              <dd>{{ channel.lastFailure.request.operationId }}</dd>
+            </div>
+          </template>
+        </template>
       </dl>
     </details>
   </article>
