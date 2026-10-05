@@ -59,14 +59,18 @@ const lastRequest = computed(() =>
           За этот период действий меню пока нет.
         </p>
         <table v-else class="analytics-table">
-          <caption class="muted">
-            Действия по частоте выбора
-          </caption>
           <thead>
             <tr>
               <th scope="col">Действие</th>
               <th scope="col">Всего</th>
-              <th v-if="report.channel === 'all'" scope="col">Telegram</th>
+              <th
+                v-if="report.channel === 'all'"
+                scope="col"
+                aria-label="Telegram"
+              >
+                <span class="channel-name-full">Telegram</span>
+                <abbr class="channel-name-short" title="Telegram">TG</abbr>
+              </th>
               <th v-if="report.channel === 'all'" scope="col">VK</th>
             </tr>
           </thead>
@@ -79,28 +83,18 @@ const lastRequest = computed(() =>
             </tr>
           </tbody>
         </table>
-        <p v-if="report.channel !== 'vk'" class="muted">
-          В Telegram учитывается и ввод текста, совпадающего с действием меню.
-        </p>
       </section>
       <section
         class="question-context"
         aria-labelledby="question-context-title"
       >
-        <h2 id="question-context-title">Начало вопроса</h2>
+        <h2 id="question-context-title">Кнопки для вопросов</h2>
         <dl class="question-path">
           <div>
-            <dt>Выбрали «Задать вопрос» или «Начать новый вопрос»</dt>
+            <dt>Выборы «Задать вопрос» и «Начать новый вопрос»</dt>
             <dd>{{ questionChoices }}</dd>
           </div>
         </dl>
-        <p class="muted">
-          Это отдельный счётчик выбора меню. Обращение создаётся после сообщения
-          клиента; оно может начаться и с первого сообщения без выбора меню.
-        </p>
-        <p class="muted">
-          Эти данные не показывают, какие выборы меню привели к обращению.
-        </p>
         <p v-if="lastRequest" class="muted">
           Последнее за период: {{ lastRequest }}
         </p>

@@ -219,8 +219,17 @@ for (const width of [390, 1280]) {
     ).toBeVisible();
     await expect(page.locator('.usage-channels')).toContainText('Обращения: 8');
     await expect(page.locator('.question-context')).toContainText(
-      'не показывают, какие выборы меню привели к обращению',
+      'Кнопки для вопросов',
     );
+    await expect(page.locator('.question-path dd')).toHaveText('13');
+    const numericWidths = await page
+      .locator('.menu-usage thead th')
+      .evaluateAll((headers) =>
+        headers.slice(1).map((header) => header.getBoundingClientRect().width),
+      );
+    expect(
+      Math.max(...numericWidths) - Math.min(...numericWidths),
+    ).toBeLessThanOrEqual(1);
     const context = page.locator('.question-context');
     if (width === 390) {
       expect(await documentTop(context)).toBeGreaterThan(
@@ -231,10 +240,23 @@ for (const width of [390, 1280]) {
       const contextBox = await context.boundingBox();
       expect(contextBox!.x).toBeGreaterThan(menuBox!.x + menuBox!.width);
     }
-    const days = page.locator('.daily-disclosure summary');
-    await days.press('Enter');
-    await expect(days).toBeFocused();
-    await expect(days).toHaveCSS('outline-width', '3px');
+    const days = page.locator('.daily-toggle');
+    if (width > 600) {
+      await days.press('Enter');
+      await expect(days).toBeFocused();
+      await expect(days).toHaveAttribute('aria-expanded', 'true');
+      await expect(days).toHaveCSS('outline-width', '3px');
+    } else {
+      await expect(days).toBeHidden();
+      await expect(page.locator('.activity-chart')).toBeHidden();
+      const values = page.locator('.daily-values');
+      await values.focus();
+      await expect(values).toHaveCSS('outline-width', '3px');
+      await values.press('End');
+      await expect
+        .poll(() => values.evaluate((el) => el.scrollTop))
+        .toBeGreaterThan(0);
+    }
     await expect(page.locator('.daily-values tbody tr')).toHaveCount(30);
     await noHorizontalOverflow(page);
   });

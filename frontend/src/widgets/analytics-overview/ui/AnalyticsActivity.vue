@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import type { UsageDailyCount } from '@core/model/usage-event';
 const props = defineProps<{ daily: UsageDailyCount[] }>();
+const dailyExpanded = ref(false);
+const recentDays = computed(() => [...props.daily].reverse());
 const maximum = computed(() =>
   Math.max(1, ...props.daily.flatMap((day) => [day.requests, day.menuActions])),
 );
@@ -69,30 +71,42 @@ function label(date: string): string {
         {{ daily[index] ? label(daily[index]!.date) : '' }}
       </text>
     </svg>
-    <details class="daily-disclosure">
-      <summary>Показать значения по дням</summary>
-      <div class="daily-values">
-        <table class="analytics-table">
-          <caption>
-            Активность по дням
-          </caption>
-          <thead>
-            <tr>
-              <th scope="col">Дата</th>
-              <th scope="col">Меню</th>
-              <th scope="col">Обращения</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="day in daily" :key="day.date">
-              <th scope="row">{{ label(day.date) }}</th>
-              <td>{{ day.menuActions }}</td>
-              <td>{{ day.requests }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </details>
+    <button
+      class="daily-toggle secondary-button"
+      type="button"
+      aria-controls="daily-values"
+      :aria-expanded="dailyExpanded"
+      @click="dailyExpanded = !dailyExpanded"
+    >
+      {{
+        dailyExpanded ? 'Скрыть значения по дням' : 'Показать значения по дням'
+      }}
+    </button>
+    <div
+      id="daily-values"
+      class="daily-values"
+      :class="{ 'daily-values--expanded': dailyExpanded }"
+      tabindex="0"
+      role="region"
+      aria-label="Значения по дням"
+    >
+      <table class="analytics-table" aria-label="Активность по дням">
+        <thead>
+          <tr>
+            <th scope="col">Дата</th>
+            <th scope="col">Меню</th>
+            <th scope="col">Обращения</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="day in recentDays" :key="day.date">
+            <th scope="row">{{ label(day.date) }}</th>
+            <td>{{ day.menuActions }}</td>
+            <td>{{ day.requests }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </section>
 </template>
 <style scoped src="../styles/analytics-overview.css"></style>
