@@ -4,7 +4,7 @@ Inbox Point is a self-hosted service that brings customer conversations from
 Telegram and VK into a private Telegram workspace for operators. Customers stay
 in their messenger; your team answers in Telegram.
 
-![Content management with synthetic schedule, FAQ and custom sections](docs/screenshots/inbox-point-content.png)
+![Content editor with synthetic schedule and live answer preview](docs/screenshots/inbox-point-content.png)
 
 ## How it works
 
@@ -50,10 +50,11 @@ Unsupported attachments prompt the customer to resend their question as text.
 
 ## Screenshots
 
-Actual Russian-language UI with synthetic data: fictional **North Side Dance**
-content above; a failed VK reply, retry action, and service state below.
+Actual Russian-language UI with synthetic data: a fictional dance school's
+content editor and live preview above; a failed VK reply, retry action, and
+service state below.
 
-![Operations dashboard showing a failed VK reply and service monitoring](docs/screenshots/inbox-point-operations.png)
+![Service monitoring showing a failed VK reply and retry action](docs/screenshots/inbox-point-operations.png)
 
 [Reproduce the screenshots](tests/e2e/docs-screenshots.spec.ts) without real accounts.
 
