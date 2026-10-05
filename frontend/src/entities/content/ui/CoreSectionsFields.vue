@@ -16,9 +16,7 @@ const responseLengths = computed(() => getCoreResponseLengths(draft.value));
 </script>
 
 <template>
-  <section class="card">
-    <h2>Основные ответы</h2>
-
+  <section class="card" aria-label="Основные ответы">
     <ScheduleEditor v-model="draft" :errors="errors" />
 
     <details class="field-group">
