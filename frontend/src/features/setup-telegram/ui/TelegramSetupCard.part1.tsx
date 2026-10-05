@@ -16,7 +16,7 @@ export function renderTelegramSetupCardPart1(
             {'Telegram'}
           </h2>
           <p data-r-44d690ea="">
-            {'Группа администраторов и бот для передачи обращений.'}
+            {'Бот для клиентов и группа, где сотрудники отвечают на вопросы.'}
           </p>
         </div>
         <span

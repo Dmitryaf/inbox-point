@@ -27,29 +27,6 @@
   margin-bottom: 0;
 }
 
-.status-pill {
-  border-radius: 999px;
-  font-size: var(--font-size-small);
-  font-weight: 600;
-  max-width: 100%;
-  padding: 0.3rem 0.55rem;
-}
-
-.status-pill--healthy {
-  background: var(--color-success-soft);
-  color: var(--color-success);
-}
-
-.status-pill--attention {
-  background: var(--color-attention-soft);
-  color: var(--color-attention);
-}
-
-.status-pill--neutral {
-  background: var(--color-surface-muted);
-  color: var(--color-text-muted);
-}
-
 .delivery-card {
   grid-column: 1 / -1;
 }

@@ -8,6 +8,55 @@ import { requestUrl, response } from '@test/frontend/support/fake-response';
 import { attentionOperationsStatus } from './operations-status-fixture';
 
 describe('OperationsDashboardPage refresh', () => {
+  it('stops showing loading after an initial failure and recovers on retry', async () => {
+    let online = false;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = requestUrl(input);
+        if (url.endsWith('/session')) {
+          return Promise.resolve(response({ authenticated: true }));
+        }
+        if (url.endsWith('/inbox/requests')) {
+          return Promise.resolve(response({ requests: [] }));
+        }
+        if (url.endsWith('/service-control')) {
+          return Promise.resolve(
+            response({
+              channels: {
+                telegram: { mode: 'active' },
+                vk: { mode: 'active' },
+              },
+            }),
+          );
+        }
+        if (!online) {
+          return Promise.reject(new TypeError('Failed to fetch'));
+        }
+        return Promise.resolve(response(attentionOperationsStatus()));
+      }),
+    );
+    const wrapper = mount(OperationsDashboardPage, {
+      global: { stubs: { RouterLink: true } },
+    });
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Состояние каналов неизвестно');
+    expect(wrapper.text()).not.toContain('Проверяем работу каналов…');
+    expect(wrapper.find('.loading-card').exists()).toBe(false);
+    online = true;
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Повторить проверку')!
+      .trigger('click');
+    await flushPromises();
+    expect(wrapper.find('.unavailable-card').exists()).toBe(false);
+    expect(wrapper.get('.service-summary').classes()).toContain(
+      'service-summary--attention',
+    );
+    wrapper.unmount();
+  });
+
   it('shows one refresh error and does not present stale status as healthy', async () => {
     let online = true;
     vi.stubGlobal(

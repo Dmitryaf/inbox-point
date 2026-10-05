@@ -33,9 +33,6 @@ export default function ContentPreview($incomingProps: ComponentProps) {
         className={$class('card preview', $attributes.className)}
         data-r-e038eaba=""
       >
-        <p className="step" data-r-e038eaba="">
-          {'Предпросмотр'}
-        </p>
         <h2 id="preview-title" data-r-e038eaba="">
           {'Предпросмотр ответов'}
         </h2>

@@ -32,11 +32,11 @@ export function renderInboundEventIncidentListPart1(
           data-r-4b17d194=""
         >
           <h3 id="inbound-event-incidents-title" data-r-4b17d194="">
-            {'Необработанные сообщения'}
+            {' Необработанные сообщения и действия '}
           </h3>
           <p data-r-4b17d194="">
             {
-              ' Некоторые входящие события не удалось обработать автоматически. Проверьте сведения и выберите подходящее действие. '
+              ' Некоторые сообщения или действия в каналах не удалось обработать автоматически. Проверьте сведения и выберите подходящее действие. '
             }
           </p>
           <ol data-r-4b17d194="">
@@ -44,9 +44,8 @@ export function renderInboundEventIncidentListPart1(
               <li key={incident.eventId} data-r-4b17d194="">
                 <div className="delivery-incident-heading" data-r-4b17d194="">
                   <strong data-r-4b17d194="">
-                    {'Сообщение '}
+                    {'Нужна проверка: '}
                     {incident.channel}
-                    {' требует решения'}
                   </strong>
                   <time dateTime={incident.receivedAt} data-r-4b17d194="">
                     {$unref(formatShortDateTime)(incident.receivedAt)}
@@ -55,13 +54,13 @@ export function renderInboundEventIncidentListPart1(
                 {incident.channel === 'Telegram' ? (
                   <p data-r-4b17d194="">
                     {
-                      ' Перед повтором проверьте чат: предыдущий ответ бота мог быть отправлен. Если он уже есть, пропустите событие. '
+                      ' Перед повтором проверьте чат: предыдущий ответ бота мог быть отправлен. Если он уже есть, выберите «Не обрабатывать». '
                     }
                   </p>
                 ) : (
                   <p data-r-4b17d194="">
                     {
-                      ' После повторной обработки сообщение может появиться у администратора. Если событие точно не нужно, его можно пропустить. '
+                      ' После повторной обработки сообщение может появиться у администратора. Если повтор точно не нужен, выберите «Не обрабатывать». '
                     }
                   </p>
                 )}
@@ -120,7 +119,7 @@ export function renderInboundEventIncidentListPart1(
                   >
                     {$props.pendingEventId === incident.eventId
                       ? 'Сохраняем…'
-                      : 'Пропустить событие'}
+                      : 'Не обрабатывать'}
                   </button>
                 </div>
               </li>

@@ -23,11 +23,11 @@ export function renderOperationsOverviewPart2(
     <>
       <article
         className={$class('service-summary', {
-          'summary-card--attention': $or(
+          'service-summary--attention': $or(
             $props.statusUnavailable,
             () => $props.status.state === 'attention',
           ),
-          'summary-card--maintenance': $props.status.state === 'maintenance',
+          'service-summary--maintenance': $props.status.state === 'maintenance',
         })}
         data-r-2dc401be=""
       >

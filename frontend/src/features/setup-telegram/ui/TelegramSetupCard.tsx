@@ -5,12 +5,11 @@ import {
 } from '@frontend/shared/lib/component-model';
 import { classNames as $class } from '@frontend/shared/lib/component-view';
 
-import { setModelValue as $set } from '@frontend/shared/lib/component-bindings';
-
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
 import { renderTelegramSetupCardPart1 } from './TelegramSetupCard.part1';
 import { renderTelegramSetupCardPart2 } from './TelegramSetupCard.part2';
+import { renderTelegramSetupCardPart3 } from './TelegramSetupCard.part3';
 import {
   createComponentModel,
   componentDefaults,
@@ -42,19 +41,8 @@ export default function TelegramSetupCard($incomingProps: ComponentProps) {
         data-r-44d690ea=""
       >
         {renderTelegramSetupCardPart1($props)}
-        <button
-          type="button"
-          onClick={() => void $set($state, 'expanded', !$state.expanded.value)}
-          className="quiet setup-toggle"
-          data-r-44d690ea=""
-        >
-          {expanded
-            ? 'Скрыть'
-            : $props.status.source !== 'none'
-              ? 'Сведения'
-              : 'Подключить Telegram'}
-        </button>
         {renderTelegramSetupCardPart2($state, $props)}
+        {renderTelegramSetupCardPart3($state, $props)}
       </section>
     </ModelScopeProvider>
   );

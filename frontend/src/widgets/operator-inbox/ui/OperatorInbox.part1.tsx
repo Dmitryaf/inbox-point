@@ -29,7 +29,7 @@ export function renderOperatorInboxPart1(
                   className="status-pill status-pill--attention"
                   data-r-ae8be5db=""
                 >
-                  {' Резервный интерфейс '}
+                  {' Ответы через приложение '}
                 </span>
               </p>
               <h2 id="operator-inbox-title" data-r-ae8be5db="">

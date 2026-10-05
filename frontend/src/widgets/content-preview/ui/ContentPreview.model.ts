@@ -4,6 +4,7 @@ import {
 } from '@frontend/shared/lib/component-model';
 
 import { computed } from '@frontend/shared/lib/model-state';
+
 import {
   buildClientResponsePreviews,
   buildTelegramMenuPreviewRows,
