@@ -16,6 +16,7 @@
   font-size: var(--font-size-small);
 }
 .channel-activity dd[data-r-0b4df92b] {
+  overflow-wrap: anywhere;
   font-size: var(--font-size-card);
   font-weight: 750;
   margin: 0;

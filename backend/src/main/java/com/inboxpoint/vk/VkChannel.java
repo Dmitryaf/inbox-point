@@ -77,7 +77,7 @@ public final class VkChannel implements AutoCloseable {
                     }
                 }
             } catch (IOException failure) {
-                activity.failed();
+                activity.failed(server == null ? "startup" : "poll", failure);
                 Thread.sleep(Duration.ofSeconds(1));
             }
         }

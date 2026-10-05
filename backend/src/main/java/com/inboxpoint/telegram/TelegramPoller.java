@@ -47,7 +47,7 @@ final class TelegramPoller {
                 recovery.run();
                 Thread.sleep(Duration.ofMillis(100));
             } catch (TelegramBotApi.RequestFailed failure) {
-                activity.failed();
+                activity.failed("poll", failure);
                 LoggerFactory.getLogger(TelegramPoller.class).warn("Telegram polling or relay failed");
                 Thread.sleep(Duration.ofSeconds(1));
             }

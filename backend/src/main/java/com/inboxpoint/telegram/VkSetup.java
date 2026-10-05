@@ -35,8 +35,12 @@ final class VkSetup {
             var token = environment.getRequiredProperty("VK_ACCESS_TOKEN");
             var group = environment.getRequiredProperty("VK_GROUP_ID", Long.class);
             var timeout = environment.getProperty("VK_POLL_TIMEOUT_SECONDS", Integer.class, 25);
-            start(token, group, timeout, false, sink);
             source = "environment";
+            try {
+                start(token, group, timeout, false, sink);
+            } catch (IOException | RuntimeException failure) {
+                activity.failed("startup", failure);
+            }
             return;
         }
         try {
@@ -44,12 +48,13 @@ final class VkSetup {
             if (!saved.isObject() || saved.size() != 3 || !saved.has("accessToken") || !saved.has("groupId") || !saved.has("pollTimeoutSeconds")) {
                 throw new IOException("Invalid VK settings version");
             }
+            source = "local";
             start(saved.path("accessToken").asString(""), saved.path("groupId").asLong(0),
                     saved.path("pollTimeoutSeconds").asInt(0), false, sink);
-            source = "local";
         } catch (NoSuchFileException missing) {
             source = "none";
         } catch (IOException | RuntimeException failure) {
+            activity.failed("startup", failure);
             LoggerFactory.getLogger(VkSetup.class).warn("Saved VK connection could not be restored");
         }
     }

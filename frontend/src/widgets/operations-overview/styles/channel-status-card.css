@@ -19,6 +19,7 @@
 }
 
 .channel-activity dd {
+  overflow-wrap: anywhere;
   font-size: var(--font-size-card);
   font-weight: 750;
   margin: 0;

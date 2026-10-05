@@ -86,7 +86,11 @@ public final class TelegramRuntime {
             var config = new Settings(environment.getRequiredProperty("TELEGRAM_BOT_TOKEN"),
                     environment.getRequiredProperty("TELEGRAM_OPERATOR_CHAT_ID", Long.class),
                     environment.getProperty("TELEGRAM_POLL_TIMEOUT_SECONDS", Integer.class, 30));
-            startWorker(config, false);
+            try {
+                startWorker(config, false);
+            } catch (IOException | SQLException | RuntimeException failure) {
+                activity.failed("startup", failure);
+            }
             return;
         }
         try {
@@ -100,6 +104,7 @@ public final class TelegramRuntime {
         } catch (NoSuchFileException missing) {
             source = NONE;
         } catch (IOException | SQLException | RuntimeException failure) {
+            activity.failed("startup", failure);
             LoggerFactory.getLogger(TelegramRuntime.class).warn("Saved Telegram connection could not be restored");
         }
     }
