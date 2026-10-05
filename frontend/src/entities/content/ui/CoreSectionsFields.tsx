@@ -35,10 +35,10 @@ export default function CoreSectionsFields($incomingProps: ComponentProps) {
     <ModelScopeProvider scope={$scope}>
       <section
         {...$attributes}
+        aria-label="Основные ответы"
         className={$class('card', $attributes.className)}
         data-r-54db50dd=""
       >
-        <h2 data-r-54db50dd="">{'Основные ответы'}</h2>
         <ScheduleEditor
           errors={$props.errors}
           modelValue={draft}

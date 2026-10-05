@@ -4,10 +4,6 @@
   padding: 0;
 }
 
-.card > h2 {
-  margin-bottom: 0;
-}
-
 .counter {
   color: var(--color-text-muted);
   font-size: var(--font-size-small);
@@ -33,10 +29,6 @@
 }
 
 .field-group + .field-group {
-  margin-top: 0.75rem;
-}
-
-.card > h2 + .field-group {
   margin-top: 0.75rem;
 }
 
@@ -134,8 +126,5 @@
     border: 0;
     padding: 0;
     background: transparent;
-  }
-  .card > h2 {
-    font-size: var(--font-size-section);
   }
 }
