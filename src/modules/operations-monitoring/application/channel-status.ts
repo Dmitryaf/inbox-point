@@ -19,6 +19,13 @@ export function mapChannelStatus(
 ): ChannelOperationsStatus {
   return {
     configured: status.source !== 'none',
+    ...(activity.consecutiveFailures === undefined
+      ? {}
+      : { consecutiveFailures: activity.consecutiveFailures }),
+    ...(activity.lastFailure ? { lastFailure: activity.lastFailure } : {}),
+    ...(activity.lastRecoveredAt
+      ? { lastRecoveredAt: activity.lastRecoveredAt.toISOString() }
+      : {}),
     ...(activity.lastFailedPollAt
       ? { lastFailedPollAt: activity.lastFailedPollAt.toISOString() }
       : {}),

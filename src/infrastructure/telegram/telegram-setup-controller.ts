@@ -6,6 +6,7 @@ import {
   type TelegramOperatorChat,
 } from '@/infrastructure/telegram/telegram-api-client.js';
 import type { TelegramRuntimeControl } from '@/infrastructure/telegram/telegram-runtime.js';
+import type { ApiFailureObserver } from '@/infrastructure/diagnostics/api-request-diagnostic.js';
 
 export type TelegramSettingsSource = 'environment' | 'local' | 'none';
 
@@ -25,6 +26,7 @@ export class TelegramSetupController {
     private readonly fetchImplementation: TelegramFetch = fetch,
     private readonly setExpected: (expected: boolean) => Promise<void> = () =>
       Promise.resolve(),
+    private readonly onApiFailure: ApiFailureObserver = () => undefined,
   ) {
     this.source = source;
   }
@@ -44,6 +46,7 @@ export class TelegramSetupController {
     return new TelegramApiClient(
       botToken,
       this.fetchImplementation,
+      this.onApiFailure,
     ).discoverOperatorChats();
   }
 

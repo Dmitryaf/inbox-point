@@ -1,4 +1,8 @@
 import { z } from 'zod';
+import {
+  beginApiRequest,
+  type ApiFailureObserver,
+} from '@/infrastructure/diagnostics/api-request-diagnostic.js';
 
 import { vkLongPollEventSchema, type VkLongPollEvent } from './vk-types.js';
 
@@ -133,6 +137,7 @@ export class VkApiClient implements VkGateway {
   public constructor(
     private readonly accessToken: string,
     private readonly fetchImplementation: typeof fetch = fetch,
+    private readonly onApiFailure: ApiFailureObserver = () => undefined,
   ) {}
 
   public async getLongPollServer(groupId: number): Promise<VkLongPollServer> {
@@ -201,6 +206,7 @@ export class VkApiClient implements VkGateway {
     waitSeconds: number,
     signal: AbortSignal,
   ): Promise<VkLongPollResponse> {
+    const failure = beginApiRequest('vk', 'longPoll', this.onApiFailure);
     const url = new URL(server.server);
     url.searchParams.set('act', 'a_check');
     url.searchParams.set('key', server.key);
@@ -214,15 +220,34 @@ export class VkApiClient implements VkGateway {
       if (isAbortError(error)) {
         throw error;
       }
-      throw new Error('VK Long Poll request failed');
+      throw failure(new Error('VK Long Poll request failed'), 'transport', {
+        cause: error,
+      });
     }
     if (!response.ok) {
-      throw new Error(`VK Long Poll failed with HTTP ${response.status}`);
+      throw failure(
+        new Error(`VK Long Poll failed with HTTP ${response.status}`),
+        'http',
+        { httpStatus: response.status },
+      );
     }
-    const body: unknown = await response.json();
+    let body: unknown;
+    try {
+      body = await response.json();
+    } catch {
+      throw failure(
+        new Error('VK Long Poll returned invalid JSON'),
+        'invalid_response',
+        { httpStatus: response.status },
+      );
+    }
     const parsed = longPollResponseSchema.safeParse(body);
     if (!parsed.success) {
-      throw new Error('VK Long Poll returned an invalid response');
+      throw failure(
+        new Error('VK Long Poll returned an invalid response'),
+        'invalid_response',
+        { httpStatus: response.status },
+      );
     }
     if ('failed' in parsed.data) {
       return {
@@ -274,6 +299,7 @@ export class VkApiClient implements VkGateway {
     parameters: Readonly<Record<string, string>>,
     schema: z.ZodType<Result>,
   ): Promise<Result> {
+    const failure = beginApiRequest('vk', method, this.onApiFailure);
     const body = new URLSearchParams({
       ...parameters,
       access_token: this.accessToken,
@@ -288,20 +314,48 @@ export class VkApiClient implements VkGateway {
           method: 'POST',
         },
       );
-    } catch {
-      throw new Error(`VK API request failed for ${method}`);
+    } catch (error: unknown) {
+      throw failure(
+        new Error(`VK API request failed for ${method}`),
+        'transport',
+        { cause: error },
+      );
     }
     if (!response.ok) {
-      throw new Error(`VK API ${method} failed with HTTP ${response.status}`);
+      throw failure(
+        new Error(`VK API ${method} failed with HTTP ${response.status}`),
+        'http',
+        { httpStatus: response.status },
+      );
     }
-    const payload: unknown = await response.json();
+    let payload: unknown;
+    try {
+      payload = await response.json();
+    } catch {
+      throw failure(
+        new Error(`VK API ${method} returned invalid JSON`),
+        'invalid_response',
+        { httpStatus: response.status },
+      );
+    }
     const apiError = apiErrorSchema.safeParse(payload);
     if (apiError.success) {
-      throw new VkApiError(apiError.data.error.error_code, method);
+      throw failure(
+        new VkApiError(apiError.data.error.error_code, method),
+        'api',
+        {
+          httpStatus: response.status,
+          apiCode: apiError.data.error.error_code,
+        },
+      );
     }
     const envelope = z.object({ response: schema }).safeParse(payload);
     if (!envelope.success) {
-      throw new Error(`VK API ${method} returned an invalid response`);
+      throw failure(
+        new Error(`VK API ${method} returned an invalid response`),
+        'invalid_response',
+        { httpStatus: response.status },
+      );
     }
     return envelope.data.response;
   }
