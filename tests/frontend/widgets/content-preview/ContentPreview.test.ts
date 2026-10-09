@@ -8,6 +8,26 @@ import { clientMessages } from '@core/application/client-messages';
 import ContentPreview from '@frontend/widgets/content-preview/ui/ContentPreview.vue';
 
 describe('ContentPreview', () => {
+  it('shows the question, client answer step and application receipt', () => {
+    const content = createEmptyContent();
+    content.customSections = [
+      {
+        label: 'Записаться',
+        mode: 'application',
+        text: 'Когда хотите прийти?',
+      },
+    ];
+    const wrapper = mount(ContentPreview, { props: { content } });
+    expect(wrapper.get('.preview-response').text()).toContain(
+      'Когда хотите прийти?',
+    );
+    expect(wrapper.get('.preview-response').text()).toContain(
+      'Он придёт администратору как заявка «Записаться»',
+    );
+    expect(wrapper.get('.preview-response').text()).toContain(
+      clientMessages.applicationSent,
+    );
+  });
   it('shows the client menu and replies in their real order', () => {
     const content = createEmptyContent();
     content.schedule = [

@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { DeliveryWorker } from '@/core/application/delivery-worker.js';
@@ -181,6 +184,334 @@ describe('VK handoff integration', () => {
 
   afterEach(() => {
     repository.close();
+  });
+
+  it('delivers a pending application after a process restart using its original label', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'inbox-point-application-'));
+    const path = join(directory, 'support.sqlite');
+    information.replace({
+      customSections: [
+        {
+          id: 'registration',
+          label: 'Записаться',
+          mode: 'application',
+          text: 'Когда?',
+        },
+      ],
+    });
+    const first = new SqliteSupportRepository(path);
+    try {
+      await new VkClientMenu(gateway, first, information).handle({
+        externalEventId: 'registration-click',
+        peerId: 101,
+        payload: menuPayload('custom:registration'),
+        text: 'Записаться',
+      });
+    } finally {
+      first.close();
+    }
+    const restarted = new SqliteSupportRepository(path);
+    try {
+      information.replace({ customSections: [] });
+      const restartedRouter = new VkUpdateRouter(
+        new HandoffService({ operatorInbox: inbox, repository: restarted }),
+        gateway,
+        new VkClientMenu(gateway, restarted, information),
+      );
+      await restartedRouter.route(createMessageEvent({ text: 'Во вторник' }));
+      expect(inbox.relayed.at(-1)?.text).toBe(
+        'Заявка: Записаться\n\nВо вторник',
+      );
+      const request = restarted.findActiveRequest('vk', '101')!;
+      expect(
+        restarted.findConversationMessages(request.id)[0]?.applicationLabel,
+      ).toBe('Записаться');
+    } finally {
+      restarted.close();
+      rmSync(directory, { recursive: true });
+    }
+  });
+
+  it('does not reopen a closed conversation from an expired application answer', async () => {
+    let now = new Date('2026-10-10T10:00:00Z');
+    information.replace({
+      customSections: [
+        {
+          id: 'registration',
+          label: 'Записаться',
+          mode: 'application',
+          text: 'Когда?',
+        },
+      ],
+    });
+    repository.createRequest({
+      id: 'closed-request',
+      channel: 'vk',
+      conversationId: '101',
+      createdAt: now,
+      closedAt: now,
+      status: 'closed',
+      operatorTopicId: 'topic-1',
+    });
+    const timedRouter = new VkUpdateRouter(
+      new HandoffService({
+        operatorInbox: inbox,
+        repository,
+        clock: () => now,
+      }),
+      gateway,
+      new VkClientMenu(
+        gateway,
+        repository,
+        information,
+        acceptingClientIntakePolicy,
+        () => now,
+      ),
+    );
+    await timedRouter.route(
+      createMessageEvent({
+        payload: menuPayload('custom:registration'),
+        text: 'Записаться',
+      }),
+    );
+    now = new Date('2026-10-10T12:00:00Z');
+    await timedRouter.route(
+      createMessageEvent({
+        id: 502,
+        conversation_message_id: 8,
+        text: 'Во вторник',
+      }),
+    );
+    expect(inbox.relayed).toHaveLength(0);
+    expect(repository.findActiveRequest('vk', '101')).toBeUndefined();
+    expect(gateway.sent.at(-1)?.text).toBe(clientMessages.closedConversation);
+    expect(
+      gateway.sent
+        .at(-1)
+        ?.keyboard?.buttons.flat()
+        .map((button) => button.action.label),
+    ).toContain('Записаться');
+  });
+
+  it.each(['first', 'closed', 'active'] as const)(
+    'accepts a custom application in a %s conversation exactly once',
+    async (stage) => {
+      information.replace({
+        customSections: [
+          {
+            id: 'registration',
+            label: 'Записаться на занятие',
+            mode: 'application',
+            text: 'На какое занятие хотите записаться?',
+          },
+        ],
+      });
+      if (stage !== 'first') {
+        await router.route(createMessageEvent({ text: 'Первый вопрос' }));
+        if (stage === 'closed') {
+          const request = repository.findActiveRequest('vk', '101')!;
+          repository.closeRequest(request.id, new Date());
+        }
+      }
+      const previous = repository.findLatestRequest('vk', '101');
+      const menu = createMessageEvent({
+        id: 502,
+        conversation_message_id: 8,
+        payload: menuPayload('custom:registration'),
+        text: 'Записаться на занятие',
+      });
+      await router.route(menu);
+      await router.route(menu);
+      expect(
+        gateway.sent.filter(
+          (message) => message.text === 'На какое занятие хотите записаться?',
+        ),
+      ).toHaveLength(1);
+      expect(gateway.sent.at(-1)?.keyboard?.buttons).toEqual([]);
+      const answer = createMessageEvent({
+        id: 503,
+        conversation_message_id: 9,
+        text: 'Бачата, вторник',
+      });
+      await router.route(answer);
+      await router.route(answer);
+      const current = repository.findActiveRequest('vk', '101')!;
+      expect(
+        stage === 'active'
+          ? current.id === previous?.id
+          : current.id !== previous?.id,
+      ).toBe(true);
+      expect(
+        inbox.relayed.filter(
+          (message) =>
+            message.text === 'Заявка: Записаться на занятие\n\nБачата, вторник',
+        ),
+      ).toHaveLength(1);
+      expect(
+        repository.findAwaitingApplicationLabel('vk', '101', new Date()),
+      ).toBeUndefined();
+      const worker = new DeliveryWorker({
+        channels: [new VkClientChannel(gateway, repository, information)],
+        repository,
+      });
+      await worker.processPending();
+      await worker.processPending();
+      expect(
+        gateway.sent.filter(
+          (message) => message.text === clientMessages.applicationSent,
+        ),
+      ).toHaveLength(1);
+      if (stage === 'closed') {
+        expect(inbox.reopened).toEqual(['topic-1']);
+      }
+    },
+  );
+
+  it.each(['first', 'closed', 'active'] as const)(
+    'opens the menu and cancels application intent in a %s conversation',
+    async (stage) => {
+      information.replace({
+        customSections: [
+          {
+            id: 'registration',
+            label: 'Записаться',
+            mode: 'application',
+            text: 'Когда?',
+          },
+        ],
+      });
+      if (stage !== 'first') {
+        await router.route(createMessageEvent());
+        if (stage === 'closed') {
+          repository.closeRequest(
+            repository.findActiveRequest('vk', '101')!.id,
+            new Date(),
+          );
+        }
+      }
+      await router.route(
+        createMessageEvent({
+          id: 502,
+          conversation_message_id: 8,
+          payload: menuPayload('custom:registration'),
+          text: 'Записаться',
+        }),
+      );
+      await router.route(
+        createMessageEvent({
+          id: 503,
+          conversation_message_id: 9,
+          text: '  мЕнЮ  ',
+        }),
+      );
+      expect(
+        repository.findAwaitingApplicationLabel('vk', '101', new Date()),
+      ).toBeUndefined();
+      expect(
+        gateway.sent
+          .at(-1)
+          ?.keyboard?.buttons.flat()
+          .map((button) => button.action.label),
+      ).toContain('Записаться');
+      expect(
+        inbox.relayed.some((message) => message.text.includes('мЕнЮ')),
+      ).toBe(false);
+    },
+  );
+
+  it('keeps ordinary typed application labels as client text in VK and blocks application clicks during intake pause', async () => {
+    information.replace({
+      prices: '1000',
+      customSections: [
+        {
+          id: 'registration',
+          label: 'Записаться',
+          mode: 'application',
+          text: 'Когда?',
+        },
+      ],
+    });
+    vkPaused = true;
+    await router.route(createMessageEvent({ text: 'Меню' }));
+    expect(
+      gateway.sent
+        .at(-1)
+        ?.keyboard?.buttons.flat()
+        .map((button) => button.action.label),
+    ).toEqual(['Цены']);
+    await router.route(
+      createMessageEvent({
+        id: 502,
+        conversation_message_id: 8,
+        payload: menuPayload('custom:registration'),
+        text: 'Записаться',
+      }),
+    );
+    expect(repository.isAwaitingClientQuestion('vk', '101', new Date())).toBe(
+      false,
+    );
+    expect(inbox.opened).toHaveLength(0);
+    vkPaused = false;
+    await router.route(
+      createMessageEvent({
+        id: 503,
+        conversation_message_id: 9,
+        text: 'Записаться',
+      }),
+    );
+    expect(inbox.relayed.at(-1)?.text).toBe('Записаться');
+  });
+
+  it('retains application context on retry without consuming a newer application', async () => {
+    information.replace({
+      customSections: [
+        {
+          id: 'registration',
+          label: 'Записаться',
+          mode: 'application',
+          text: 'Когда?',
+        },
+      ],
+    });
+    await router.route(createMessageEvent());
+    await router.route(
+      createMessageEvent({
+        id: 502,
+        conversation_message_id: 8,
+        payload: menuPayload('custom:registration'),
+        text: 'Записаться',
+      }),
+    );
+    const answer = createMessageEvent({
+      id: 503,
+      conversation_message_id: 9,
+      text: 'Во вторник',
+    });
+    const relay = inbox.relayCustomerMessage.bind(inbox);
+    let fail = true;
+    inbox.relayCustomerMessage = (...args) => {
+      if (fail) {
+        fail = false;
+        return Promise.reject(new Error('Temporary inbox failure'));
+      }
+      return relay(...args);
+    };
+    await expect(router.route(answer)).rejects.toThrow(
+      'Temporary inbox failure',
+    );
+    await router.route(
+      createMessageEvent({
+        id: 504,
+        conversation_message_id: 10,
+        payload: menuPayload('custom:registration'),
+        text: 'Записаться',
+      }),
+    );
+    await router.route(answer);
+    expect(inbox.relayed.at(-1)?.text).toBe('Заявка: Записаться\n\nВо вторник');
+    expect(
+      repository.findAwaitingApplicationLabel('vk', '101', new Date()),
+    ).toBe('Записаться');
   });
 
   it('routes a VK customer through Telegram and returns the reply to VK', async () => {

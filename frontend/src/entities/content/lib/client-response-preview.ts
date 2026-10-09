@@ -9,6 +9,7 @@ import {
 } from './schedule-response';
 
 export interface ClientResponsePreview {
+  mode?: 'application';
   group: 'custom' | 'information';
   label: string;
   text: string;
@@ -71,6 +72,9 @@ export function buildClientResponsePreviews(
     if (section.label.trim() && section.text.trim()) {
       responses.push({
         group: 'custom',
+        ...(section.mode === 'application'
+          ? { mode: 'application' as const }
+          : {}),
         label: section.label.trim(),
         text: section.text.trim(),
       });

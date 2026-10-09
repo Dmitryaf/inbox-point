@@ -16,6 +16,48 @@ afterEach(() => {
 });
 
 describe('SqliteSupportRepository', () => {
+  it('migrates v12 and preserves application intent across restart, expiry and replacement', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'inbox-point-test-'));
+    temporaryDirectories.push(directory);
+    const path = join(directory, 'application.sqlite');
+    const first = new SqliteSupportRepository(path);
+    const now = new Date('2026-10-10T10:00:00Z');
+    first.setAwaitingClientQuestion('vk', '101', now);
+    first.close();
+    const legacy = new DatabaseSync(path);
+    legacy.exec(
+      'ALTER TABLE client_conversation_states DROP COLUMN application_label; ALTER TABLE conversation_messages DROP COLUMN application_label; PRAGMA user_version = 12;',
+    );
+    legacy.close();
+    const migrated = new SqliteSupportRepository(path);
+    expect(migrated.isAwaitingClientQuestion('vk', '101', now)).toBe(true);
+    expect(
+      migrated.findAwaitingApplicationLabel('vk', '101', now),
+    ).toBeUndefined();
+    migrated.setAwaitingClientQuestion('vk', '101', now, 'Записаться');
+    migrated.close();
+    const restarted = new SqliteSupportRepository(path);
+    expect(
+      restarted.findAwaitingApplicationLabel(
+        'vk',
+        '101',
+        new Date('2026-10-10T11:59:59Z'),
+      ),
+    ).toBe('Записаться');
+    expect(
+      restarted.findAwaitingApplicationLabel(
+        'vk',
+        '101',
+        new Date('2026-10-10T12:00:00Z'),
+      ),
+    ).toBeUndefined();
+    restarted.setAwaitingClientQuestion('vk', '101', now, 'Записаться');
+    restarted.setAwaitingClientQuestion('vk', '101', now);
+    expect(
+      restarted.findAwaitingApplicationLabel('vk', '101', now),
+    ).toBeUndefined();
+    restarted.close();
+  });
   it('persists awaiting-question intent across restart and clears it on request creation', () => {
     const directory = mkdtempSync(join(tmpdir(), 'inbox-point-test-'));
     temporaryDirectories.push(directory);
@@ -581,7 +623,7 @@ describe('SqliteSupportRepository', () => {
     database.close();
 
     expect(() => new SqliteSupportRepository(databasePath)).toThrow(
-      'Unsupported SQLite schema version 2; expected 12',
+      'Unsupported SQLite schema version 2; expected 13',
     );
   });
 
@@ -623,7 +665,7 @@ describe('SqliteSupportRepository', () => {
 
     const verified = new DatabaseSync(databasePath, { readOnly: true });
     expect(verified.prepare('PRAGMA user_version').get()).toEqual({
-      user_version: 12,
+      user_version: 13,
     });
     expect(
       verified
@@ -716,7 +758,7 @@ describe('SqliteSupportRepository', () => {
 
     const verified = new DatabaseSync(databasePath, { readOnly: true });
     expect(verified.prepare('PRAGMA user_version').get()).toEqual({
-      user_version: 12,
+      user_version: 13,
     });
     verified.close();
   });
@@ -775,7 +817,7 @@ describe('SqliteSupportRepository', () => {
 
     const verified = new DatabaseSync(databasePath, { readOnly: true });
     expect(verified.prepare('PRAGMA user_version').get()).toEqual({
-      user_version: 12,
+      user_version: 13,
     });
     expect(
       verified
@@ -901,7 +943,7 @@ describe('SqliteSupportRepository', () => {
 
     const verified = new DatabaseSync(databasePath, { readOnly: true });
     expect(verified.prepare('PRAGMA user_version').get()).toEqual({
-      user_version: 12,
+      user_version: 13,
     });
     expect(
       verified

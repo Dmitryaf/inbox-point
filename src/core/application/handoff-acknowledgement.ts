@@ -14,8 +14,11 @@ export function enqueueHandoffAcknowledgement(
   request: Pick<SupportRequest, 'channel' | 'conversationId' | 'id'>,
   createdAt: Date,
   kind: HandoffAcknowledgementKind = 'sent',
+  applicationMessageId?: string,
 ): void {
-  const deliveryId = `system:handoff-${acknowledgementId(kind)}:${request.id}`;
+  const deliveryId = applicationMessageId
+    ? `system:application-${acknowledgementId(kind)}:${request.id}:${applicationMessageId}`
+    : `system:handoff-${acknowledgementId(kind)}:${request.id}`;
   repository.enqueueDelivery({
     channel: request.channel,
     conversationId: request.conversationId,
@@ -24,7 +27,11 @@ export function enqueueHandoffAcknowledgement(
     idempotencyKey: deliveryId,
     operatorMessageId: deliveryId,
     requestId: request.id,
-    text: acknowledgementText(kind),
+    text: applicationMessageId
+      ? kind === 'delayed'
+        ? clientMessages.applicationDelayed
+        : clientMessages.applicationSent
+      : acknowledgementText(kind),
   });
 }
 

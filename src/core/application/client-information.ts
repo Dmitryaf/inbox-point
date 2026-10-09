@@ -43,6 +43,7 @@ export const reservedClientLabels = [
   '/start',
   '/menu',
   'Начать',
+  'Меню',
 ] as const;
 
 export interface ClientInformationContent {
@@ -56,6 +57,7 @@ export interface ClientInformationContent {
 }
 
 export interface CustomInformationSection {
+  mode?: 'information' | 'application';
   id?: string;
   label: string;
   text: string;
@@ -414,6 +416,9 @@ export function hasValidCustomSections(
   return (
     sections.every(
       (section) =>
+        (section.mode === undefined ||
+          section.mode === 'information' ||
+          section.mode === 'application') &&
         (section.id === undefined ||
           /^[A-Za-z0-9_-]{1,80}$/u.test(section.id)) &&
         section.label === section.label.trim() &&

@@ -33,6 +33,17 @@ const buttonRows = computed(() =>
       >
         <p class="preview-client-message">{{ response.label }}</p>
         <p class="preview-service-message">{{ response.text }}</p>
+        <p v-if="response.mode === 'application'" class="preview-intro">
+          Здесь клиент напишет ответ. Он придёт администратору как заявка «{{
+            response.label
+          }}».
+        </p>
+        <p
+          v-if="response.mode === 'application'"
+          class="preview-service-message"
+        >
+          {{ clientMessages.applicationSent }}
+        </p>
       </article>
       <div class="message-preview-buttons" aria-label="Кнопки меню Telegram">
         <div

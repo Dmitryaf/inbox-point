@@ -141,6 +141,10 @@ export interface SupportRepository
     requestId: string,
     limit?: number,
   ): readonly ConversationMessage[];
+  findClientApplication(
+    requestId: string,
+    externalMessageId: string,
+  ): { label: string; text: string } | undefined;
   findFailedDeliveries(limit: number): readonly FailedDelivery[];
   findUnnotifiedFailedDeliveries(
     availableBefore: Date,
@@ -173,6 +177,11 @@ export interface SupportRepository
     conversationId: string,
     checkedAt: Date,
   ): boolean;
+  findAwaitingApplicationLabel(
+    channel: ClientChannelKind,
+    conversationId: string,
+    checkedAt: Date,
+  ): string | undefined;
   getUsageEventCounts(since: Date): UsageEventCounts;
   getUsageAnalytics(
     since: Date,
@@ -227,6 +236,7 @@ export interface SupportRepository
     channel: ClientChannelKind,
     conversationId: string,
     updatedAt: Date,
+    applicationLabel?: string,
   ): void;
   retryFailedDelivery(deliveryId: string, retryAt: Date): boolean;
   resolveOperatorActionAsWeb(actionId: string, resolvedAt: Date): boolean;

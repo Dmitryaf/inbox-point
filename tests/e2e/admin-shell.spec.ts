@@ -3,6 +3,95 @@ import { expect, test, type Page } from '@playwright/test';
 const password = 'synthetic-admin-password';
 const bypassServer = 'http://127.0.0.1:4175';
 
+for (const width of [1440, 390]) {
+  test(`custom application purpose survives save and reload at ${width}px`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 });
+    let content = {
+      schedule: '',
+      scheduleItems: [] as unknown[],
+      customSections: [] as unknown[],
+    };
+    let version = 'a'.repeat(64);
+    await page.route('**/api/manage/content', async (route) => {
+      if (route.request().method() === 'POST') {
+        const submitted = route.request().postDataJSON() as {
+          content: typeof content;
+        };
+        content = submitted.content;
+        version = 'b'.repeat(64);
+      }
+      await route.fulfill({ json: { content, version } });
+    });
+    await login(page);
+    const openCustom = async () => {
+      if (width >= 900) {
+        await page.getByRole('button', { name: 'Свои разделы' }).click();
+      } else {
+        await page.getByLabel('Раздел', { exact: true }).selectOption('custom');
+      }
+    };
+    await openCustom();
+    await page.getByRole('button', { name: 'Добавить раздел' }).click();
+    await page.getByLabel('Название кнопки').fill('Записаться на занятие');
+    await page.getByRole('radio', { name: /Принять заявку/ }).focus();
+    await page.keyboard.press('Space');
+    await page
+      .getByLabel('Что спросить у клиента?')
+      .fill('На какое занятие и в какой день хотите записаться?');
+    await expect(
+      page.getByRole('radio', { name: /Принять заявку/ }),
+    ).toBeChecked();
+    await expect(
+      page.getByText(
+        'Бот спросит нужные детали и передаст ответ администратору.',
+        { exact: false },
+      ),
+    ).toBeVisible();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: testInfo.outputPath('application-editor.png'),
+      fullPage: true,
+    });
+    await page.getByRole('button', { name: 'Сохранить', exact: true }).click();
+    await expect(page.getByText('Все изменения сохранены')).toBeVisible();
+    expect(content.customSections).toEqual([
+      expect.objectContaining({
+        mode: 'application',
+        label: 'Записаться на занятие',
+      }),
+    ]);
+    await page.reload();
+    await openCustom();
+    await expect(
+      page.getByRole('radio', { name: /Принять заявку/ }),
+    ).toBeChecked();
+    await expect(page.getByLabel('Что спросить у клиента?')).toHaveValue(
+      'На какое занятие и в какой день хотите записаться?',
+    );
+    if (width >= 900) {
+      await page.getByRole('button', { name: 'Предпросмотр' }).click();
+    } else {
+      await page.getByLabel('Режим', { exact: true }).selectOption('preview');
+    }
+    await expect(page.locator('.preview-response')).toContainText(
+      'Он придёт администратору как заявка «Записаться на занятие»',
+    );
+    await expect(page.locator('.preview-response')).toContainText(
+      'Заявка отправлена. Администратор ответит здесь.',
+    );
+    await page.screenshot({
+      path: testInfo.outputPath('application-preview.png'),
+      fullPage: true,
+    });
+  });
+}
+
 test('remembered login, navigation, reload and logout keep the admin boundary', async ({
   page,
 }) => {

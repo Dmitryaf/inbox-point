@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useCollectionEditor } from '@frontend/entities/content/lib/use-collection-editor';
 import type { CustomSection } from '@frontend/entities/content/model/types';
+import CustomSectionPurpose from './CustomSectionPurpose.vue';
 import FieldError from '@frontend/shared/ui/FieldError.vue';
 
 const sections = defineModel<CustomSection[]>({ required: true });
@@ -55,7 +56,15 @@ const { add, move, remove, itemKey } = useCollectionEditor({
         :text="errors[`section-label-${index}`]"
       />
       <p class="counter">{{ section.label.length }} / 40</p>
-      <label :for="`section-text-${index}`">Текст ответа</label>
+      <CustomSectionPurpose
+        v-model="section.mode"
+        :name="`section-mode-${itemKey(section)}`"
+      />
+      <label :for="`section-text-${index}`">{{
+        section.mode === 'application'
+          ? 'Что спросить у клиента?'
+          : 'Текст ответа'
+      }}</label>
       <textarea
         :id="`section-text-${index}`"
         v-model="section.text"
@@ -66,6 +75,11 @@ const { add, move, remove, itemKey } = useCollectionEditor({
         "
         :aria-invalid="Boolean(errors[`section-text-${index}`])"
         maxlength="4000"
+        :placeholder="
+          section.mode === 'application'
+            ? 'На какое занятие и в какой день хотите записаться?'
+            : undefined
+        "
         required
         rows="4"
       />

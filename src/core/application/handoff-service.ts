@@ -173,6 +173,9 @@ export class HandoffService {
       request,
       this.clock(),
       'recovered',
+      firstMessage.applicationLabel
+        ? firstMessage.externalMessageId
+        : undefined,
     );
   }
 
@@ -260,6 +263,7 @@ export class HandoffService {
   }
 
   private async processClientMessage(message: SupportMessage): Promise<void> {
+    message = this.withApplicationContext(message);
     const existingRequest = this.repository.findActiveRequest(
       message.channel,
       message.conversationId,
@@ -311,7 +315,16 @@ export class HandoffService {
     message: SupportMessage,
     initial = false,
   ): Promise<void> {
+    const recordedApplication = message.applicationLabel
+      ? this.repository.findClientApplication(
+          request.id,
+          message.externalMessageId,
+        )
+      : undefined;
     this.repository.recordConversationMessage({
+      ...(message.applicationLabel
+        ? { applicationLabel: message.applicationLabel }
+        : {}),
       createdAt: message.receivedAt,
       direction: 'client_to_operator',
       externalMessageId: message.externalMessageId,
@@ -320,6 +333,12 @@ export class HandoffService {
       senderName: message.displayName,
       text: message.text,
     });
+    if (message.applicationLabel && !recordedApplication) {
+      this.repository.clearAwaitingClientQuestion(
+        message.channel,
+        message.conversationId,
+      );
+    }
     const relayed = await this.operatorInbox.relayCustomerMessage(
       request.operatorTopicId,
       message,
@@ -363,7 +382,44 @@ export class HandoffService {
       },
       this.clock(),
       isWebOperatorTopic(relayed.operatorTopicId) ? 'delayed' : 'sent',
+      message.applicationLabel ? message.externalMessageId : undefined,
     );
+  }
+
+  private withApplicationContext(message: SupportMessage): SupportMessage {
+    if (message.applicationLabel) {
+      return message;
+    }
+    const request =
+      this.repository.findActiveRequest(
+        message.channel,
+        message.conversationId,
+      ) ??
+      this.repository.findLatestRequest(
+        message.channel,
+        message.conversationId,
+      );
+    const stored = request
+      ? this.repository.findClientApplication(
+          request.id,
+          message.externalMessageId,
+        )
+      : undefined;
+    if (stored) {
+      return { ...message, applicationLabel: stored.label, text: stored.text };
+    }
+    const label = this.repository.findAwaitingApplicationLabel(
+      message.channel,
+      message.conversationId,
+      this.clock(),
+    );
+    return label
+      ? {
+          ...message,
+          applicationLabel: label,
+          text: `Заявка: ${label}\n\n${message.text}`,
+        }
+      : message;
   }
 
   private async openClientRequest(message: SupportMessage): Promise<void> {
@@ -393,6 +449,9 @@ export class HandoffService {
       return;
     }
     this.repository.recordConversationMessage({
+      ...(message.applicationLabel
+        ? { applicationLabel: message.applicationLabel }
+        : {}),
       createdAt: message.receivedAt,
       direction: 'client_to_operator',
       externalMessageId: message.externalMessageId,
@@ -430,6 +489,7 @@ export class HandoffService {
         },
         this.clock(),
         'delayed',
+        message.applicationLabel ? message.externalMessageId : undefined,
       );
       return;
     }
@@ -1026,6 +1086,9 @@ function createRecoveredSupportMessage(
     channel: request.channel,
     conversationId: request.conversationId,
     displayName: message.senderName ?? request.displayName ?? 'Клиент',
+    ...(message.applicationLabel
+      ? { applicationLabel: message.applicationLabel }
+      : {}),
     externalMessageId: message.externalMessageId,
     receivedAt: message.createdAt,
     text: message.text,

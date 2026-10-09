@@ -16,6 +16,51 @@ afterEach(async () => {
 });
 
 describe('FileContentSettingsStore', () => {
+  it('preserves section purpose across reload, history and restore alongside legacy information sections', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'inbox-point-content-'));
+    directories.push(directory);
+    const path = join(directory, 'content-settings.json');
+    const store = new FileContentSettingsStore(path);
+    await store.save({
+      customSections: [
+        {
+          id: 'registration',
+          label: 'Записаться',
+          mode: 'application',
+          text: 'Когда?',
+        },
+        { id: 'parking', label: 'Парковка', text: 'Во дворе.' },
+      ],
+    });
+    await store.save({
+      customSections: [
+        {
+          id: 'registration',
+          label: 'Записаться',
+          mode: 'information',
+          text: 'Другой ответ.',
+        },
+      ],
+    });
+    const reloaded = new FileContentSettingsStore(path);
+    expect((await reloaded.load())?.customSections?.[0]?.mode).toBe(
+      'information',
+    );
+    const revision = await reloaded.loadRevision(1);
+    expect(revision?.customSections).toEqual([
+      {
+        id: 'registration',
+        label: 'Записаться',
+        mode: 'application',
+        text: 'Когда?',
+      },
+      { id: 'parking', label: 'Парковка', text: 'Во дворе.' },
+    ]);
+    await reloaded.save(revision!);
+    expect((await reloaded.load())?.customSections?.[0]?.mode).toBe(
+      'application',
+    );
+  });
   it('assigns persistent IDs to legacy sections without losing revisions, old labels or schedule text', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'inbox-point-content-'));
     directories.push(directory);
