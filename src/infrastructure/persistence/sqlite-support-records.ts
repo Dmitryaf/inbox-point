@@ -28,6 +28,7 @@ export interface OperatorRequestSummaryRow extends SupportRequestRow {
 }
 
 export interface ConversationMessageRow {
+  application_label: string | null;
   created_at: string;
   delivery_outcome_unknown: number | null;
   delivery_status: 'failed' | 'pending' | 'sent' | null;

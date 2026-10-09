@@ -91,6 +91,7 @@ export class VkClientMenu implements VkClientMenuHandler {
         action &&
         (('informationRequested' in response &&
           response.informationRequested) ||
+          response.beginQuestion ||
           action.key === 'handoff' ||
           action.key === 'new_question')
       ) {
@@ -112,7 +113,12 @@ export class VkClientMenu implements VkClientMenuHandler {
         this.repository.clearAwaitingClientQuestion('vk', conversationId);
       }
       if (response.beginQuestion) {
-        this.repository.setAwaitingClientQuestion('vk', conversationId, now);
+        this.repository.setAwaitingClientQuestion(
+          'vk',
+          conversationId,
+          now,
+          response.applicationLabel,
+        );
       }
       const responseState: ClientConversationState = response.beginQuestion
         ? { intakePaused: false, stage: 'awaiting_question' }
@@ -166,6 +172,12 @@ export function createVkMainKeyboard(
   const informationRows = createButtonRows(informationButtons);
   const customRows = information
     .getCustomSections()
+    .filter(
+      (section) =>
+        !state.intakePaused ||
+        state.stage === 'active' ||
+        section.mode !== 'application',
+    )
     .map((section) => [
       createButton(section.label, `custom:${section.id ?? ''}`),
     ]);
@@ -193,6 +205,7 @@ function createButtonRows(
 }
 
 interface VkMenuResponse {
+  applicationLabel?: string;
   beginQuestion?: true;
   cancelAwaitingQuestion?: true;
   informationRequested?: true;
@@ -207,12 +220,31 @@ function resolveMenuResponse(
 ): VkMenuResponse | undefined {
   const normalized = text.trim();
   const menuAction = parseMenuAction(payload);
-  const command = normalized.toLowerCase();
+  const command =
+    normalized.toLowerCase() === 'меню' ? '/menu' : normalized.toLowerCase();
   const structuredInformation =
     (menuAction ?? '').startsWith('information-') ||
     (menuAction ?? '').startsWith('custom-') ||
     (menuAction ?? '').startsWith('custom:') ||
     ['schedule', 'prices', 'address', 'faq'].includes(menuAction ?? '');
+
+  const application = structuredInformation
+    ? informationResolver
+        .getCustomSections()
+        .find(
+          (section) =>
+            section.label === normalized && section.mode === 'application',
+        )
+    : undefined;
+  if (application) {
+    return state.intakePaused && state.stage !== 'active'
+      ? { text: clientMessages.pausedIntake }
+      : {
+          beginQuestion: true,
+          applicationLabel: application.label,
+          text: application.text,
+        };
+  }
 
   if (state.stage === 'active') {
     if (structuredInformation) {
@@ -229,6 +261,7 @@ function resolveMenuResponse(
     if (command === '/start' || command === '/menu' || command === 'начать') {
       return {
         text: clientMessages.activeMenu,
+        cancelAwaitingQuestion: true,
       };
     }
     if (command.startsWith('/')) {

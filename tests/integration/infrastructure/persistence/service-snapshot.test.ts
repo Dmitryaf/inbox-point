@@ -41,6 +41,55 @@ afterEach(() => {
 });
 
 describe('ServiceSnapshotService', () => {
+  it('restores a v12 snapshot with pending question intent through the application migration', async () => {
+    const directory = createTemporaryDirectory();
+    const sourcePath = join(directory, 'data', 'support.sqlite');
+    const source = new SqliteSupportRepository(sourcePath);
+    const now = new Date();
+    source.setAwaitingClientQuestion('vk', '101', now);
+    const snapshot = await new ServiceSnapshotService(
+      sourcePath,
+    ).createSnapshot();
+    source.close();
+    const databasePath = join(snapshot.path, 'database.sqlite');
+    const legacy = new DatabaseSync(databasePath);
+    legacy.exec(
+      'ALTER TABLE client_conversation_states DROP COLUMN application_label; ALTER TABLE conversation_messages DROP COLUMN application_label; PRAGMA user_version = 12;',
+    );
+    legacy.close();
+    const bytes = readFileSync(databasePath);
+    const manifest = {
+      ...snapshot.manifest,
+      sqliteSchemaVersion: 12,
+      files: snapshot.manifest.files.map((file) =>
+        file.name === 'database.sqlite'
+          ? {
+              ...file,
+              size: bytes.length,
+              sha256: createHash('sha256').update(bytes).digest('hex'),
+            }
+          : file,
+      ),
+    };
+    writeFileSync(
+      join(snapshot.path, 'manifest.json'),
+      JSON.stringify(manifest),
+    );
+    expect(
+      (await verifyServiceSnapshot(snapshot.path)).sqliteSchemaVersion,
+    ).toBe(12);
+    const restored = await restoreServiceSnapshot(
+      snapshot.path,
+      join(directory, 'restored'),
+    );
+    const repository = new SqliteSupportRepository(restored.databasePath);
+    expect(repository.isAwaitingClientQuestion('vk', '101', now)).toBe(true);
+    expect(
+      repository.findAwaitingApplicationLabel('vk', '101', now),
+    ).toBeUndefined();
+    repository.close();
+    expect(readFileSync(databasePath)).toEqual(bytes);
+  });
   it('restores a v11 snapshot through the analytics migration without changing the source snapshot', async () => {
     const directory = createTemporaryDirectory();
     const source = new SqliteSupportRepository(
@@ -195,7 +244,7 @@ describe('ServiceSnapshotService', () => {
       formatVersion: 1,
       instanceId: 'default',
       secretsIncluded: false,
-      sqliteSchemaVersion: 12,
+      sqliteSchemaVersion: 13,
     });
     expect(manifest.files.map((file) => file.name)).toEqual([
       'database.sqlite',
@@ -284,7 +333,7 @@ describe('ServiceSnapshotService', () => {
       readOnly: true,
     });
     expect(restoredDatabase.prepare('PRAGMA user_version').get()).toEqual({
-      user_version: 12,
+      user_version: 13,
     });
     restoredDatabase.close();
     const restoredSessionStore = new SqliteAdminSessionStore(

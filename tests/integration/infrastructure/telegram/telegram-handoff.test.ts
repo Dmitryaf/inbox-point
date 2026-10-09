@@ -216,6 +216,97 @@ describe('Telegram handoff integration', () => {
     repository.close();
   });
 
+  it.each(['first', 'closed', 'active'] as const)(
+    'accepts a custom application in a %s conversation and returns its receipt',
+    async (stage) => {
+      information.replace({
+        customSections: [
+          {
+            id: 'registration',
+            label: 'Записаться на занятие',
+            mode: 'application',
+            text: 'На какое занятие хотите записаться?',
+          },
+        ],
+      });
+      if (stage !== 'first') {
+        await router.route(createPrivateUpdate(1, 501, 'Первый вопрос'));
+        if (stage === 'closed') {
+          repository.closeRequest(
+            repository.findActiveRequest('telegram', '101')!.id,
+            new Date('2026-08-31T12:00:00Z'),
+          );
+        }
+      }
+      const previous = repository.findLatestRequest('telegram', '101');
+      const click = createPrivateUpdate(2, 502, 'Записаться на занятие');
+      await router.route(click);
+      await router.route(click);
+      expect(
+        gateway.sent.filter(
+          (message) => message.text === 'На какое занятие хотите записаться?',
+        ),
+      ).toHaveLength(1);
+      expect(gateway.sent.at(-1)?.replyMarkup).toEqual({
+        remove_keyboard: true,
+      });
+      const answer = createPrivateUpdate(3, 503, 'Бачата, вторник');
+      await router.route(answer);
+      await router.route(answer);
+      await deliveryWorker.processPending();
+      await deliveryWorker.processPending();
+      const current = repository.findActiveRequest('telegram', '101')!;
+      expect(
+        stage === 'active'
+          ? current.id === previous?.id
+          : current.id !== previous?.id,
+      ).toBe(true);
+      expect(
+        repository
+          .findConversationMessages(current.id)
+          .filter(
+            (message) => message.applicationLabel === 'Записаться на занятие',
+          ),
+      ).toHaveLength(1);
+      expect(
+        gateway.sent.some(
+          (message) =>
+            message.chatId === -1_001 &&
+            message.text.includes(
+              'Заявка: Записаться на занятие\n\nБачата, вторник',
+            ),
+        ),
+      ).toBe(true);
+      expect(
+        gateway.sent.filter(
+          (message) =>
+            message.chatId === 101 &&
+            message.text === clientMessages.applicationSent,
+        ),
+      ).toHaveLength(1);
+    },
+  );
+
+  it('opens the menu by a word during an application in an active Telegram conversation', async () => {
+    information.replace({
+      customSections: [
+        { label: 'Записаться', mode: 'application', text: 'Когда?' },
+      ],
+    });
+    await router.route(createPrivateUpdate(1, 501, 'Первый вопрос'));
+    await router.route(createPrivateUpdate(2, 502, 'Записаться'));
+    await router.route(createPrivateUpdate(3, 503, ' мЕнЮ '));
+    expect(
+      repository.findAwaitingApplicationLabel('telegram', '101', new Date()),
+    ).toBeUndefined();
+    expect(gateway.sent.at(-1)?.replyMarkup).toHaveProperty('keyboard');
+    expect(
+      repository.findConversationMessages(
+        repository.findActiveRequest('telegram', '101')!.id,
+      ),
+    ).toHaveLength(1);
+  });
+
   it('routes customer text through a topic and returns the operator reply', async () => {
     await router.route({
       message: {

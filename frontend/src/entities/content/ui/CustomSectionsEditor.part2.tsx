@@ -1,9 +1,10 @@
 import { renderList as $renderList } from '@frontend/shared/lib/component-view';
 
 import { unref as $unref } from '@frontend/shared/lib/model-state';
-
+import { propertySetter as $propertySetter } from '@frontend/shared/lib/component-bindings';
 import { textProperty as $textProperty } from '@frontend/shared/lib/component-inputs';
 
+import CustomSectionPurpose from './CustomSectionPurpose';
 import FieldError from '@frontend/shared/ui/FieldError';
 
 import type { WithDefaults } from '@frontend/shared/lib/component-model';
@@ -57,8 +58,16 @@ export function renderCustomSectionsEditorPart2(
             {section.label.length}
             {' / 40'}
           </p>
+          <CustomSectionPurpose
+            name={`section-mode-${itemKey(section)}`}
+            modelValue={section.mode}
+            onModelValueChange={$propertySetter(() => section, 'mode')}
+            data-r-c3e93385=""
+          />
           <label htmlFor={`section-text-${index}`} data-r-c3e93385="">
-            {'Текст ответа'}
+            {section.mode === 'application'
+              ? 'Что спросить у клиента?'
+              : 'Текст ответа'}
           </label>
           <textarea
             id={`section-text-${index}`}
@@ -69,6 +78,11 @@ export function renderCustomSectionsEditorPart2(
             }
             aria-invalid={Boolean($props.errors[`section-text-${index}`])}
             maxLength={4000}
+            placeholder={
+              section.mode === 'application'
+                ? 'На какое занятие и в какой день хотите записаться?'
+                : undefined
+            }
             required
             rows={4}
             value={section.text ?? ''}

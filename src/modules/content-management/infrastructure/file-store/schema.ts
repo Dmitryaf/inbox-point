@@ -8,6 +8,7 @@ import {
 } from '@/core/application/client-information.js';
 
 const customSectionSchema = z.object({
+  mode: z.enum(['information', 'application']).optional(),
   id: z
     .string()
     .regex(/^[A-Za-z0-9_-]{1,80}$/u)

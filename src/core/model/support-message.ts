@@ -1,6 +1,7 @@
 export type ClientChannelKind = 'telegram' | 'vk';
 
 export interface SupportMessage {
+  applicationLabel?: string;
   channel: ClientChannelKind;
   conversationId: string;
   displayName: string;

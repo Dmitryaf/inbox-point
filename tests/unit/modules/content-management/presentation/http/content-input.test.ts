@@ -10,6 +10,42 @@ import {
 const visibleSections = ['schedule', 'prices', 'address', 'faq'] as const;
 
 describe('normalizeContentInput', () => {
+  it('preserves application purpose and rejects unknown purposes and the menu label', () => {
+    const input = {
+      address: '',
+      prices: '',
+      schedule: '',
+      customSections: [
+        {
+          id: 'registration',
+          label: 'Записаться',
+          mode: 'application',
+          text: ' Когда? ',
+        },
+      ],
+    };
+    const parsed = contentInputSchema.parse(input);
+    expect(normalizeContentInput(parsed)?.customSections).toEqual([
+      {
+        id: 'registration',
+        label: 'Записаться',
+        mode: 'application',
+        text: 'Когда?',
+      },
+    ]);
+    expect(
+      contentInputSchema.safeParse({
+        ...input,
+        customSections: [{ ...input.customSections[0], mode: 'unknown' }],
+      }).success,
+    ).toBe(false);
+    expect(
+      normalizeContentInput({
+        ...parsed,
+        customSections: [{ label: 'мЕнЮ', text: 'Ответ' }],
+      }),
+    ).toBeUndefined();
+  });
   it('trims schedule fields and removes fully empty items', () => {
     const normalized = normalizeContentInput({
       address: '',

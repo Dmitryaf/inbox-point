@@ -68,6 +68,7 @@ export class TelegramClientMenu implements TelegramClientMenuHandler {
       if (
         action &&
         (response.informationRequested ||
+          response.beginQuestion ||
           action.key === 'handoff' ||
           action.key === 'new_question')
       ) {
@@ -104,6 +105,7 @@ export class TelegramClientMenu implements TelegramClientMenuHandler {
           'telegram',
           conversationId,
           now,
+          response.applicationLabel,
         );
       }
       await this.gateway.sendMessage({
@@ -125,6 +127,7 @@ export class TelegramClientMenu implements TelegramClientMenuHandler {
 }
 
 interface MenuResponse {
+  applicationLabel?: string;
   beginQuestion?: true;
   cancelAwaitingQuestion?: true;
   informationRequested?: true;
@@ -141,6 +144,26 @@ function resolveMenuResponse(
   const command = parseCommand(normalized);
   const mainMenu = createTelegramMainKeyboard(information, state);
   const informationResponse = information.resolve(normalized);
+
+  const application = information
+    .getCustomSections()
+    .find(
+      (section) =>
+        section.label === normalized && section.mode === 'application',
+    );
+  if (application) {
+    return state.intakePaused && state.stage !== 'active'
+      ? { replyMarkup: mainMenu, text: clientMessages.pausedIntake }
+      : {
+          beginQuestion: true,
+          applicationLabel: application.label,
+          replyMarkup: createTelegramMainKeyboard(information, {
+            intakePaused: false,
+            stage: 'awaiting_question',
+          }),
+          text: application.text,
+        };
+  }
 
   if (state.stage === 'active') {
     if (informationResponse) {
@@ -172,6 +195,7 @@ function resolveMenuResponse(
       return {
         replyMarkup: mainMenu,
         text: clientMessages.activeMenu,
+        cancelAwaitingQuestion: true,
       };
     }
     if (command?.startsWith('/')) {
@@ -294,6 +318,12 @@ export function createTelegramMainKeyboard(
   );
   const customButtons = information
     .getCustomSections()
+    .filter(
+      (section) =>
+        !state.intakePaused ||
+        state.stage === 'active' ||
+        section.mode !== 'application',
+    )
     .map((section) => ({ text: section.label }));
   const customRows = createButtonRows(customButtons);
   const actionRows = state.intakePaused ? [] : [[{ text: handoffButton }]];
@@ -320,5 +350,8 @@ function createButtonRows(
 }
 
 function parseCommand(text: string): string | undefined {
+  if (text.trim().toLowerCase() === 'меню') {
+    return '/menu';
+  }
   return text.trim().split(/\s+/, 1)[0]?.split('@', 1)[0]?.toLowerCase();
 }

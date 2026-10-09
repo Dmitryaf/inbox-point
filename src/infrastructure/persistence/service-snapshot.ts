@@ -46,7 +46,11 @@ const snapshotManifestSchema = z.object({
   formatVersion: z.literal(1),
   instanceId: instanceIdSchema.optional(),
   secretsIncluded: z.literal(false),
-  sqliteSchemaVersion: z.union([z.literal(11), z.literal(sqliteSchemaVersion)]),
+  sqliteSchemaVersion: z.union([
+    z.literal(11),
+    z.literal(12),
+    z.literal(sqliteSchemaVersion),
+  ]),
 });
 
 export type ServiceSnapshotManifest = z.infer<typeof snapshotManifestSchema>;

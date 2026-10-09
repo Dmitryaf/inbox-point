@@ -12,6 +12,7 @@ const reservedLabels = new Set(
     '/start',
     '/menu',
     'Начать',
+    'Меню',
   ].map((label) => label.toLowerCase()),
 );
 

@@ -13,6 +13,7 @@ import {
   scheduleTitleLengthLimit,
 } from '@/core/application/client-information.js';
 import { formatScheduleCompatibilityText } from '@/core/application/schedule-response.js';
+import { customSectionInputSchema } from './custom-section-input.js';
 
 const visibleSectionsSchema = z
   .array(z.enum(informationSectionIds))
@@ -37,21 +38,7 @@ const scheduleItemSchema = z
 export const contentInputSchema = z
   .object({
     address: z.string().max(4_000),
-    customSections: z
-      .array(
-        z
-          .object({
-            id: z
-              .string()
-              .regex(/^[A-Za-z0-9_-]{1,80}$/u)
-              .optional(),
-            label: z.string().max(40),
-            text: z.string().max(4_000),
-          })
-          .strict(),
-      )
-      .max(6)
-      .default([]),
+    customSections: z.array(customSectionInputSchema).max(6).default([]),
     faq: z
       .array(
         z
@@ -96,6 +83,7 @@ export function normalizeContentInput(
         );
   const customSections = content.customSections
     .map((section) => ({
+      ...(section.mode ? { mode: section.mode } : {}),
       ...(section.id ? { id: section.id } : {}),
       label: section.label.trim(),
       text: section.text.trim(),
