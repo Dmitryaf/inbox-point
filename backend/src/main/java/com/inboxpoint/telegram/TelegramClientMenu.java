@@ -45,11 +45,11 @@ final class TelegramClientMenu {
                 store.clearQuestion("telegram", chat);
                 stage = store.clientStage("telegram", chat, now);
             } else if (answer.begin()) {
-                store.beginQuestion("telegram", chat, now);
+                store.beginQuestion("telegram", chat, now, answer.application());
             }
             var hidden = stage == ClientMenuPolicy.Stage.AWAITING || answer.begin();
             api.sendMessage(chat, null, answer.text(), hidden ? removeKeyboard() : keyboard(information, pausedNow));
-            var selected = answer.information() ? information.action(text.strip())
+            var selected = answer.information() || answer.application() != null ? information.action(text.strip())
                     : answer.begin() ? new ClientInformation.MenuAction("handoff", ClientInformation.ASK) : null;
             if (selected != null) {
                 store.recordMenuAction("menu:telegram:" + event, "telegram", selected, now);

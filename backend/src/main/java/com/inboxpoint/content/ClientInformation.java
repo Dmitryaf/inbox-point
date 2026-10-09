@@ -199,7 +199,10 @@ public final class ClientInformation {
         if (!next.custom().isEmpty()) {
             var values = payload.putArray("customSections");
             for (var section : next.custom()) {
-                values.addObject().put("id", section.id()).put("label", section.label()).put("text", section.text());
+                var row = values.addObject().put("id", section.id()).put("label", section.label()).put("text", section.text());
+                if (section.mode() != null) {
+                    row.put("mode", section.mode());
+                }
             }
         }
         if (!next.faq().isEmpty()) {
@@ -286,8 +289,14 @@ public final class ClientInformation {
         };
     }
 
-    public record Section(String label, String text, String id) {
-        public Section(String label, String text) { this(label, text, sectionId(label)); }
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    public record Section(String label, String text, String id, String mode) {
+        public Section(String label, String text) { this(label, text, sectionId(label), null); }
+    }
+
+    public Section application(String label) {
+        return sections().stream().filter(item -> item.label().equals(label) && "application".equals(item.mode()))
+                .findFirst().orElse(null);
     }
 
     public record MenuAction(String key, String label) { }
@@ -497,10 +506,14 @@ public final class ClientInformation {
                 throw new IllegalArgumentException("Custom sections contain plain text");
             }
             var id = row.path("id").asString(sectionId(label));
-            if (!id.matches("[0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}") || !ids.add(id)) {
+            if (!id.matches("[A-Za-z0-9_-]{1,80}") || !ids.add(id)) {
                 throw new IllegalArgumentException("Invalid content section identity");
             }
-            sections.add(new Section(label, text, id));
+            var mode = row.path("mode").asString("");
+            if (row.has("mode") && !Set.of("information", "application").contains(mode)) {
+                throw new IllegalArgumentException("Invalid customer button mode");
+            }
+            sections.add(new Section(label, text, id, mode.isEmpty() ? null : mode));
         }
         return List.copyOf(sections);
     }

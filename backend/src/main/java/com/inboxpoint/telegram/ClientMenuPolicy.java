@@ -7,7 +7,8 @@ import com.inboxpoint.content.ClientInformation;
 final class ClientMenuPolicy {
     enum Stage { FIRST_CONTACT, AWAITING, ACTIVE, CLOSED }
 
-    record Response(String text, boolean begin, boolean information, boolean cancel) {
+    record Response(String text, boolean begin, boolean information, boolean cancel, String application) {
+        Response(String text, boolean begin, boolean information, boolean cancel) { this(text, begin, information, cancel, null); }
         Response(String text) { this(text, false, false, false); }
         Response(String text, boolean begin, boolean information) { this(text, begin, information, false); }
     }
@@ -17,8 +18,13 @@ final class ClientMenuPolicy {
     static Response resolve(ClientInformation information, Stage stage, String input, boolean paused, String action) {
         var text = input.strip();
         var command = text.split("[\\s@]", 2)[0].toLowerCase(Locale.ROOT);
-        var menu = "/start".equals(command) || "/menu".equals(command) || "начать".equals(command);
+        var menu = "/start".equals(command) || "/menu".equals(command) || "начать".equals(command) || "меню".equalsIgnoreCase(text);
         var informationAction = action.startsWith("information-") || action.startsWith("custom-");
+        var application = information.application(text);
+        if (application != null) {
+            return paused && stage != Stage.ACTIVE ? new Response(ClientMessages.PAUSED_INTAKE)
+                    : new Response(application.text(), true, false, false, application.label());
+        }
         if (stage == Stage.ACTIVE) {
             var answer = resolveInformation(information, text);
             if (answer != null) {
@@ -31,7 +37,7 @@ final class ClientMenuPolicy {
                 return new Response(ClientMessages.QUESTION_PROMPT);
             }
             if (menu) {
-                return new Response(ClientMessages.ACTIVE_MENU);
+                return new Response(ClientMessages.ACTIVE_MENU, false, false, true);
             }
             return command.startsWith("/")
                     ? new Response(ClientMessages.ACTIVE_COMMAND_UNAVAILABLE) : null;

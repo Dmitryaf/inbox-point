@@ -41,6 +41,20 @@ export function renderContentPreviewPart1(
               <p className="preview-service-message" data-r-e038eaba="">
                 {response.text}
               </p>
+              {response.mode === 'application' ? (
+                <p className="preview-intro" data-r-e038eaba="">
+                  {
+                    ' Здесь клиент напишет ответ. Он придёт администратору как заявка «'
+                  }
+                  {response.label}
+                  {'». '}
+                </p>
+              ) : null}
+              {response.mode === 'application' ? (
+                <p className="preview-service-message" data-r-e038eaba="">
+                  {$unref(clientMessages).applicationSent}
+                </p>
+              ) : null}
             </article>
           ))}
           <div

@@ -51,6 +51,20 @@ final class HandoffService {
     void relayQuestion(String channel, long chat, String message, String text, String name)
             throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
         var request = store.activeRequest(channel, chat);
+        var related = request == null ? store.latestRequest(channel, chat) : request;
+        var application = related == null ? null : store.applicationForMessage(related.id(), message);
+        if (application == null) {
+            var label = store.pendingApplication(channel, chat, clock.instant());
+            if (label != null) {
+                application = new TelegramStore.ApplicationText(label, "Заявка: " + label + "\n\n" + text);
+            }
+        }
+        if (application != null) {
+            text = application.text();
+            if (request != null) {
+                store.recordApplication(request, message, name, application, clock.instant());
+            }
+        }
         if (request != null) {
             try {
                 relayChunks(request, message, name, text, false, true);
@@ -78,14 +92,18 @@ final class HandoffService {
             }
             throw new SQLException("Concurrent request creation requires retry");
         }
-        store.recordMessage(requestId, "client_to_operator", message, name, text, clock.instant());
+        if (application == null) {
+            store.recordMessage(requestId, "client_to_operator", message, name, text, clock.instant());
+        } else {
+            store.recordApplication(request, message, name, application, clock.instant());
+        }
         store.usageEvent("new-request:" + requestId, "new_request", channel, requestId, clock.instant());
         String topic;
         try {
             topic = inbox.open(requestId, message, title, reusable);
         } catch (DurableTelegramInbox.UnknownOutcome uncertain) {
             recordWebTakeover(request);
-            store.acknowledge(request, DELAYED, clock.instant());
+            acknowledge(request, message, DELAYED, "delayed");
             return;
         }
         if (!webTopic.equals(topic)) {
@@ -130,9 +148,18 @@ final class HandoffService {
             store.link(request.id(), "client_to_operator", message, sent.messageId(), clock.instant());
         }
         if (notify && !uncertain) {
-            store.acknowledge(request, EmergencyOperatorInbox.isWebTopic(topic) ? DELAYED : ACKNOWLEDGEMENT, clock.instant());
+            var delayed = EmergencyOperatorInbox.isWebTopic(topic);
+            acknowledge(request, message, delayed ? DELAYED : ACKNOWLEDGEMENT, delayed ? "delayed" : "ack");
         }
         return !uncertain;
+    }
+
+    private void acknowledge(TelegramStore.Request request, String message, String text, String kind) throws SQLException {
+        if (store.applicationForMessage(request.id(), message) != null) {
+            store.acknowledgeApplication(request, message, kind, clock.instant());
+        } else {
+            store.acknowledge(request, text, kind, clock.instant());
+        }
     }
 
     void recoverWebRequests() throws SQLException, InterruptedException, IOException {
@@ -192,7 +219,7 @@ final class HandoffService {
             throw definiteFailure;
         }
         if (complete) {
-            store.acknowledge(request, RECOVERED, "recovered", clock.instant());
+            acknowledge(request, first.event(), RECOVERED, "recovered");
         }
     }
 

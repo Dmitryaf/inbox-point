@@ -46,11 +46,11 @@ final class VkClientMenu {
                 store.clearQuestion("vk", peer);
                 stage = store.clientStage("vk", peer, now);
             } else if (answer.begin()) {
-                store.beginQuestion("vk", peer, now);
+                store.beginQuestion("vk", peer, now, answer.application());
             }
             var hidden = stage == ClientMenuPolicy.Stage.AWAITING || answer.begin();
             api.send(peer, answer.text(), "vk-menu:" + event, hidden ? hiddenKeyboard() : keyboard(pausedNow));
-            var selected = answer.information() ? information.action(text.strip())
+            var selected = answer.information() || answer.application() != null ? information.action(text.strip())
                     : answer.begin() ? new ClientInformation.MenuAction("handoff", ClientInformation.ASK) : null;
             if (selected != null) {
                 store.recordMenuAction("menu:vk:" + event, "vk", selected, now);

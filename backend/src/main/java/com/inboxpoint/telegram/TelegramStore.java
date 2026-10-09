@@ -62,11 +62,56 @@ final class TelegramStore implements AutoCloseable {
     }
 
     void beginQuestion(String channel, long conversation, Instant now) throws SQLException {
+        beginQuestion(channel, conversation, now, null);
+    }
+
+    void beginQuestion(String channel, long conversation, Instant now, String application) throws SQLException {
         update("""
-                INSERT INTO client_conversation_states(channel, external_conversation_id, state, updated_at)
-                VALUES (?, ?, 'awaiting_question', ?)
-                ON CONFLICT(channel, external_conversation_id) DO UPDATE SET updated_at = excluded.updated_at
-                """, channel, Long.toString(conversation), now.toString());
+                INSERT INTO client_conversation_states(channel, external_conversation_id, state, updated_at, application_label)
+                VALUES (?, ?, 'awaiting_question', ?, ?)
+                ON CONFLICT(channel, external_conversation_id) DO UPDATE SET updated_at = excluded.updated_at,
+                    application_label = excluded.application_label
+                """, channel, Long.toString(conversation), now.toString(), application);
+    }
+
+    String pendingApplication(String channel, long conversation, Instant checked) throws SQLException {
+        try (var query = prepare("""
+                SELECT application_label FROM client_conversation_states WHERE channel = ? AND external_conversation_id = ?
+                    AND julianday(updated_at) >= julianday(?)
+                """, channel, Long.toString(conversation), checked.minus(java.time.Duration.ofHours(2)).toString());
+                var rows = query.executeQuery()) {
+            return rows.next() ? rows.getString(1) : null;
+        }
+    }
+
+    record ApplicationText(String label, String text) { }
+
+    ApplicationText applicationForMessage(String request, String message) throws SQLException {
+        try (var query = prepare("""
+                SELECT application_label, text FROM conversation_messages
+                WHERE request_id = ? AND direction = 'client_to_operator' AND external_message_id = ? AND application_label IS NOT NULL
+                """, request, message); var rows = query.executeQuery()) {
+            return rows.next() ? new ApplicationText(rows.getString(1), rows.getString(2)) : null;
+        }
+    }
+
+    void recordApplication(Request request, String message, String sender, ApplicationText item, Instant now) throws SQLException {
+        connection.setAutoCommit(false);
+        try {
+            if (update("""
+                    INSERT OR IGNORE INTO conversation_messages (id, request_id, direction, external_message_id, sender_name,
+                        text, created_at, application_label)
+                    VALUES (?, ?, 'client_to_operator', ?, ?, ?, ?, ?)
+                    """, UUID.randomUUID().toString(), request.id(), message, sender, item.text(), now.toString(), item.label()) == 1) {
+                clearQuestion(request.channel(), request.conversation());
+            }
+            connection.commit();
+        } catch (SQLException | RuntimeException failure) {
+            connection.rollback();
+            throw failure;
+        } finally {
+            connection.setAutoCommit(true);
+        }
     }
 
     Request activeRequest(long conversation) throws SQLException {
@@ -612,7 +657,15 @@ final class TelegramStore implements AutoCloseable {
     }
 
     void acknowledge(Request request, String text, String kind, Instant now) throws SQLException {
-        var key = "system:handoff-" + kind + ":" + request.id();
+        acknowledgeByKey(request, "system:handoff-" + kind + ":" + request.id(), text, now);
+    }
+
+    void acknowledgeApplication(Request request, String message, String kind, Instant now) throws SQLException {
+        var text = "delayed".equals(kind) ? ClientMessages.APPLICATION_DELAYED : ClientMessages.APPLICATION_SENT;
+        acknowledgeByKey(request, "system:application-" + kind + ":" + request.id() + ":" + message, text, now);
+    }
+
+    private void acknowledgeByKey(Request request, String key, String text, Instant now) throws SQLException {
         update("""
                 INSERT OR IGNORE INTO deliveries
                     (id, request_id, idempotency_key, operator_message_id, channel,
