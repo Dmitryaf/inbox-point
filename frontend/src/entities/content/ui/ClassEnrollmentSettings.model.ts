@@ -7,6 +7,7 @@ import {
   type ModelRef,
 } from '@frontend/shared/lib/component-props';
 import { ref } from '@frontend/shared/lib/model-state';
+
 import type {
   ClassDirection,
   ClassGroup,

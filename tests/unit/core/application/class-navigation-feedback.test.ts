@@ -7,6 +7,27 @@ import {
 } from '@/core/application/class-navigation.js';
 
 describe('class schedule without duplicate views', () => {
+  it.each([
+    ['', 'В какой день хотите прийти?'],
+    [
+      'Как к вам обращаться и на какое занятие планируете прийти?',
+      'В какой день хотите прийти?',
+    ],
+    ['Удобнее во вторник или в четверг?', 'Удобнее во вторник или в четверг?'],
+  ])(
+    'asks for the day while preserving a custom question: %s',
+    (saved, expected) => {
+      const content = classContent();
+      content.groups![0]!.applicationQuestion = saved!;
+      const response = renderClassAction(
+        new ClientInformationCatalog(content),
+        'classes:signup:beginners',
+      );
+      expect(response.text).toContain(expected);
+      expect(response.applicationLabel).toBe('Тестовый танец / Начинающие');
+      expect(response.beginQuestion).toBe(true);
+    },
+  );
   it('selects a group before showing its schedule and keeps old time buttons usable', () => {
     const catalog = new ClientInformationCatalog(classContent());
     const direction = renderClassAction(catalog, 'classes:direction:dance:0');

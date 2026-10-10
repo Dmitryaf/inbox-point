@@ -1,3 +1,4 @@
+import { normalizeApplicationQuestion } from '@core/application/class-content';
 import {
   informationSectionIds,
   type ContentDraft,
@@ -42,6 +43,9 @@ export function normalizeContentDraft(
     groups:
       content.groups?.map((item) => ({
         ...item,
+        applicationQuestion: normalizeApplicationQuestion(
+          item.applicationQuestion,
+        ),
         meetings: [...item.meetings],
         ...(item.review ? { review: { ...item.review } } : {}),
       })) ?? [],

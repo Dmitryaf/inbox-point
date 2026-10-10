@@ -121,7 +121,7 @@ for (const width of [390, 1440]) {
       .getByRole('button', { name: 'Записаться на занятие' })
       .click();
     await expect(page.locator('.preview-service-message')).toContainText(
-      'Как к вам обращаться',
+      'В какой день хотите прийти?',
     );
     await page.getByRole('button', { name: 'Начать с меню' }).click();
     await page

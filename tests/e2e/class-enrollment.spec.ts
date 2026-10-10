@@ -107,7 +107,7 @@ for (const width of [1440, 390]) {
       .getByRole('button', { name: 'Записаться на занятие', exact: true })
       .click();
     await expect(page.locator('.preview-service-message')).toContainText(
-      'Как к вам обращаться',
+      'В какой день хотите прийти?',
     );
     expect(
       await page.evaluate(
