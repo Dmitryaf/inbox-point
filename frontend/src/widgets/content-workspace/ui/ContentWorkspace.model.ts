@@ -39,6 +39,11 @@ export function createComponentModel(
   });
   const activeView = ref<WorkspaceView>('edit');
   const activeSection = ref<EditorSection>('core');
+  const previewAction = ref('main');
+  function preview(action: string): void {
+    previewAction.value = action;
+    activeView.value = 'preview';
+  }
   const validation = computed(() => validateContentDraft(workspace.draft));
   const fieldErrors = computed<Record<string, string | undefined>>(() =>
     Object.fromEntries(
@@ -81,6 +86,8 @@ export function createComponentModel(
     workspace,
     activeView,
     activeSection,
+    previewAction,
+    preview,
     validation,
     fieldErrors,
     save,

@@ -19,11 +19,6 @@
   min-width: 0;
 }
 
-.workspace-live-preview {
-  display: none;
-  min-width: 0;
-}
-
 @media (prefers-reduced-motion: no-preference) {
   .workspace-view {
     animation: workspace-view-enter 160ms ease-out;
@@ -49,22 +44,5 @@
 
   .workspace-main {
     grid-row: 3;
-  }
-}
-
-@media (min-width: 1100px) {
-  .workspace-view--editing {
-    align-items: start;
-    display: grid;
-    gap: 1.5rem;
-    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
-  }
-
-  .workspace-live-preview {
-    display: block;
-    max-height: calc(100vh - 2rem);
-    overflow: auto;
-    position: sticky;
-    top: 1rem;
   }
 }

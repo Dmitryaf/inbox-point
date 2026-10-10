@@ -81,11 +81,15 @@ for (const width of [1440, 390]) {
     } else {
       await page.getByLabel('Режим', { exact: true }).selectOption('preview');
     }
+    await page
+      .locator('.preview')
+      .getByRole('button', { name: 'Записаться на занятие', exact: true })
+      .click();
     await expect(page.locator('.preview-response')).toContainText(
       'Он придёт администратору как заявка «Записаться на занятие»',
     );
     await expect(page.locator('.preview-response')).toContainText(
-      'Заявка отправлена. Администратор ответит здесь.',
+      'На какое занятие и в какой день хотите записаться?',
     );
     await page.screenshot({
       path: testInfo.outputPath('application-preview.png'),
@@ -202,9 +206,8 @@ test('a review record is completed in the group editor, saved and reopened witho
   await page
     .getByLabel('Название группы', { exact: true })
     .fill('Вечерняя группа');
-  await page.getByRole('button', { name: 'Добавить день и время' }).click();
   await page
-    .getByLabel('День и время 1', { exact: true })
+    .getByLabel('Дни и время занятий', { exact: true })
     .fill('Пн / Ср, 20:00');
   await page.getByText('Дополнительные настройки', { exact: true }).click();
   await page
@@ -221,12 +224,14 @@ test('a review record is completed in the group editor, saved and reopened witho
   await expect(page.getByLabel('Название группы', { exact: true })).toHaveValue(
     'Вечерняя группа',
   );
-  await expect(page.getByLabel('День и время 1', { exact: true })).toHaveValue(
-    'Пн / Ср, 20:00',
-  );
+  await expect(
+    page.getByLabel('Дни и время занятий', { exact: true }),
+  ).toHaveValue('Пн / Ср, 20:00');
   await expect(page.getByLabel('Открыть набор в группу')).not.toBeChecked();
-  await page.getByText('Что увидит клиент', { exact: true }).click();
-  await expect(page.locator('.class-preview pre')).toContainText(
+  await page
+    .getByRole('button', { name: 'Посмотреть как клиент', exact: true })
+    .click();
+  await expect(page.locator('.preview-service-message')).toContainText(
     'Для учеников с опытом.',
   );
 });
@@ -557,19 +562,22 @@ async function requiredVerticalGap(
 async function expectTelegramKeyboardLayout(page: Page): Promise<void> {
   const rows = page.locator('.message-preview-button-row');
   await expect(rows).toHaveCount(3);
-  await expect(rows.nth(0).locator('span')).toHaveText(['Расписание', 'Цены']);
-  await expect(rows.nth(1).locator('span')).toHaveText([
+  await expect(rows.nth(0).locator('button')).toHaveText([
+    'Расписание',
+    'Цены',
+  ]);
+  await expect(rows.nth(1).locator('button')).toHaveText([
     'Адрес',
     'Частые вопросы',
   ]);
-  await expect(rows.nth(2).locator('span')).toHaveText(['Задать вопрос']);
+  await expect(rows.nth(2).locator('button')).toHaveText(['Задать вопрос']);
 
   const firstRow = await requiredBox(rows.nth(0));
   const actionRow = await requiredBox(rows.nth(2));
   expect(Math.abs(firstRow.width - actionRow.width)).toBeLessThanOrEqual(1);
 
-  const firstButton = await requiredBox(rows.nth(0).locator('span').nth(0));
-  const secondButton = await requiredBox(rows.nth(0).locator('span').nth(1));
+  const firstButton = await requiredBox(rows.nth(0).locator('button').nth(0));
+  const secondButton = await requiredBox(rows.nth(0).locator('button').nth(1));
   expect(Math.abs(firstButton.y - secondButton.y)).toBeLessThanOrEqual(1);
   expect(Math.abs(firstButton.width - secondButton.width)).toBeLessThanOrEqual(
     1,

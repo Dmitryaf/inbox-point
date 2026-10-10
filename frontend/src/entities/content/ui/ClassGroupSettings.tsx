@@ -47,21 +47,6 @@ export default function ClassGroupSettings($incomingProps: ComponentProps) {
           onChange={$textProperty(() => $state.group.value, 'description')}
           data-r-e1399ad4=""
         />
-        <label htmlFor={'group-question-' + group.id} data-r-e1399ad4="">
-          {'Что спросить после нажатия «Записаться»'}
-        </label>
-        <textarea
-          id={'group-question-' + group.id}
-          rows={2}
-          maxLength={1000}
-          placeholder="Как к вам обращаться и на какое занятие планируете прийти?"
-          value={group.applicationQuestion ?? ''}
-          onChange={$textProperty(
-            () => $state.group.value,
-            'applicationQuestion',
-          )}
-          data-r-e1399ad4=""
-        />
         {!group.review ? (
           <label htmlFor={'group-direction-' + group.id} data-r-e1399ad4="">
             {'Направление'}

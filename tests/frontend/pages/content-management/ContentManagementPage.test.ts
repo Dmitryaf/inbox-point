@@ -51,9 +51,10 @@ describe('ContentManagementPage', () => {
 
     await findButton(wrapper.findAll('button'), 'Занятия').trigger('click');
     await wrapper.get('#group-time-group-0').setValue('Вторник, 20:00');
-    await findButton(wrapper.findAll('button'), 'Предпросмотр').trigger(
-      'click',
-    );
+    await findButton(
+      wrapper.findAll('button'),
+      'Посмотреть как клиент',
+    ).trigger('click');
 
     expect(wrapper.text()).toContain('Вторник, 20:00');
     expect(wrapper.text()).toContain('Есть несохранённые изменения');

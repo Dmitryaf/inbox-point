@@ -1,4 +1,5 @@
 import {
+  type EventProps,
   type ComponentAttributes,
   type WithDefaults,
 } from '@frontend/shared/lib/component-model';
@@ -13,20 +14,23 @@ import type { EditorSection } from '@frontend/widgets/content-workspace/model/na
 export type ComponentProps = {
   activeSection: EditorSection;
   errors: Readonly<Record<string, string | undefined>>;
-} & {
-  modelValue: ContentDraft;
-  onModelValueChange?: (value: ContentDraft) => void;
-} & ComponentAttributes;
+} & EventProps<{
+  preview: [action: string];
+}> & {
+    modelValue: ContentDraft;
+    onModelValueChange?: (value: ContentDraft) => void;
+  } & ComponentAttributes;
 export const componentDefaults = {};
 type ResolvedProps = WithDefaults<ComponentProps, typeof componentDefaults>;
 export function createComponentModel(
   _props: ResolvedProps,
-  _emit: (event: string, ...args: unknown[]) => void,
+  $emit: (event: string, ...args: unknown[]) => void,
   $model: <Value>(
     name: string,
     options?: ModelOptions<Value>,
   ) => ModelRef<Value>,
 ) {
+  const emit = $emit;
   const draft = $model<ContentDraft>('modelValue', { required: true });
-  return { draft };
+  return { emit, draft };
 }

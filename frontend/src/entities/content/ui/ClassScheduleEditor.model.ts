@@ -1,4 +1,5 @@
 import {
+  type EventProps,
   type ComponentAttributes,
   type WithDefaults,
 } from '@frontend/shared/lib/component-model';
@@ -9,7 +10,9 @@ import {
 import { computed, ref, nextTick } from '@frontend/shared/lib/model-state';
 import type { ContentDraft } from '@frontend/entities/content/model/types';
 
-export type ComponentProps = {
+export type ComponentProps = EventProps<{
+  preview: [action: string];
+}> & {
   modelValue: ContentDraft;
   onModelValueChange?: (value: ContentDraft) => void;
 } & ComponentAttributes;
@@ -17,13 +20,14 @@ export const componentDefaults = {};
 type ResolvedProps = WithDefaults<ComponentProps, typeof componentDefaults>;
 export function createComponentModel(
   _props: ResolvedProps,
-  _emit: (event: string, ...args: unknown[]) => void,
+  $emit: (event: string, ...args: unknown[]) => void,
   $model: <Value>(
     name: string,
     options?: ModelOptions<Value>,
   ) => ModelRef<Value>,
 ) {
   const draft = $model<ContentDraft>('modelValue', { required: true });
+  const emit = $emit;
   const directionId = ref('');
   const groupId = ref('');
   const reviewing = ref(false);
@@ -56,6 +60,7 @@ export function createComponentModel(
   }
   return {
     draft,
+    emit,
     directionId,
     groupId,
     reviewing,

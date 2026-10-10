@@ -75,12 +75,11 @@ for (const width of [390, 1280]) {
     await page.getByLabel('Название группы', { exact: true }).fill(title);
     await page.getByLabel('Название группы', { exact: true }).press('Tab');
     await expect(
-      page.getByLabel('День и время 1', { exact: true }),
+      page.getByLabel('Дни и время занятий', { exact: true }),
     ).toBeFocused();
-    await expect(page.getByLabel('День и время 1', { exact: true })).toHaveCSS(
-      'outline-width',
-      '3px',
-    );
+    await expect(
+      page.getByLabel('Дни и время занятий', { exact: true }),
+    ).toHaveCSS('outline-width', '3px');
     await page.getByText('Дополнительные настройки', { exact: true }).click();
     await page
       .getByLabel('Короткое описание группы')
@@ -89,19 +88,21 @@ for (const width of [390, 1280]) {
           8,
         ),
       );
-    if (width >= 1100) {
-      await expect(page.locator('.workspace-live-preview')).toBeVisible();
-      await page.getByText('Что увидит клиент', { exact: true }).click();
-      await expect(page.locator('.class-preview pre')).toContainText(title);
+    await page
+      .getByRole('button', { name: 'Посмотреть как клиент', exact: true })
+      .click();
+    await expect(page.locator('.preview')).toHaveCount(1);
+    await expect(page.locator('.preview-service-message')).toContainText(title);
+    if (width >= 900) {
+      await page
+        .getByRole('button', { name: 'Редактирование', exact: true })
+        .click();
     } else {
-      await expect(page.locator('.workspace-live-preview')).toBeHidden();
-      await page.getByLabel('Режим', { exact: true }).selectOption('preview');
-      await expect(page.locator('.preview')).toContainText('Бачата');
       await page.getByLabel('Режим', { exact: true }).selectOption('edit');
-      await expect(
-        page.getByLabel('Название группы', { exact: true }),
-      ).toHaveValue(title);
     }
+    await expect(
+      page.getByLabel('Название группы', { exact: true }),
+    ).toHaveValue(title);
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,

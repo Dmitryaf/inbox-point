@@ -19,6 +19,18 @@
   min-width: 0;
   overflow-wrap: anywhere;
 }
+.class-list-item[data-r-7bb6e793]:hover:not(:disabled) {
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
+  color: var(--color-text);
+}
+.class-card > .danger[data-r-7bb6e793] {
+  margin-top: 0.75rem;
+}
+.class-hint[data-r-7bb6e793] {
+  margin: 0.5rem 0 1rem;
+  color: var(--color-text-muted);
+}
 .class-list-item small[data-r-7bb6e793] {
   flex-shrink: 0;
 }
@@ -84,23 +96,4 @@
   width: 1rem;
   flex: 0 0 1rem;
   margin: 0;
-}
-.class-preview[data-r-7bb6e793] {
-  background: var(--color-surface-muted);
-  padding: 0.8rem;
-  border-radius: 0.75rem;
-  margin: 1rem 0;
-}
-.class-preview pre[data-r-7bb6e793] {
-  font: inherit;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-.class-preview-buttons[data-r-7bb6e793] {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-.class-preview-buttons button[data-r-7bb6e793] {
-  font-size: 0.875rem;
 }

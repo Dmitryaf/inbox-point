@@ -43,14 +43,8 @@ for (const width of [1440, 390]) {
       .getByLabel('Название группы', { exact: true })
       .fill('Начинающие');
     await page
-      .getByLabel('День и время 1', { exact: true })
-      .fill('Понедельник, 19:00');
-    await page
-      .getByRole('button', { name: 'Добавить день и время', exact: true })
-      .click();
-    await page
-      .getByLabel('День и время 2', { exact: true })
-      .fill('Четверг, 19:00');
+      .getByLabel('Дни и время занятий', { exact: true })
+      .fill('Пн 19:00, Чт 19:00');
     await page.getByLabel('Открыть набор в группу', { exact: true }).check();
     await page
       .getByRole('button', { name: 'Добавить ключевое слово', exact: true })
@@ -74,7 +68,7 @@ for (const width of [1440, 390]) {
       expect.objectContaining({
         name: 'Начинающие',
         enrollmentOpen: true,
-        meetings: ['Понедельник, 19:00', 'Четверг, 19:00'],
+        meetings: ['Пн 19:00, Чт 19:00'],
       }),
     ]);
     // The selected group and unsaved fields also survive section/view changes.
@@ -88,8 +82,8 @@ for (const width of [1440, 390]) {
       await page.getByLabel('Раздел', { exact: true }).selectOption('core');
     }
     await expect(
-      page.getByLabel('День и время 2', { exact: true }),
-    ).toHaveValue('Четверг, 19:00');
+      page.getByLabel('Дни и время занятий', { exact: true }),
+    ).toHaveValue('Пн 19:00, Чт 19:00');
     await page.reload();
     await page
       .locator('.class-list-item')
@@ -102,15 +96,17 @@ for (const width of [1440, 390]) {
     await expect(
       page.getByLabel('Слово или фраза 1', { exact: true }),
     ).toHaveValue('Тестовый танец');
-    await page.getByText('Что увидит клиент', { exact: true }).click();
-    await expect(page.locator('.class-preview pre')).toContainText(
+    await page
+      .getByRole('button', { name: 'Посмотреть как клиент', exact: true })
+      .click();
+    await expect(page.locator('.preview-service-message')).toContainText(
       'Тестовый танец / Начинающие',
     );
     await page
-      .locator('.class-preview')
+      .locator('.preview')
       .getByRole('button', { name: 'Записаться на занятие', exact: true })
       .click();
-    await expect(page.locator('.class-preview pre')).toContainText(
+    await expect(page.locator('.preview-service-message')).toContainText(
       'Как к вам обращаться',
     );
     expect(

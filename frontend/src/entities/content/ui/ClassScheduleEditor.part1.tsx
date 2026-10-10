@@ -1,5 +1,5 @@
 import { eventCallback as $callback } from '@frontend/shared/lib/component-events';
-
+import { unref as $unref } from '@frontend/shared/lib/model-state';
 import {
   setModelValue as $set,
   modelSetter as $setter,
@@ -27,6 +27,7 @@ export function renderClassScheduleEditorPart1(
           groupId={group.id}
           onOpenTarget={$callback(open)}
           onRemoved={() => void $set($state, 'groupId', '')}
+          onPreview={($event) => void $unref($state.emit)('preview', $event)}
           modelValue={draft}
           onModelValueChange={$setter($state, 'draft')}
           data-r-13661f32=""

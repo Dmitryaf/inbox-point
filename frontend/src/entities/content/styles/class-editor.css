@@ -19,6 +19,18 @@
   min-width: 0;
   overflow-wrap: anywhere;
 }
+.class-list-item:hover:not(:disabled) {
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
+  color: var(--color-text);
+}
+.class-card > .danger {
+  margin-top: 0.75rem;
+}
+.class-hint {
+  margin: 0.5rem 0 1rem;
+  color: var(--color-text-muted);
+}
 .class-list-item small {
   flex-shrink: 0;
 }
@@ -84,23 +96,4 @@
   width: 1rem;
   flex: 0 0 1rem;
   margin: 0;
-}
-.class-preview {
-  background: var(--color-surface-muted);
-  padding: 0.8rem;
-  border-radius: 0.75rem;
-  margin: 1rem 0;
-}
-.class-preview pre {
-  font: inherit;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-.class-preview-buttons {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-.class-preview-buttons button {
-  font-size: 0.875rem;
 }

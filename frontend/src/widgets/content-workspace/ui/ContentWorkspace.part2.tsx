@@ -4,8 +4,6 @@ import { requiredValue as $required } from '@frontend/shared/lib/component-bindi
 
 import ChangeHistory from '@frontend/widgets/change-history/ui/ChangeHistory';
 
-import ContentPreview from '@frontend/widgets/content-preview/ui/ContentPreview';
-
 import type { createComponentModel } from './ContentWorkspace.model';
 export function renderContentWorkspacePart2(
   $state: ReturnType<typeof createComponentModel>,
@@ -20,13 +18,7 @@ export function renderContentWorkspacePart2(
   }
   return (
     <>
-      {activeView === 'edit' ? (
-        <aside className="workspace-live-preview" data-r-09629bd3="">
-          <ContentPreview content={workspace.draft} data-r-09629bd3="" />
-        </aside>
-      ) : activeView === 'preview' ? (
-        <ContentPreview content={workspace.draft} data-r-09629bd3="" />
-      ) : (
+      {activeView === 'history' ? (
         <ChangeHistory
           changes={workspace.history.value}
           hasUnsavedChanges={workspace.dirty.value}
@@ -38,7 +30,7 @@ export function renderContentWorkspacePart2(
           )}
           data-r-09629bd3=""
         />
-      )}
+      ) : null}
     </>
   );
 }
