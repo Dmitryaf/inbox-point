@@ -37,6 +37,11 @@ export default function CustomSectionsEditor($incomingProps: ComponentProps) {
         data-r-c3e93385=""
       >
         {renderCustomSectionsEditorPart1($state)}
+        <p className="class-hint" data-r-c3e93385="">
+          {
+            ' Для записи в группу достаточно открыть набор в разделе «Занятия». Дополнительная кнопка для этого не нужна. '
+          }
+        </p>
         {sections.length === 0 ? (
           <p className="empty" data-r-c3e93385="">
             {' Дополнительных разделов пока нет. '}

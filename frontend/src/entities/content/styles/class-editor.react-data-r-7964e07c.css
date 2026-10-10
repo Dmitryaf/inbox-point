@@ -36,6 +36,7 @@
 }
 .class-review[data-r-7964e07c] {
   padding: 1rem;
+  margin-bottom: 1rem;
   background: var(--color-surface-muted);
 }
 .class-review pre[data-r-7964e07c] {
@@ -54,12 +55,30 @@
   max-width: 100%;
 }
 .class-editor[data-r-7964e07c] {
-  margin: 1rem 0 2rem;
+  margin: 1rem 0 0;
 }
 .class-card[data-r-7964e07c] {
   border-top: 1px solid var(--color-border);
+  margin: 1.5rem 0 0;
+  padding: 1rem 0 0;
+}
+.class-card h3[data-r-7964e07c] {
+  margin: 0 0 0.75rem;
+}
+.class-card p[data-r-7964e07c] {
+  margin: 0.75rem 0;
+}
+.class-card p[data-r-7964e07c]:last-child {
+  margin-bottom: 0;
+}
+.class-word[data-r-7964e07c] {
   margin: 1rem 0;
-  padding: 1rem 0;
+}
+.class-word > label[data-r-7964e07c]:first-child {
+  margin-top: 0;
+}
+.class-word > .danger[data-r-7964e07c] {
+  margin-top: 0.75rem;
 }
 .class-card summary[data-r-7964e07c] {
   cursor: pointer;
@@ -73,6 +92,9 @@
 .class-card input[data-r-7964e07c]:not([type='checkbox']),
 .class-card select[data-r-7964e07c],
 .class-card textarea[data-r-7964e07c],
+.class-editor > input[data-r-7964e07c],
+.class-editor > select[data-r-7964e07c],
+.class-editor > textarea[data-r-7964e07c],
 .class-actions input[data-r-7964e07c] {
   width: 100%;
   min-width: 0;
@@ -82,7 +104,7 @@
   flex-wrap: wrap;
   gap: 0.5rem;
   align-items: center;
-  margin: 0.75rem 0;
+  margin: 0.75rem 0 0;
 }
 .class-actions input[data-r-7964e07c] {
   flex: 1 1 12rem;

@@ -1,5 +1,9 @@
-import { classNames as $class } from '@frontend/shared/lib/component-view';
-import { eventCallback as $callback } from '@frontend/shared/lib/component-events';
+import { renderClassGroupEditorPart1Layout1 } from './ClassGroupEditor.part1.layout1';
+import {
+  classNames as $class,
+  renderList as $renderList,
+} from '@frontend/shared/lib/component-view';
+import { nativeHandler as $nativeHandler } from '@frontend/shared/lib/component-events';
 import { unref as $unref } from '@frontend/shared/lib/model-state';
 import {
   modelSetter as $setter,
@@ -10,11 +14,6 @@ import {
   textProperty as $textProperty,
 } from '@frontend/shared/lib/component-inputs';
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
-
-import ClassEnrollmentSettings from './ClassEnrollmentSettings';
-import ClassGroupReview from './ClassGroupReview';
-import ClassGroupSettings from './ClassGroupSettings';
-import ClassKeywordsEditor from './ClassKeywordsEditor';
 
 import type { WithDefaults } from '@frontend/shared/lib/component-model';
 import type {
@@ -34,84 +33,73 @@ export function renderClassGroupEditorPart1(
 
   return (
     <>
-      {group ? (
-        <div
-          {...$attributes}
-          className={$class('class-editor class-card', $attributes.className)}
-          data-r-03f428ee=""
-        >
-          <ClassGroupReview
-            modelValue={group}
-            directions={draft.directions}
-            groups={draft.groups}
-            data-r-03f428ee=""
-          />
-          <label htmlFor={'group-name-' + group.id} data-r-03f428ee="">
-            {'Название группы'}
-          </label>
-          <input
-            id={'group-name-' + group.id}
-            maxLength={80}
-            placeholder="Например, Начинающие"
-            value={group.name ?? ''}
-            onChange={$textProperty(() => $state.group.value, 'name')}
-            data-r-03f428ee=""
-          />
-          <label htmlFor={'group-time-' + group.id + '-0'} data-r-03f428ee="">
-            {'Дни и время занятий'}
-          </label>
-          <textarea
-            id={'group-time-' + group.id + '-0'}
-            rows={2}
-            aria-describedby="class-schedule-hint"
-            placeholder="Пн/Ср — 20:00 или Пн 20:00, Ср 19:00"
-            value={schedule ?? ''}
-            onChange={$textModel($state, 'schedule')}
-            data-r-03f428ee=""
-          />
-          <p id="class-schedule-hint" className="class-hint" data-r-03f428ee="">
+      {group
+        ? renderClassGroupEditorPart1Layout1(
             {
-              ' Укажите все дни и время в одном поле. Например, Пн/Ср — 20:00 или Пн 20:00, Ср 19:00. '
-            }
-          </p>
-          <ClassEnrollmentSettings
-            modelValue={group}
-            onModelValueChange={$setter($state, 'group')}
-            data-r-03f428ee=""
-          />
-          <ClassKeywordsEditor
-            targetType="group"
-            targetId={group.id}
-            onOpenTarget={(type, id) =>
-              $unref($state.emit)('openTarget', type, id)
-            }
-            modelValue={draft}
-            onModelValueChange={$setter($state, 'draft')}
-            data-r-03f428ee=""
-          />
-          <div className="class-actions" data-r-03f428ee="">
-            <button
-              type="button"
-              onClick={() =>
+              ...$attributes,
+              className: $class('class-editor', $attributes.className),
+              'data-r-03f428ee': '',
+            },
+            {
+              modelValue: group,
+              groups: draft.groups,
+              onOpenGroup: ($event) =>
+                void $unref($state.emit)('openTarget', 'group', $event),
+            },
+            { htmlFor: 'group-direction-' + group.id },
+            {
+              id: 'group-direction-' + group.id,
+              value: group.directionId ?? '',
+              onChange: $textProperty(() => $state.group.value, 'directionId'),
+            },
+            $renderList(draft.directions, (item) => (
+              <option key={item.id} value={item.id} data-r-03f428ee="">
+                {item.name}
+              </option>
+            )),
+            !draft.directions.length ? (
+              <p className="class-hint" data-r-03f428ee="">
+                {' Сначала добавьте направление на экране «Занятия». '}
+              </p>
+            ) : null,
+            { htmlFor: 'group-name-' + group.id },
+            {
+              id: 'group-name-' + group.id,
+              maxLength: 80,
+              value: group.name ?? '',
+              onChange: $textProperty(() => $state.group.value, 'name'),
+            },
+            { htmlFor: 'group-time-' + group.id + '-0' },
+            {
+              id: 'group-time-' + group.id + '-0',
+              rows: 2,
+              value: schedule ?? '',
+              onChange: $textModel($state, 'schedule'),
+            },
+            {
+              directions: draft.directions,
+              groups: draft.groups,
+              modelValue: group,
+              onModelValueChange: $setter($state, 'group'),
+            },
+            {
+              targetId: group.id,
+              onOpenTarget: (type, id) =>
+                $unref($state.emit)('openTarget', type, id),
+              modelValue: draft,
+              onModelValueChange: $setter($state, 'draft'),
+            },
+            {
+              onClick: () =>
                 void $unref($state.emit)(
                   'preview',
                   'classes:group:' + $required($state.group.value).id,
-                )
-              }
-              className="secondary-button"
-              data-r-03f428ee=""
-            >
-              {' Посмотреть как клиент '}
-            </button>
-          </div>
-          <ClassGroupSettings
-            modelValue={group}
-            directions={draft.directions}
-            onRemove={$callback(remove)}
-            data-r-03f428ee=""
-          />
-        </div>
-      ) : null}
+                ),
+            },
+            { onClick: $nativeHandler(remove) },
+            { modelValue: group },
+          )
+        : null}
     </>
   );
 }

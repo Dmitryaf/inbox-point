@@ -39,11 +39,11 @@ export function renderClassDirectionListPart1(
                   () => 'Занятие',
                 )}
               </strong>
-              <small data-r-ec1d0881="">{'Нужно проверить'}</small>
+              <small data-r-ec1d0881="">{'Заполните данные группы'}</small>
             </button>
           ))}
           {!pending.length ? (
-            <p data-r-ec1d0881="">{'Все записи проверены.'}</p>
+            <p data-r-ec1d0881="">{'Старых записей больше нет.'}</p>
           ) : null}
         </>
       ) : (
@@ -55,7 +55,7 @@ export function renderClassDirectionListPart1(
               className="review-notice"
               data-r-ec1d0881=""
             >
-              {' Нужно проверить: '}
+              {' Старые записи расписания: '}
               {pending.length}
             </button>
           ) : null}

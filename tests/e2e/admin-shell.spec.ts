@@ -196,13 +196,15 @@ test('a review record is completed in the group editor, saved and reopened witho
     await route.fulfill({ json: { content, version } });
   });
   await login(page);
-  await page.getByRole('button', { name: 'Нужно проверить: 1' }).click();
+  await page
+    .getByRole('button', { name: 'Старые записи расписания: 1' })
+    .click();
   await page.locator('.class-list-item').click();
   await expect(page.locator('.class-review pre')).toHaveText(
     content.groups[0]!.review.source,
   );
-  await expect(page.getByLabel('Открыть набор в группу')).toBeDisabled();
-  await page.locator('#review-direction-review').selectOption('dance');
+  await expect(page.getByLabel('Открыть набор в группу')).toBeEnabled();
+  await page.locator('#group-direction-review').selectOption('dance');
   await page
     .getByLabel('Название группы', { exact: true })
     .fill('Вечерняя группа');
@@ -213,8 +215,7 @@ test('a review record is completed in the group editor, saved and reopened witho
   await page
     .getByLabel('Короткое описание группы')
     .fill('Для учеников с опытом.');
-  page.once('dialog', (dialog) => dialog.accept());
-  await page.getByRole('button', { name: 'Подтвердить данные' }).click();
+  await page.getByLabel('Открыть набор в группу').check();
   await expect(page.locator('.class-review')).toHaveCount(0);
   await page.getByRole('button', { name: 'Сохранить', exact: true }).click();
   await expect(page.getByText('Все изменения сохранены')).toBeVisible();
@@ -227,7 +228,7 @@ test('a review record is completed in the group editor, saved and reopened witho
   await expect(
     page.getByLabel('Дни и время занятий', { exact: true }),
   ).toHaveValue('Пн / Ср, 20:00');
-  await expect(page.getByLabel('Открыть набор в группу')).not.toBeChecked();
+  await expect(page.getByLabel('Открыть набор в группу')).toBeChecked();
   await page
     .getByRole('button', { name: 'Посмотреть как клиент', exact: true })
     .click();

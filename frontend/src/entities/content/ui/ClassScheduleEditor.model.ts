@@ -31,11 +31,13 @@ export function createComponentModel(
   const directionId = ref('');
   const groupId = ref('');
   const reviewing = ref(false);
-  const direction = computed(() =>
-    draft.value.directions.find((item) => item.id === directionId.value),
-  );
   const group = computed(() =>
     draft.value.groups.find((item) => item.id === groupId.value),
+  );
+  const direction = computed(() =>
+    draft.value.directions.find(
+      (item) => item.id === (group.value?.directionId ?? directionId.value),
+    ),
   );
   async function open(
     targetType: 'direction' | 'group',
@@ -52,6 +54,7 @@ export function createComponentModel(
   }
   function back(): void {
     if (group.value) {
+      directionId.value = group.value.directionId;
       groupId.value = '';
     } else {
       directionId.value = '';
@@ -64,8 +67,8 @@ export function createComponentModel(
     directionId,
     groupId,
     reviewing,
-    direction,
     group,
+    direction,
     open,
     back,
   };
