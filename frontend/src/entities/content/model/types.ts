@@ -1,3 +1,8 @@
+import type {
+  ClassDirection,
+  ClassGroup,
+  ClassKeyword,
+} from '@core/application/class-content';
 import type { ScheduleItem } from '@core/application/schedule-response';
 
 export type { ScheduleItem } from '@core/application/schedule-response';
@@ -24,6 +29,9 @@ export const informationSectionIds = [
 export type InformationSectionId = (typeof informationSectionIds)[number];
 
 export interface ContentDraft {
+  directions: ClassDirection[];
+  groups: ClassGroup[];
+  keywords: ClassKeyword[];
   address: string;
   customSections: CustomSection[];
   faq: FaqItem[];

@@ -34,7 +34,22 @@ final class VkClientMenu {
         var now = Instant.now();
         var stage = store.clientStage("vk", peer, now);
         var pausedNow = paused.test("vk");
-        var answer = ClientMenuPolicy.resolve(information, stage, text, pausedNow, action(payload));
+        var classStage = switch (stage) {
+            case FIRST_CONTACT -> com.inboxpoint.content.ClassMenu.Stage.FIRST_CONTACT;
+            case ACTIVE -> com.inboxpoint.content.ClassMenu.Stage.ACTIVE;
+            case AWAITING -> com.inboxpoint.content.ClassMenu.Stage.AWAITING_QUESTION;
+            case CLOSED -> com.inboxpoint.content.ClassMenu.Stage.CLOSED;
+        };
+        var command = action(payload);
+        if ("main".equals(command)) {
+            text = "Меню";
+        }
+        var navigation = information.classAction(text.strip(), command,
+                new com.inboxpoint.content.ClassMenu.State(classStage, pausedNow, stage == ClientMenuPolicy.Stage.AWAITING));
+        if (navigation != null) {
+            return sendClassNavigation(store, event, peer, navigation, now);
+        }
+        var answer = ClientMenuPolicy.resolve(information, stage, text, pausedNow, command);
         if (answer == null) {
             return false;
         }
@@ -59,6 +74,38 @@ final class VkClientMenu {
             return true;
         } catch (IOException failure) {
             store.release("vk:menu", event);
+            throw failure;
+        }
+    }
+
+    private boolean sendClassNavigation(TelegramStore store, String event, long peer,
+            com.inboxpoint.content.ClassMenu.Response response, Instant now) throws IOException, SQLException, InterruptedException {
+        var source = "vk:menu";
+        if (!store.claim(source, event, now)) {
+            return true;
+        }
+        try {
+            if (response.intent() != null) {
+                store.beginQuestion("vk", peer, now, response.intent().applicationLabel());
+            }
+            var keyboard = JsonMapper.shared().createObjectNode().put("inline", true);
+            var rows = keyboard.putArray("buttons");
+            for (var row : response.rows()) {
+                var target = rows.addArray();
+                for (var button : row) {
+                    target.addObject().put("color", "secondary").putObject("action").put("type", "text")
+                            .put("label", button.label()).put("payload", JsonMapper.shared().createObjectNode().put("action", button.action()).toString());
+                }
+            }
+            api.send(peer, response.text(), "vk-menu:" + event, keyboard);
+            if (response.actionKey() != null) {
+                store.recordMenuAction("menu:vk:" + event, "vk",
+                        new ClientInformation.MenuAction(response.actionKey(), response.actionLabel()), now);
+            }
+            store.completeEvent(source, event, now);
+            return true;
+        } catch (IOException failure) {
+            store.release(source, event);
             throw failure;
         }
     }

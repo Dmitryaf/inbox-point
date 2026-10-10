@@ -11,7 +11,13 @@ describe('CoreSectionsFields', () => {
     const wrapper = mount(CoreSectionsFields, {
       props: { modelValue: createEmptyContent() },
     });
-    const prices = wrapper.findAll('details')[1];
+    const prices = wrapper
+      .findAll('details')
+      .find(
+        (item) =>
+          item.find('summary').exists() &&
+          item.get('summary').text().startsWith('Цены'),
+      );
     if (!prices) {
       throw new Error('Expected the prices section');
     }

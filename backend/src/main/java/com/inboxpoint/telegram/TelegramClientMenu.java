@@ -31,9 +31,25 @@ final class TelegramClientMenu {
 
     boolean handle(long chat, String event, String text, Instant now)
             throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
+        return handle(chat, event, text, "", now);
+    }
+
+    boolean handle(long chat, String event, String text, String action, Instant now)
+            throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
         var stage = store.clientStage("telegram", chat, now);
         var pausedNow = paused.test("telegram");
-        var answer = ClientMenuPolicy.resolve(information, stage, text, pausedNow, "");
+        var classStage = switch (stage) {
+            case FIRST_CONTACT -> com.inboxpoint.content.ClassMenu.Stage.FIRST_CONTACT;
+            case ACTIVE -> com.inboxpoint.content.ClassMenu.Stage.ACTIVE;
+            case AWAITING -> com.inboxpoint.content.ClassMenu.Stage.AWAITING_QUESTION;
+            case CLOSED -> com.inboxpoint.content.ClassMenu.Stage.CLOSED;
+        };
+        var navigation = information.classAction(text.strip(), action,
+                new com.inboxpoint.content.ClassMenu.State(classStage, pausedNow, stage == ClientMenuPolicy.Stage.AWAITING));
+        if (navigation != null) {
+            return sendClassNavigation(chat, event, navigation, now);
+        }
+        var answer = ClientMenuPolicy.resolve(information, stage, text, pausedNow, action);
         if (answer == null) {
             return false;
         }
@@ -60,6 +76,49 @@ final class TelegramClientMenu {
                 store.release(SOURCE, event);
             } else {
                 store.completeEvent(SOURCE, event, now);
+            }
+            throw failure;
+        }
+        return true;
+    }
+
+    private boolean sendClassNavigation(long chat, String event, com.inboxpoint.content.ClassMenu.Response response, Instant now)
+            throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
+        if (!store.claim(SOURCE, event, now)) {
+            return true;
+        }
+        try {
+            if (response.intent() != null) {
+                store.beginQuestion("telegram", chat, now, response.intent().applicationLabel());
+            }
+            var keyboard = JsonMapper.shared().createObjectNode();
+            var rows = keyboard.putArray("inline_keyboard");
+            for (var row : response.rows()) {
+                var target = rows.addArray();
+                for (var button : row) {
+                    target.addObject().put("text", button.label()).put("callback_data", button.action());
+                }
+            }
+            try {
+                api.sendMessage(chat, null, response.text(), keyboard);
+            } catch (TelegramBotApi.RequestFailed failure) {
+                if (!failure.invalidKeyboard()) {
+                    throw failure;
+                }
+                for (var text : com.inboxpoint.content.ClassMenu.inlineFallback(response)) {
+                    api.sendMessage(chat, null, text);
+                }
+            }
+            if (response.actionKey() != null) {
+                store.recordMenuAction("menu:telegram:" + event, "telegram",
+                        new ClientInformation.MenuAction(response.actionKey(), response.actionLabel()), now);
+            }
+            store.completeEvent(SOURCE, event, now);
+        } catch (TelegramBotApi.RequestFailed failure) {
+            if (failure.outcomeUnknown()) {
+                store.completeEvent(SOURCE, event, now);
+            } else {
+                store.release(SOURCE, event);
             }
             throw failure;
         }

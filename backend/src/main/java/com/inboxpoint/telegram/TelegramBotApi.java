@@ -96,7 +96,7 @@ final class TelegramBotApi {
 
     List<JsonNode> getUpdates(Long offset, int timeoutSeconds) throws RequestFailed, InterruptedException {
         var payload = JSON.createObjectNode().put("timeout", timeoutSeconds);
-        payload.putArray("allowed_updates").add("message");
+        payload.putArray("allowed_updates").add("message").add("callback_query");
         if (offset != null) {
             payload.put("offset", offset);
         }
@@ -114,6 +114,23 @@ final class TelegramBotApi {
             updates.add(update);
         }
         return List.copyOf(updates);
+    }
+
+    void answerCallback(String callbackId, String text) throws RequestFailed, InterruptedException {
+        var payload = JSON.createObjectNode().put("callback_query_id", callbackId);
+        if (text != null) {
+            payload.put("text", text);
+        }
+        try {
+            var result = call("answerCallbackQuery", payload, requestTimeout, false);
+            if (!result.isBoolean() || !result.booleanValue()) {
+                throw invalidResponse("answerCallbackQuery", false);
+            }
+        } catch (RequestFailed failure) {
+            if (!failure.expiredCallback()) {
+                throw failure;
+            }
+        }
     }
 
     long createForumTopic(long chatId, String name) throws RequestFailed, InterruptedException {

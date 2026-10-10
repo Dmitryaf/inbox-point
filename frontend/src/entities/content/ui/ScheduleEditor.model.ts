@@ -42,7 +42,8 @@ export function createComponentModel(
   const hasContent = computed(
     () =>
       normalizeScheduleItems(draft.value.schedule).length > 0 ||
-      Boolean(draft.value.legacySchedule.trim()),
+      Boolean(draft.value.legacySchedule.trim()) ||
+      draft.value.directions.length > 0,
   );
   const legacyResponse = computed(() =>
     draft.value.legacySchedule.trim()

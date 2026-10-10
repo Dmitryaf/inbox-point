@@ -45,6 +45,21 @@ final class TelegramTextHandoff {
     }
 
     void process(JsonNode update) throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
+        var callback = update.path("callback_query");
+        if (callback.isObject()) {
+            var chat = callback.at("/message/chat/id").asLong(0);
+            var sender = callback.at("/from/id").asLong(0);
+            var id = callback.path("id").asString("");
+            var action = callback.path("data").asString("");
+            if (chat > 0 && chat == sender && !id.isBlank() && action.length() <= 64
+                    && "private".equals(callback.at("/message/chat/type").asString(""))) {
+                queue.run("telegram", chat, () -> {
+                    menu.handle(chat, "callback:" + id, "main".equals(action) ? "Меню" : "", action, clock.instant());
+                    api.answerCallback(id, null);
+                });
+            }
+            return;
+        }
         var message = update.path("message");
         var type = message.at("/chat/type").asString("");
         var chat = message.at("/chat/id").asLong(0);

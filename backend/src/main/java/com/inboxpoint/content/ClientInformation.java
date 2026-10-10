@@ -52,10 +52,10 @@ public final class ClientInformation {
             var entries = history(json.path("history"));
             state = new State(content, entries, historicalMenuActions(content, entries));
         } catch (NoSuchFileException missing) {
-            state = new State(new Snapshot(Map.of(), List.of(), List.of(), null, List.of()), List.of(), List.of());
+            state = new State(new Snapshot(Map.of(), List.of(), List.of(), null, List.of(), JsonMapper.shared().createObjectNode()), List.of(), List.of());
         } catch (IOException | RuntimeException invalid) {
             LoggerFactory.getLogger(ClientInformation.class).warn("Saved client information could not be read");
-            state = new State(new Snapshot(Map.of(), List.of(), List.of(), null, List.of()), List.of(), List.of());
+            state = new State(new Snapshot(Map.of(), List.of(), List.of(), null, List.of(), JsonMapper.shared().createObjectNode()), List.of(), List.of());
         }
     }
 
@@ -152,6 +152,7 @@ public final class ClientInformation {
         }
         var previous = state;
         var fieldNames = new ArrayList<>(FIELDS);
+        fieldNames.addAll(ContentClasses.FIELDS);
         fieldNames.add("legacySchedule");
         fieldNames.add("customSections");
         fieldNames.add("faq");
@@ -189,6 +190,11 @@ public final class ClientInformation {
 
     private static void serialize(tools.jackson.databind.node.ObjectNode payload, Snapshot next) {
         next.standard().forEach((key, value) -> payload.put(key.equals("schedule") ? "legacySchedule" : key, value));
+        for (var key : ContentClasses.FIELDS) {
+            if (next.classes().has(key)) {
+                payload.set(key, next.classes().get(key));
+            }
+        }
         if (!next.schedule().isEmpty()) {
             payload.set("schedule", JsonMapper.shared().valueToTree(next.schedule()));
         }
@@ -254,7 +260,7 @@ public final class ClientInformation {
 
     private static List<String> informationButtons(Snapshot current) {
         var buttons = new ArrayList<String>();
-        if ((current.standard().containsKey("schedule") || !current.schedule().isEmpty()) && current.includes("schedule")) {
+        if ((current.standard().containsKey("schedule") || !current.schedule().isEmpty() || !current.classes().path("directions").isEmpty()) && current.includes("schedule")) {
             buttons.add(SCHEDULE);
         }
         if (current.standard().containsKey("prices") && current.includes("prices")) {
@@ -292,6 +298,17 @@ public final class ClientInformation {
     @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
     public record Section(String label, String text, String id, String mode) {
         public Section(String label, String text) { this(label, text, sectionId(label), null); }
+    }
+
+    public ClassMenu.Response classAction(String label, String key, ClassMenu.State state) {
+        var saved = this.state;
+        var catalog = new ClientCatalog(JsonMapper.shared().valueToTree(saved.content().jsonFields()), Set.copyOf(saved.historicalMenuActions()));
+        var navigation = new ClassNavigation(catalog);
+        if (key != null && key.startsWith("classes:")) {
+            return navigation.render(key, state);
+        }
+        return navigation.resolve(label, key != null && !key.isBlank(), state, "schedule".equals(key)
+                || state.stage() != ClassMenu.Stage.ACTIVE && saved.content().includes("schedule")).orElse(null);
     }
 
     public Section application(String label) {
@@ -356,7 +373,7 @@ public final class ClientInformation {
             var sections = new ArrayList<String>();
             for (var section : row.path("sections")) {
                 var key = section.asString("");
-                if (!FIELDS.contains(key) && !List.of("customSections", "faq", "visibility").contains(key)) {
+                if (!FIELDS.contains(key) && !List.of("customSections", "faq", "visibility", "directions", "groups", "keywords").contains(key)) {
                     throw new IllegalArgumentException("Unknown content history section");
                 }
                 sections.add(key);
@@ -421,7 +438,7 @@ public final class ClientInformation {
 
 
     private record Snapshot(Map<String, String> standard, List<Section> custom, List<Faq> faq,
-            List<String> visible, List<Map<String, String>> schedule) {
+            List<String> visible, List<Map<String, String>> schedule, JsonNode classes) {
         boolean includes(String section) {
             return visible == null || visible.contains(section);
         }
@@ -433,6 +450,11 @@ public final class ClientInformation {
                 combined.put("schedule", schedule);
             } else if (standard.containsKey("schedule")) {
                 combined.put("legacySchedule", standard.get("schedule"));
+            }
+            for (var key : ContentClasses.FIELDS) {
+                if (classes.has(key)) {
+                    combined.put(key, classes.get(key));
+                }
             }
             if (!custom.isEmpty()) {
                 combined.put("customSections", custom);
@@ -454,8 +476,14 @@ public final class ClientInformation {
         if (!items.isEmpty()) {
             fields.remove("schedule");
         }
+        var classes = JsonMapper.shared().createObjectNode();
+        if (input.has("customSections")) {
+            classes.set("customSections", input.get("customSections"));
+        }
+        ContentClasses.copy(input, null, classes, true);
+        classes.remove("customSections");
         return new Snapshot(Map.copyOf(fields), custom(input.path("customSections")), faq(input.path("faq")),
-                visibility(input.path("visibleSections")), items);
+                visibility(input.path("visibleSections")), items, classes);
     }
 
     private static List<String> visibility(JsonNode array) {

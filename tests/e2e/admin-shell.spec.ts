@@ -177,7 +177,7 @@ test('structured schedule survives save, reload, and client preview', async ({
   });
   await login(page);
 
-  await page.getByRole('button', { name: 'Добавить направление' }).click();
+  await page.getByRole('button', { name: 'Добавить старую карточку' }).click();
   await expect(page.getByLabel('Направление / группа').nth(1)).toHaveAttribute(
     'placeholder',
     'Бачата — начинающие',
