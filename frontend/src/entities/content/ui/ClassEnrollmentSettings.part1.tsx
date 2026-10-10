@@ -1,4 +1,8 @@
+import { unref as $unref } from '@frontend/shared/lib/model-state';
+
 import { textProperty as $textProperty } from '@frontend/shared/lib/component-inputs';
+
+import { defaultApplicationQuestion } from '@core/application/class-content';
 
 import type { createComponentModel } from './ClassEnrollmentSettings.model';
 export function renderClassEnrollmentSettingsPart1(
@@ -22,7 +26,7 @@ export function renderClassEnrollmentSettingsPart1(
           id={'group-question-' + group.id}
           rows={2}
           maxLength={1000}
-          placeholder="Как к вам обращаться и на какое занятие планируете прийти?"
+          placeholder={$unref(defaultApplicationQuestion)}
           value={group.applicationQuestion ?? ''}
           onChange={$textProperty(
             () => $state.group.value,

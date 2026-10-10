@@ -17,7 +17,7 @@ final class ClassNavigation {
     private static final Button MENU = button("Меню", "main");
     private static final Button DIRECTIONS = new Button("Другие направления", "classes:directions:0", "Направления: 1");
     private static final String NO_SCHEDULE = "Расписание пока не указано.";
-    private static final String DEFAULT_QUESTION = "Как к вам обращаться и на какое занятие планируете прийти?";
+    private static final String DEFAULT_QUESTION = "В какой день хотите прийти?";
     private static final Pattern NUMBERED = Pattern.compile(
             "^(направления|занятия|расписание всех направлений): ([0-9]+)$");
     private final ClientCatalog catalog;
@@ -177,6 +177,7 @@ final class ClassNavigation {
         }
         var intent = new Intent(signup ? title : null, signup ? null : title, null);
         var question = group.question().isBlank()
+                || "Как к вам обращаться и на какое занятие планируете прийти?".equals(group.question().strip())
                 ? DEFAULT_QUESTION : group.question();
         return inline(title + "\n\n" + (signup ? question + "\n" : "Напишите свой вопрос. Мы ответим здесь.")
                 + "\nЧтобы отменить, напишите «Меню».", List.of(MENU), intent,

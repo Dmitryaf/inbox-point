@@ -9,6 +9,7 @@ import {
   defaultApplicationQuestion,
   groupTitle,
   normalizeKeyword,
+  normalizeApplicationQuestion,
 } from './class-content.js';
 
 export interface ClassButton {
@@ -299,7 +300,7 @@ export function renderClassAction(
     return {
       text:
         operation === 'signup'
-          ? `${title}\n\n${group.applicationQuestion || defaultApplicationQuestion}\n\nЧтобы отменить, напишите «Меню».`
+          ? `${title}\n\n${normalizeApplicationQuestion(group.applicationQuestion) || defaultApplicationQuestion}\n\nЧтобы отменить, напишите «Меню».`
           : `${title}\n\n${clientMessages.questionPrompt}\nЧтобы отменить, напишите «Меню».`,
       buttons: [menu()],
       beginQuestion: true,
