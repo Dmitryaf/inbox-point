@@ -27,7 +27,9 @@ for (const width of [1440, 390]) {
     await login(page);
     const openCustom = async () => {
       if (width >= 900) {
-        await page.getByRole('button', { name: 'Свои разделы' }).click();
+        await page
+          .getByRole('button', { name: 'Дополнительные кнопки' })
+          .click();
       } else {
         await page.getByLabel('Раздел', { exact: true }).selectOption('custom');
       }
@@ -157,63 +159,75 @@ test('passwordless development bypass skips login and hides logout', async ({
   ).toHaveCount(0);
 });
 
-test('structured schedule survives save, reload, and client preview', async ({
+test('a review record is completed in the group editor, saved and reopened without losing its source data', async ({
   page,
 }) => {
-  let schedule = [{ dayTime: 'Вт / Чт, 19:00', title: 'Бачата — начинающие' }];
+  let content = {
+    schedule: '',
+    scheduleItems: [],
+    directions: [{ id: 'dance', name: 'Танец' }],
+    groups: [
+      {
+        id: 'review',
+        directionId: '',
+        name: '',
+        meetings: [] as string[],
+        description: '',
+        enrollmentOpen: false,
+        applicationQuestion: '',
+        review: {
+          source: 'Вечерняя группа\nПн / Ср, 20:00\nДля учеников с опытом.',
+        },
+      },
+    ],
+    keywords: [],
+  };
   let version = 'a'.repeat(64);
   await page.route('**/api/manage/content', async (route) => {
     if (route.request().method() === 'POST') {
-      const payload = route.request().postDataJSON() as {
-        content: { scheduleItems: typeof schedule };
-      };
-      schedule = payload.content.scheduleItems;
+      content = (route.request().postDataJSON() as { content: typeof content })
+        .content;
       version = 'b'.repeat(64);
     }
-    await route.fulfill({
-      contentType: 'application/json',
-      json: { content: { schedule: '', scheduleItems: schedule }, version },
-    });
+    await route.fulfill({ json: { content, version } });
   });
   await login(page);
-
-  await page.getByRole('button', { name: 'Добавить старую карточку' }).click();
-  await expect(page.getByLabel('Направление / группа').nth(1)).toHaveAttribute(
-    'placeholder',
-    'Бачата — начинающие',
+  await page.getByRole('button', { name: 'Нужно проверить: 1' }).click();
+  await page.locator('.class-list-item').click();
+  await expect(page.locator('.class-review pre')).toHaveText(
+    content.groups[0]!.review.source,
   );
-  await expect(page.getByLabel('День / время').nth(1)).toHaveAttribute(
-    'placeholder',
-    'Вт / Чт, 19:00',
-  );
-  await expect(
-    page.getByLabel('Дополнительное описание').nth(1),
-  ).toHaveAttribute('placeholder', 'Подходит тем, кто начинает с нуля.');
+  await expect(page.getByLabel('Открыть набор в группу')).toBeDisabled();
+  await page.locator('#review-direction-review').selectOption('dance');
   await page
-    .getByLabel('Направление / группа')
-    .nth(1)
-    .fill('Бачата — продолжающие');
-  await page.getByLabel('День / время').nth(1).fill('Пн / Ср, 20:00');
+    .getByLabel('Название группы', { exact: true })
+    .fill('Вечерняя группа');
+  await page.getByRole('button', { name: 'Добавить день и время' }).click();
   await page
-    .getByLabel('Дополнительное описание')
-    .nth(1)
+    .getByLabel('День и время 1', { exact: true })
+    .fill('Пн / Ср, 20:00');
+  await page.getByText('Дополнительные настройки', { exact: true }).click();
+  await page
+    .getByLabel('Короткое описание группы')
     .fill('Для учеников с опытом.');
-  await page.getByRole('button', { name: 'Сохранить' }).click();
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: 'Подтвердить данные' }).click();
+  await expect(page.locator('.class-review')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Сохранить', exact: true }).click();
   await expect(page.getByText('Все изменения сохранены')).toBeVisible();
-
   await page.reload();
-  await expect(page.getByLabel('Направление / группа').nth(1)).toHaveValue(
-    'Бачата — продолжающие',
+  await page.locator('.class-list-item').click();
+  await page.locator('.class-list-item').click();
+  await expect(page.getByLabel('Название группы', { exact: true })).toHaveValue(
+    'Вечерняя группа',
   );
-  await page.getByRole('button', { name: 'Предпросмотр' }).click();
-  const schedulePreview = page
-    .locator('.preview-response')
-    .filter({ hasText: 'Расписание' });
-  await expect(schedulePreview).toContainText(
-    'Бачата — начинающие\nВт / Чт, 19:00',
+  await expect(page.getByLabel('День и время 1', { exact: true })).toHaveValue(
+    'Пн / Ср, 20:00',
   );
-  await expect(schedulePreview).toContainText(
-    'Бачата — продолжающие\nПн / Ср, 20:00\nДля учеников с опытом.',
+  await expect(page.getByLabel('Открыть набор в группу')).not.toBeChecked();
+  await page.getByText('Что увидит клиент', { exact: true }).click();
+  await expect(page.locator('.class-preview pre')).toContainText(
+    'Для учеников с опытом.',
   );
 });
 
@@ -322,7 +336,7 @@ for (const viewport of [
     await login(page);
 
     if (viewport.width >= 900) {
-      await page.getByRole('button', { name: 'Свои разделы' }).click();
+      await page.getByRole('button', { name: 'Дополнительные кнопки' }).click();
     } else {
       await page.getByLabel('Раздел', { exact: true }).selectOption('custom');
     }
@@ -384,12 +398,12 @@ for (const viewport of [
     expectStableBox(await requiredBox(navigation), initialNavigationBox);
 
     if (viewport.width >= 900) {
-      await page.getByRole('button', { name: 'Основное' }).click();
+      await page.getByRole('button', { name: 'Занятия' }).click();
     } else {
       await page.getByLabel('Раздел', { exact: true }).selectOption('core');
     }
     await expect(
-      page.getByRole('region', { name: 'Основные ответы' }),
+      page.getByRole('region', { name: 'Занятия', exact: true }),
     ).toBeVisible();
     expectStablePlacement(await requiredBox(workspaceMain), initialMainBox);
     expectStableBox(await requiredBox(navigation), initialNavigationBox);

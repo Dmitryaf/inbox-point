@@ -50,7 +50,7 @@ export function serializeContentDocument(
         (items) => (items?.length ?? 0) > 0,
       ),
     )
-      ? { formatVersion: 2 }
+      ? { formatVersion: 3 }
       : {}),
     ...(document.legacyPreviousMenuActions
       ? { previousMenuActions: [...document.legacyPreviousMenuActions] }

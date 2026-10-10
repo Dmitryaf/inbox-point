@@ -137,6 +137,7 @@ export class TelegramClientMenu implements TelegramClientMenuHandler {
           conversationId,
           now,
           response.applicationLabel,
+          response.questionContext,
         );
       }
       await this.gateway.sendMessage({
@@ -172,6 +173,7 @@ export class TelegramClientMenu implements TelegramClientMenuHandler {
           String(message.chatId),
           now,
           response.applicationLabel,
+          response.questionContext,
         );
       }
       if (response.actionKey && response.actionLabel) {
@@ -217,6 +219,7 @@ export class TelegramClientMenu implements TelegramClientMenuHandler {
 
 interface MenuResponse {
   applicationLabel?: string;
+  questionContext?: string;
   beginQuestion?: true;
   cancelAwaitingQuestion?: true;
   informationRequested?: true;

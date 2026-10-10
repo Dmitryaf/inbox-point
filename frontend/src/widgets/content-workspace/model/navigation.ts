@@ -15,7 +15,7 @@ export const editorSections: readonly {
   id: EditorSection;
   label: string;
 }[] = [
-  { id: 'core', label: 'Основное' },
-  { id: 'faq', label: 'Частые вопросы' },
-  { id: 'custom', label: 'Свои разделы' },
+  { id: 'core', label: 'Занятия' },
+  { id: 'faq', label: 'Информация' },
+  { id: 'custom', label: 'Дополнительные кнопки' },
 ];

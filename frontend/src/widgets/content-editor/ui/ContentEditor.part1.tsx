@@ -1,10 +1,7 @@
-import {
-  modelSetter as $setter,
-  propertySetter as $propertySetter,
-} from '@frontend/shared/lib/component-bindings';
+import { modelSetter as $setter } from '@frontend/shared/lib/component-bindings';
 
 import CoreSectionsFields from '@frontend/entities/content/ui/CoreSectionsFields';
-import CustomSectionsEditor from '@frontend/entities/content/ui/CustomSectionsEditor';
+
 import FaqEditor from '@frontend/entities/content/ui/FaqEditor';
 
 import type { WithDefaults } from '@frontend/shared/lib/component-model';
@@ -21,31 +18,26 @@ export function renderContentEditorPart1(
 
   return (
     <>
-      {$props.activeSection === 'core' ? (
+      <div
+        style={Object.assign(
+          {},
+          { display: $props.activeSection === 'faq' ? undefined : 'none' },
+        )}
+        data-r-7c201b3b=""
+      >
         <CoreSectionsFields
           errors={$props.errors}
           modelValue={draft}
           onModelValueChange={$setter($state, 'draft')}
           data-r-7c201b3b=""
         />
-      ) : $props.activeSection === 'faq' ? (
         <FaqEditor
           errors={$props.errors}
           modelValue={draft}
           onModelValueChange={$setter($state, 'draft')}
           data-r-7c201b3b=""
         />
-      ) : (
-        <CustomSectionsEditor
-          errors={$props.errors}
-          modelValue={draft.customSections}
-          onModelValueChange={$propertySetter(
-            () => $state.draft.value,
-            'customSections',
-          )}
-          data-r-7c201b3b=""
-        />
-      )}
+      </div>
     </>
   );
 }

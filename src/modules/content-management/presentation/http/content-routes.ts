@@ -52,6 +52,15 @@ export function registerManagementContentRoutes(
         });
       }
       const current = content.get();
+      if (
+        parsed.data.content.scheduleItems?.length ||
+        parsed.data.content.schedule.trim()
+      ) {
+        return reply.code(409).send({
+          message:
+            'Расписание теперь редактируется в разделе «Занятия». Обновите страницу перед сохранением.',
+        });
+      }
       if (hasLegacyScheduleConflict(parsed.data.content, current.content)) {
         return reply.code(409).send({
           message:

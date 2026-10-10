@@ -21,6 +21,7 @@ export interface ClassResponse {
   actionKey?: string;
   actionLabel?: string;
   applicationLabel?: string;
+  questionContext?: string;
   beginQuestion?: true;
 }
 const button = (
@@ -61,7 +62,7 @@ export function resolveClassNavigation(
         state.stage !== 'awaiting_question' &&
         state.stage !== 'active'))
   ) {
-    if (content.directions?.length) {
+    if (content.directions?.length || content.groups?.length) {
       key = 'classes:directions:0';
     }
   }
@@ -84,7 +85,8 @@ export function resolveClassText(
   }
   if (
     normalized === 'другие направления' ||
-    (normalized === 'расписание' && content.directions?.length)
+    (normalized === 'расписание' &&
+      (content.directions?.length || content.groups?.length))
   ) {
     return 'classes:directions:0';
   }
@@ -97,6 +99,10 @@ export function resolveClassText(
   const page = /^направления: (\d+)$/u.exec(normalized);
   if (page) {
     return `classes:directions:${Number(page[1]) - 1}`;
+  }
+  const reviewPage = /^занятия: (\d+)$/u.exec(normalized);
+  if (reviewPage) {
+    return `classes:review:${Number(reviewPage[1]) - 1}`;
   }
   for (const direction of content.directions ?? []) {
     if (normalized === normalizeKeyword(`Направление: ${direction.name}`)) {
@@ -137,8 +143,34 @@ export function renderClassAction(
 ): ClassResponse {
   const content = information.getContent?.() ?? {};
   const [, operation, id, pageText] = action.split(':');
+  if (operation === 'review') {
+    const source = (content.groups ?? [])
+      .flatMap((group) => (group.review ? [group.review.source] : []))
+      .join('\n\n');
+    const page = safePage(id, source.length, 3000);
+    return {
+      text:
+        'Расписание\n\n' +
+        (source.slice(page * 3000, (page + 1) * 3000) ||
+          'Расписание пока не указано.'),
+      buttons: [
+        ...pageButtons(
+          page,
+          source.length,
+          3000,
+          (next) => `classes:review:${next}`,
+          (next) => `Занятия: ${next + 1}`,
+        ),
+        directionsButton(),
+        menu(),
+      ],
+    };
+  }
   if (operation === 'directions') {
     const all = content.directions ?? [];
+    if (!all.length && content.groups?.some((group) => group.review)) {
+      return renderClassAction(information, 'classes:review:0', state);
+    }
     const page = safePage(id, all.length, 2);
     const items = all.slice(page * 2, page * 2 + 2);
     return {
@@ -162,6 +194,9 @@ export function renderClassAction(
           (next) => `classes:directions:${next}`,
           (next) => `Направления: ${next + 1}`,
         ),
+        ...(content.groups?.some((group) => group.review)
+          ? [button('Расписание занятий', 'classes:review:0', 'Занятия: 1')]
+          : []),
         ...(content.schedule?.length || content.legacySchedule
           ? [button('Другие занятия', 'classes:legacy', 'Занятия: общие')]
           : []),
@@ -170,6 +205,9 @@ export function renderClassAction(
     };
   }
   if (operation === 'legacy') {
+    if (content.groups?.length) {
+      return renderClassAction(information, 'classes:directions:0', state);
+    }
     return {
       text: information.resolve('Расписание') ?? 'Расписание пока не указано.',
       buttons: [directionsButton(), menu()],
@@ -180,7 +218,10 @@ export function renderClassAction(
     if (!direction) {
       return updated();
     }
-    const all = content.groups?.filter((item) => item.directionId === id) ?? [];
+    const all =
+      content.groups?.filter(
+        (item) => item.directionId === id && !item.review,
+      ) ?? [];
     const page = safePage(pageText, all.length, 2);
     const groups = all.slice(page * 2, page * 2 + 2);
     return {
@@ -215,6 +256,9 @@ export function renderClassAction(
   if (!group) {
     return updated();
   }
+  if (group.review) {
+    return renderClassAction(information, 'classes:review:0', state);
+  }
   const title = groupTitle(content, group);
   const groupButton = () =>
     button('К группе', `classes:group:${id}`, `Группа: ${title}`);
@@ -240,7 +284,9 @@ export function renderClassAction(
           : `${title}\n\n${clientMessages.questionPrompt}\nЧтобы отменить, напишите «Меню».`,
       buttons: [menu()],
       beginQuestion: true,
-      ...(operation === 'signup' ? { applicationLabel: title } : {}),
+      ...(operation === 'signup'
+        ? { applicationLabel: title }
+        : { questionContext: title }),
       actionKey: `${operation === 'signup' ? 'signup' : 'group_question'}:${id}`,
       actionLabel: `${operation === 'signup' ? 'Начало записи' : 'Вопрос о группе'}: ${title}`,
     };

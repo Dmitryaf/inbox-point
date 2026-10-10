@@ -198,11 +198,17 @@ describe('managed content routes', () => {
           ],
           prices: '',
           schedule: '',
-          scheduleItems: [
+          scheduleItems: [],
+          directions: [{ id: 'dance', name: ' Бачата ' }],
+          groups: [
             {
-              dayTime: ' Вт / Чт, 19:00 ',
+              id: 'group',
+              directionId: 'dance',
+              name: ' Начинающие ',
+              meetings: [' Вт / Чт, 19:00 '],
               description: ' Для начинающих. ',
-              title: ' Бачата ',
+              enrollmentOpen: false,
+              applicationQuestion: '',
             },
           ],
         },
@@ -225,9 +231,7 @@ describe('managed content routes', () => {
           faq: [],
           prices: '',
           schedule: '',
-          scheduleItems: [
-            { dayTime: 'Вторник', title: 'Конфликтующая версия' },
-          ],
+          scheduleItems: [],
         },
         version: loadedVersion,
       },
@@ -248,7 +252,19 @@ describe('managed content routes', () => {
           faq: [],
           prices: '',
           schedule: '',
-          scheduleItems: [{ dayTime: '', title: 'Бачата' }],
+          scheduleItems: [],
+          directions: [{ id: 'dance', name: 'Бачата' }],
+          groups: [
+            {
+              id: 'group',
+              directionId: 'dance',
+              name: 'Начинающие',
+              meetings: [],
+              description: '',
+              enrollmentOpen: false,
+              applicationQuestion: '',
+            },
+          ],
         },
         version: save.json<{ version: string }>().version,
       },
@@ -269,11 +285,19 @@ describe('managed content routes', () => {
           faq: [],
           prices: '',
           schedule: '',
-          scheduleItems: Array.from({ length: 5 }, (_, index) => ({
-            dayTime: `День ${index}`,
-            description: 'x'.repeat(800),
-            title: `Группа ${index}`,
-          })),
+          scheduleItems: [],
+          directions: [{ id: 'dance', name: 'Бачата' }],
+          groups: [
+            {
+              id: 'group',
+              directionId: 'dance',
+              name: 'Начинающие',
+              meetings: ['Вт'],
+              description: 'x'.repeat(1001),
+              enrollmentOpen: false,
+              applicationQuestion: '',
+            },
+          ],
         },
         version: save.json<{ version: string }>().version,
       },
@@ -327,11 +351,16 @@ describe('managed content routes', () => {
             question: 'Как записаться?',
           },
         ],
-        schedule: [
+        directions: [{ id: 'dance', name: 'Бачата' }],
+        groups: [
           {
-            dayTime: 'Вт / Чт, 19:00',
+            id: 'group',
+            directionId: 'dance',
+            name: 'Начинающие',
+            meetings: ['Вт / Чт, 19:00'],
             description: 'Для начинающих.',
-            title: 'Бачата',
+            enrollmentOpen: false,
+            applicationQuestion: '',
           },
         ],
         visibleSections: ['schedule', 'prices', 'address', 'faq'],
@@ -343,7 +372,7 @@ describe('managed content routes', () => {
     expect(restored).toEqual([7]);
   });
 
-  it('keeps structured schedule data safe for an older editor', async () => {
+  it('rejects writes from an older schedule editor without changing stored data', async () => {
     const app = createApp({ ...config, nodeEnv: 'development' });
     apps.add(app);
     const saved: unknown[] = [];
@@ -405,21 +434,16 @@ describe('managed content routes', () => {
           schedule: 'Изменено в старом редакторе',
           visibleSections: ['schedule', 'prices', 'address', 'faq'],
         },
-        version: compatibleSave.json<{ version: string }>().version,
+        version: snapshot.version,
       },
       url: '/api/manage/content',
     });
 
     expect(snapshot.content.schedule).toBe('Бачата — Вт / Чт, 19:00');
     expect(snapshot.content.scheduleItems).toEqual(schedule);
-    expect(compatibleSave.statusCode).toBe(200);
-    expect(saved).toEqual([
-      {
-        address: 'ул. Мира, 1',
-        schedule,
-        visibleSections: ['schedule', 'prices', 'address', 'faq'],
-      },
-    ]);
+    expect(compatibleSave.statusCode).toBe(409);
+    expect(saved).toEqual([]);
+    expect(catalog.getContent().schedule).toEqual(schedule);
     expect(incompatibleEdit.statusCode).toBe(409);
     expect(incompatibleEdit.json<{ message: string }>().message).toContain(
       'Обновите страницу',

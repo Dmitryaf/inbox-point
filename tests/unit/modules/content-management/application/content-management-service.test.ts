@@ -1,3 +1,4 @@
+import { reviewContent } from '@test/support/review-content.js';
 import { describe, expect, it } from 'vitest';
 
 import { ClientInformationCatalog } from '@/core/application/client-information.js';
@@ -45,11 +46,9 @@ describe('ContentManagementService', () => {
       throw new Error('Expected the second save to be rejected');
     }
     expect(secondResult.reason).toBeInstanceOf(ContentVersionConflictError);
-    expect(saved).toEqual([
-      { schedule: [{ dayTime: 'Пн', title: 'Первое расписание' }] },
-    ]);
-    expect(service.get().content).toEqual({
-      schedule: [{ dayTime: 'Пн', title: 'Первое расписание' }],
-    });
+    expect(saved).toEqual([reviewContent('Первое расписание\nПн')]);
+    expect(service.get().content).toEqual(
+      reviewContent('Первое расписание\nПн'),
+    );
   });
 });

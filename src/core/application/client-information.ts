@@ -178,6 +178,18 @@ export class ClientInformationCatalog implements ClientInformationResolver {
   public resolve(text: string): string | undefined {
     const normalized = text.trim();
     if (normalized === scheduleButton) {
+      if (this.content.groups?.length) {
+        return (
+          'Расписание\n\n' +
+          this.content.groups
+            .map(
+              (group) =>
+                group.review?.source ??
+                `${this.content.directions?.find((direction) => direction.id === group.directionId)?.name ?? ''} / ${group.name}\n${group.meetings.join('\n')}${group.description ? '\n' + group.description : ''}`,
+            )
+            .join('\n\n')
+        );
+      }
       return this.content.schedule?.length
         ? formatScheduleResponse(this.content.schedule)
         : this.content.legacySchedule
@@ -405,6 +417,7 @@ export function copyClientInformationContent(
 function hasScheduleContent(content: ClientInformationContent): boolean {
   return [
     content.directions?.length,
+    content.groups?.length,
     content.schedule?.length,
     content.legacySchedule?.trim(),
   ].some(Boolean);

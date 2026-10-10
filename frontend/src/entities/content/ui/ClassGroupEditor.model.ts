@@ -1,4 +1,5 @@
 import {
+  type EventProps,
   type ComponentAttributes,
   type WithDefaults,
 } from '@frontend/shared/lib/component-model';
@@ -12,15 +13,18 @@ import { removeClassGroup } from '@frontend/entities/content/model/class-editor'
 
 export type ComponentProps = {
   groupId: string;
-} & {
-  modelValue: ContentDraft;
-  onModelValueChange?: (value: ContentDraft) => void;
-} & ComponentAttributes;
+} & EventProps<{
+  openTarget: [type: 'direction' | 'group', id: string];
+  removed: [];
+}> & {
+    modelValue: ContentDraft;
+    onModelValueChange?: (value: ContentDraft) => void;
+  } & ComponentAttributes;
 export const componentDefaults = {};
 type ResolvedProps = WithDefaults<ComponentProps, typeof componentDefaults>;
 export function createComponentModel(
   $props: ResolvedProps,
-  _emit: (event: string, ...args: unknown[]) => void,
+  $emit: (event: string, ...args: unknown[]) => void,
   $model: <Value>(
     name: string,
     options?: ModelOptions<Value>,
@@ -28,18 +32,20 @@ export function createComponentModel(
 ) {
   const draft = $model<ContentDraft>('modelValue', { required: true });
   const props = $props;
+  const emit = $emit;
   const group = computed(() =>
     draft.value.groups.find((item) => item.id === props.groupId),
   );
-  const initiallyOpen = !group.value?.name;
   function remove(): void {
     if (
-      window.confirm(
+      !window.confirm(
         'Удалить группу и её ключевые слова? Уже отправленные заявки сохранятся.',
       )
     ) {
-      removeClassGroup(draft.value, props.groupId);
+      return;
     }
+    removeClassGroup(draft.value, props.groupId);
+    emit('removed');
   }
-  return { draft, group, initiallyOpen, remove };
+  return { draft, emit, group, remove };
 }

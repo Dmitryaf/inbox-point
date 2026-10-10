@@ -1,12 +1,17 @@
 import type { ContentDraft } from './types';
+import type { ClassContent } from '@core/application/class-content';
 import { defaultApplicationQuestion } from '@core/application/class-content';
 
-export function addClassGroup(draft: ContentDraft, directionId: string): void {
-  if (draft.groups.length >= 60) {
+export function addClassGroup(
+  draft: ContentDraft,
+  directionId: string,
+): string | undefined {
+  if (draft.groups.filter((group) => !group.review).length >= 60) {
     return;
   }
+  const id = crypto.randomUUID();
   draft.groups.push({
-    id: crypto.randomUUID(),
+    id,
     directionId,
     name: '',
     meetings: [''],
@@ -14,6 +19,7 @@ export function addClassGroup(draft: ContentDraft, directionId: string): void {
     enrollmentOpen: false,
     applicationQuestion: defaultApplicationQuestion,
   });
+  return id;
 }
 export function removeClassGroup(draft: ContentDraft, id: string): void {
   draft.groups = draft.groups.filter((item) => item.id !== id);
@@ -21,41 +27,24 @@ export function removeClassGroup(draft: ContentDraft, id: string): void {
     (item) => item.targetType !== 'group' || item.targetId !== id,
   );
 }
-export function transferScheduleItem(
-  draft: ContentDraft,
-  index: number,
-  directionId: string,
-): boolean {
-  const item = draft.schedule[index];
-  if (
-    !item?.title.trim() ||
-    !item.dayTime.trim() ||
-    item.title.trim().length > 80 ||
-    /[/:\r\n]/u.test(item.title) ||
-    draft.groups.length >= 60 ||
-    !draft.directions.some((direction) => direction.id === directionId)
-  ) {
-    return false;
-  }
-  if (
-    draft.groups.some(
-      (group) =>
-        group.directionId === directionId &&
-        group.name.toLocaleLowerCase('ru') ===
-          item.title.trim().toLocaleLowerCase('ru'),
-    )
-  ) {
-    return false;
-  }
-  draft.groups.push({
-    id: crypto.randomUUID(),
-    directionId,
-    name: item.title.trim(),
-    meetings: [item.dayTime.trim()],
-    description: item.description?.trim() ?? '',
-    enrollmentOpen: false,
-    applicationQuestion: defaultApplicationQuestion,
-  });
-  draft.schedule.splice(index, 1);
-  return true;
+
+export function normalizeClassDraft(content: ClassContent): ClassContent {
+  return {
+    ...content,
+    directions: content.directions?.map((direction) => ({
+      ...direction,
+      name: direction.name.trim(),
+    })),
+    groups: content.groups?.map((group) => ({
+      ...group,
+      name: group.name.trim(),
+      meetings: group.meetings.map((time) => time.trim()),
+      description: group.description.trim(),
+      applicationQuestion: group.applicationQuestion.trim(),
+    })),
+    keywords: content.keywords?.map((word) => ({
+      ...word,
+      phrase: word.phrase.trim(),
+    })),
+  };
 }

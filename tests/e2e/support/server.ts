@@ -81,12 +81,20 @@ app.get('/api/manage/content', requireAdmin, () =>
           ],
           prices: 'Пробное занятие — бесплатно.',
           schedule: '',
-          scheduleItems: [
+          scheduleItems: [],
+          directions: [{ id: 'dance', name: 'Бачата' }],
+          groups: [
             {
-              dayTime: 'Понедельник и среда, 19:00.',
-              title: 'Бачата — начинающие',
+              id: 'beginners',
+              directionId: 'dance',
+              name: 'Начинающие',
+              meetings: ['Понедельник и среда, 19:00.'],
+              description: '',
+              enrollmentOpen: false,
+              applicationQuestion: '',
             },
           ],
+          keywords: [],
         },
         version: 'a'.repeat(64),
       },

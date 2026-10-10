@@ -1,0 +1,106 @@
+@import './collection-editor.css';
+.class-workspace h2[data-r-e1399ad4] {
+  margin: 1rem 0;
+  overflow-wrap: anywhere;
+}
+.class-list-item[data-r-e1399ad4] {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  margin: 0.7rem 0;
+  padding: 1rem;
+  text-align: left;
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+.class-list-item strong[data-r-e1399ad4] {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.class-list-item small[data-r-e1399ad4] {
+  flex-shrink: 0;
+}
+.class-review[data-r-e1399ad4] {
+  padding: 1rem;
+  background: var(--color-surface-muted);
+}
+.class-review pre[data-r-e1399ad4] {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+}
+.class-review select[data-r-e1399ad4] {
+  width: 100%;
+}
+.review-notice[data-r-e1399ad4] {
+  margin-bottom: 1rem;
+}
+.class-editor input[data-r-e1399ad4],
+.class-editor textarea[data-r-e1399ad4] {
+  max-width: 100%;
+}
+.class-editor[data-r-e1399ad4] {
+  margin: 1rem 0 2rem;
+}
+.class-card[data-r-e1399ad4] {
+  border-top: 1px solid var(--color-border);
+  margin: 1rem 0;
+  padding: 1rem 0;
+}
+.class-card summary[data-r-e1399ad4] {
+  cursor: pointer;
+  margin-bottom: 0.75rem;
+}
+.class-card label[data-r-e1399ad4],
+.class-editor > label[data-r-e1399ad4] {
+  display: block;
+  margin: 0.75rem 0 0.35rem;
+}
+.class-card input[data-r-e1399ad4]:not([type='checkbox']),
+.class-card select[data-r-e1399ad4],
+.class-card textarea[data-r-e1399ad4],
+.class-actions input[data-r-e1399ad4] {
+  width: 100%;
+  min-width: 0;
+}
+.class-actions[data-r-e1399ad4] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0.75rem 0;
+}
+.class-actions input[data-r-e1399ad4] {
+  flex: 1 1 12rem;
+}
+.class-check[data-r-e1399ad4] {
+  display: flex !important;
+  align-items: center;
+  gap: 0.5rem;
+}
+.class-check input[data-r-e1399ad4] {
+  width: 1rem;
+  flex: 0 0 1rem;
+  margin: 0;
+}
+.class-preview[data-r-e1399ad4] {
+  background: var(--color-surface-muted);
+  padding: 0.8rem;
+  border-radius: 0.75rem;
+  margin: 1rem 0;
+}
+.class-preview pre[data-r-e1399ad4] {
+  font: inherit;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.class-preview-buttons[data-r-e1399ad4] {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.class-preview-buttons button[data-r-e1399ad4] {
+  font-size: 0.875rem;
+}

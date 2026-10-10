@@ -1,36 +1,56 @@
-import { nativeHandler as $nativeHandler } from '@frontend/shared/lib/component-events';
+import { eventCallback as $callback } from '@frontend/shared/lib/component-events';
 
-import { textModel as $textModel } from '@frontend/shared/lib/component-inputs';
+import {
+  setModelValue as $set,
+  modelSetter as $setter,
+} from '@frontend/shared/lib/component-bindings';
+
+import ClassDirectionEditor from './ClassDirectionEditor';
+import ClassGroupEditor from './ClassGroupEditor';
+import ClassDirectionList from './ClassDirectionList';
 
 import type { createComponentModel } from './ClassScheduleEditor.model';
 export function renderClassScheduleEditorPart1(
   $state: ReturnType<typeof createComponentModel>,
 ) {
-  const { add } = $state;
+  const { open } = $state;
+  const group = $state.group.value;
+  const direction = $state.direction.value;
+  const reviewing = $state.reviewing.value;
   const draft = $state.draft.value;
-  const directionName = $state.directionName.value;
 
   return (
     <>
-      <div className="class-actions" data-r-13661f32="">
-        <input
-          id="new-direction-name"
-          maxLength={80}
-          placeholder="Например, Бачата"
-          onKeyDown={$nativeHandler(add, { prevent: true, key: 'Enter' })}
-          value={directionName ?? ''}
-          onChange={$textModel($state, 'directionName')}
+      {group ? (
+        <ClassGroupEditor
+          key={group.id}
+          groupId={group.id}
+          onOpenTarget={$callback(open)}
+          onRemoved={() => void $set($state, 'groupId', '')}
+          modelValue={draft}
+          onModelValueChange={$setter($state, 'draft')}
           data-r-13661f32=""
         />
-        <button
-          type="button"
-          disabled={draft.directions.length >= 20}
-          onClick={$nativeHandler(add)}
+      ) : direction ? (
+        <ClassDirectionEditor
+          key={direction.id}
+          directionId={direction.id}
+          onOpenTarget={$callback(open)}
+          onRemoved={() => void $set($state, 'directionId', '')}
+          modelValue={draft}
+          onModelValueChange={$setter($state, 'draft')}
           data-r-13661f32=""
-        >
-          {' Добавить направление '}
-        </button>
-      </div>
+        />
+      ) : (
+        <ClassDirectionList
+          onOpenTarget={$callback(open)}
+          modelValue={draft}
+          onModelValueChange={$setter($state, 'draft')}
+          reviewing={reviewing}
+          onReviewingChange={$setter($state, 'reviewing')}
+          data-r-13661f32=""
+        />
+      )}
     </>
   );
 }

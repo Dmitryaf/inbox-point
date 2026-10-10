@@ -8,6 +8,8 @@ import {
 } from '@/infrastructure/file-system/local-state-file.js';
 import { identifyCustomSections } from '@/modules/content-management/application/custom-section-identity.js';
 import { migrateCustomSectionIds } from './custom-section-migration.js';
+import { migrateScheduleDocument } from './schedule-migration.js';
+import { migrateSchedule } from '@/modules/content-management/application/schedule-migration.js';
 import { findHistoricalMenuActions, nextRevision } from './content-history.js';
 import type {
   ContentChange,
@@ -63,7 +65,7 @@ export class FileContentSettingsStore implements ContentSettingsStore {
   public async save(content: ClientInformationContent): Promise<void> {
     const current = await this.readDocument();
     const validated = validateContentInput(
-      identifyCustomSections(content, current?.content),
+      migrateSchedule(identifyCustomSections(content, current?.content)),
     );
     const sections = findChangedSections(current?.content ?? {}, validated);
     if (sections.length === 0) {
@@ -94,7 +96,7 @@ export class FileContentSettingsStore implements ContentSettingsStore {
       throw new Error('The requested content revision is unavailable');
     }
     await this.save(target.content);
-    return copyClientInformationContent(target.content);
+    return migrateSchedule(target.content);
   }
 
   private async readDocument(): Promise<ContentSettingsDocument | undefined> {
@@ -114,7 +116,12 @@ export class FileContentSettingsStore implements ContentSettingsStore {
       if (contents === undefined) {
         return undefined;
       }
-      const migrated = migrateCustomSectionIds(parseContentDocument(contents));
+      const document = await migrateScheduleDocument(
+        this.path,
+        contents,
+        parseContentDocument(contents),
+      );
+      const migrated = migrateCustomSectionIds(document);
       if (migrated.changed) {
         await this.writeDocument(migrated.document);
       }

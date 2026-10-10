@@ -76,7 +76,7 @@ const legacyPreviousMenuActionsSchema = z
 
 export const storedContentSchema = z
   .object({
-    formatVersion: z.literal(2).optional(),
+    formatVersion: z.union([z.literal(2), z.literal(3)]).optional(),
     content: contentPayloadSchema,
     history: z.array(revisionSchema).max(20),
     previousMenuActions: legacyPreviousMenuActionsSchema.optional(),

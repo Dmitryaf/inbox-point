@@ -64,24 +64,25 @@ export function renderContentWorkspacePart1(
               data-r-09629bd3=""
             >
               <div
-                key={activeView}
                 className={$class('workspace-view', {
                   'workspace-view--editing': activeView === 'edit',
                 })}
                 data-r-09629bd3=""
               >
-                {activeView === 'edit' ? (
-                  <ContentEditor
-                    activeSection={activeSection}
-                    errors={fieldErrors}
-                    modelValue={workspace.draft}
-                    onModelValueChange={$propertySetter(
-                      () => $unref($state.workspace),
-                      'draft',
-                    )}
-                    data-r-09629bd3=""
-                  />
-                ) : null}
+                <ContentEditor
+                  activeSection={activeSection}
+                  errors={fieldErrors}
+                  modelValue={workspace.draft}
+                  onModelValueChange={$propertySetter(
+                    () => $unref($state.workspace),
+                    'draft',
+                  )}
+                  style={Object.assign(
+                    {},
+                    { display: activeView === 'edit' ? undefined : 'none' },
+                  )}
+                  data-r-09629bd3=""
+                />
                 {renderContentWorkspacePart2($state)}
               </div>
             </section>

@@ -4,9 +4,8 @@ import {
   ModelScopeProvider,
 } from '@frontend/shared/lib/component-model';
 import { classNames as $class } from '@frontend/shared/lib/component-view';
-import { nativeHandler as $nativeHandler } from '@frontend/shared/lib/component-events';
 
-import { logicalOr as $or } from '@frontend/shared/lib/component-bindings';
+import { requiredValue as $required } from '@frontend/shared/lib/component-bindings';
 
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
@@ -27,44 +26,42 @@ export default function ClassKeywordsEditor($incomingProps: ComponentProps) {
     componentDefaults,
     createComponentModel,
   );
-  const { add } = $state;
-  const targets = $state.targets.value;
   const draft = $state.draft.value;
   const $attributes = inheritedAttributes($props);
   return (
     <ModelScopeProvider scope={$scope}>
-      <details
+      <section
         {...$attributes}
-        open
+        aria-label="Переход из объявления"
         className={$class('class-card', $attributes.className)}
         data-r-7964e07c=""
       >
-        <summary data-r-7964e07c="">
-          <strong data-r-7964e07c="">{'Ключевые слова для постов'}</strong>
-        </summary>
+        <h3 data-r-7964e07c="">{'Переход из объявления'}</h3>
         <p data-r-7964e07c="">
+          {' По этому слову в сообщениях бот покажет '}
+          {$props.targetType === 'group'
+            ? 'эту группу'
+            : 'группы этого направления'}
           {
-            ' Человек пишет слово в сообщения сообщества или бота и сразу видит выбранную группу или группы направления. Отдельная кнопка в главном меню не появится. '
+            '. Во время переписки с администратором слово остаётся обычным сообщением. '
           }
         </p>
-        <p data-r-7964e07c="">
-          {
-            ' Например: «Бачата» → Бачата / Начинающие. Регистр и лишние пробелы не важны. В переписке с администратором и при заполнении заявки слово остаётся обычным сообщением. '
-          }
-        </p>
-        {renderClassKeywordsEditorPart1($state)}
+        {renderClassKeywordsEditorPart1($state, $props)}
         <button
           type="button"
-          disabled={$or(!targets.length, () => draft.keywords.length >= 40)}
-          onClick={$nativeHandler(add)}
+          disabled={draft.keywords.length >= 40}
+          onClick={() =>
+            void $required($state.draft.value).keywords.push({
+              phrase: '',
+              targetType: $props.targetType,
+              targetId: $props.targetId,
+            })
+          }
           data-r-7964e07c=""
         >
           {' Добавить ключевое слово '}
         </button>
-        {!targets.length ? (
-          <p data-r-7964e07c="">{'Сначала добавьте направление или группу.'}</p>
-        ) : null}
-      </details>
+      </section>
     </ModelScopeProvider>
   );
 }

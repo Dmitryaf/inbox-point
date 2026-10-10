@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { identifyCustomSections } from './custom-section-identity.js';
+import { migrateSchedule } from './schedule-migration.js';
 
 import type {
   ClientInformationContent,
@@ -40,7 +41,7 @@ export class ContentManagementService {
     const save = this.saveQueue.then(async () => {
       this.assertVersion(expectedVersion);
       const identified = identifyCustomSections(
-        content,
+        migrateSchedule(content),
         this.catalog.getContent(),
       );
       await this.store.save(identified);
