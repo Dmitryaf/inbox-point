@@ -54,12 +54,6 @@ function add(): void {
       </span>
     </summary>
 
-    <ClassScheduleEditor v-model="draft" />
-    <h3>Старые записи расписания</h3>
-    <p>
-      Эти занятия сохранены без изменений. Их можно перенести в группы вручную.
-    </p>
-    <LegacyScheduleAssignment v-model="draft" />
     <aside v-if="draft.legacySchedule" class="legacy-schedule">
       <strong>Сохранён старый текст расписания</strong>
       <p>
@@ -69,9 +63,6 @@ function add(): void {
       <pre id="legacy-schedule">{{ legacyResponse }}</pre>
     </aside>
 
-    <p v-if="draft.schedule.length === 0" class="empty">
-      Старых карточек нет. Новые направления и группы добавляются выше.
-    </p>
     <ScheduleItemFields
       v-for="(item, index) in draft.schedule"
       :key="itemKey(item)"
@@ -79,6 +70,15 @@ function add(): void {
       :errors="props.errors"
       :index="index"
     />
+    <ClassScheduleEditor v-model="draft" />
+    <p v-if="draft.schedule.length">
+      Прежние карточки выше сохранены без изменений. Их можно перенести в группы
+      вручную.
+    </p>
+    <LegacyScheduleAssignment v-model="draft" />
+    <p v-if="draft.schedule.length === 0" class="empty">
+      Старых карточек нет. Новые направления и группы добавляются выше.
+    </p>
     <div class="section-heading">
       <p>Старые карточки показываются в разделе «Другие занятия».</p>
       <span>{{ draft.schedule.length }} / {{ itemLimit }}</span>
