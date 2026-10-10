@@ -232,11 +232,21 @@ export interface SupportRepository
     kind: 'close_request' | 'reopen_request',
     resolvedAt: Date,
   ): void;
+  findAwaitingQuestionContext(
+    channel: ClientChannelKind,
+    conversationId: string,
+    checkedAt: Date,
+  ): string | undefined;
+  findClientQuestionContext(
+    requestId: string,
+    externalMessageId: string,
+  ): { label: string; text: string } | undefined;
   setAwaitingClientQuestion(
     channel: ClientChannelKind,
     conversationId: string,
     updatedAt: Date,
     applicationLabel?: string,
+    questionContext?: string,
   ): void;
   retryFailedDelivery(deliveryId: string, retryAt: Date): boolean;
   resolveOperatorActionAsWeb(actionId: string, resolvedAt: Date): boolean;

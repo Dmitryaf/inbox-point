@@ -7,12 +7,11 @@ import {
   getCoreResponseLengths,
   findOversizedContentResponse,
 } from '@frontend/entities/content/lib/content-response-limit';
-import ScheduleEditor from '@frontend/entities/content/ui/ScheduleEditor.vue';
 import FaqEditor from '@frontend/entities/content/ui/FaqEditor.vue';
 import CustomSectionsEditor from '@frontend/entities/content/ui/CustomSectionsEditor.vue';
 
 describe('collection editing continuity', () => {
-  it.each(['schedule', 'faq', 'custom'] as const)(
+  it.each(['faq', 'custom'] as const)(
     'keeps focus and protects deletion in %s',
     async (kind) => {
       const draft = reactive(createEmptyContent());
@@ -29,20 +28,15 @@ describe('collection editing continuity', () => {
         text: 'Text',
       }));
       const wrapper =
-        kind === 'schedule'
-          ? mount(ScheduleEditor, {
+        kind === 'faq'
+          ? mount(FaqEditor, {
               attachTo: document.body,
               props: { modelValue: draft },
             })
-          : kind === 'faq'
-            ? mount(FaqEditor, {
-                attachTo: document.body,
-                props: { modelValue: draft },
-              })
-            : mount(CustomSectionsEditor, {
-                attachTo: document.body,
-                props: { modelValue: draft.customSections },
-              });
+          : mount(CustomSectionsEditor, {
+              attachTo: document.body,
+              props: { modelValue: draft.customSections },
+            });
       const firstButton = wrapper.findAll('[data-move="1"]')[0]!;
       (firstButton.element as HTMLButtonElement).focus();
       await firstButton.trigger('click');

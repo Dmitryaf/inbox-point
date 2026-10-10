@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
-import { z } from 'zod';
+import { reviewContent } from '@test/support/review-content.js';
 
 import { FileContentSettingsStore } from '@/modules/content-management/infrastructure/file-store/file-content-settings-store.js';
 
@@ -92,7 +92,7 @@ describe('FileContentSettingsStore', () => {
     const id = loaded?.customSections?.[0]?.id;
     expect(id).toMatch(/^[a-f\d-]{36}$/u);
     expect(revision?.customSections?.[0]?.id).toBe(id);
-    expect(loaded?.legacySchedule).toBe(content.schedule);
+    expect(loaded?.groups?.[0]?.review?.source).toBe(content.schedule);
     const bytes = await readFile(path, 'utf8');
     expect(bytes).toContain('Старая кнопка');
     expect(
@@ -207,6 +207,7 @@ describe('FileContentSettingsStore', () => {
     });
 
     await expect(store.load()).resolves.toEqual({
+      ...reviewContent('Beginners\nMonday: 19:00'),
       address: 'Main street, 1',
       customSections: [
         {
@@ -222,7 +223,6 @@ describe('FileContentSettingsStore', () => {
         },
       ],
       prices: 'Single visit: 10',
-      schedule: [{ dayTime: 'Monday: 19:00', title: 'Beginners' }],
     });
     await expect(store.loadHistory()).resolves.toEqual([
       {
@@ -281,13 +281,13 @@ describe('FileContentSettingsStore', () => {
     await store.save({
       schedule: [{ dayTime: 'Tuesday: 20:00', title: 'Beginners' }],
     });
-    await expect(store.restore(1)).resolves.toEqual({
-      schedule: [{ dayTime: 'Monday: 19:00', title: 'Beginners' }],
-    });
+    await expect(store.restore(1)).resolves.toEqual(
+      reviewContent('Beginners\nMonday: 19:00'),
+    );
 
-    await expect(store.load()).resolves.toEqual({
-      schedule: [{ dayTime: 'Monday: 19:00', title: 'Beginners' }],
-    });
+    await expect(store.load()).resolves.toEqual(
+      reviewContent('Beginners\nMonday: 19:00'),
+    );
     await expect(store.loadHistory()).resolves.toEqual([
       {
         changedAt: '2026-09-01T12:10:00.000Z',
@@ -540,9 +540,9 @@ describe('FileContentSettingsStore', () => {
       () => new Date('2026-09-01T12:05:00.000Z'),
     );
 
-    await expect(store.load()).resolves.toEqual({
-      legacySchedule: 'Произвольный старый текст без структуры',
-    });
+    await expect(store.load()).resolves.toEqual(
+      reviewContent('Произвольный старый текст без структуры'),
+    );
 
     const schedule = [
       {
@@ -552,32 +552,26 @@ describe('FileContentSettingsStore', () => {
       },
     ];
     await store.save({ schedule });
-    await expect(store.load()).resolves.toEqual({ schedule });
+    await expect(store.load()).resolves.toEqual(
+      reviewContent('Бачата\nВт / Чт, 19:00\nДля начинающих.'),
+    );
     const structuredDocument = JSON.parse(await readFile(path, 'utf8')) as {
-      content: { schedule: unknown; scheduleItems: unknown };
+      content: unknown;
+      formatVersion: number;
     };
-    expect(structuredDocument.content.schedule).toBe(
-      'Бачата — Вт / Чт, 19:00 — Для начинающих.',
-    );
-    expect(structuredDocument.content.scheduleItems).toEqual(schedule);
-    expect(
-      z
-        .object({ schedule: z.string().optional() })
-        .safeParse(structuredDocument.content).success,
-    ).toBe(true);
+    expect(structuredDocument.formatVersion).toBe(3);
+    expect(structuredDocument.content).not.toHaveProperty('schedule');
+    expect(structuredDocument.content).not.toHaveProperty('scheduleItems');
 
-    await expect(store.restore(1)).resolves.toEqual({
-      legacySchedule: 'Произвольный старый текст без структуры',
-    });
-    const legacyDocument = JSON.parse(await readFile(path, 'utf8')) as {
-      content: { schedule: unknown };
-    };
-    expect(legacyDocument.content.schedule).toBe(
-      'Произвольный старый текст без структуры',
+    await expect(store.restore(1)).resolves.toEqual(
+      reviewContent('Произвольный старый текст без структуры'),
     );
-
-    await expect(store.restore(2)).resolves.toEqual({ schedule });
-    await expect(store.load()).resolves.toEqual({ schedule });
+    await expect(store.restore(2)).resolves.toEqual(
+      reviewContent('Бачата\nВт / Чт, 19:00\nДля начинающих.'),
+    );
+    await expect(store.load()).resolves.toEqual(
+      reviewContent('Бачата\nВт / Чт, 19:00\nДля начинающих.'),
+    );
     await expect(store.loadHistory()).resolves.toEqual(
       expect.arrayContaining([
         expect.objectContaining({ revision: 1, sections: ['schedule'] }),

@@ -879,6 +879,7 @@ export class SqliteSupportRepository implements SupportRepository {
              message.rowid AS message_rowid,
              message.sender_name,
              message.application_label,
+             message.question_context,
              message.text,
              message.created_at,
              delivery.status AS delivery_status,
@@ -897,6 +898,9 @@ export class SqliteSupportRepository implements SupportRepository {
       .all(requestId, limit ?? -1) as unknown as ConversationMessageRow[];
 
     return rows.map((row) => ({
+      ...(row.question_context
+        ? { questionContext: row.question_context }
+        : {}),
       ...(row.application_label
         ? { applicationLabel: row.application_label }
         : {}),
@@ -923,6 +927,35 @@ export class SqliteSupportRepository implements SupportRepository {
     );
   }
 
+  public findClientQuestionContext(
+    requestId: string,
+    externalMessageId: string,
+  ): { label: string; text: string } | undefined {
+    return this.database
+      .prepare(
+        `SELECT question_context AS label, text FROM conversation_messages
+      WHERE request_id = ? AND direction = 'client_to_operator' AND external_message_id = ? AND question_context IS NOT NULL`,
+      )
+      .get(requestId, externalMessageId) as
+      { label: string; text: string } | undefined;
+  }
+  public findAwaitingQuestionContext(
+    channel: ClientChannelKind,
+    conversationId: string,
+    checkedAt: Date,
+  ): string | undefined {
+    if (!this.isAwaitingClientQuestion(channel, conversationId, checkedAt)) {
+      return undefined;
+    }
+    const row = this.database
+      .prepare(
+        `SELECT question_context FROM client_conversation_states
+      WHERE channel = ? AND external_conversation_id = ?`,
+      )
+      .get(channel, conversationId) as
+      { question_context: string | null } | undefined;
+    return row?.question_context ?? undefined;
+  }
   public findClientApplication(
     requestId: string,
     externalMessageId: string,
@@ -1791,9 +1824,10 @@ export class SqliteSupportRepository implements SupportRepository {
           external_message_id,
           sender_name,
           application_label,
+          question_context,
           text,
           created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         message.id,
@@ -1802,6 +1836,7 @@ export class SqliteSupportRepository implements SupportRepository {
         message.externalMessageId,
         message.senderName ?? null,
         message.applicationLabel ?? null,
+        message.questionContext ?? null,
         message.text,
         message.createdAt.toISOString(),
       );
@@ -1831,6 +1866,7 @@ export class SqliteSupportRepository implements SupportRepository {
     conversationId: string,
     updatedAt: Date,
     applicationLabel?: string,
+    questionContext?: string,
   ): void {
     this.database
       .prepare(
@@ -1839,18 +1875,20 @@ export class SqliteSupportRepository implements SupportRepository {
           external_conversation_id,
           state,
           updated_at,
-          application_label
-        ) VALUES (?, ?, 'awaiting_question', ?, ?)
+          application_label, question_context
+        ) VALUES (?, ?, 'awaiting_question', ?, ?, ?)
         ON CONFLICT (channel, external_conversation_id) DO UPDATE SET
           state = excluded.state,
           updated_at = excluded.updated_at,
-          application_label = excluded.application_label`,
+          application_label = excluded.application_label,
+          question_context = excluded.question_context`,
       )
       .run(
         channel,
         conversationId,
         updatedAt.toISOString(),
         applicationLabel ?? null,
+        questionContext ?? null,
       );
   }
 

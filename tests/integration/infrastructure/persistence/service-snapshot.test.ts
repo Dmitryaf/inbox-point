@@ -1,3 +1,4 @@
+import { reviewContent } from '@test/support/review-content.js';
 import { createHash } from 'node:crypto';
 import {
   existsSync,
@@ -176,7 +177,7 @@ describe('ServiceSnapshotService', () => {
 
     await expect(
       new FileContentSettingsStore(restored.contentSettingsPath!).load(),
-    ).resolves.toEqual({ legacySchedule: legacyText });
+    ).resolves.toEqual(reviewContent(legacyText));
     repository.close();
   });
 
@@ -244,7 +245,7 @@ describe('ServiceSnapshotService', () => {
       formatVersion: 1,
       instanceId: 'default',
       secretsIncluded: false,
-      sqliteSchemaVersion: 13,
+      sqliteSchemaVersion: 14,
     });
     expect(manifest.files.map((file) => file.name)).toEqual([
       'database.sqlite',
@@ -276,9 +277,7 @@ describe('ServiceSnapshotService', () => {
     restoredRepository.close();
     expect(
       await new FileContentSettingsStore(restored.contentSettingsPath!).load(),
-    ).toMatchObject({
-      schedule: [{ dayTime: 'Monday 18:00', title: 'Beginners' }],
-    });
+    ).toEqual(reviewContent('Beginners\nMonday 18:00'));
     expect(
       await new FileServiceControlStore(restored.serviceControlPath!).load(),
     ).toMatchObject({
@@ -333,7 +332,7 @@ describe('ServiceSnapshotService', () => {
       readOnly: true,
     });
     expect(restoredDatabase.prepare('PRAGMA user_version').get()).toEqual({
-      user_version: 13,
+      user_version: 14,
     });
     restoredDatabase.close();
     const restoredSessionStore = new SqliteAdminSessionStore(

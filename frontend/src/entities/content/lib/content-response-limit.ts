@@ -31,7 +31,7 @@ export function findOversizedContentResponse(
       ? {
           fieldId: 'address',
           label: 'Адрес',
-          section: 'core',
+          section: 'faq',
           text: formatAddressResponse(content.address),
         }
       : undefined,
@@ -82,7 +82,7 @@ function createScheduleCompatibilityResponse(
     ? {
         fieldId: 'schedule-title-0',
         label: 'Расписание',
-        section: 'core',
+        section: 'faq',
         text: formatScheduleCompatibilityResponse(schedule),
       }
     : undefined;
@@ -94,7 +94,7 @@ function createListResponse(
   text: string,
 ): ContentResponse | undefined {
   return text.trim()
-    ? { fieldId, label, section: 'core', text: formatListResponse(label, text) }
+    ? { fieldId, label, section: 'faq', text: formatListResponse(label, text) }
     : undefined;
 }
 
@@ -106,7 +106,7 @@ function createScheduleResponse(
     return {
       fieldId: 'schedule-title-0',
       label: 'Расписание',
-      section: 'core',
+      section: 'faq',
       text: formatScheduleResponse(schedule),
     };
   }
@@ -114,7 +114,7 @@ function createScheduleResponse(
     ? {
         fieldId: 'legacy-schedule',
         label: 'Расписание',
-        section: 'core',
+        section: 'faq',
         text: formatListResponse('Расписание', content.legacySchedule),
       }
     : undefined;

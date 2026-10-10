@@ -315,6 +315,12 @@ export class HandoffService {
     message: SupportMessage,
     initial = false,
   ): Promise<void> {
+    const recordedQuestion = message.questionContext
+      ? this.repository.findClientQuestionContext(
+          request.id,
+          message.externalMessageId,
+        )
+      : undefined;
     const recordedApplication = message.applicationLabel
       ? this.repository.findClientApplication(
           request.id,
@@ -322,6 +328,9 @@ export class HandoffService {
         )
       : undefined;
     this.repository.recordConversationMessage({
+      ...(message.questionContext
+        ? { questionContext: message.questionContext }
+        : {}),
       ...(message.applicationLabel
         ? { applicationLabel: message.applicationLabel }
         : {}),
@@ -336,7 +345,10 @@ export class HandoffService {
     if (message.applicationLabel) {
       this.recordSubmittedApplication(request.id, message);
     }
-    if (message.applicationLabel && !recordedApplication) {
+    if (
+      (message.questionContext && !recordedQuestion) ||
+      (message.applicationLabel && !recordedApplication)
+    ) {
       this.repository.clearAwaitingClientQuestion(
         message.channel,
         message.conversationId,
@@ -405,7 +417,7 @@ export class HandoffService {
   }
 
   private withApplicationContext(message: SupportMessage): SupportMessage {
-    if (message.applicationLabel) {
+    if (message.applicationLabel || message.questionContext) {
       return message;
     }
     const request =
@@ -425,6 +437,31 @@ export class HandoffService {
       : undefined;
     if (stored) {
       return { ...message, applicationLabel: stored.label, text: stored.text };
+    }
+    const storedQuestion = request
+      ? this.repository.findClientQuestionContext(
+          request.id,
+          message.externalMessageId,
+        )
+      : undefined;
+    if (storedQuestion) {
+      return {
+        ...message,
+        questionContext: storedQuestion.label,
+        text: storedQuestion.text,
+      };
+    }
+    const questionContext = this.repository.findAwaitingQuestionContext(
+      message.channel,
+      message.conversationId,
+      this.clock(),
+    );
+    if (questionContext) {
+      return {
+        ...message,
+        questionContext,
+        text: `Вопрос о группе: ${questionContext}\n\n${message.text}`,
+      };
     }
     const label = this.repository.findAwaitingApplicationLabel(
       message.channel,
@@ -467,6 +504,9 @@ export class HandoffService {
       return;
     }
     this.repository.recordConversationMessage({
+      ...(message.questionContext
+        ? { questionContext: message.questionContext }
+        : {}),
       ...(message.applicationLabel
         ? { applicationLabel: message.applicationLabel }
         : {}),
@@ -1107,6 +1147,9 @@ function createRecoveredSupportMessage(
     channel: request.channel,
     conversationId: request.conversationId,
     displayName: message.senderName ?? request.displayName ?? 'Клиент',
+    ...(message.questionContext
+      ? { questionContext: message.questionContext }
+      : {}),
     ...(message.applicationLabel
       ? { applicationLabel: message.applicationLabel }
       : {}),

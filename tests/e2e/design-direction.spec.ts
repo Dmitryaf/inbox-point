@@ -49,22 +49,18 @@ for (const width of [390, 1280]) {
     await page.getByRole('link', { name: 'Ответы', exact: true }).click();
     const save = page.getByRole('button', { name: 'Сохранить', exact: true });
     await expect(save).toBeDisabled();
-    const moveUp = page.getByRole('button', {
-      name: 'Переместить направление 1 выше',
-    });
-    await expect(moveUp).toBeDisabled();
-    const disabledBackground = await save.evaluate(
-      (el) => getComputedStyle(el).backgroundColor,
-    );
-    await expect(moveUp).toHaveCSS('background-color', disabledBackground);
-    await moveUp.hover();
-    await expect(moveUp).toHaveCSS('background-color', disabledBackground);
     if (width === 390) {
-      const firstFieldTop = await page
-        .getByLabel('Направление / группа')
+      const firstActionTop = await page
+        .locator('.class-list-item')
+        .first()
         .evaluate((el) => el.getBoundingClientRect().top + scrollY);
-      expect(firstFieldTop).toBeLessThan(550);
+      expect(firstActionTop).toBeLessThan(550);
     }
+    await page.locator('.class-list-item').first().click();
+    await page.locator('.class-list-item').first().click();
+    await expect(
+      page.getByLabel('Название группы', { exact: true }),
+    ).toBeVisible();
 
     // Models enlarged system text; does not claim browser zoom coverage.
     await page.route('**/test-enlarged-text.css', (route) =>
@@ -76,15 +72,18 @@ for (const width of [390, 1280]) {
     await page.addStyleTag({ url: '/test-enlarged-text.css' });
     const title =
       'Бачата для начинающих — вечерняя группа с дополнительной практикой';
-    await page.getByLabel('Направление / группа').fill(title);
-    await page.getByLabel('Направление / группа').press('Tab');
-    await expect(page.getByLabel('День / время')).toBeFocused();
-    await expect(page.getByLabel('День / время')).toHaveCSS(
+    await page.getByLabel('Название группы', { exact: true }).fill(title);
+    await page.getByLabel('Название группы', { exact: true }).press('Tab');
+    await expect(
+      page.getByLabel('День и время 1', { exact: true }),
+    ).toBeFocused();
+    await expect(page.getByLabel('День и время 1', { exact: true })).toHaveCSS(
       'outline-width',
       '3px',
     );
+    await page.getByText('Дополнительные настройки', { exact: true }).click();
     await page
-      .getByLabel('Дополнительное описание')
+      .getByLabel('Короткое описание группы')
       .fill(
         'Подходит тем, кто начинает с нуля. Возьмите сменную обувь и воду. '.repeat(
           8,
@@ -92,13 +91,16 @@ for (const width of [390, 1280]) {
       );
     if (width >= 1100) {
       await expect(page.locator('.workspace-live-preview')).toBeVisible();
-      await expect(page.locator('.workspace-live-preview')).toContainText(
-        title,
-      );
+      await page.getByText('Что увидит клиент', { exact: true }).click();
+      await expect(page.locator('.class-preview pre')).toContainText(title);
     } else {
       await expect(page.locator('.workspace-live-preview')).toBeHidden();
       await page.getByLabel('Режим', { exact: true }).selectOption('preview');
-      await expect(page.locator('.preview')).toContainText(title);
+      await expect(page.locator('.preview')).toContainText('Бачата');
+      await page.getByLabel('Режим', { exact: true }).selectOption('edit');
+      await expect(
+        page.getByLabel('Название группы', { exact: true }),
+      ).toHaveValue(title);
     }
     expect(
       await page.evaluate(

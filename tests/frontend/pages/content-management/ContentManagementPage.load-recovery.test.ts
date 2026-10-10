@@ -3,6 +3,7 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 
+import { openGroup } from './content-management-test-helpers';
 import ContentManagementPage from '@frontend/pages/content-management/ui/ContentManagementPage.vue';
 import { requestUrl, response } from '@test/frontend/support/fake-response';
 import { contentResponse, findButton } from './content-management-test-helpers';
@@ -31,15 +32,17 @@ describe('ContentManagementPage load recovery', () => {
 
     const wrapper = mount(ContentManagementPage);
     await flushPromises();
-    expect(wrapper.find('#schedule-title-0').exists()).toBe(false);
+    await openGroup(wrapper);
+    expect(wrapper.find('#group-name-group').exists()).toBe(false);
     expect(wrapper.text()).toContain('Редактор не открыт');
 
     contentUnavailable = false;
     await findButton(wrapper.findAll('button'), 'Повторить').trigger('click');
     await flushPromises();
+    await openGroup(wrapper);
 
     expect(
-      wrapper.get<HTMLInputElement>('#schedule-title-0').element.value,
+      wrapper.get<HTMLInputElement>('#group-name-group').element.value,
     ).toBe('Расписание загружено');
   });
 });

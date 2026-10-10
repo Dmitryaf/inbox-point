@@ -19,6 +19,7 @@ export interface OperatorRequestSummary extends SupportRequest {
 
 export interface ConversationMessage {
   applicationLabel?: string;
+  questionContext?: string;
   createdAt: Date;
   deliveryOutcomeUnknown?: boolean;
   deliveryStatus?: 'failed' | 'pending' | 'sent';

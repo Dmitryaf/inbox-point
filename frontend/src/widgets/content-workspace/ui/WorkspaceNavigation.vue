@@ -70,7 +70,7 @@ function changeSection(event: Event): void {
           :key="section.id"
           :value="section.id"
         >
-          {{ section.id === 'faq' ? 'Вопросы' : section.label }}
+          {{ section.label }}
         </option>
       </select>
     </div>

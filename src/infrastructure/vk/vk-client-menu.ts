@@ -135,6 +135,7 @@ export class VkClientMenu implements VkClientMenuHandler {
           conversationId,
           now,
           response.applicationLabel,
+          response.questionContext,
         );
       }
       const responseState: ClientConversationState = response.beginQuestion
@@ -181,6 +182,7 @@ export class VkClientMenu implements VkClientMenuHandler {
           String(message.peerId),
           now,
           response.applicationLabel,
+          response.questionContext,
         );
       }
       if (response.actionKey && response.actionLabel) {
@@ -297,6 +299,7 @@ function createButtonRows(
 
 interface VkMenuResponse {
   applicationLabel?: string;
+  questionContext?: string;
   beginQuestion?: true;
   cancelAwaitingQuestion?: true;
   informationRequested?: true;

@@ -1,61 +1,86 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref, nextTick } from 'vue';
 import type { ContentDraft } from '@frontend/entities/content/model/types';
 import ClassDirectionEditor from './ClassDirectionEditor.vue';
-import ClassKeywordsEditor from './ClassKeywordsEditor.vue';
+import ClassGroupEditor from './ClassGroupEditor.vue';
+import ClassDirectionList from './ClassDirectionList.vue';
 const draft = defineModel<ContentDraft>({ required: true });
-const directionName = ref('');
-const notice = ref('');
-function add(): void {
-  const name = directionName.value.trim();
-  if (
-    !name ||
-    /[/:\r\n]/u.test(name) ||
-    draft.value.directions.some(
-      (item) =>
-        item.name.toLocaleLowerCase('ru') === name.toLocaleLowerCase('ru'),
-    )
-  ) {
-    notice.value = 'Введите новое название направления, без / и :.';
-    return;
+const directionId = ref('');
+const groupId = ref('');
+const reviewing = ref(false);
+const direction = computed(() =>
+  draft.value.directions.find((item) => item.id === directionId.value),
+);
+const group = computed(() =>
+  draft.value.groups.find((item) => item.id === groupId.value),
+);
+async function open(
+  targetType: 'direction' | 'group',
+  targetId: string,
+): Promise<void> {
+  groupId.value = targetType === 'group' ? targetId : '';
+  directionId.value =
+    targetType === 'direction'
+      ? targetId
+      : (draft.value.groups.find((item) => item.id === targetId)?.directionId ??
+        '');
+  await nextTick();
+  document.getElementById('class-directions')?.focus();
+}
+function back(): void {
+  if (group.value) {
+    groupId.value = '';
+  } else {
+    directionId.value = '';
+    reviewing.value = false;
   }
-  draft.value.directions.push({ id: crypto.randomUUID(), name });
-  directionName.value = '';
-  notice.value = '';
 }
 </script>
 <template>
-  <section class="class-editor" aria-label="Направления и группы">
-    <h3 id="class-directions" tabindex="-1">Направления и группы</h3>
-    <p>
-      Создайте направление, добавьте группы и укажите дни занятий. Клиент
-      выберет группу и сможет оставить заявку.
-    </p>
+  <section class="card class-workspace" aria-label="Занятия">
+    <button
+      v-if="direction || group || reviewing"
+      class="secondary-button"
+      type="button"
+      @click="back"
+    >
+      {{
+        group && direction
+          ? 'К направлению «' + direction.name + '»'
+          : 'Все направления'
+      }}
+    </button>
+    <h2 id="class-directions" tabindex="-1">
+      {{
+        group
+          ? (direction?.name ?? 'Нужно проверить') +
+            ' → ' +
+            (group.name || 'Занятие')
+          : (direction?.name ?? (reviewing ? 'Нужно проверить' : 'Занятия'))
+      }}
+    </h2>
+    <ClassGroupEditor
+      v-if="group"
+      :key="group.id"
+      v-model="draft"
+      :group-id="group.id"
+      @open-target="open"
+      @removed="groupId = ''"
+    />
     <ClassDirectionEditor
-      v-for="direction in draft.directions"
+      v-else-if="direction"
       :key="direction.id"
       v-model="draft"
       :direction-id="direction.id"
+      @open-target="open"
+      @removed="directionId = ''"
     />
-    <label for="new-direction-name">Новое направление</label>
-    <div class="class-actions">
-      <input
-        id="new-direction-name"
-        v-model="directionName"
-        maxlength="80"
-        placeholder="Например, Бачата"
-        @keydown.enter.prevent="add"
-      />
-      <button
-        type="button"
-        :disabled="draft.directions.length >= 20"
-        @click="add"
-      >
-        Добавить направление
-      </button>
-    </div>
-    <p v-if="notice" role="status">{{ notice }}</p>
-    <ClassKeywordsEditor v-model="draft" />
+    <ClassDirectionList
+      v-else
+      v-model="draft"
+      v-model:reviewing="reviewing"
+      @open-target="open"
+    />
   </section>
 </template>
 <style scoped src="../styles/class-editor.css"></style>

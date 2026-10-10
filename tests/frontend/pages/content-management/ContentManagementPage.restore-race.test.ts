@@ -3,6 +3,7 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 
+import { openGroup, groupContent } from './content-management-test-helpers';
 import ContentManagementPage from '@frontend/pages/content-management/ui/ContentManagementPage.vue';
 import { requestUrl, response } from '@test/frontend/support/fake-response';
 import { findButton, initialVersion } from './content-management-test-helpers';
@@ -42,8 +43,7 @@ describe('ContentManagementPage restore concurrency', () => {
         return Promise.resolve(
           response({
             content: {
-              schedule: '',
-              scheduleItems: [{ dayTime: 'Вторник, 20:00', title: 'Бачата' }],
+              ...groupContent('Бачата', 'Вторник, 20:00'),
             },
             version: initialVersion,
           }),
@@ -53,35 +53,39 @@ describe('ContentManagementPage restore concurrency', () => {
 
     const wrapper = mount(ContentManagementPage);
     await flushPromises();
+    await openGroup(wrapper);
     await findButton(wrapper.findAll('button'), 'История').trigger('click');
     await flushPromises();
+    await openGroup(wrapper);
     await findButton(wrapper.findAll('button'), 'Посмотреть версию').trigger(
       'click',
     );
     await flushPromises();
+    await openGroup(wrapper);
     await findButton(wrapper.findAll('button'), 'Да, восстановить').trigger(
       'click',
     );
     await findButton(wrapper.findAll('button'), 'Редактирование').trigger(
       'click',
     );
+    await openGroup(wrapper);
     await wrapper
-      .get('#schedule-title-0')
+      .get('#group-name-group')
       .setValue('Новая несохранённая правка');
 
     restoreResponse.resolve(
       response({
         content: {
-          schedule: '',
-          scheduleItems: [{ dayTime: 'Понедельник, 19:00', title: 'Бачата' }],
+          ...groupContent('Бачата', 'Понедельник, 19:00'),
         },
         version: 'b'.repeat(64),
       }),
     );
     await flushPromises();
+    await openGroup(wrapper);
 
     expect(
-      wrapper.get<HTMLInputElement>('#schedule-title-0').element.value,
+      wrapper.get<HTMLInputElement>('#group-name-group').element.value,
     ).toBe('Новая несохранённая правка');
     expect(wrapper.text()).toContain(
       'Ваши новые правки остались в редакторе и ещё не сохранены',

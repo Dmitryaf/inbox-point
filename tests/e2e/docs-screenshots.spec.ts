@@ -35,15 +35,11 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('documentation: populated content management', async ({ page }) => {
-  await expect(page.locator('#schedule-title-0')).toHaveValue(
-    content.scheduleItems[0]!.title,
-  );
-  await expect(page.locator('#schedule-day-time-0')).toHaveValue(
-    content.scheduleItems[0]!.dayTime,
-  );
-  await expect(page.locator('.workspace-live-preview')).toContainText(
-    'Бачата с нуля',
-  );
+  await expect(
+    page.getByRole('region', { name: 'Занятия', exact: true }),
+  ).toBeVisible();
+  await expect(page.locator('.class-list-item')).toHaveCount(2);
+  await expect(page.locator('.workspace-live-preview')).toContainText('Бачата');
   await expect(page.locator('.workspace-live-preview')).toContainText(
     'Частые вопросы',
   );

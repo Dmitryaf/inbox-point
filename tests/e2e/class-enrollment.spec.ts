@@ -28,10 +28,13 @@ for (const width of [1440, 390]) {
     await page.getByLabel('Пароль').fill('synthetic-admin-password');
     await page.getByRole('button', { name: 'Войти', exact: true }).click();
     await page
+      .getByRole('button', { name: 'Добавить направление', exact: true })
+      .click();
+    await page
       .getByLabel('Новое направление', { exact: true })
       .fill('Тестовый танец');
     await page
-      .getByRole('button', { name: 'Добавить направление', exact: true })
+      .getByRole('button', { name: 'Создать направление', exact: true })
       .click();
     await page
       .getByRole('button', { name: 'Добавить группу', exact: true })
@@ -55,7 +58,7 @@ for (const width of [1440, 390]) {
     await page
       .getByLabel('Слово или фраза 1', { exact: true })
       .fill('Тестовый танец');
-    await expect(page.getByLabel('Что открыть')).toHaveValue(/^group:/);
+    await expect(page.getByLabel('Что открыть')).toHaveCount(0);
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -74,15 +77,31 @@ for (const width of [1440, 390]) {
         meetings: ['Понедельник, 19:00', 'Четверг, 19:00'],
       }),
     ]);
+    // The selected group and unsaved fields also survive section/view changes.
+    if (width >= 900) {
+      await page
+        .getByRole('button', { name: 'Информация', exact: true })
+        .click();
+      await page.getByRole('button', { name: 'Занятия', exact: true }).click();
+    } else {
+      await page.getByLabel('Раздел', { exact: true }).selectOption('faq');
+      await page.getByLabel('Раздел', { exact: true }).selectOption('core');
+    }
+    await expect(
+      page.getByLabel('День и время 2', { exact: true }),
+    ).toHaveValue('Четверг, 19:00');
     await page.reload();
+    await page
+      .locator('.class-list-item')
+      .filter({ hasText: 'Тестовый танец' })
+      .click();
+    await page
+      .locator('.class-list-item')
+      .filter({ hasText: 'Начинающие' })
+      .click();
     await expect(
       page.getByLabel('Слово или фраза 1', { exact: true }),
     ).toHaveValue('Тестовый танец');
-    await page
-      .locator('.class-card > summary')
-      .filter({ hasText: 'Начинающие' })
-      .first()
-      .click();
     await page.getByText('Что увидит клиент', { exact: true }).click();
     await expect(page.locator('.class-preview pre')).toContainText(
       'Тестовый танец / Начинающие',

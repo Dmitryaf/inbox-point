@@ -3,6 +3,7 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 
+import { openGroup, groupContent } from './content-management-test-helpers';
 import ContentManagementPage from '@frontend/pages/content-management/ui/ContentManagementPage.vue';
 import { requestUrl, response } from '@test/frontend/support/fake-response';
 import { findButton, initialVersion } from './content-management-test-helpers';
@@ -38,8 +39,7 @@ describe('ContentManagementPage restore', () => {
           return Promise.resolve(
             response({
               content: {
-                schedule: '',
-                scheduleItems: [{ dayTime: schedule, title: 'Бачата' }],
+                ...groupContent('Бачата', schedule),
               },
               version: savedVersion,
             }),
@@ -56,8 +56,7 @@ describe('ContentManagementPage restore', () => {
         return Promise.resolve(
           response({
             content: {
-              schedule: '',
-              scheduleItems: [{ dayTime: schedule, title: 'Бачата' }],
+              ...groupContent('Бачата', schedule),
             },
             version: initialVersion,
           }),
@@ -67,22 +66,26 @@ describe('ContentManagementPage restore', () => {
 
     const wrapper = mount(ContentManagementPage);
     await flushPromises();
+    await openGroup(wrapper);
     await findButton(wrapper.findAll('button'), 'История').trigger('click');
     await flushPromises();
+    await openGroup(wrapper);
     await findButton(wrapper.findAll('button'), 'Посмотреть версию').trigger(
       'click',
     );
     await flushPromises();
+    await openGroup(wrapper);
     await findButton(wrapper.findAll('button'), 'Да, восстановить').trigger(
       'click',
     );
     await flushPromises();
+    await openGroup(wrapper);
     await findButton(wrapper.findAll('button'), 'Редактирование').trigger(
       'click',
     );
 
     expect(
-      wrapper.get<HTMLInputElement>('#schedule-day-time-0').element.value,
+      wrapper.get<HTMLInputElement>('#group-time-group-0').element.value,
     ).toBe('Понедельник, 19:00');
     expect(wrapper.text()).toContain('Предыдущая версия восстановлена');
     expect(wrapper.get('[role="alert"]').text()).toContain(

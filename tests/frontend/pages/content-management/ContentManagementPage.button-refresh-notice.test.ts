@@ -3,6 +3,7 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 
+import { openGroup, groupContent } from './content-management-test-helpers';
 import ContentManagementPage from '@frontend/pages/content-management/ui/ContentManagementPage.vue';
 import { requestUrl, response } from '@test/frontend/support/fake-response';
 
@@ -25,10 +26,7 @@ describe('ContentManagementPage channel button notice', () => {
           return Promise.resolve(
             response({
               content: {
-                schedule: '',
-                scheduleItems: [
-                  { dayTime: 'Вторник, 20:00', title: 'Новое расписание' },
-                ],
+                ...groupContent('Новое расписание', 'Вторник, 20:00'),
               },
               version: savedVersion,
             }),
@@ -37,10 +35,7 @@ describe('ContentManagementPage channel button notice', () => {
         return Promise.resolve(
           response({
             content: {
-              schedule: '',
-              scheduleItems: [
-                { dayTime: 'Понедельник, 19:00', title: 'Старое расписание' },
-              ],
+              ...groupContent('Старое расписание', 'Понедельник, 19:00'),
             },
             version: initialVersion,
           }),
@@ -50,7 +45,8 @@ describe('ContentManagementPage channel button notice', () => {
 
     const wrapper = mount(ContentManagementPage);
     await flushPromises();
-    await wrapper.get('#schedule-title-0').setValue('Новое расписание');
+    await openGroup(wrapper);
+    await wrapper.get('#group-name-group').setValue('Новое расписание');
     const saveButton = wrapper
       .findAll('button')
       .find((button) => button.text() === 'Сохранить');
@@ -59,6 +55,7 @@ describe('ContentManagementPage channel button notice', () => {
     }
     await saveButton.trigger('click');
     await flushPromises();
+    await openGroup(wrapper);
 
     expect(wrapper.get('[role="status"]').text()).toContain(
       'Открытые у клиентов кнопки обновятся со следующим ответом бота',

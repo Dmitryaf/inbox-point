@@ -92,12 +92,11 @@ function openSection(section: EditorSection): void {
     <div class="workspace-main">
       <section class="workspace-panel" aria-label="Рабочая область">
         <div
-          :key="activeView"
           class="workspace-view"
           :class="{ 'workspace-view--editing': activeView === 'edit' }"
         >
           <ContentEditor
-            v-if="activeView === 'edit'"
+            v-show="activeView === 'edit'"
             v-model="workspace.draft"
             :active-section="activeSection"
             :errors="fieldErrors"

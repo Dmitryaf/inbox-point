@@ -5,7 +5,6 @@ import { getCoreResponseLengths } from '@frontend/entities/content/lib/content-r
 import type { ContentDraft } from '@frontend/entities/content/model/types';
 import FieldError from '@frontend/shared/ui/FieldError.vue';
 import SectionVisibilityControl from '@frontend/entities/content/ui/SectionVisibilityControl.vue';
-import ScheduleEditor from '@frontend/entities/content/ui/ScheduleEditor.vue';
 
 const draft = defineModel<ContentDraft>({ required: true });
 withDefaults(
@@ -17,8 +16,6 @@ const responseLengths = computed(() => getCoreResponseLengths(draft.value));
 
 <template>
   <section class="card" aria-label="Основные ответы">
-    <ScheduleEditor v-model="draft" :errors="errors" />
-
     <details class="field-group">
       <summary>
         <span class="summary-copy">

@@ -3,6 +3,7 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 
+import { openGroup, groupContent } from './content-management-test-helpers';
 import ContentManagementPage from '@frontend/pages/content-management/ui/ContentManagementPage.vue';
 import { requestUrl, response } from '@test/frontend/support/fake-response';
 
@@ -33,6 +34,7 @@ describe('ContentManagementPage states', () => {
 
     const wrapper = mount(ContentManagementPage);
     await flushPromises();
+    await openGroup(wrapper);
 
     await wrapper.get('#editor-section').setValue('faq');
     expect(wrapper.text()).toContain(
@@ -66,6 +68,7 @@ describe('ContentManagementPage states', () => {
 
     const wrapper = mount(ContentManagementPage, { attachTo: document.body });
     await flushPromises();
+    await openGroup(wrapper);
     await wrapper.get('#editor-section').setValue('faq');
     await wrapper
       .findAll('button')
@@ -109,10 +112,7 @@ describe('ContentManagementPage states', () => {
         return Promise.resolve(
           response({
             content: {
-              schedule: '',
-              scheduleItems: [
-                { dayTime: 'Понедельник, 19:00', title: 'Старое расписание' },
-              ],
+              ...groupContent('Старое расписание', 'Понедельник, 19:00'),
             },
             version: initialVersion,
           }),
@@ -122,7 +122,8 @@ describe('ContentManagementPage states', () => {
 
     const wrapper = mount(ContentManagementPage);
     await flushPromises();
-    await wrapper.get('#schedule-title-0').setValue('Новое расписание');
+    await openGroup(wrapper);
+    await wrapper.get('#group-name-group').setValue('Новое расписание');
     const saveButton = wrapper
       .findAll('button')
       .find((button) => button.text() === 'Сохранить');
@@ -131,9 +132,10 @@ describe('ContentManagementPage states', () => {
     }
     await saveButton.trigger('click');
     await flushPromises();
+    await openGroup(wrapper);
 
     expect(
-      wrapper.get<HTMLInputElement>('#schedule-title-0').element.value,
+      wrapper.get<HTMLInputElement>('#group-name-group').element.value,
     ).toBe('Новое расписание');
     expect(wrapper.get('[role="alert"]').text()).toContain(
       'изменения остались на этой странице',

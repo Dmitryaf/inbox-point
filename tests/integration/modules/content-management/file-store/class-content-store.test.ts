@@ -26,9 +26,15 @@ describe('stored class content compatibility', () => {
     const content = classContent();
     await store.save(content);
     const loaded = await new FileContentSettingsStore(path).load();
-    expect(loaded).toEqual(content);
+    expect(loaded?.directions).toEqual(content.directions);
+    expect(loaded?.groups?.[0]).toEqual(content.groups![0]);
+    expect(loaded?.groups?.[1]?.review?.source).toBe(
+      'Старая карточка\nСуббота, 12:00\nСохранённое описание.',
+    );
+    expect(loaded?.keywords).toEqual(content.keywords);
+    expect(loaded?.schedule).toBeUndefined();
     const stored: unknown = JSON.parse(await readFile(path, 'utf8'));
-    expect(stored).toHaveProperty('formatVersion', 2);
+    expect(stored).toHaveProperty('formatVersion', 3);
     // Previous releases used a strict envelope: they must reject new content instead of dropping its fields on save.
     expect(
       z

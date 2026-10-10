@@ -1,6 +1,7 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import { afterEach, describe, expect, it } from 'vitest';
 import { classContent } from '@test/support/class-content.js';
 import { classGateways } from '@test/support/class-gateways.js';
@@ -71,6 +72,115 @@ function setup(channel: 'telegram' | 'vk', path = ':memory:') {
   return { repository, gateways, catalog, menu, handle, service, answer };
 }
 describe.each(['telegram', 'vk'] as const)('%s class enrollment', (channel) => {
+  it('upgrades a v13 database without losing a pending application', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'inbox-point-schema-'));
+    directories.push(directory);
+    const path = join(directory, 'support.sqlite');
+    const first = setup(channel, path);
+    await first.handle('signup', '', 'classes:signup:beginners');
+    first.repository.close();
+    repositories.splice(repositories.indexOf(first.repository), 1);
+    const database = new DatabaseSync(path);
+    database.exec(
+      'ALTER TABLE client_conversation_states DROP COLUMN question_context; ALTER TABLE conversation_messages DROP COLUMN question_context; PRAGMA user_version = 13;',
+    );
+    database.close();
+    const restarted = setup(channel, path);
+    expect(
+      restarted.repository.findAwaitingApplicationLabel(channel, '101', now),
+    ).toBe('Тестовый танец / Начинающие');
+    await restarted.answer('existing-application', 'Приду');
+    expect(
+      restarted.gateways.inbox.relayCustomerMessage.mock.calls[0]?.[1]
+        .applicationLabel,
+    ).toBe('Тестовый танец / Начинающие');
+    await restarted.handle('question', '', 'classes:question:beginners');
+    await restarted.answer('new-question', 'А обувь?');
+    expect(
+      restarted.gateways.inbox.relayCustomerMessage.mock.calls.at(-1)?.[1]
+        .questionContext,
+    ).toBe('Тестовый танец / Начинающие');
+  });
+  it('recovers a question after relay failure without consuming the next selected group', async () => {
+    const context = setup(channel);
+    await context.answer('initial', 'Здравствуйте');
+    await context.handle('question', '', 'classes:question:beginners');
+    context.gateways.inbox.relayCustomerMessage.mockRejectedValueOnce(
+      new Error('Synthetic relay failure'),
+    );
+    await expect(
+      context.answer('question-failed', 'Без пары?'),
+    ).rejects.toThrow('Synthetic relay failure');
+    expect(
+      context.repository.findAwaitingQuestionContext(channel, '101', now),
+    ).toBeUndefined();
+    await context.handle('next', '', 'classes:signup:beginners');
+    await context.answer('question-failed', 'Без пары?');
+    expect(
+      context.gateways.inbox.relayCustomerMessage.mock.calls.at(-1)?.[1],
+    ).toMatchObject({
+      text: 'Вопрос о группе: Тестовый танец / Начинающие\n\nБез пары?',
+      questionContext: 'Тестовый танец / Начинающие',
+    });
+    expect(
+      context.repository.findAwaitingApplicationLabel(channel, '101', now),
+    ).toBe('Тестовый танец / Начинающие');
+  });
+  it('persists a group question across restart, sends its context once and never counts it as an application', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'inbox-point-question-'));
+    directories.push(directory);
+    const path = join(directory, 'support.sqlite');
+    const first = setup(channel, path);
+    await first.handle('question', '', 'classes:question:beginners');
+    expect(await first.handle('keyword-answer', 'Тестовый танец')).toBe(false);
+    first.repository.close();
+    repositories.splice(repositories.indexOf(first.repository), 1);
+    const restarted = setup(channel, path);
+    const content = classContent();
+    content.groups![0]!.name = 'Переименована';
+    restarted.catalog.replace(content);
+    await restarted.answer('question-answer', 'Можно без пары?');
+    await restarted.answer('question-answer', 'Можно без пары?');
+    expect(restarted.gateways.inbox.relayCustomerMessage).toHaveBeenCalledTimes(
+      1,
+    );
+    expect(
+      restarted.gateways.inbox.relayCustomerMessage.mock.calls[0]?.[1],
+    ).toMatchObject({
+      text: 'Вопрос о группе: Тестовый танец / Начинающие\n\nМожно без пары?',
+      questionContext: 'Тестовый танец / Начинающие',
+    });
+    expect(
+      restarted.gateways.inbox.relayCustomerMessage.mock.calls[0]?.[1]
+        .applicationLabel,
+    ).toBeUndefined();
+    expect(
+      restarted.repository
+        .getUsageAnalytics(new Date('2026-10-10'), now)
+        .actions.some((action) => action.key.startsWith('application:')),
+    ).toBe(false);
+    expect(
+      restarted.repository.findAwaitingQuestionContext(channel, '101', now),
+    ).toBeUndefined();
+    await restarted.answer('ordinary', 'Спасибо');
+    expect(
+      restarted.gateways.inbox.relayCustomerMessage.mock.calls.at(-1)?.[1].text,
+    ).toBe('Спасибо');
+  });
+  it('clears group context on Menu and on choosing a generic administrator question', async () => {
+    const context = setup(channel);
+    await context.handle('question', '', 'classes:question:beginners');
+    await context.handle('cancel', 'Меню');
+    expect(
+      context.repository.findAwaitingQuestionContext(channel, '101', now),
+    ).toBeUndefined();
+    await context.handle('again', '', 'classes:question:beginners');
+    context.repository.setAwaitingClientQuestion(channel, '101', now);
+    await context.answer('generic', 'Общий вопрос');
+    expect(
+      context.gateways.inbox.relayCustomerMessage.mock.calls[0]?.[1].text,
+    ).toBe('Общий вопрос');
+  });
   it('opens the group in a new/old dialogue, carries selection into one administrator request and counts submission once', async () => {
     const context = setup(channel);
     await context.handle('keyword', ' ТЕСТОВЫЙ   ТАНЕЦ ');

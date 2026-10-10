@@ -1,97 +1,88 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { normalizeKeyword, groupTitle } from '@core/application/class-content';
+import type { ClassKeyword } from '@core/application/class-content';
 import type { ContentDraft } from '@frontend/entities/content/model/types';
 const draft = defineModel<ContentDraft>({ required: true });
-const targets = computed(() => [
-  ...draft.value.directions.map((item) => ({
-    value: `direction:${item.id}`,
-    label: `Направление ${item.name}`,
-  })),
-  ...draft.value.groups.map((item) => ({
-    value: `group:${item.id}`,
-    label: `${draft.value.directions.find((direction) => direction.id === item.directionId)?.name ?? ''} → ${item.name}`,
-  })),
-]);
-function change(index: number, event: Event): void {
-  const [targetType, targetId] = (
-    event.target as HTMLSelectElement
-  ).value.split(':');
-  const keyword = draft.value.keywords[index];
-  if (
-    keyword &&
-    targetId &&
-    (targetType === 'direction' || targetType === 'group')
-  ) {
-    keyword.targetType = targetType;
-    keyword.targetId = targetId;
-  }
+const props = defineProps<{
+  targetType: 'direction' | 'group';
+  targetId: string;
+}>();
+const emit = defineEmits<{
+  openTarget: [type: 'direction' | 'group', id: string];
+}>();
+const words = computed(() =>
+  draft.value.keywords.filter(
+    (item) =>
+      item.targetType === props.targetType && item.targetId === props.targetId,
+  ),
+);
+function conflict(word: ClassKeyword): ClassKeyword | undefined {
+  return draft.value.keywords.find(
+    (item) =>
+      item !== word &&
+      normalizeKeyword(item.phrase) === normalizeKeyword(word.phrase) &&
+      Boolean(word.phrase.trim()),
+  );
 }
-function add(): void {
-  const target = draft.value.groups[0] ?? draft.value.directions[0];
-  if (target) {
-    draft.value.keywords.push({
-      phrase: '',
-      targetType: draft.value.groups.length ? 'group' : 'direction',
-      targetId: target.id,
-    });
-  }
+function targetLabel(word: ClassKeyword): string {
+  const group = draft.value.groups.find((item) => item.id === word.targetId);
+  return word.targetType === 'group' && group
+    ? groupTitle(draft.value, group)
+    : (draft.value.directions.find((item) => item.id === word.targetId)?.name ??
+        '');
+}
+function remove(word: ClassKeyword): void {
+  draft.value.keywords = draft.value.keywords.filter((item) => item !== word);
 }
 </script>
 <template>
-  <details class="class-card" open>
-    <summary><strong>Ключевые слова для постов</strong></summary>
+  <section class="class-card" aria-label="Переход из объявления">
+    <h3>Переход из объявления</h3>
     <p>
-      Человек пишет слово в сообщения сообщества или бота и сразу видит
-      выбранную группу или группы направления. Отдельная кнопка в главном меню
-      не появится.
+      По этому слову в сообщениях бот покажет
+      {{ targetType === 'group' ? 'эту группу' : 'группы этого направления' }}.
+      Во время переписки с администратором слово остаётся обычным сообщением.
     </p>
-    <p>
-      Например: «Бачата» → Бачата / Начинающие. Регистр и лишние пробелы не
-      важны. В переписке с администратором и при заполнении заявки слово
-      остаётся обычным сообщением.
-    </p>
-    <div
-      v-for="(keyword, index) in draft.keywords"
-      :key="index"
-      class="class-card"
-    >
-      <label :for="`keyword-${index}`">Слово или фраза {{ index + 1 }}</label>
+    <div v-for="(word, index) in words" :key="index" class="class-card">
+      <label :for="'keyword-' + targetId + '-' + index"
+        >Слово или фраза {{ index + 1 }}</label
+      >
       <input
-        :id="`keyword-${index}`"
-        v-model="keyword.phrase"
+        :id="'keyword-' + targetId + '-' + index"
+        v-model="word.phrase"
         maxlength="80"
         placeholder="Например, Бачата"
       />
-      <label :for="`keyword-target-${index}`">Что открыть</label>
-      <select
-        :id="`keyword-target-${index}`"
-        :value="`${keyword.targetType}:${keyword.targetId}`"
-        @change="change(index, $event)"
-      >
-        <option
-          v-for="target in targets"
-          :key="target.value"
-          :value="target.value"
+      <p v-if="conflict(word)" role="alert">
+        Слово «{{ word.phrase }}» уже открывает «{{
+          targetLabel(conflict(word)!)
+        }}».
+        <button
+          type="button"
+          class="secondary-button"
+          @click="
+            emit(
+              'openTarget',
+              conflict(word)!.targetType,
+              conflict(word)!.targetId,
+            )
+          "
         >
-          {{ target.label }}
-        </option>
-      </select>
-      <button
-        type="button"
-        class="danger"
-        @click="draft.keywords.splice(index, 1)"
-      >
-        Удалить ключевое слово
+          Перейти к настройке
+        </button>
+      </p>
+      <button type="button" class="danger" @click="remove(word)">
+        Удалить слово
       </button>
     </div>
     <button
       type="button"
-      :disabled="!targets.length || draft.keywords.length >= 40"
-      @click="add"
+      :disabled="draft.keywords.length >= 40"
+      @click="draft.keywords.push({ phrase: '', targetType, targetId })"
     >
       Добавить ключевое слово
     </button>
-    <p v-if="!targets.length">Сначала добавьте направление или группу.</p>
-  </details>
+  </section>
 </template>
 <style scoped src="../styles/class-editor.css"></style>

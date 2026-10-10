@@ -18,8 +18,16 @@ export const classContentShape = {
       z
         .object({
           id,
-          directionId: id,
-          name,
+          directionId: z.union([id, z.literal('')]),
+          name: z
+            .string()
+            .trim()
+            .max(80)
+            .regex(/^[^\r\n/:]*$/u),
+          review: z
+            .object({ source: z.string().min(1).max(6000) })
+            .strict()
+            .optional(),
           meetings: z
             .array(
               z
@@ -29,7 +37,6 @@ export const classContentShape = {
                 .max(120)
                 .regex(/^[^\r\n]+$/u),
             )
-            .min(1)
             .max(7),
           description: z.string().trim().max(1000),
           enrollmentOpen: z.boolean(),
@@ -37,7 +44,7 @@ export const classContentShape = {
         })
         .strict(),
     )
-    .max(60)
+    .max(81)
     .optional(),
   keywords: z
     .array(

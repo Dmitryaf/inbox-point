@@ -3,6 +3,7 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 
+import { openGroup, groupContent } from './content-management-test-helpers';
 import ContentManagementPage from '@frontend/pages/content-management/ui/ContentManagementPage.vue';
 import { requestUrl, response } from '@test/frontend/support/fake-response';
 import { findButton, initialVersion } from './content-management-test-helpers';
@@ -23,10 +24,7 @@ describe('ContentManagementPage', () => {
           response({
             content: {
               faq: [{ answer: 'Напишите нам.', question: 'Как записаться?' }],
-              schedule: '',
-              scheduleItems: [
-                { dayTime: 'Понедельник, 19:00', title: 'Бачата' },
-              ],
+              ...groupContent('Бачата', 'Понедельник, 19:00'),
             },
             version: initialVersion,
           }),
@@ -36,24 +34,23 @@ describe('ContentManagementPage', () => {
 
     const wrapper = mount(ContentManagementPage);
     await flushPromises();
+    await openGroup(wrapper);
 
     expect(
-      wrapper.get<HTMLInputElement>('#schedule-day-time-0').element.value,
+      wrapper.get<HTMLInputElement>('#group-time-group-0').element.value,
     ).toBe('Понедельник, 19:00');
     expect(wrapper.text()).not.toContain('Сохранён старый текст расписания');
-    expect(wrapper.get('.editor').text()).not.toContain('Как записаться?');
+    expect(wrapper.get('#faq-question-0').isVisible()).toBe(false);
     expect(wrapper.text()).toContain('Все изменения сохранены');
 
-    await findButton(wrapper.findAll('button'), 'Частые вопросы').trigger(
-      'click',
-    );
+    await findButton(wrapper.findAll('button'), 'Информация').trigger('click');
     expect(wrapper.get<HTMLInputElement>('#faq-question-0').element.value).toBe(
       'Как записаться?',
     );
-    expect(wrapper.find('#schedule-day-time-0').exists()).toBe(false);
+    expect(wrapper.get('#group-time-group-0').isVisible()).toBe(false);
 
-    await findButton(wrapper.findAll('button'), 'Основное').trigger('click');
-    await wrapper.get('#schedule-day-time-0').setValue('Вторник, 20:00');
+    await findButton(wrapper.findAll('button'), 'Занятия').trigger('click');
+    await wrapper.get('#group-time-group-0').setValue('Вторник, 20:00');
     await findButton(wrapper.findAll('button'), 'Предпросмотр').trigger(
       'click',
     );

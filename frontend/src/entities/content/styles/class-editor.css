@@ -1,4 +1,46 @@
 @import './collection-editor.css';
+.class-workspace h2 {
+  margin: 1rem 0;
+  overflow-wrap: anywhere;
+}
+.class-list-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  margin: 0.7rem 0;
+  padding: 1rem;
+  text-align: left;
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+.class-list-item strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.class-list-item small {
+  flex-shrink: 0;
+}
+.class-review {
+  padding: 1rem;
+  background: var(--color-surface-muted);
+}
+.class-review pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+}
+.class-review select {
+  width: 100%;
+}
+.review-notice {
+  margin-bottom: 1rem;
+}
+.class-editor input,
+.class-editor textarea {
+  max-width: 100%;
+}
 .class-editor {
   margin: 1rem 0 2rem;
 }

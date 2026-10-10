@@ -1,6 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 
-export const sqliteSchemaVersion = 13;
+export const sqliteSchemaVersion = 14;
 
 export const requiredSqliteTables = [
   'client_conversation_states',
@@ -74,8 +74,12 @@ export function initializeSqliteSchema(database: DatabaseSync): void {
     version = 12;
   }
   if (hasTables !== undefined && version === 12) {
-    migrateApplicationContext(database);
+    migrateConversationContext(database, 'application_label', 13);
     version = 13;
+  }
+  if (hasTables !== undefined && version === 13) {
+    migrateConversationContext(database, 'question_context', 14);
+    version = 14;
   }
   if (hasTables !== undefined && version !== sqliteSchemaVersion) {
     throw new Error(
@@ -87,7 +91,11 @@ export function initializeSqliteSchema(database: DatabaseSync): void {
   database.exec(`PRAGMA user_version = ${sqliteSchemaVersion}`);
 }
 
-function migrateApplicationContext(database: DatabaseSync): void {
+function migrateConversationContext(
+  database: DatabaseSync,
+  field: 'application_label' | 'question_context',
+  version: number,
+): void {
   database.exec('BEGIN IMMEDIATE');
   try {
     database.exec(clientConversationStateTableSql);
@@ -98,11 +106,11 @@ function migrateApplicationContext(database: DatabaseSync): void {
       const columns = database.prepare(`PRAGMA table_info(${table})`).all() as {
         name: string;
       }[];
-      if (!columns.some((column) => column.name === 'application_label')) {
-        database.exec(`ALTER TABLE ${table} ADD COLUMN application_label TEXT`);
+      if (!columns.some((column) => column.name === field)) {
+        database.exec(`ALTER TABLE ${table} ADD COLUMN ${field} TEXT`);
       }
     }
-    database.exec('PRAGMA user_version = 13');
+    database.exec(`PRAGMA user_version = ${version}`);
     database.exec('COMMIT');
   } catch (error: unknown) {
     database.exec('ROLLBACK');
@@ -457,6 +465,7 @@ const clientConversationStateTableSql = `
     state TEXT NOT NULL CHECK (state = 'awaiting_question'),
     updated_at TEXT NOT NULL,
     application_label TEXT,
+    question_context TEXT,
     PRIMARY KEY (channel, external_conversation_id)
   ) STRICT;
 
@@ -624,6 +633,7 @@ const initialSchemaSql = `
     external_message_id TEXT NOT NULL,
     sender_name TEXT,
     application_label TEXT,
+    question_context TEXT,
     text TEXT NOT NULL,
     created_at TEXT NOT NULL,
     processing_state TEXT NOT NULL DEFAULT 'accepted' CHECK (
