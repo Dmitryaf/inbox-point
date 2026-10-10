@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { classContentShape } from '@/modules/content-management/application/class-content-schema.js';
 import {
   informationSectionIds,
   scheduleDayTimeLengthLimit,
@@ -39,6 +40,7 @@ const visibleSectionsSchema = z
   .refine((sections) => new Set(sections).size === sections.length);
 
 export const contentPayloadSchema = z.object({
+  ...classContentShape,
   address: z.string().min(1).max(4_000).optional(),
   customSections: z.array(customSectionSchema).max(6).optional(),
   faq: z.array(faqItemSchema).max(20).optional(),
@@ -74,6 +76,7 @@ const legacyPreviousMenuActionsSchema = z
 
 export const storedContentSchema = z
   .object({
+    formatVersion: z.literal(2).optional(),
     content: contentPayloadSchema,
     history: z.array(revisionSchema).max(20),
     previousMenuActions: legacyPreviousMenuActionsSchema.optional(),

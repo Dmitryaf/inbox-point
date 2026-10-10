@@ -1,0 +1,64 @@
+@import './collection-editor.css';
+.class-editor {
+  margin: 1rem 0 2rem;
+}
+.class-card {
+  border-top: 1px solid var(--color-border);
+  margin: 1rem 0;
+  padding: 1rem 0;
+}
+.class-card summary {
+  cursor: pointer;
+  margin-bottom: 0.75rem;
+}
+.class-card label,
+.class-editor > label {
+  display: block;
+  margin: 0.75rem 0 0.35rem;
+}
+.class-card input:not([type='checkbox']),
+.class-card select,
+.class-card textarea,
+.class-actions input {
+  width: 100%;
+  min-width: 0;
+}
+.class-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0.75rem 0;
+}
+.class-actions input {
+  flex: 1 1 12rem;
+}
+.class-check {
+  display: flex !important;
+  align-items: center;
+  gap: 0.5rem;
+}
+.class-check input {
+  width: 1rem;
+  flex: 0 0 1rem;
+  margin: 0;
+}
+.class-preview {
+  background: var(--color-surface-muted);
+  padding: 0.8rem;
+  border-radius: 0.75rem;
+  margin: 1rem 0;
+}
+.class-preview pre {
+  font: inherit;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.class-preview-buttons {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.class-preview-buttons button {
+  font-size: 0.875rem;
+}

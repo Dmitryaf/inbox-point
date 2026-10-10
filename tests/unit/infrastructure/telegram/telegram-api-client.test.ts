@@ -154,7 +154,7 @@ describe('TelegramApiClient', () => {
     }
     const rawPayload: unknown = JSON.parse(request.body);
     expect(requestPayloadSchema.parse(rawPayload)).toEqual({
-      allowed_updates: ['message'],
+      allowed_updates: ['message', 'callback_query'],
       offset: 77,
       timeout: 30,
     });

@@ -11,6 +11,8 @@ import { getCoreResponseLengths } from '@frontend/entities/content/lib/content-r
 import type { ContentDraft } from '@frontend/entities/content/model/types';
 import SectionVisibilityControl from './SectionVisibilityControl.vue';
 import ScheduleItemFields from './ScheduleItemFields.vue';
+import ClassScheduleEditor from './ClassScheduleEditor.vue';
+import LegacyScheduleAssignment from './LegacyScheduleAssignment.vue';
 
 const draft = defineModel<ContentDraft>({ required: true });
 const props = withDefaults(
@@ -25,7 +27,8 @@ const responseLength = computed(
 const hasContent = computed(
   () =>
     normalizeScheduleItems(draft.value.schedule).length > 0 ||
-    Boolean(draft.value.legacySchedule.trim()),
+    Boolean(draft.value.legacySchedule.trim()) ||
+    draft.value.directions.length > 0,
 );
 const legacyResponse = computed(() =>
   draft.value.legacySchedule.trim()
@@ -51,6 +54,12 @@ function add(): void {
       </span>
     </summary>
 
+    <ClassScheduleEditor v-model="draft" />
+    <h3>Старые записи расписания</h3>
+    <p>
+      Эти занятия сохранены без изменений. Их можно перенести в группы вручную.
+    </p>
+    <LegacyScheduleAssignment v-model="draft" />
     <aside v-if="draft.legacySchedule" class="legacy-schedule">
       <strong>Сохранён старый текст расписания</strong>
       <p>
@@ -61,8 +70,7 @@ function add(): void {
     </aside>
 
     <p v-if="draft.schedule.length === 0" class="empty">
-      Добавьте направление или группу, чтобы создать структурированное
-      расписание.
+      Старых карточек нет. Новые направления и группы добавляются выше.
     </p>
     <ScheduleItemFields
       v-for="(item, index) in draft.schedule"
@@ -72,7 +80,7 @@ function add(): void {
       :index="index"
     />
     <div class="section-heading">
-      <p>Клиенты увидят направления в этом порядке.</p>
+      <p>Старые карточки показываются в разделе «Другие занятия».</p>
       <span>{{ draft.schedule.length }} / {{ itemLimit }}</span>
     </div>
     <button
@@ -81,7 +89,7 @@ function add(): void {
       type="button"
       @click="add"
     >
-      Добавить направление
+      Добавить старую карточку
     </button>
     <p
       class="counter"

@@ -41,6 +41,14 @@ export const telegramMessageSchema = z
   .passthrough();
 
 export const telegramUpdateSchema = z.object({
+  callback_query: z
+    .object({
+      id: z.string(),
+      from: telegramUserSchema,
+      data: z.string().optional(),
+      message: telegramMessageSchema.optional(),
+    })
+    .optional(),
   edited_message: telegramMessageSchema.optional(),
   message: telegramMessageSchema.optional(),
   update_id: z.number().int().nonnegative(),

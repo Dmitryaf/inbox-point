@@ -1,3 +1,9 @@
+import {
+  resolveClassNavigation,
+  classFallbackMessages,
+  type ClassResponse,
+} from '@/core/application/class-navigation.js';
+import { TelegramKeyboardError } from './telegram-api-client.js';
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
 import {
   acceptingClientIntakePolicy,
@@ -21,6 +27,7 @@ import type {
 } from './telegram-api-client.js';
 
 export interface TelegramMenuMessage {
+  action?: string;
   chatId: number;
   externalEventId: string;
   text: string;
@@ -49,7 +56,31 @@ export class TelegramClientMenu implements TelegramClientMenuHandler {
       conversationId,
       now,
     );
-    const response = resolveMenuResponse(message.text, state, this.information);
+    if (
+      message.action?.startsWith('classes:') ||
+      (!message.action &&
+        message.text.trim().toLocaleLowerCase('ru') !== 'меню' &&
+        !message.text.startsWith('/'))
+    ) {
+      const navigation = resolveClassNavigation(
+        this.information,
+        message.text,
+        message.action ??
+          (message.text.trim() === 'Расписание' &&
+          state.stage !== 'awaiting_question'
+            ? 'schedule'
+            : undefined),
+        state,
+      );
+      if (navigation) {
+        return this.handleClassResponse(message, navigation, now);
+      }
+    }
+    const response = resolveMenuResponse(
+      message.action === 'main' ? 'Меню' : message.text,
+      state,
+      this.information,
+    );
     if (!response) {
       return false;
     }
@@ -117,6 +148,64 @@ export class TelegramClientMenu implements TelegramClientMenuHandler {
         'telegram:menu',
         message.externalEventId,
         new Date(),
+      );
+      return true;
+    } catch (error: unknown) {
+      this.repository.releaseEvent('telegram:menu', message.externalEventId);
+      throw error;
+    }
+  }
+  private async handleClassResponse(
+    message: TelegramMenuMessage,
+    response: ClassResponse,
+    now: Date,
+  ): Promise<boolean> {
+    if (
+      !this.repository.claimEvent('telegram:menu', message.externalEventId, now)
+    ) {
+      return true;
+    }
+    try {
+      if (response.beginQuestion) {
+        this.repository.setAwaitingClientQuestion(
+          'telegram',
+          String(message.chatId),
+          now,
+          response.applicationLabel,
+        );
+      }
+      if (response.actionKey && response.actionLabel) {
+        this.repository.recordUsageEvent({
+          channel: 'telegram',
+          id: `menu:telegram:${message.externalEventId}`,
+          occurredAt: now,
+          type: 'menu_action',
+          actionKey: response.actionKey,
+          actionLabel: response.actionLabel,
+        });
+      }
+      try {
+        await this.gateway.sendMessage({
+          chatId: message.chatId,
+          text: response.text,
+          replyMarkup: {
+            inline_keyboard: response.buttons.map((item) => [
+              { text: item.label, callback_data: item.action },
+            ]),
+          },
+        });
+      } catch (error: unknown) {
+        if (!(error instanceof TelegramKeyboardError)) {
+          throw error;
+        }
+        for (const text of classFallbackMessages(response)) {
+          await this.gateway.sendMessage({ chatId: message.chatId, text });
+        }
+      }
+      this.repository.completeEvent(
+        'telegram:menu',
+        message.externalEventId,
+        this.clock(),
       );
       return true;
     } catch (error: unknown) {

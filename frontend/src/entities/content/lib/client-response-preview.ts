@@ -1,3 +1,4 @@
+import { previewClassSchedule } from './class-preview';
 import { isSectionVisible } from '@frontend/entities/content/model/content-draft';
 import type {
   ContentDraft,
@@ -38,7 +39,13 @@ export function buildClientResponsePreviews(
   const responses: ClientResponsePreview[] = [];
   const schedule = normalizeScheduleItems(content.schedule);
   if (isSectionVisible(content, 'schedule')) {
-    if (schedule.length > 0) {
+    if (content.directions.length > 0) {
+      responses.push({
+        group: 'information',
+        label: 'Расписание',
+        text: previewClassSchedule(content),
+      });
+    } else if (schedule.length > 0) {
       responses.push({
         group: 'information',
         label: 'Расписание',
