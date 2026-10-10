@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
+import { defaultApplicationQuestion } from '@core/application/class-content';
 import type {
   ClassDirection,
   ClassGroup,
@@ -50,7 +51,7 @@ function changeEnrollment(event: Event): void {
         v-model="group.applicationQuestion"
         rows="2"
         maxlength="1000"
-        placeholder="Как к вам обращаться и на какое занятие планируете прийти?"
+        :placeholder="defaultApplicationQuestion"
       />
       <p class="class-hint">
         После нажатия кнопки бот задаст этот вопрос. Ответ клиента придёт

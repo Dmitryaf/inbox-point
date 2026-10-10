@@ -33,8 +33,13 @@ export const classActionLabels = [
   'Далее',
   'Назад',
 ];
-export const defaultApplicationQuestion =
-  'Как к вам обращаться и на какое занятие планируете прийти?';
+export const defaultApplicationQuestion = 'В какой день хотите прийти?';
+export function normalizeApplicationQuestion(question: string): string {
+  return question.trim() ===
+    'Как к вам обращаться и на какое занятие планируете прийти?'
+    ? defaultApplicationQuestion
+    : question;
+}
 export function normalizeKeyword(text: string): string {
   return text.trim().replace(/\s+/gu, ' ').toLocaleLowerCase('ru');
 }
