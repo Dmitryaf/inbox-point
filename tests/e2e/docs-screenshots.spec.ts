@@ -39,10 +39,6 @@ test('documentation: populated content management', async ({ page }) => {
     page.getByRole('region', { name: 'Занятия', exact: true }),
   ).toBeVisible();
   await expect(page.locator('.class-list-item')).toHaveCount(2);
-  await expect(page.locator('.workspace-live-preview')).toContainText('Бачата');
-  await expect(page.locator('.workspace-live-preview')).toContainText(
-    'Частые вопросы',
-  );
   await expect(page.locator('.content-summary')).toContainText(
     'Ответов в меню: 5',
   );

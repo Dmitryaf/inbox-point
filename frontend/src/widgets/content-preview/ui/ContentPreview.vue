@@ -1,64 +1,56 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import { clientMessages } from '@core/application/client-messages';
-
-import {
-  buildClientResponsePreviews,
-  buildTelegramMenuPreviewRows,
-} from '@frontend/entities/content/lib/client-response-preview';
 import type { ContentDraft } from '@frontend/entities/content/model/types';
-
-const props = defineProps<{ content: ContentDraft }>();
-const responses = computed(() => buildClientResponsePreviews(props.content));
-const buttonRows = computed(() =>
-  buildTelegramMenuPreviewRows(responses.value),
-);
+import { useContentPreview } from '@frontend/widgets/content-preview/model/use-content-preview';
+const props = defineProps<{ content: ContentDraft; startAction?: string }>();
+const { action, response, buttonRows, empty } = useContentPreview(props);
 </script>
-
 <template>
   <section class="card preview" aria-labelledby="preview-title">
     <h2 id="preview-title">Предпросмотр ответов</h2>
-    <p class="preview-intro">Здесь показаны содержание и порядок ответов</p>
-    <p v-if="responses.length === 0" class="empty">
+    <p class="preview-intro">
+      Нажимайте кнопки, чтобы пройти путь клиента. Здесь показаны текст и
+      действия; оформление кнопок зависит от VK или Telegram. Сообщения не
+      отправляются.
+    </p>
+    <button type="button" class="secondary-button" @click="action = 'main'">
+      Начать с меню
+    </button>
+    <p v-if="empty" class="empty">
       Заполните разделы — здесь появится будущий ответ.
     </p>
-    <div v-else class="message-preview" aria-label="Пример переписки">
-      <div class="message-preview-menu">
-        <p>{{ clientMessages.greeting }}</p>
-      </div>
-      <article
-        v-for="response in responses"
-        :key="response.label"
-        class="preview-response"
-      >
-        <p class="preview-client-message">{{ response.label }}</p>
+    <div class="message-preview" aria-label="Пример переписки">
+      <article class="preview-response" aria-live="polite">
         <p class="preview-service-message">{{ response.text }}</p>
-        <p v-if="response.mode === 'application'" class="preview-intro">
+        <p v-if="response.applicationLabel" class="preview-intro">
           Здесь клиент напишет ответ. Он придёт администратору как заявка «{{
-            response.label
+            response.applicationLabel
           }}».
         </p>
-        <p
-          v-if="response.mode === 'application'"
-          class="preview-service-message"
-        >
-          {{ clientMessages.applicationSent }}
+        <p v-else-if="response.beginQuestion" class="preview-intro">
+          Следующее сообщение клиента придёт администратору{{
+            response.questionContext ? ' вместе с названием группы' : ''
+          }}.
         </p>
       </article>
-      <div class="message-preview-buttons" aria-label="Кнопки меню Telegram">
+      <div class="message-preview-buttons" aria-label="Кнопки бота">
         <div
           v-for="(row, rowIndex) in buttonRows"
           :key="rowIndex"
           class="message-preview-button-row"
-          :class="{
-            'message-preview-button-row--single': row.length === 1,
-          }"
+          :class="{ 'message-preview-button-row--single': row.length === 1 }"
         >
-          <span v-for="label in row" :key="label">{{ label }}</span>
+          <button
+            v-for="button in row"
+            :key="button.action"
+            type="button"
+            class="secondary-button"
+            @click="action = button.action"
+          >
+            {{ button.label }}
+          </button>
         </div>
       </div>
     </div>
   </section>
 </template>
-
 <style scoped src="../styles/content-preview.css"></style>

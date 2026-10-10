@@ -71,12 +71,10 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
-.message-preview-buttons span {
+.message-preview-buttons button {
   align-items: center;
-  background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
   border-radius: 0.5rem;
-  color: var(--color-text);
   display: grid;
   font-size: var(--font-size-small);
   font-weight: 600;

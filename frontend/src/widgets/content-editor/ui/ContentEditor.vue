@@ -6,6 +6,7 @@ import FaqEditor from '@frontend/entities/content/ui/FaqEditor.vue';
 import ClassScheduleEditor from '@frontend/entities/content/ui/ClassScheduleEditor.vue';
 import type { EditorSection } from '@frontend/widgets/content-workspace/model/navigation';
 
+const emit = defineEmits<{ preview: [action: string] }>();
 const draft = defineModel<ContentDraft>({ required: true });
 defineProps<{
   activeSection: EditorSection;
@@ -15,7 +16,11 @@ defineProps<{
 
 <template>
   <div class="editor">
-    <ClassScheduleEditor v-show="activeSection === 'core'" v-model="draft" />
+    <ClassScheduleEditor
+      v-show="activeSection === 'core'"
+      v-model="draft"
+      @preview="emit('preview', $event)"
+    />
     <div v-show="activeSection === 'faq'">
       <CoreSectionsFields v-model="draft" :errors="errors" />
       <FaqEditor v-model="draft" :errors="errors" />

@@ -31,11 +31,7 @@ describe('teacher class workspace', () => {
     await wrapper.get('#group-name-' + groupId).setValue('Начинающие');
     await wrapper
       .get('#group-time-' + groupId + '-0')
-      .setValue('Понедельник, 19:00');
-    await click(wrapper, 'Добавить день и время');
-    await wrapper
-      .get('#group-time-' + groupId + '-1')
-      .setValue('Четверг, 19:00');
+      .setValue('Понедельник, 19:00\nЧетверг, 19:00');
     await wrapper.get('.class-check input').setValue(true);
     await click(wrapper, 'Добавить ключевое слово');
     await wrapper.get('#keyword-' + groupId + '-0').setValue('Тестовый танец');
@@ -50,11 +46,12 @@ describe('teacher class workspace', () => {
       .setValue('Новое направление');
     await wrapper.get('.class-list-item').trigger('click');
     expect(
-      wrapper.get<HTMLInputElement>('#group-time-' + groupId + '-1').element
+      wrapper.get<HTMLTextAreaElement>('#group-time-' + groupId + '-0').element
         .value,
-    ).toBe('Четверг, 19:00');
+    ).toBe('Понедельник, 19:00\nЧетверг, 19:00');
     expect(draft.keywords[0]!.targetId).toBe(groupId);
-    expect(wrapper.get('.class-preview').text()).toContain('Новое направление');
+    await click(wrapper, 'Посмотреть как клиент');
+    expect(wrapper.emitted('preview')).toEqual([[`classes:group:${groupId}`]]);
     const copied = copyContentDraft(draft);
     copied.groups[0]!.meetings[0] = 'Другое время';
     expect(draft.groups[0]!.meetings[0]).toBe('Понедельник, 19:00');
@@ -106,7 +103,6 @@ describe('teacher class workspace', () => {
     expect(draft.groups[1]!.review).toBeDefined();
     await wrapper.get('#review-direction-review').setValue('dance');
     await wrapper.get('#group-name-review').setValue('Новая группа');
-    await click(wrapper, 'Добавить день и время');
     await wrapper.get('#group-time-review-0').setValue('Среда, 21:00');
     await wrapper.get('#group-description-review').setValue('С нуля');
     await click(wrapper, 'Подтвердить данные');

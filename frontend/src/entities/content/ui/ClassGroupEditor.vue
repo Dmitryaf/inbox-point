@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import type { ContentDraft } from '@frontend/entities/content/model/types';
 import { removeClassGroup } from '@frontend/entities/content/model/class-editor';
-import ClassGroupPreview from './ClassGroupPreview.vue';
+import ClassEnrollmentSettings from './ClassEnrollmentSettings.vue';
 import ClassGroupReview from './ClassGroupReview.vue';
 import ClassGroupSettings from './ClassGroupSettings.vue';
 import ClassKeywordsEditor from './ClassKeywordsEditor.vue';
@@ -11,10 +11,19 @@ const props = defineProps<{ groupId: string }>();
 const emit = defineEmits<{
   openTarget: [type: 'direction' | 'group', id: string];
   removed: [];
+  preview: [action: string];
 }>();
 const group = computed(() =>
   draft.value.groups.find((item) => item.id === props.groupId),
 );
+const schedule = computed({
+  get: () => group.value?.meetings.join('\n') ?? '',
+  set: (value: string) => {
+    if (group.value) {
+      group.value.meetings = value.split(/\r?\n/u);
+    }
+  },
+});
 function remove(): void {
   if (
     !window.confirm(
@@ -41,53 +50,34 @@ function remove(): void {
       maxlength="80"
       placeholder="Например, Начинающие"
     />
-    <div
-      v-for="(_, index) in group.meetings"
-      :key="index"
-      class="class-meeting"
-    >
-      <label :for="'group-time-' + group.id + '-' + index"
-        >День и время {{ index + 1 }}</label
-      >
-      <div class="class-actions">
-        <input
-          :id="'group-time-' + group.id + '-' + index"
-          v-model="group.meetings[index]"
-          maxlength="120"
-          placeholder="Понедельник, 19:00"
-        />
-        <button
-          v-if="group.meetings.length > 1"
-          type="button"
-          @click="group.meetings.splice(index, 1)"
-        >
-          Удалить время {{ index + 1 }}
-        </button>
-      </div>
-    </div>
-    <button
-      type="button"
-      :disabled="group.meetings.length >= 7"
-      @click="group.meetings.push('')"
-    >
-      Добавить день и время
-    </button>
-    <label class="class-check">
-      <input
-        v-model="group.enrollmentOpen"
-        type="checkbox"
-        :disabled="Boolean(group.review)"
-      />
-      Открыть набор в группу
-    </label>
-    <p>После ответа клиента вы получите заявку и сможете подтвердить место.</p>
+    <label :for="'group-time-' + group.id + '-0'">Дни и время занятий</label>
+    <textarea
+      :id="'group-time-' + group.id + '-0'"
+      v-model="schedule"
+      rows="2"
+      aria-describedby="class-schedule-hint"
+      placeholder="Пн/Ср — 20:00 или Пн 20:00, Ср 19:00"
+    />
+    <p id="class-schedule-hint" class="class-hint">
+      Укажите все дни и время в одном поле. Например, Пн/Ср — 20:00 или Пн
+      20:00, Ср 19:00.
+    </p>
+    <ClassEnrollmentSettings v-model="group" />
     <ClassKeywordsEditor
       v-model="draft"
       target-type="group"
       :target-id="group.id"
       @open-target="(type, id) => emit('openTarget', type, id)"
     />
-    <ClassGroupPreview :content="draft" :group-id="group.id" />
+    <div class="class-actions">
+      <button
+        type="button"
+        class="secondary-button"
+        @click="emit('preview', 'classes:group:' + group.id)"
+      >
+        Посмотреть как клиент
+      </button>
+    </div>
     <ClassGroupSettings
       :model-value="group"
       :directions="draft.directions"

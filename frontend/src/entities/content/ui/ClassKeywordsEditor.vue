@@ -42,7 +42,6 @@ function remove(word: ClassKeyword): void {
     <p>
       По этому слову в сообщениях бот покажет
       {{ targetType === 'group' ? 'эту группу' : 'группы этого направления' }}.
-      Во время переписки с администратором слово остаётся обычным сообщением.
     </p>
     <div v-for="(word, index) in words" :key="index" class="class-card">
       <label :for="'keyword-' + targetId + '-' + index"

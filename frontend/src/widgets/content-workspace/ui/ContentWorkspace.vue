@@ -25,6 +25,11 @@ const workspace = useContentWorkspace({
 });
 const activeView = ref<WorkspaceView>('edit');
 const activeSection = ref<EditorSection>('core');
+const previewAction = ref('main');
+function preview(action: string): void {
+  previewAction.value = action;
+  activeView.value = 'preview';
+}
 const validation = computed(() => validateContentDraft(workspace.draft));
 const fieldErrors = computed<Record<string, string | undefined>>(() =>
   Object.fromEntries(
@@ -91,25 +96,21 @@ function openSection(section: EditorSection): void {
 
     <div class="workspace-main">
       <section class="workspace-panel" aria-label="Рабочая область">
-        <div
-          class="workspace-view"
-          :class="{ 'workspace-view--editing': activeView === 'edit' }"
-        >
+        <div class="workspace-view">
           <ContentEditor
             v-show="activeView === 'edit'"
             v-model="workspace.draft"
             :active-section="activeSection"
             :errors="fieldErrors"
+            @preview="preview"
           />
-          <aside v-if="activeView === 'edit'" class="workspace-live-preview">
-            <ContentPreview :content="workspace.draft" />
-          </aside>
           <ContentPreview
-            v-else-if="activeView === 'preview'"
+            v-if="activeView === 'preview'"
             :content="workspace.draft"
+            :start-action="previewAction"
           />
           <ChangeHistory
-            v-else
+            v-if="activeView === 'history'"
             :changes="workspace.history.value"
             :has-unsaved-changes="workspace.dirty.value"
             :loading="workspace.historyLoading.value"

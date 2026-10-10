@@ -5,6 +5,7 @@ import ClassDirectionEditor from './ClassDirectionEditor.vue';
 import ClassGroupEditor from './ClassGroupEditor.vue';
 import ClassDirectionList from './ClassDirectionList.vue';
 const draft = defineModel<ContentDraft>({ required: true });
+const emit = defineEmits<{ preview: [action: string] }>();
 const directionId = ref('');
 const groupId = ref('');
 const reviewing = ref(false);
@@ -66,6 +67,7 @@ function back(): void {
       :group-id="group.id"
       @open-target="open"
       @removed="groupId = ''"
+      @preview="emit('preview', $event)"
     />
     <ClassDirectionEditor
       v-else-if="direction"

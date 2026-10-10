@@ -19,16 +19,6 @@ defineEmits<{ remove: [] }>();
       rows="3"
       maxlength="1000"
     />
-    <label :for="'group-question-' + group.id"
-      >Что спросить после нажатия «Записаться»</label
-    >
-    <textarea
-      :id="'group-question-' + group.id"
-      v-model="group.applicationQuestion"
-      rows="2"
-      maxlength="1000"
-      placeholder="Как к вам обращаться и на какое занятие планируете прийти?"
-    />
     <label v-if="!group.review" :for="'group-direction-' + group.id"
       >Направление</label
     >
