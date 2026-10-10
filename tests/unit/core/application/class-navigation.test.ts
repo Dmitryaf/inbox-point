@@ -23,8 +23,13 @@ describe('class catalog and navigation', () => {
       resolveClassNavigation(catalog, 'Хочу тестовый танец', undefined, state),
     ).toBeUndefined();
     expect(
-      resolveClassNavigation(catalog, 'Все группы', undefined, state)?.text,
-    ).toContain('Четверг, 19:00');
+      resolveClassNavigation(
+        catalog,
+        'Все группы',
+        undefined,
+        state,
+      )?.buttons.map((item) => item.label),
+    ).toContain('Начинающие');
     expect(catalog.getInformationButtons()).not.toContain('Тестовый танец');
     expect(
       resolveClassNavigation(catalog, 'Тестовый танец', 'address', state),
@@ -64,7 +69,7 @@ describe('class catalog and navigation', () => {
       renderClassAction(catalog, 'classes:times:beginners').text,
     ).toContain('20:00');
     expect(
-      renderClassAction(catalog, 'classes:direction:dance:0').text,
+      renderClassAction(catalog, 'classes:group:beginners').text,
     ).toContain('20:00');
     expect(renderClassAction(catalog, 'classes:group:deleted').buttons).toEqual(
       [expect.objectContaining({ action: 'main' })],
