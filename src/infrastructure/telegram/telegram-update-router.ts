@@ -5,6 +5,7 @@ import { clientMessages } from '@/core/application/client-messages.js';
 import type { TelegramUpdate } from './telegram-types.js';
 import type { TelegramClientMenuHandler } from './telegram-client-menu.js';
 import type { TelegramGateway } from './telegram-api-client.js';
+import { TelegramCallbackExpiredError } from './telegram-api-client.js';
 
 export interface TelegramUpdateHandler {
   handleClientMessage(
@@ -31,11 +32,40 @@ export class TelegramUpdateRouter {
     private readonly handoffService: TelegramUpdateHandler,
     private readonly operatorChatId: number,
     private readonly clientMenu?: TelegramClientMenuHandler,
-    private readonly notifier?: Pick<TelegramGateway, 'sendMessage'>,
+    private readonly notifier?: Pick<
+      TelegramGateway,
+      'sendMessage' | 'answerCallbackQuery'
+    >,
   ) {}
 
   public async route(update: TelegramUpdate): Promise<void> {
     if (update.edited_message) {
+      return;
+    }
+    const callback = update.callback_query;
+    if (callback) {
+      const chat = callback.message?.chat;
+      if (
+        chat?.type === 'private' &&
+        chat.id === callback.from.id &&
+        !callback.from.is_bot &&
+        callback.data &&
+        this.clientMenu
+      ) {
+        await this.clientMenu.handle({
+          chatId: chat.id,
+          externalEventId: String(update.update_id),
+          text: '',
+          action: callback.data,
+        });
+        try {
+          await this.notifier?.answerCallbackQuery?.(callback.id);
+        } catch (error: unknown) {
+          if (!(error instanceof TelegramCallbackExpiredError)) {
+            throw error;
+          }
+        }
+      }
       return;
     }
     const message = update.message;

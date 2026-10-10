@@ -6,6 +6,11 @@ import {
   hasValidScheduleItems,
 } from '@/core/application/client-information.js';
 import { formatScheduleCompatibilityText } from '@/core/application/schedule-response.js';
+import {
+  classContentIssue,
+  copyClassContent,
+} from '@/core/application/class-content.js';
+import { reservedClientLabels } from '@/core/application/client-information.js';
 import type { ContentPayload } from './schema.js';
 
 export function validateContent(
@@ -16,6 +21,7 @@ export function validateContent(
     (value.scheduleItems?.length &&
       value.schedule !==
         formatScheduleCompatibilityText(content.schedule ?? [])) ||
+    classContentIssue(content, reservedClientLabels) !== undefined ||
     !hasValidCustomSections(content.customSections ?? []) ||
     !hasValidFaqItems(content.faq ?? []) ||
     !hasValidScheduleItems(content.schedule ?? []) ||
@@ -28,6 +34,7 @@ export function validateContent(
 
 export function pickContent(value: ContentPayload): ClientInformationContent {
   return {
+    ...copyClassContent(value),
     ...(value.address ? { address: value.address } : {}),
     ...(value.customSections
       ? {
@@ -63,6 +70,7 @@ export function toContentPayload(
 ): ContentPayload {
   const { legacySchedule, schedule } = value;
   return {
+    ...copyClassContent(value),
     ...(value.address ? { address: value.address } : {}),
     ...(value.customSections
       ? { customSections: value.customSections.map((item) => ({ ...item })) }

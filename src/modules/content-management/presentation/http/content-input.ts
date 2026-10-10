@@ -1,4 +1,7 @@
 import { z } from 'zod';
+import { mergeClassInput } from '@/modules/content-management/application/class-content-schema.js';
+import { classContentShape } from '@/modules/content-management/application/class-content-schema.js';
+import { classContentIssue } from '@/core/application/class-content.js';
 
 import {
   type ClientInformationContent,
@@ -7,6 +10,7 @@ import {
   hasValidFaqItems,
   hasValidScheduleItems,
   informationSectionIds,
+  reservedClientLabels,
   scheduleDayTimeLengthLimit,
   scheduleDescriptionLengthLimit,
   scheduleItemLimit,
@@ -37,6 +41,7 @@ const scheduleItemSchema = z
 
 export const contentInputSchema = z
   .object({
+    ...classContentShape,
     address: z.string().max(4_000),
     customSections: z.array(customSectionInputSchema).max(6).default([]),
     faq: z
@@ -107,6 +112,7 @@ export function normalizeContentInput(
   }
 
   const normalized: ClientInformationContent = {
+    ...mergeClassInput(content, current),
     ...(address ? { address } : {}),
     ...(customSections.length > 0 ? { customSections } : {}),
     ...(faq.length > 0 ? { faq } : {}),
@@ -119,7 +125,10 @@ export function normalizeContentInput(
     visibleSections: [...content.visibleSections],
   };
 
-  if (!hasValidClientInformationResponses(normalized)) {
+  if (
+    classContentIssue(normalized, reservedClientLabels) ||
+    !hasValidClientInformationResponses(normalized)
+  ) {
     return undefined;
   }
 

@@ -1,4 +1,10 @@
 import {
+  classContentIssue,
+  copyClassContent,
+  type ClassContent,
+} from '@/core/application/class-content.js';
+
+import {
   formatScheduleCompatibilityResponse,
   formatScheduleResponse,
   scheduleResponseTitle,
@@ -46,7 +52,7 @@ export const reservedClientLabels = [
   'Меню',
 ] as const;
 
-export interface ClientInformationContent {
+export interface ClientInformationContent extends ClassContent {
   address?: string;
   customSections?: readonly CustomInformationSection[];
   faq?: readonly FaqItem[];
@@ -69,6 +75,7 @@ export interface FaqItem {
 }
 
 export interface ClientInformationResolver {
+  getContent?(): ClientInformationContent;
   getInformationButtons(): readonly string[];
   getCustomSections(): readonly CustomInformationSection[];
   isStaleMenuAction(text: string): boolean;
@@ -345,7 +352,7 @@ export function hasValidClientInformationResponses(
   );
 }
 
-function formatListResponse(label: string, text: string): string {
+export function formatListResponse(label: string, text: string): string {
   const items = text
     .split(/\r?\n/)
     .map((item) => item.trim().replace(/^[-•]\s*/, ''))
@@ -356,6 +363,10 @@ function formatListResponse(label: string, text: string): string {
 export function copyClientInformationContent(
   content: ClientInformationContent,
 ): ClientInformationContent {
+  const issue = classContentIssue(content, reservedClientLabels);
+  if (issue) {
+    throw new Error(issue);
+  }
   if (!hasValidCustomSections(content.customSections ?? [])) {
     throw new Error('Invalid custom information sections');
   }
@@ -373,6 +384,7 @@ export function copyClientInformationContent(
   }
   return {
     ...content,
+    ...copyClassContent(content),
     ...(content.customSections
       ? {
           customSections: content.customSections.map((section) => ({
@@ -391,9 +403,11 @@ export function copyClientInformationContent(
 }
 
 function hasScheduleContent(content: ClientInformationContent): boolean {
-  return [content.schedule?.length, content.legacySchedule?.trim()].some(
-    Boolean,
-  );
+  return [
+    content.directions?.length,
+    content.schedule?.length,
+    content.legacySchedule?.trim(),
+  ].some(Boolean);
 }
 
 export function isInformationSectionVisible(

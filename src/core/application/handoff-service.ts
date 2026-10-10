@@ -333,6 +333,9 @@ export class HandoffService {
       senderName: message.displayName,
       text: message.text,
     });
+    if (message.applicationLabel) {
+      this.recordSubmittedApplication(request.id, message);
+    }
     if (message.applicationLabel && !recordedApplication) {
       this.repository.clearAwaitingClientQuestion(
         message.channel,
@@ -384,6 +387,21 @@ export class HandoffService {
       isWebOperatorTopic(relayed.operatorTopicId) ? 'delayed' : 'sent',
       message.applicationLabel ? message.externalMessageId : undefined,
     );
+  }
+
+  private recordSubmittedApplication(
+    requestId: string,
+    message: SupportMessage,
+  ): void {
+    this.repository.recordUsageEvent({
+      channel: message.channel,
+      id: `application:${requestId}:${message.externalMessageId}`,
+      occurredAt: message.receivedAt,
+      requestId,
+      type: 'menu_action',
+      actionKey: `application:${message.applicationLabel ?? ''}`,
+      actionLabel: `Заявка отправлена: ${message.applicationLabel ?? ''}`,
+    });
   }
 
   private withApplicationContext(message: SupportMessage): SupportMessage {
@@ -460,6 +478,9 @@ export class HandoffService {
       senderName: message.displayName,
       text: message.text,
     });
+    if (message.applicationLabel) {
+      this.recordSubmittedApplication(requestId, message);
+    }
     this.repository.recordUsageEvent({
       channel: message.channel,
       id: `new-request:${requestId}`,

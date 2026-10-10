@@ -1,19 +1,10 @@
+import { reservedClientLabels } from '@core/application/client-information';
+import { classContentIssue } from '@core/application/class-content';
 import { findOversizedContentResponse } from '@frontend/entities/content/lib/content-response-limit';
 import type { ContentDraft } from '@frontend/entities/content/model/types';
 
 const reservedLabels = new Set(
-  [
-    'Расписание',
-    'Цены',
-    'Адрес',
-    'Частые вопросы',
-    'Задать вопрос',
-    'Начать новый вопрос',
-    '/start',
-    '/menu',
-    'Начать',
-    'Меню',
-  ].map((label) => label.toLowerCase()),
+  reservedClientLabels.map((label) => label.toLowerCase()),
 );
 
 export interface ContentValidationResult {
@@ -31,6 +22,10 @@ export interface ContentValidationIssue {
 export function validateContentDraft(
   content: ContentDraft,
 ): ContentValidationResult {
+  const classIssue = classContentIssue(content, [...reservedLabels]);
+  if (classIssue) {
+    return invalid(classIssue, 'class-directions', 'core');
+  }
   if (content.schedule.length > 20) {
     return invalid(
       'Оставьте не больше 20 направлений в расписании.',

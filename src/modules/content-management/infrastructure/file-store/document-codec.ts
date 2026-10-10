@@ -42,6 +42,16 @@ export function serializeContentDocument(
   document: ContentSettingsDocument,
 ): string {
   const validated = storedContentSchema.parse({
+    ...([
+      document.content,
+      ...document.history.map((entry) => entry.content),
+    ].some((content) =>
+      [content.directions, content.groups, content.keywords].some(
+        (items) => (items?.length ?? 0) > 0,
+      ),
+    )
+      ? { formatVersion: 2 }
+      : {}),
     ...(document.legacyPreviousMenuActions
       ? { previousMenuActions: [...document.legacyPreviousMenuActions] }
       : {}),
@@ -68,7 +78,13 @@ export function findChangedSections(
   if (
     JSON.stringify(previous.schedule ?? []) !==
       JSON.stringify(next.schedule ?? []) ||
-    previous.legacySchedule !== next.legacySchedule
+    previous.legacySchedule !== next.legacySchedule ||
+    ['directions', 'groups', 'keywords'].some(
+      (key) =>
+        JSON.stringify(
+          previous[key as keyof ClientInformationContent] ?? [],
+        ) !== JSON.stringify(next[key as keyof ClientInformationContent] ?? []),
+    )
   ) {
     sections.push('schedule');
   }

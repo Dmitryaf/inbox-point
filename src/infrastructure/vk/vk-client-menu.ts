@@ -1,4 +1,10 @@
 import {
+  resolveClassNavigation,
+  classFallbackMessages,
+  type ClassResponse,
+} from '@/core/application/class-navigation.js';
+import { VkApiError } from './vk-api-client.js';
+import {
   ClientInformationCatalog,
   handoffButton,
   type ClientInformationResolver,
@@ -54,6 +60,15 @@ export class VkClientMenu implements VkClientMenuHandler {
       now,
     );
     const payloadAction = parseMenuAction(message.payload);
+    const navigation = resolveClassNavigation(
+      this.information,
+      message.text,
+      payloadAction,
+      state,
+    );
+    if (navigation) {
+      return this.handleClassResponse(message, navigation, now);
+    }
     const keyedAction = payloadAction
       ? resolveMenuActionByKey(this.information, payloadAction)
       : undefined;
@@ -65,7 +80,9 @@ export class VkClientMenu implements VkClientMenuHandler {
       stableInformation && !keyedAction
         ? { text: clientMessages.menuUpdated }
         : resolveMenuResponse(
-            keyedAction?.label ?? message.text,
+            payloadAction === 'main'
+              ? 'Меню'
+              : (keyedAction?.label ?? message.text),
             message.payload,
             state,
             this.information,
@@ -142,6 +159,80 @@ export class VkClientMenu implements VkClientMenuHandler {
         'vk:menu',
         message.externalEventId,
         new Date(),
+      );
+      return true;
+    } catch (error: unknown) {
+      this.repository.releaseEvent('vk:menu', message.externalEventId);
+      throw error;
+    }
+  }
+  private async handleClassResponse(
+    message: VkMenuMessage,
+    response: ClassResponse,
+    now: Date,
+  ): Promise<boolean> {
+    if (!this.repository.claimEvent('vk:menu', message.externalEventId, now)) {
+      return true;
+    }
+    try {
+      if (response.beginQuestion) {
+        this.repository.setAwaitingClientQuestion(
+          'vk',
+          String(message.peerId),
+          now,
+          response.applicationLabel,
+        );
+      }
+      if (response.actionKey && response.actionLabel) {
+        this.repository.recordUsageEvent({
+          channel: 'vk',
+          id: `menu:vk:${message.externalEventId}`,
+          occurredAt: now,
+          type: 'menu_action',
+          actionKey: response.actionKey,
+          actionLabel: response.actionLabel,
+        });
+      }
+      try {
+        await this.gateway.sendMessage(
+          message.peerId,
+          response.text,
+          createVkRandomId('vk-menu:' + message.externalEventId),
+          {
+            inline: true,
+            one_time: false,
+            buttons: response.buttons.map((item) => [
+              createButton(
+                item.label,
+                item.action,
+                item.action.startsWith('classes:signup:')
+                  ? 'primary'
+                  : 'secondary',
+              ),
+            ]),
+          },
+        );
+      } catch (error: unknown) {
+        if (
+          !(error instanceof VkApiError) ||
+          ![911, 912].includes(error.code)
+        ) {
+          throw error;
+        }
+        for (const [index, text] of classFallbackMessages(response).entries()) {
+          await this.gateway.sendMessage(
+            message.peerId,
+            text,
+            createVkRandomId(
+              `vk-menu-fallback:${message.externalEventId}:${index}`,
+            ),
+          );
+        }
+      }
+      this.repository.completeEvent(
+        'vk:menu',
+        message.externalEventId,
+        this.clock(),
       );
       return true;
     } catch (error: unknown) {

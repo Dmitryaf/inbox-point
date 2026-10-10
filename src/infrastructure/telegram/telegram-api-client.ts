@@ -90,7 +90,16 @@ export interface SendMessageOptions {
 }
 
 export type TelegramReplyMarkup =
-  TelegramRemoveKeyboard | TelegramReplyKeyboard;
+  TelegramRemoveKeyboard | TelegramReplyKeyboard | TelegramInlineKeyboard;
+
+export interface TelegramInlineKeyboard {
+  inline_keyboard: readonly (readonly {
+    text: string;
+    callback_data: string;
+  }[])[];
+}
+export class TelegramKeyboardError extends Error {}
+export class TelegramCallbackExpiredError extends Error {}
 
 export interface TelegramRemoveKeyboard {
   remove_keyboard: true;
@@ -104,6 +113,7 @@ export interface TelegramReplyKeyboard {
 }
 
 export interface TelegramGateway {
+  answerCallbackQuery?(id: string): Promise<void>;
   closeForumTopic(chatId: number, messageThreadId: number): Promise<void>;
   createForumTopic(chatId: number, name: string): Promise<{ topicId: number }>;
   getUpdates(options: GetUpdatesOptions): Promise<readonly TelegramUpdate[]>;
@@ -122,6 +132,14 @@ export class TelegramApiClient implements TelegramGateway {
   ) {
     this.baseUrl = `https://api.telegram.org/bot${token}`;
     this.fetchImplementation = fetchImplementation;
+  }
+
+  public async answerCallbackQuery(id: string): Promise<void> {
+    await this.call(
+      'answerCallbackQuery',
+      { callback_query_id: id },
+      z.literal(true),
+    );
   }
 
   public async closeForumTopic(
@@ -184,7 +202,7 @@ export class TelegramApiClient implements TelegramGateway {
     return this.call(
       'getUpdates',
       {
-        allowed_updates: ['message'],
+        allowed_updates: ['message', 'callback_query'],
         ...(options.offset === undefined ? {} : { offset: options.offset }),
         timeout: options.timeoutSeconds,
       },
@@ -328,7 +346,19 @@ export class TelegramApiClient implements TelegramGateway {
     if (!response.ok || !envelope.data.ok) {
       const description = safeTelegramDescription(envelope.data.description);
       throw failure(
-        new Error(`Telegram API ${method} failed: ${description}`),
+        envelope.data.error_code === 400 &&
+          method === 'answerCallbackQuery' &&
+          /query is too old|query id is invalid/i.test(
+            envelope.data.description ?? '',
+          )
+          ? new TelegramCallbackExpiredError('Telegram callback expired')
+          : envelope.data.error_code === 400 &&
+              method === 'sendMessage' &&
+              /keyboard|button|reply markup/i.test(
+                envelope.data.description ?? '',
+              )
+            ? new TelegramKeyboardError('Telegram rejected the keyboard')
+            : new Error(`Telegram API ${method} failed: ${description}`),
         'api',
         {
           httpStatus: response.status,

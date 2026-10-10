@@ -120,7 +120,7 @@ export class VkApiError extends Error {
 
 export interface VkKeyboard {
   buttons: readonly (readonly VkKeyboardButton[])[];
-  inline: false;
+  inline: boolean;
   one_time: false;
 }
 
@@ -277,7 +277,7 @@ export class VkApiClient implements VkGateway {
         sentMessageSchema,
       );
     } catch (error: unknown) {
-      if (!keyboard || !isKeyboardUnavailableError(error)) {
+      if (!keyboard || keyboard.inline || !isKeyboardUnavailableError(error)) {
         throw error;
       }
       result = await this.call(

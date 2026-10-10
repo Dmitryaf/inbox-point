@@ -7,6 +7,9 @@ import {
 
 export function createEmptyContent(): ContentDraft {
   return {
+    directions: [],
+    groups: [],
+    keywords: [],
     address: '',
     customSections: [],
     faq: [],
@@ -35,6 +38,13 @@ export function normalizeContentDraft(
     apiScheduleItems ??
     (Array.isArray(content.schedule) ? content.schedule : []);
   return {
+    directions: content.directions?.map((item) => ({ ...item })) ?? [],
+    groups:
+      content.groups?.map((item) => ({
+        ...item,
+        meetings: [...item.meetings],
+      })) ?? [],
+    keywords: content.keywords?.map((item) => ({ ...item })) ?? [],
     address: content.address ?? '',
     customSections:
       content.customSections?.map((section) => ({ ...section })) ?? [],
@@ -55,6 +65,12 @@ export function snapshotContent(content: ContentDraft): string {
 export function copyContentDraft(content: ContentDraft): ContentDraft {
   return {
     ...content,
+    directions: content.directions.map((item) => ({ ...item })),
+    groups: content.groups.map((item) => ({
+      ...item,
+      meetings: [...item.meetings],
+    })),
+    keywords: content.keywords.map((item) => ({ ...item })),
     customSections: content.customSections.map((section) => ({ ...section })),
     faq: content.faq.map((item) => ({ ...item })),
     schedule: content.schedule.map((item) => ({ ...item })),

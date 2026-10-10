@@ -1,4 +1,5 @@
 import '@frontend/entities/content/styles/schedule-editor.react-data-r-e7737cb0.css';
+import { renderScheduleEditorLayout1 } from './ScheduleEditor.layout1';
 import {
   useComponentModel,
   ModelScopeProvider,
@@ -16,7 +17,6 @@ import {
 
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
-import SectionVisibilityControl from './SectionVisibilityControl';
 import ScheduleItemFields from './ScheduleItemFields';
 
 import { renderScheduleEditorPart1 } from './ScheduleEditor.part1';
@@ -40,20 +40,23 @@ export default function ScheduleEditor($incomingProps: ComponentProps) {
   const itemKey = $unref($state.itemKey);
   const itemLimit = $unref($state.itemLimit);
   const hasContent = $state.hasContent.value;
-  const legacyResponse = $state.legacyResponse.value;
   const draft = $state.draft.value;
+  const legacyResponse = $state.legacyResponse.value;
   const responseLength = $state.responseLength.value;
   const $attributes = inheritedAttributes($props);
   return (
     <ModelScopeProvider scope={$scope}>
-      <details
-        {...$attributes}
-        open
-        className={$class('field-group', $attributes.className)}
-        data-r-e7737cb0=""
-      >
-        {renderScheduleEditorPart1($state)}
-        {draft.legacySchedule ? (
+      {renderScheduleEditorLayout1(
+        {
+          ...$attributes,
+          open: true,
+          className: $class('field-group', $attributes.className),
+          'data-r-e7737cb0': '',
+        },
+        renderScheduleEditorPart1($state),
+        { modelValue: draft, onModelValueChange: $setter($state, 'draft') },
+        { modelValue: draft, onModelValueChange: $setter($state, 'draft') },
+        draft.legacySchedule ? (
           <aside className="legacy-schedule" data-r-e7737cb0="">
             <strong data-r-e7737cb0="">
               {'Сохранён старый текст расписания'}
@@ -67,15 +70,15 @@ export default function ScheduleEditor($incomingProps: ComponentProps) {
               {legacyResponse}
             </pre>
           </aside>
-        ) : null}
-        {draft.schedule.length === 0 ? (
+        ) : null,
+        draft.schedule.length === 0 ? (
           <p className="empty" data-r-e7737cb0="">
             {
-              ' Добавьте направление или группу, чтобы создать структурированное расписание. '
+              ' Старых карточек нет. Новые направления и группы добавляются выше. '
             }
           </p>
-        ) : null}
-        {$renderList(draft.schedule, (item, index) => (
+        ) : null,
+        $renderList(draft.schedule, (item, index) => (
           <ScheduleItemFields
             key={itemKey(item)}
             errors={props.errors}
@@ -84,48 +87,28 @@ export default function ScheduleEditor($incomingProps: ComponentProps) {
             onModelValueChange={$setter($state, 'draft')}
             data-r-e7737cb0=""
           />
-        ))}
-        <div className="section-heading" data-r-e7737cb0="">
-          <p data-r-e7737cb0="">
-            {'Клиенты увидят направления в этом порядке.'}
-          </p>
-          <span data-r-e7737cb0="">
-            {draft.schedule.length}
-            {' / '}
-            {itemLimit}
-          </span>
-        </div>
-        <button
-          id="add-schedule"
-          disabled={draft.schedule.length >= itemLimit}
-          type="button"
-          onClick={$nativeHandler(add)}
-          data-r-e7737cb0=""
-        >
-          {' Добавить направление '}
-        </button>
-        <p
-          aria-live="polite"
-          className={$class('counter', {
+        )),
+        draft.schedule.length,
+        itemLimit,
+        {
+          disabled: draft.schedule.length >= itemLimit,
+          onClick: $nativeHandler(add),
+        },
+        {
+          className: $class('counter', {
             'counter--error': responseLength > 4000,
-          })}
-          data-r-e7737cb0=""
-        >
-          {' Итоговый ответ: '}
-          {responseLength}
-          {' / 4000 '}
-        </p>
-        <SectionVisibilityControl
-          contentPresent={hasContent}
-          section="schedule"
-          modelValue={draft.visibleSections}
-          onModelValueChange={$propertySetter(
+          }),
+        },
+        responseLength,
+        {
+          contentPresent: hasContent,
+          modelValue: draft.visibleSections,
+          onModelValueChange: $propertySetter(
             () => $state.draft.value,
             'visibleSections',
-          )}
-          data-r-e7737cb0=""
-        />
-      </details>
+          ),
+        },
+      )}
     </ModelScopeProvider>
   );
 }

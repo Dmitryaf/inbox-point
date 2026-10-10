@@ -15,11 +15,11 @@ describe('ScheduleEditor', () => {
       props: { modelValue: content },
     });
 
-    await wrapper.get('button:not([class])').trigger('click');
+    await wrapper.get('#add-schedule').trigger('click');
     await wrapper.get('#schedule-title-0').setValue('Начинающие');
     await wrapper.get('#schedule-day-time-0').setValue('Вт / Чт, 19:00');
     await wrapper.get('#schedule-description-0').setValue('С нуля.');
-    await wrapper.get('button:not([class])').trigger('click');
+    await wrapper.get('#add-schedule').trigger('click');
     await wrapper.get('#schedule-title-1').setValue('Продолжающие');
     await wrapper.get('#schedule-day-time-1').setValue('Пн / Ср, 20:00');
 
@@ -87,7 +87,7 @@ describe('ScheduleEditor', () => {
       true,
     );
 
-    await wrapper.get('button:not([class])').trigger('click');
+    await wrapper.get('#add-schedule').trigger('click');
     expect(content.legacySchedule).toBe('Свободный старый текст');
     expect(content.schedule).toEqual([{ dayTime: '', title: '' }]);
   });
