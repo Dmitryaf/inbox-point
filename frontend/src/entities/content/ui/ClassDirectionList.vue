@@ -24,9 +24,9 @@ const pending = computed(() =>
       <strong>{{
         item.name || item.review?.source.split('\n')[0] || 'Занятие'
       }}</strong>
-      <small>Нужно проверить</small>
+      <small>Заполните данные группы</small>
     </button>
-    <p v-if="!pending.length">Все записи проверены.</p>
+    <p v-if="!pending.length">Старых записей больше нет.</p>
   </template>
   <template v-else>
     <button
@@ -35,7 +35,7 @@ const pending = computed(() =>
       class="review-notice"
       @click="reviewing = true"
     >
-      Нужно проверить: {{ pending.length }}
+      Старые записи расписания: {{ pending.length }}
     </button>
     <p v-if="!draft.directions.length && !pending.length">
       Добавьте направление, затем создайте в нём группы.

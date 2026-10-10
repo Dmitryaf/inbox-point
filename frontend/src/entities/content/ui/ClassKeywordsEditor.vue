@@ -43,7 +43,7 @@ function remove(word: ClassKeyword): void {
       По этому слову в сообщениях бот покажет
       {{ targetType === 'group' ? 'эту группу' : 'группы этого направления' }}.
     </p>
-    <div v-for="(word, index) in words" :key="index" class="class-card">
+    <div v-for="(word, index) in words" :key="index" class="class-word">
       <label :for="'keyword-' + targetId + '-' + index"
         >Слово или фраза {{ index + 1 }}</label
       >

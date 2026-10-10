@@ -1,11 +1,6 @@
 <script setup lang="ts">
-import type {
-  ClassGroup,
-  ClassDirection,
-} from '@core/application/class-content';
+import type { ClassGroup } from '@core/application/class-content';
 const group = defineModel<ClassGroup>({ required: true });
-defineProps<{ directions: ClassDirection[] }>();
-defineEmits<{ remove: [] }>();
 </script>
 <template>
   <details class="class-card">
@@ -19,21 +14,6 @@ defineEmits<{ remove: [] }>();
       rows="3"
       maxlength="1000"
     />
-    <label v-if="!group.review" :for="'group-direction-' + group.id"
-      >Направление</label
-    >
-    <select
-      v-if="!group.review"
-      :id="'group-direction-' + group.id"
-      v-model="group.directionId"
-    >
-      <option v-for="item in directions" :key="item.id" :value="item.id">
-        {{ item.name }}
-      </option>
-    </select>
-    <button type="button" class="danger" @click="$emit('remove')">
-      Удалить группу
-    </button>
   </details>
 </template>
 <style scoped src="../styles/class-editor.css"></style>

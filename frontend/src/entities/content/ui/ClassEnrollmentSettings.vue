@@ -1,18 +1,42 @@
 <script setup lang="ts">
-import type { ClassGroup } from '@core/application/class-content';
+import { ref } from 'vue';
+import type {
+  ClassDirection,
+  ClassGroup,
+} from '@core/application/class-content';
+import { classEnrollmentIssue } from '@frontend/entities/content/model/class-enrollment';
 const group = defineModel<ClassGroup>({ required: true });
+const props = defineProps<{
+  directions: ClassDirection[];
+  groups: ClassGroup[];
+}>();
+const notice = ref('');
+function changeEnrollment(event: Event): void {
+  const input = event.target as HTMLInputElement;
+  notice.value = input.checked
+    ? (classEnrollmentIssue(props, group.value) ?? '')
+    : '';
+  if (!notice.value) {
+    if (input.checked) {
+      delete group.value.review;
+    }
+    group.value.enrollmentOpen = input.checked;
+  }
+  input.checked = group.value.enrollmentOpen;
+}
 </script>
 <template>
   <section class="class-card" aria-label="Запись в группу">
     <h3>Запись в группу</h3>
     <label class="class-check">
       <input
-        v-model="group.enrollmentOpen"
+        :checked="group.enrollmentOpen"
         type="checkbox"
-        :disabled="Boolean(group.review)"
+        @change="changeEnrollment"
       />
       Открыть набор в группу
     </label>
+    <p v-if="notice" role="alert">{{ notice }}</p>
     <p>
       Включите набор — в карточке этой группы бот покажет кнопку «Записаться на
       занятие». При закрытом наборе этой кнопки нет.

@@ -76,16 +76,29 @@ for (const width of [390, 1440]) {
     await removeWord.hover();
     await expect.poll(() => contrast(removeWord)).toBeGreaterThanOrEqual(4.5);
     expect(await gap(keyword, removeWord)).toBeGreaterThanOrEqual(12);
-    await page.getByText('Дополнительные настройки', { exact: true }).click();
+    expect(await gap(keyword, removeWord)).toBeLessThanOrEqual(24);
+    const addWord = page.getByRole('button', {
+      name: 'Добавить ключевое слово',
+    });
+    const preview = page.getByRole('button', { name: 'Посмотреть как клиент' });
+    expect(await gap(addWord, preview)).toBeGreaterThanOrEqual(12);
+    expect(await gap(addWord, preview)).toBeLessThanOrEqual(24);
+    await expect(
+      page.getByText('Укажите все дни и время в одном поле.', { exact: false }),
+    ).toHaveCount(0);
     const removeGroup = page.getByRole('button', {
       name: 'Удалить группу',
       exact: true,
     });
+    await expect(removeGroup).toBeVisible();
     await removeGroup.hover();
     await expect.poll(() => contrast(removeGroup)).toBeGreaterThanOrEqual(4.5);
-    expect(
-      await gap(page.getByLabel('Направление', { exact: true }), removeGroup),
-    ).toBeGreaterThanOrEqual(12);
+    const directionGap = await gap(
+      page.getByLabel('Направление', { exact: true }),
+      page.getByLabel('Название группы', { exact: true }),
+    );
+    expect(directionGap).toBeGreaterThanOrEqual(24);
+    expect(directionGap).toBeLessThanOrEqual(48);
     await expect(
       page.getByText(
         'Во время переписки с администратором слово остаётся обычным сообщением.',

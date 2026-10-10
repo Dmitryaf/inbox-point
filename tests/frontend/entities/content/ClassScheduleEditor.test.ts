@@ -77,7 +77,7 @@ describe('teacher class workspace', () => {
     expect(draft.keywords).toEqual([]);
     expect(draft.directions).toHaveLength(1);
   });
-  it('keeps unknown source visible until the teacher fills and confirms the same group', async () => {
+  it('keeps unknown source visible until the teacher fills and opens enrollment in the same group', async () => {
     const draft = populated();
     draft.groups.push({
       id: 'review',
@@ -93,22 +93,25 @@ describe('teacher class workspace', () => {
       props: { modelValue: draft },
     });
     vi.spyOn(window, 'confirm').mockReturnValue(true);
-    await click(wrapper, 'Нужно проверить: 1');
+    await click(wrapper, 'Старые записи расписания: 1');
     await wrapper.get('.class-list-item').trigger('click');
     expect(wrapper.get('pre').text()).toBe(draft.groups[1]!.review!.source);
     expect(
       wrapper.get<HTMLInputElement>('.class-check input').element.disabled,
-    ).toBe(true);
-    await click(wrapper, 'Подтвердить данные');
+    ).toBe(false);
+    await wrapper.get('.class-check input').setValue(true);
     expect(draft.groups[1]!.review).toBeDefined();
-    await wrapper.get('#review-direction-review').setValue('dance');
+    await wrapper.get('#group-direction-review').setValue('dance');
+    expect(wrapper.get('h2').text()).toContain('Тестовый танец');
     await wrapper.get('#group-name-review').setValue('Новая группа');
     await wrapper.get('#group-time-review-0').setValue('Среда, 21:00');
     await wrapper.get('#group-description-review').setValue('С нуля');
-    await click(wrapper, 'Подтвердить данные');
+    await wrapper.get('.class-check input').setValue(true);
     expect(draft.groups[1]!.review).toBeUndefined();
-    expect(draft.groups[1]!.enrollmentOpen).toBe(false);
+    expect(draft.groups[1]!.enrollmentOpen).toBe(true);
     expect(validateContentDraft(draft).valid).toBe(true);
+    await click(wrapper, 'К направлению «Тестовый танец»');
+    expect(wrapper.get('h2').text()).toBe('Тестовый танец');
   });
   it('shows keyword conflicts with their destination and navigates there without discarding edits', async () => {
     const draft = populated();

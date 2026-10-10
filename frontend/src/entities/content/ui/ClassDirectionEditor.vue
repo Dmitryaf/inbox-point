@@ -56,7 +56,7 @@ function remove(): void {
       <strong>{{ group.name || 'Новая группа' }}</strong
       ><small>{{
         group.review
-          ? 'Нужно проверить'
+          ? 'Заполните данные группы'
           : group.enrollmentOpen
             ? 'Набор открыт'
             : 'Набор закрыт'

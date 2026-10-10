@@ -9,11 +9,13 @@ const emit = defineEmits<{ preview: [action: string] }>();
 const directionId = ref('');
 const groupId = ref('');
 const reviewing = ref(false);
-const direction = computed(() =>
-  draft.value.directions.find((item) => item.id === directionId.value),
-);
 const group = computed(() =>
   draft.value.groups.find((item) => item.id === groupId.value),
+);
+const direction = computed(() =>
+  draft.value.directions.find(
+    (item) => item.id === (group.value?.directionId ?? directionId.value),
+  ),
 );
 async function open(
   targetType: 'direction' | 'group',
@@ -30,6 +32,7 @@ async function open(
 }
 function back(): void {
   if (group.value) {
+    directionId.value = group.value.directionId;
     groupId.value = '';
   } else {
     directionId.value = '';
@@ -54,10 +57,8 @@ function back(): void {
     <h2 id="class-directions" tabindex="-1">
       {{
         group
-          ? (direction?.name ?? 'Нужно проверить') +
-            ' → ' +
-            (group.name || 'Занятие')
-          : (direction?.name ?? (reviewing ? 'Нужно проверить' : 'Занятия'))
+          ? (direction?.name ?? 'Группа') + ' → ' + (group.name || 'Занятие')
+          : (direction?.name ?? (reviewing ? 'Старое расписание' : 'Занятия'))
       }}
     </h2>
     <ClassGroupEditor
