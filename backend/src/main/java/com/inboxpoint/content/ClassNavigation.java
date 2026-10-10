@@ -19,7 +19,7 @@ final class ClassNavigation {
     private static final String NO_SCHEDULE = "Расписание пока не указано.";
     private static final String DEFAULT_QUESTION = "Как к вам обращаться и на какое занятие планируете прийти?";
     private static final Pattern NUMBERED = Pattern.compile(
-            "^(направления): ([0-9]+)$");
+            "^(направления|занятия|расписание всех направлений): ([0-9]+)$");
     private final ClientCatalog catalog;
 
     ClassNavigation(ClientCatalog catalog) {
@@ -56,7 +56,7 @@ final class ClassNavigation {
             case "directions" -> directions(id);
             case "direction" -> direction(id, parts.length > 3 ? parts[3] : "");
             case "legacy" -> inline(catalog.scheduleText(), List.of(DIRECTIONS, MENU));
-            case "review" -> schedule("review", id);
+            case "review", "all" -> schedule(operation, id);
             default -> renderGroup(operation, id, state);
         };
     }
@@ -72,10 +72,9 @@ final class ClassNavigation {
                 "classes:direction:" + direction.id() + ":0", "Направление: " + direction.name())));
         pageButtons(buttons, page, all.size(), 2, next -> "classes:directions:" + next,
                 next -> "Направления: " + (next + 1));
-        if (catalog.groups().stream().anyMatch(group -> group.review() != null)) {
-            buttons.add(new Button("Расписание занятий", "classes:review:0", "Занятия: 1"));
-        }
-        if (catalog.hasLegacySchedule()) {
+        if (!catalog.groups().isEmpty()) {
+            buttons.add(button("Расписание всех направлений", "classes:all:0"));
+        } else if (catalog.hasLegacySchedule()) {
             buttons.add(new Button("Другие занятия", "classes:legacy", "Занятия: общие"));
         }
         buttons.add(MENU);
@@ -98,9 +97,7 @@ final class ClassNavigation {
                 next -> "Группы: " + name + ": " + (next + 1));
         buttons.add(DIRECTIONS);
         buttons.add(MENU);
-        var listing = String.join("\n\n", pageItems(all, page).stream().map(group -> group.name() + "\n"
-                + String.join("\n", group.meetings()) + "\n" + (group.open() ? "Набор открыт" : "Набор закрыт")).toList());
-        return inline(name + "\n\n" + (listing.isBlank() ? "Группы пока не добавлены." : listing)
+        return inline(name + "\n\n" + (all.isEmpty() ? "Группы пока не добавлены." : "Выберите группу.")
                 + pageLabel(all.size(), page, "\n\n"), buttons, null, "direction:" + id, "Направление: " + name);
     }
 
@@ -158,7 +155,6 @@ final class ClassNavigation {
         if (canEnroll) {
             buttons.add(enroll);
         }
-        buttons.add(new Button("Расписание группы", "classes:times:" + group.id(), "Расписание: " + title));
         buttons.add(new Button("Цены", "classes:prices:" + group.id(), "Цены: " + title));
         if (intakeAllowed) {
             buttons.add(new Button("Задать вопрос", "classes:question:" + group.id(), "Вопрос: " + title));
@@ -195,9 +191,17 @@ final class ClassNavigation {
         if (("другие занятия".equals(text) || "занятия: общие".equals(text)) && !catalog.directions().isEmpty()) {
             return "classes:legacy";
         }
+        if ("расписание всех направлений".equals(text)) {
+            return "classes:all:0";
+        }
         var numbered = NUMBERED.matcher(text);
         if (numbered.matches()) {
-            return "classes:directions:" + previousIndex(numbered.group(2));
+            var kind = switch (numbered.group(1)) {
+                case "направления" -> "directions";
+                case "занятия" -> "review";
+                default -> "all";
+            };
+            return "classes:" + kind + ":" + previousIndex(numbered.group(2));
         }
         for (var direction : catalog.directions()) {
             var name = normalize(direction.name());

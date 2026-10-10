@@ -3,6 +3,7 @@ import {
   copyClassContent,
   type ClassContent,
 } from '@/core/application/class-content.js';
+import { formatClassSchedule } from './class-schedule.js';
 
 import {
   formatScheduleCompatibilityResponse,
@@ -179,16 +180,7 @@ export class ClientInformationCatalog implements ClientInformationResolver {
     const normalized = text.trim();
     if (normalized === scheduleButton) {
       if (this.content.groups?.length) {
-        return (
-          'Расписание\n\n' +
-          this.content.groups
-            .map(
-              (group) =>
-                group.review?.source ??
-                `${this.content.directions?.find((direction) => direction.id === group.directionId)?.name ?? ''} / ${group.name}\n${group.meetings.join('\n')}${group.description ? '\n' + group.description : ''}`,
-            )
-            .join('\n\n')
-        );
+        return formatClassSchedule(this.content);
       }
       return this.content.schedule?.length
         ? formatScheduleResponse(this.content.schedule)
