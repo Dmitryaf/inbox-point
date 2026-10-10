@@ -97,17 +97,11 @@ public final class ClientInformation {
 
     public synchronized ManagedSnapshot save(JsonNode input, String expected) throws IOException {
         requireVersion(expected);
-        var latest = state.content();
-        if (!input.has("scheduleItems") && !latest.schedule().isEmpty()) {
-            if (!ScheduleInformation.compatibility(latest.schedule()).equals(input.path("schedule").asString(""))) {
-                throw new LegacyScheduleConflict();
-            }
-            var compatible = JsonMapper.shared().valueToTree(input);
-            ((tools.jackson.databind.node.ObjectNode) compatible).set("scheduleItems", JsonMapper.shared().valueToTree(latest.schedule()));
-            save(compatible);
-        } else {
-            save(input);
+
+        if (!input.path("schedule").asString("").isBlank() || !input.path("scheduleItems").isEmpty()) {
+            throw new LegacyScheduleConflict();
         }
+        save(input);
         return snapshot();
     }
 
@@ -129,8 +123,8 @@ public final class ClientInformation {
     public static final class LegacyScheduleConflict extends RuntimeException { }
 
     static ManagedSnapshot editorSnapshot(ManagedSnapshot saved) {
-        var display = new LinkedHashMap<String, Object>(saved.content());
-        var normalized = normalize(JsonMapper.shared().valueToTree(saved.content()));
+        var normalized = migrateSchedule(normalize(JsonMapper.shared().valueToTree(saved.content())));
+        var display = new LinkedHashMap<String, Object>(normalized.jsonFields());
         display.remove("legacySchedule");
         display.put("schedule", normalized.schedule().isEmpty() ? normalized.standard().getOrDefault("schedule", "")
                 : ScheduleInformation.compatibility(normalized.schedule()));
@@ -183,9 +177,64 @@ public final class ClientInformation {
             var fields = row.putArray("sections");
             revision.sections().forEach(fields::add);
         }
+        preserveLegacyScheduleBackup();
         LocalJsonFile.write(file, output);
         state = new State(next, List.copyOf(revisions), historicalMenuActions(next, revisions));
         return next.jsonFields();
+    }
+
+    private void preserveLegacyScheduleBackup() throws IOException {
+        String previous;
+        try {
+            previous = Files.readString(file);
+        } catch (NoSuchFileException missing) {
+            return;
+        }
+        var stored = JsonMapper.shared().readTree(previous).path("content");
+        if (!stored.has("schedule") && !stored.has("legacySchedule")) {
+            return;
+        }
+        try {
+            var digest = MessageDigest.getInstance("SHA-256").digest(previous.getBytes(StandardCharsets.UTF_8));
+            var backup = file.resolveSibling(file.getFileName() + ".before-classes-" + HexFormat.of().formatHex(digest) + ".json");
+            if (!Files.exists(backup)) {
+                Files.writeString(backup, previous, StandardCharsets.UTF_8, java.nio.file.StandardOpenOption.CREATE_NEW);
+            }
+            if (!Files.readString(backup).equals(previous)) {
+                throw new IOException("The stored schedule backup does not match its source");
+            }
+        } catch (NoSuchAlgorithmException unavailable) {
+            throw new IllegalStateException("SHA-256 is unavailable", unavailable);
+        }
+    }
+
+    private static Snapshot migrateSchedule(Snapshot source) {
+        if (source.schedule().isEmpty() && !source.standard().containsKey("schedule")) {
+            return source;
+        }
+        var catalog = new ClientCatalog(JsonMapper.shared().valueToTree(source.jsonFields()), Set.of());
+        var result = catalog.migratedClasses();
+        var classes = JsonMapper.shared().createObjectNode();
+        var directions = classes.putArray("directions");
+        for (var item : result.directions()) {
+            directions.addObject().put("id", item.id()).put("name", item.name());
+        }
+        var groups = classes.putArray("groups");
+        for (var item : result.groups()) {
+            var row = groups.addObject().put("id", item.id()).put("directionId", item.directionId()).put("name", item.name())
+                    .put("description", item.description()).put("enrollmentOpen", item.open()).put("applicationQuestion", item.question());
+            var meetings = row.putArray("meetings");
+            item.meetings().forEach(meetings::add);
+            if (item.review() != null) {
+                row.putObject("review").put("source", item.review());
+            }
+        }
+        if (source.classes().has("keywords")) {
+            classes.set("keywords", source.classes().get("keywords"));
+        }
+        var fields = new LinkedHashMap<>(source.standard());
+        fields.remove("schedule");
+        return new Snapshot(Map.copyOf(fields), source.custom(), source.faq(), source.visible(), List.of(), classes);
     }
 
     private static void serialize(tools.jackson.databind.node.ObjectNode payload, Snapshot next) {
@@ -303,6 +352,8 @@ public final class ClientInformation {
     public ClassMenu.Response classAction(String label, String key, ClassMenu.State state) {
         var saved = this.state;
         var catalog = new ClientCatalog(JsonMapper.shared().valueToTree(saved.content().jsonFields()), Set.copyOf(saved.historicalMenuActions()));
+        var migrated = migrateSchedule(saved.content());
+        catalog = new ClientCatalog(JsonMapper.shared().valueToTree(migrated.jsonFields()), Set.copyOf(saved.historicalMenuActions()));
         var navigation = new ClassNavigation(catalog);
         if (key != null && key.startsWith("classes:")) {
             return navigation.render(key, state);

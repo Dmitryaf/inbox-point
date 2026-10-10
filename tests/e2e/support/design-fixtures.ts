@@ -26,16 +26,33 @@ export const designContent = {
   prices:
     'Пробное занятие — 500 ₽.\nРазовое — 900 ₽.\nАбонемент на 8 занятий — 5 600 ₽.',
   schedule: '',
-  scheduleItems: [
+  scheduleItems: [],
+  directions: [
+    { id: 'dance', name: 'Бачата' },
+    { id: 'salsa', name: 'Сальса' },
+  ],
+  groups: [
     {
-      dayTime: 'Пн / Ср, 19:00',
+      id: 'beginners',
+      directionId: 'dance',
+      name: 'Начинающие',
+      meetings: ['Пн / Ср, 19:00'],
       description:
         'Группа для начинающих: базовые шаги, музыкальность и практика в парах.',
-      title: 'Бачата с нуля',
+      enrollmentOpen: false,
+      applicationQuestion: '',
     },
-    { dayTime: 'Вт / Чт, 20:00', title: 'Сальса — продолжающие' },
-    { dayTime: 'Сб, 12:00', title: 'Практика для всех групп' },
+    {
+      id: 'continuing',
+      directionId: 'salsa',
+      name: 'Продолжающие',
+      meetings: ['Вт / Чт, 20:00'],
+      description: '',
+      enrollmentOpen: false,
+      applicationQuestion: '',
+    },
   ],
+  keywords: [],
   visibleSections: ['schedule', 'prices', 'address', 'faq'],
 };
 

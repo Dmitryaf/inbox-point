@@ -1,19 +1,17 @@
-import '@frontend/entities/content/styles/class-editor.react-data-r-92fb3f88.css';
+import '@frontend/entities/content/styles/class-editor.react-data-r-3333923b.css';
 import {
   useComponentModel,
   ModelScopeProvider,
 } from '@frontend/shared/lib/component-model';
 
-import { renderLegacyScheduleAssignmentPart1 } from './LegacyScheduleAssignment.part1';
+import { renderClassGroupReviewPart1 } from './ClassGroupReview.part1';
 import {
   createComponentModel,
   componentDefaults,
   type ComponentProps,
-} from './LegacyScheduleAssignment.model';
+} from './ClassGroupReview.model';
 
-export default function LegacyScheduleAssignment(
-  $incomingProps: ComponentProps,
-) {
+export default function ClassGroupReview($incomingProps: ComponentProps) {
   const {
     state: $state,
     props: $props,
@@ -26,7 +24,7 @@ export default function LegacyScheduleAssignment(
 
   return (
     <ModelScopeProvider scope={$scope}>
-      {renderLegacyScheduleAssignmentPart1($state, $props)}
+      {renderClassGroupReviewPart1($state, $props)}
     </ModelScopeProvider>
   );
 }

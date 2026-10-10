@@ -54,9 +54,10 @@ final class HandoffService {
         var related = request == null ? store.latestRequest(channel, chat) : request;
         var application = related == null ? null : store.applicationForMessage(related.id(), message);
         if (application == null) {
-            var label = store.pendingApplication(channel, chat, clock.instant());
-            if (label != null) {
-                application = new TelegramStore.ApplicationText(label, "Заявка: " + label + "\n\n" + text);
+            var pending = store.pendingApplication(channel, chat, clock.instant());
+            if (pending != null) {
+                var prefix = pending.question() ? "Вопрос о группе: " : "Заявка: ";
+                application = new TelegramStore.ApplicationText(pending.label(), prefix + pending.label() + "\n\n" + text, pending.question());
             }
         }
         if (application != null) {
@@ -155,7 +156,8 @@ final class HandoffService {
     }
 
     private void acknowledge(TelegramStore.Request request, String message, String text, String kind) throws SQLException {
-        if (store.applicationForMessage(request.id(), message) != null) {
+        var application = store.applicationForMessage(request.id(), message);
+        if (application != null && !application.question()) {
             store.acknowledgeApplication(request, message, kind, clock.instant());
         } else {
             store.acknowledge(request, text, kind, clock.instant());

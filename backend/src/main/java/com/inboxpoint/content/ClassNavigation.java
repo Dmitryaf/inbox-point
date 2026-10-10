@@ -56,18 +56,25 @@ final class ClassNavigation {
             case "directions" -> directions(id);
             case "direction" -> direction(id, parts.length > 3 ? parts[3] : "");
             case "legacy" -> inline(catalog.scheduleText(), List.of(DIRECTIONS, MENU));
+            case "review" -> schedule("review", id);
             default -> renderGroup(operation, id, state);
         };
     }
 
     private Response directions(String id) {
         var all = catalog.directions();
+        if (all.isEmpty() && catalog.groups().stream().anyMatch(group -> group.review() != null)) {
+            return schedule("review", "0");
+        }
         var page = page(id, all.size(), 2);
         var buttons = new ArrayList<Button>();
         pageItems(all, page).forEach(direction -> buttons.add(new Button(direction.name(),
                 "classes:direction:" + direction.id() + ":0", "Направление: " + direction.name())));
         pageButtons(buttons, page, all.size(), 2, next -> "classes:directions:" + next,
                 next -> "Направления: " + (next + 1));
+        if (catalog.groups().stream().anyMatch(group -> group.review() != null)) {
+            buttons.add(new Button("Расписание занятий", "classes:review:0", "Занятия: 1"));
+        }
         if (catalog.hasLegacySchedule()) {
             buttons.add(new Button("Другие занятия", "classes:legacy", "Занятия: общие"));
         }
@@ -97,12 +104,39 @@ final class ClassNavigation {
                 + pageLabel(all.size(), page, "\n\n"), buttons, null, "direction:" + id, "Направление: " + name);
     }
 
+    private Response schedule(String operation, String pageText) {
+        var all = "all".equals(operation);
+        var source = all ? catalog.allGroupsSchedule().replaceFirst("^Расписание\n\n", "")
+                : String.join("\n\n", catalog.groups().stream().map(ClientCatalog.Group::review)
+                        .filter(java.util.Objects::nonNull).toList());
+        var pages = new ArrayList<String>();
+        for (var start = 0; start < source.length();) {
+            var end = Math.min(start + 3000, source.length());
+            if (end < source.length() && Character.isHighSurrogate(source.charAt(end - 1))) {
+                end--;
+            }
+            pages.add(source.substring(start, end));
+            start = end;
+        }
+        var page = page(pageText, pages.size(), 1);
+        var buttons = new ArrayList<Button>();
+        pageButtons(buttons, page, pages.size(), 1, next -> "classes:" + operation + ":" + next,
+                next -> (all ? "Расписание всех направлений: " : "Занятия: ") + (next + 1));
+        buttons.add(DIRECTIONS);
+        buttons.add(MENU);
+        return inline((all ? "Расписание всех направлений" : "Расписание") + "\n\n"
+                + (pages.isEmpty() ? NO_SCHEDULE : pages.get(page)), buttons);
+    }
+
     private Response renderGroup(String operation, String id, State state) {
         var item = catalog.groups().stream().filter(group -> group.id().equals(id)).findFirst();
         if (item.isEmpty()) {
             return updated();
         }
         var group = item.get();
+        if (group.review() != null) {
+            return schedule("review", "0");
+        }
         var title = catalog.title(group);
         var back = new Button("К группе", "classes:group:" + id, "Группа: " + title);
         var intakeAllowed = !state.intakePaused() || state.stage() == Stage.ACTIVE;
@@ -145,7 +179,7 @@ final class ClassNavigation {
             return inline(title + "\n\nНабор в эту группу закрыт. Можно посмотреть другие направления или задать вопрос.",
                     List.of(back, DIRECTIONS, MENU));
         }
-        var intent = new Intent(signup ? title : null, null, null);
+        var intent = new Intent(signup ? title : null, signup ? null : title, null);
         var question = group.question().isBlank()
                 ? DEFAULT_QUESTION : group.question();
         return inline(title + "\n\n" + (signup ? question + "\n" : "Напишите свой вопрос. Мы ответим здесь.")

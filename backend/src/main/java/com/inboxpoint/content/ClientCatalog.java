@@ -124,6 +124,10 @@ public final class ClientCatalog {
         return label.strip().replaceAll("(?U)\\s+", " ").toLowerCase(Locale.ROOT);
     }
 
+    LegacySchedule.Classes migratedClasses() {
+        return LegacySchedule.migrate(directions, groups, schedule, legacySchedule);
+    }
+
     boolean hasLegacySchedule() {
         return !schedule.isEmpty() || !legacySchedule.isBlank();
     }

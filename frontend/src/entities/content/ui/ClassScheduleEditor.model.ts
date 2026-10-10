@@ -6,7 +6,7 @@ import {
   type ModelOptions,
   type ModelRef,
 } from '@frontend/shared/lib/component-props';
-import { ref } from '@frontend/shared/lib/model-state';
+import { computed, ref, nextTick } from '@frontend/shared/lib/model-state';
 import type { ContentDraft } from '@frontend/entities/content/model/types';
 
 export type ComponentProps = {
@@ -24,24 +24,44 @@ export function createComponentModel(
   ) => ModelRef<Value>,
 ) {
   const draft = $model<ContentDraft>('modelValue', { required: true });
-  const directionName = ref('');
-  const notice = ref('');
-  function add(): void {
-    const name = directionName.value.trim();
-    if (
-      !name ||
-      /[/:\r\n]/u.test(name) ||
-      draft.value.directions.some(
-        (item) =>
-          item.name.toLocaleLowerCase('ru') === name.toLocaleLowerCase('ru'),
-      )
-    ) {
-      notice.value = 'Введите новое название направления, без / и :.';
-      return;
-    }
-    draft.value.directions.push({ id: crypto.randomUUID(), name });
-    directionName.value = '';
-    notice.value = '';
+  const directionId = ref('');
+  const groupId = ref('');
+  const reviewing = ref(false);
+  const direction = computed(() =>
+    draft.value.directions.find((item) => item.id === directionId.value),
+  );
+  const group = computed(() =>
+    draft.value.groups.find((item) => item.id === groupId.value),
+  );
+  async function open(
+    targetType: 'direction' | 'group',
+    targetId: string,
+  ): Promise<void> {
+    groupId.value = targetType === 'group' ? targetId : '';
+    directionId.value =
+      targetType === 'direction'
+        ? targetId
+        : (draft.value.groups.find((item) => item.id === targetId)
+            ?.directionId ?? '');
+    await nextTick();
+    document.getElementById('class-directions')?.focus();
   }
-  return { draft, directionName, notice, add };
+  function back(): void {
+    if (group.value) {
+      groupId.value = '';
+    } else {
+      directionId.value = '';
+      reviewing.value = false;
+    }
+  }
+  return {
+    draft,
+    directionId,
+    groupId,
+    reviewing,
+    direction,
+    group,
+    open,
+    back,
+  };
 }

@@ -3,6 +3,7 @@ export interface ClassDirection {
   name: string;
 }
 export interface ClassGroup {
+  review?: { source: string } | undefined;
   id: string;
   directionId: string;
   name: string;
@@ -52,6 +53,7 @@ export function copyClassContent(content: ClassContent): {
       ? {
           groups: content.groups.map((item) => ({
             ...item,
+            ...(item.review ? { review: { ...item.review } } : {}),
             meetings: [...item.meetings],
           })),
         }
@@ -74,7 +76,12 @@ export function classContentIssue(
     name.length > 0 &&
     name.length <= 80 &&
     !/[\r\n/:]/u.test(name);
-  if (directions.length > 20 || groups.length > 60 || keywords.length > 40) {
+  if (
+    directions.length > 20 ||
+    groups.filter((group) => !group.review).length > 60 ||
+    groups.length > 81 ||
+    keywords.length > 40
+  ) {
     return 'Можно добавить до 20 направлений, 60 групп и 40 ключевых слов.';
   }
   if (
@@ -89,10 +96,15 @@ export function classContentIssue(
     groups.some(
       (group) =>
         !validId(group.id) ||
-        !validName(group.name) ||
-        !directions.some((item) => item.id === group.directionId) ||
+        (!group.review &&
+          (!validName(group.name) ||
+            !directions.some((item) => item.id === group.directionId))) ||
+        (group.review !== undefined &&
+          (!group.review.source ||
+            group.review.source.length > 6000 ||
+            group.enrollmentOpen)) ||
         typeof group.enrollmentOpen !== 'boolean' ||
-        group.meetings.length < 1 ||
+        (!group.review && group.meetings.length < 1) ||
         group.meetings.length > 7 ||
         group.meetings.some(
           (time) =>
@@ -108,10 +120,10 @@ export function classContentIssue(
     ) ||
     new Set(groups.map((item) => item.id)).size !== groups.length ||
     new Set(
-      groups.map(
-        (item) => `${item.directionId}:${normalizeKeyword(item.name)}`,
-      ),
-    ).size !== groups.length
+      groups
+        .filter((group) => !group.review)
+        .map((item) => `${item.directionId}:${normalizeKeyword(item.name)}`),
+    ).size !== groups.filter((group) => !group.review).length
   ) {
     return 'Для каждой группы выберите направление, укажите своё название и от 1 до 7 дней и времени занятий. Описание и вопрос — до 1000 символов.';
   }

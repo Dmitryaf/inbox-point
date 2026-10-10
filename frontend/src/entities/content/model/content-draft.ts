@@ -43,6 +43,7 @@ export function normalizeContentDraft(
       content.groups?.map((item) => ({
         ...item,
         meetings: [...item.meetings],
+        ...(item.review ? { review: { ...item.review } } : {}),
       })) ?? [],
     keywords: content.keywords?.map((item) => ({ ...item })) ?? [],
     address: content.address ?? '',
@@ -69,6 +70,7 @@ export function copyContentDraft(content: ContentDraft): ContentDraft {
     groups: content.groups.map((item) => ({
       ...item,
       meetings: [...item.meetings],
+      ...(item.review ? { review: { ...item.review } } : {}),
     })),
     keywords: content.keywords.map((item) => ({ ...item })),
     customSections: content.customSections.map((section) => ({ ...section })),

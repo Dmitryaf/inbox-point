@@ -66,32 +66,44 @@ final class TelegramStore implements AutoCloseable {
     }
 
     void beginQuestion(String channel, long conversation, Instant now, String application) throws SQLException {
-        update("""
-                INSERT INTO client_conversation_states(channel, external_conversation_id, state, updated_at, application_label)
-                VALUES (?, ?, 'awaiting_question', ?, ?)
-                ON CONFLICT(channel, external_conversation_id) DO UPDATE SET updated_at = excluded.updated_at,
-                    application_label = excluded.application_label
-                """, channel, Long.toString(conversation), now.toString(), application);
+        beginQuestion(channel, conversation, now, application, null);
     }
 
-    String pendingApplication(String channel, long conversation, Instant checked) throws SQLException {
+    void beginQuestion(String channel, long conversation, Instant now, String application, String question) throws SQLException {
+        update("""
+                INSERT INTO client_conversation_states(channel, external_conversation_id, state, updated_at, application_label, question_context)
+                VALUES (?, ?, 'awaiting_question', ?, ?, ?)
+                ON CONFLICT(channel, external_conversation_id) DO UPDATE SET updated_at = excluded.updated_at,
+                    application_label = excluded.application_label, question_context = excluded.question_context
+                """, channel, Long.toString(conversation), now.toString(), application, question);
+    }
+
+    ApplicationText pendingApplication(String channel, long conversation, Instant checked) throws SQLException {
         try (var query = prepare("""
-                SELECT application_label FROM client_conversation_states WHERE channel = ? AND external_conversation_id = ?
+                SELECT application_label, question_context FROM client_conversation_states WHERE channel = ? AND external_conversation_id = ?
                     AND julianday(updated_at) >= julianday(?)
                 """, channel, Long.toString(conversation), checked.minus(java.time.Duration.ofHours(2)).toString());
                 var rows = query.executeQuery()) {
-            return rows.next() ? rows.getString(1) : null;
+            if (!rows.next() || rows.getString(1) == null && rows.getString(2) == null) {
+                return null;
+            }
+            var application = rows.getString(1);
+            return new ApplicationText(application == null ? rows.getString(2) : application, "", application == null);
         }
     }
 
-    record ApplicationText(String label, String text) { }
+    record ApplicationText(String label, String text, boolean question) { }
 
     ApplicationText applicationForMessage(String request, String message) throws SQLException {
         try (var query = prepare("""
-                SELECT application_label, text FROM conversation_messages
-                WHERE request_id = ? AND direction = 'client_to_operator' AND external_message_id = ? AND application_label IS NOT NULL
+                SELECT application_label, text, question_context FROM conversation_messages
+                WHERE request_id = ? AND direction = 'client_to_operator' AND external_message_id = ? AND (application_label IS NOT NULL OR question_context IS NOT NULL)
                 """, request, message); var rows = query.executeQuery()) {
-            return rows.next() ? new ApplicationText(rows.getString(1), rows.getString(2)) : null;
+            if (!rows.next()) {
+                return null;
+            }
+            return rows.getString(1) == null ? new ApplicationText(rows.getString(3), rows.getString(2), true)
+                    : new ApplicationText(rows.getString(1), rows.getString(2), false);
         }
     }
 
@@ -100,9 +112,9 @@ final class TelegramStore implements AutoCloseable {
         try {
             if (update("""
                     INSERT OR IGNORE INTO conversation_messages (id, request_id, direction, external_message_id, sender_name,
-                        text, created_at, application_label)
-                    VALUES (?, ?, 'client_to_operator', ?, ?, ?, ?, ?)
-                    """, UUID.randomUUID().toString(), request.id(), message, sender, item.text(), now.toString(), item.label()) == 1) {
+                        text, created_at, application_label, question_context)
+                    VALUES (?, ?, 'client_to_operator', ?, ?, ?, ?, ?, ?)
+                    """, UUID.randomUUID().toString(), request.id(), message, sender, item.text(), now.toString(), item.question() ? null : item.label(), item.question() ? item.label() : null) == 1) {
                 clearQuestion(request.channel(), request.conversation());
             }
             connection.commit();

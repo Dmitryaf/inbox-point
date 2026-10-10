@@ -41,7 +41,7 @@ class VkBridgeTest {
         server.start();
         var database = directory.resolve("pause.sqlite");
         var information = new ClientInformation(database.toString());
-        information.save(JsonMapper.shared().createObjectNode().put("schedule", "Понедельник, 18:00"));
+        information.save(JsonMapper.shared().createObjectNode().put("prices", "Понедельник, 18:00"));
         try (var store = new TelegramStore(database);
                 var community = new VkChannel(URI.create("http://127.0.0.1:" + server.getAddress().getPort()),
                         "synthetic-vk-test-token")) {

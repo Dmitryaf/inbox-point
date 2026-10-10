@@ -39,7 +39,7 @@ export function buildClientResponsePreviews(
   const responses: ClientResponsePreview[] = [];
   const schedule = normalizeScheduleItems(content.schedule);
   if (isSectionVisible(content, 'schedule')) {
-    if (content.directions.length > 0) {
+    if (content.directions.length > 0 || content.groups.length > 0) {
       responses.push({
         group: 'information',
         label: 'Расписание',

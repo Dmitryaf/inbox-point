@@ -58,7 +58,7 @@ export function renderWorkspaceNavigationPart1(
             </option>
             {$renderList($unref(editorSections), (section) => (
               <option key={section.id} value={section.id} data-r-e6e22060="">
-                {section.id === 'faq' ? 'Вопросы' : section.label}
+                {section.label}
               </option>
             ))}
           </select>

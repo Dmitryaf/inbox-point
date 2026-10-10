@@ -1,3 +1,4 @@
+import { normalizeClassDraft } from '@frontend/entities/content/model/class-editor';
 import { reservedClientLabels } from '@core/application/client-information';
 import { classContentIssue } from '@core/application/class-content';
 import { findOversizedContentResponse } from '@frontend/entities/content/lib/content-response-limit';
@@ -22,7 +23,9 @@ export interface ContentValidationIssue {
 export function validateContentDraft(
   content: ContentDraft,
 ): ContentValidationResult {
-  const classIssue = classContentIssue(content, [...reservedLabels]);
+  const classIssue = classContentIssue(normalizeClassDraft(content), [
+    ...reservedLabels,
+  ]);
   if (classIssue) {
     return invalid(classIssue, 'class-directions', 'core');
   }

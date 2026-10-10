@@ -72,10 +72,10 @@ final class ContentClasses {
     }
 
     private static ObjectNode group(JsonNode group, Set<String> directions, Set<String> ids, Set<String> names) {
-        object(group, true, "id", "directionId", "name", "meetings", "description", "enrollmentOpen", "applicationQuestion");
+        object(group, true, "id", "directionId", "name", "review", "meetings", "description", "enrollmentOpen", "applicationQuestion");
         var id = identifier(group.path("id"), false);
         var direction = identifier(group.path("directionId"), true);
-        var review = false;
+        var review = group.has("review");
         var name = name(group.path("name"), review ? 0 : 1);
         var open = group.path("enrollmentOpen");
         require(ids.add(id) && open.isBoolean());

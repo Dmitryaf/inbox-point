@@ -78,7 +78,7 @@ final class ManageContentController {
         try {
             return ResponseEntity.ok(ClientInformation.editorSnapshot(information.save(input.path("content"), version)));
         } catch (ClientInformation.LegacyScheduleConflict conflict) {
-            return error(409, "Редактор расписания обновился. Обновите страницу перед изменением расписания.");
+            return error(409, "Расписание теперь редактируется в разделе «Занятия». Обновите страницу перед сохранением.");
         } catch (ClientInformation.VersionConflict conflict) {
             return error(409, "Информация уже изменилась в другой вкладке. Скопируйте свои правки и обновите страницу.");
         } catch (IllegalArgumentException invalid) {

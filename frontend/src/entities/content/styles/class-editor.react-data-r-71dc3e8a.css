@@ -1,4 +1,46 @@
 @import './collection-editor.css';
+.class-workspace h2[data-r-71dc3e8a] {
+  margin: 1rem 0;
+  overflow-wrap: anywhere;
+}
+.class-list-item[data-r-71dc3e8a] {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  margin: 0.7rem 0;
+  padding: 1rem;
+  text-align: left;
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+.class-list-item strong[data-r-71dc3e8a] {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.class-list-item small[data-r-71dc3e8a] {
+  flex-shrink: 0;
+}
+.class-review[data-r-71dc3e8a] {
+  padding: 1rem;
+  background: var(--color-surface-muted);
+}
+.class-review pre[data-r-71dc3e8a] {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+}
+.class-review select[data-r-71dc3e8a] {
+  width: 100%;
+}
+.review-notice[data-r-71dc3e8a] {
+  margin-bottom: 1rem;
+}
+.class-editor input[data-r-71dc3e8a],
+.class-editor textarea[data-r-71dc3e8a] {
+  max-width: 100%;
+}
 .class-editor[data-r-71dc3e8a] {
   margin: 1rem 0 2rem;
 }

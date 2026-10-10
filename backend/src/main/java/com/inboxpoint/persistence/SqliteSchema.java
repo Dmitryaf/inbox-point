@@ -17,7 +17,7 @@ public final class SqliteSchema {
             int previous;
             try (var version = statement.executeQuery("PRAGMA user_version")) {
                 previous = version.next() ? version.getInt(1) : 0;
-                if (previous > 13) {
+                if (previous > 14) {
                     throw new SQLException("Unsupported SQLite schema version");
                 }
             }
@@ -93,7 +93,9 @@ public final class SqliteSchema {
             }
             ensureColumn(connection, "client_conversation_states", "application_label", "TEXT");
             ensureColumn(connection, "conversation_messages", "application_label", "TEXT");
-            statement.execute("PRAGMA user_version = 13");
+            ensureColumn(connection, "client_conversation_states", "question_context", "TEXT");
+            ensureColumn(connection, "conversation_messages", "question_context", "TEXT");
+            statement.execute("PRAGMA user_version = 14");
         }
     }
 

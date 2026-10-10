@@ -35,7 +35,7 @@ export default function SaveBar($incomingProps: ComponentProps) {
       >
         <div data-r-80a75b00="">
           <span className="save-bar-label" data-r-80a75b00="">
-            {'Сохранение обновит ответы'}
+            {'Сохранятся изменения во всех разделах'}
           </span>
           <p
             role="status"

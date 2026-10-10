@@ -86,7 +86,7 @@ final class VkClientMenu {
         }
         try {
             if (response.intent() != null) {
-                store.beginQuestion("vk", peer, now, response.intent().applicationLabel());
+                store.beginQuestion("vk", peer, now, response.intent().applicationLabel(), response.intent().questionContext());
             }
             var keyboard = JsonMapper.shared().createObjectNode().put("inline", true);
             var rows = keyboard.putArray("buttons");
