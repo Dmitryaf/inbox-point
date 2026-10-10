@@ -4,6 +4,7 @@ import {
 } from '@core/application/client-information';
 import type { ContentDraft } from '@frontend/entities/content/model/types';
 import { renderClassAction } from '@core/application/class-navigation';
+import { formatClassSchedule } from '@core/application/class-schedule';
 
 export function previewClassInformation(
   content: ContentDraft,
@@ -13,10 +14,12 @@ export function previewClassInformation(
     getCustomSections: () => [],
     getInformationButtons: () => [],
     isStaleMenuAction: () => false,
-    resolve: () =>
-      content.prices.trim()
-        ? formatListResponse('Цены', content.prices)
-        : 'Цены пока не указаны.',
+    resolve: (label) =>
+      label === 'Расписание'
+        ? formatClassSchedule(content)
+        : content.prices.trim()
+          ? formatListResponse('Цены', content.prices)
+          : 'Цены пока не указаны.',
   };
 }
 export function previewClassSchedule(content: ContentDraft): string {

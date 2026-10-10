@@ -4,6 +4,7 @@ import type {
 } from '@/core/application/client-information.js';
 import type { ClientConversationState } from '@/core/model/client-conversation.js';
 import { clientMessages } from '@/core/application/client-messages.js';
+import { classSchedulePages } from './class-schedule.js';
 import {
   defaultApplicationQuestion,
   groupTitle,
@@ -104,6 +105,13 @@ export function resolveClassText(
   if (reviewPage) {
     return `classes:review:${Number(reviewPage[1]) - 1}`;
   }
+  if (normalized === 'расписание всех направлений') {
+    return 'classes:all:0';
+  }
+  const schedulePage = /^расписание всех направлений: (\d+)$/u.exec(normalized);
+  if (schedulePage) {
+    return `classes:all:${Number(schedulePage[1]) - 1}`;
+  }
   for (const direction of content.directions ?? []) {
     if (normalized === normalizeKeyword(`Направление: ${direction.name}`)) {
       return `classes:direction:${direction.id}:0`;
@@ -143,23 +151,33 @@ export function renderClassAction(
 ): ClassResponse {
   const content = information.getContent?.() ?? {};
   const [, operation, id, pageText] = action.split(':');
-  if (operation === 'review') {
-    const source = (content.groups ?? [])
-      .flatMap((group) => (group.review ? [group.review.source] : []))
-      .join('\n\n');
-    const page = safePage(id, source.length, 3000);
+  if (operation === 'review' || operation === 'all') {
+    const source =
+      operation === 'review'
+        ? (content.groups ?? [])
+            .flatMap((group) => (group.review ? [group.review.source] : []))
+            .join('\n\n')
+        : (information.resolve('Расписание') ?? '').replace(
+            /^Расписание\n\n/u,
+            '',
+          );
+    const pages = classSchedulePages(source);
+    const page = safePage(id, pages.length, 1);
     return {
       text:
-        'Расписание\n\n' +
-        (source.slice(page * 3000, (page + 1) * 3000) ||
-          'Расписание пока не указано.'),
+        (operation === 'all'
+          ? 'Расписание всех направлений\n\n'
+          : 'Расписание\n\n') + (pages[page] ?? 'Расписание пока не указано.'),
       buttons: [
         ...pageButtons(
           page,
-          source.length,
-          3000,
-          (next) => `classes:review:${next}`,
-          (next) => `Занятия: ${next + 1}`,
+          pages.length,
+          1,
+          (next) => `classes:${operation}:${next}`,
+          (next) =>
+            operation === 'all'
+              ? `Расписание всех направлений: ${next + 1}`
+              : `Занятия: ${next + 1}`,
         ),
         directionsButton(),
         menu(),
@@ -194,10 +212,11 @@ export function renderClassAction(
           (next) => `classes:directions:${next}`,
           (next) => `Направления: ${next + 1}`,
         ),
-        ...(content.groups?.some((group) => group.review)
-          ? [button('Расписание занятий', 'classes:review:0', 'Занятия: 1')]
+        ...(content.groups?.length
+          ? [button('Расписание всех направлений', 'classes:all:0')]
           : []),
-        ...(content.schedule?.length || content.legacySchedule
+        ...(!content.groups?.length &&
+        (content.schedule?.length || content.legacySchedule)
           ? [button('Другие занятия', 'classes:legacy', 'Занятия: общие')]
           : []),
         menu(),
@@ -228,7 +247,7 @@ export function renderClassAction(
       actionKey: `direction:${direction.id}`,
       actionLabel: `Направление: ${direction.name}`,
       text:
-        `${direction.name}\n\n${groups.map((group) => `${group.name}\n${group.meetings.join('\n')}\n${group.enrollmentOpen ? 'Набор открыт' : 'Набор закрыт'}`).join('\n\n') || 'Группы пока не добавлены.'}` +
+        `${direction.name}\n\n${groups.length ? 'Выберите группу.' : 'Группы пока не добавлены.'}` +
         (all.length > 2
           ? `\n\nСтраница ${page + 1} из ${Math.ceil(all.length / 2)}.`
           : ''),
@@ -332,11 +351,6 @@ export function renderClassAction(
             ),
           ]
         : []),
-      button(
-        'Расписание группы',
-        `classes:times:${id}`,
-        `Расписание: ${title}`,
-      ),
       button('Цены', `classes:prices:${id}`, `Цены: ${title}`),
       ...(!state.intakePaused || state.stage === 'active'
         ? [
