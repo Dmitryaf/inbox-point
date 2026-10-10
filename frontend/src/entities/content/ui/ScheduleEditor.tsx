@@ -40,8 +40,8 @@ export default function ScheduleEditor($incomingProps: ComponentProps) {
   const itemKey = $unref($state.itemKey);
   const itemLimit = $unref($state.itemLimit);
   const hasContent = $state.hasContent.value;
-  const draft = $state.draft.value;
   const legacyResponse = $state.legacyResponse.value;
+  const draft = $state.draft.value;
   const responseLength = $state.responseLength.value;
   const $attributes = inheritedAttributes($props);
   return (
@@ -54,8 +54,6 @@ export default function ScheduleEditor($incomingProps: ComponentProps) {
           'data-r-e7737cb0': '',
         },
         renderScheduleEditorPart1($state),
-        { modelValue: draft, onModelValueChange: $setter($state, 'draft') },
-        { modelValue: draft, onModelValueChange: $setter($state, 'draft') },
         draft.legacySchedule ? (
           <aside className="legacy-schedule" data-r-e7737cb0="">
             <strong data-r-e7737cb0="">
@@ -71,13 +69,6 @@ export default function ScheduleEditor($incomingProps: ComponentProps) {
             </pre>
           </aside>
         ) : null,
-        draft.schedule.length === 0 ? (
-          <p className="empty" data-r-e7737cb0="">
-            {
-              ' Старых карточек нет. Новые направления и группы добавляются выше. '
-            }
-          </p>
-        ) : null,
         $renderList(draft.schedule, (item, index) => (
           <ScheduleItemFields
             key={itemKey(item)}
@@ -88,6 +79,22 @@ export default function ScheduleEditor($incomingProps: ComponentProps) {
             data-r-e7737cb0=""
           />
         )),
+        { modelValue: draft, onModelValueChange: $setter($state, 'draft') },
+        draft.schedule.length ? (
+          <p data-r-e7737cb0="">
+            {
+              ' Прежние карточки выше сохранены без изменений. Их можно перенести в группы вручную. '
+            }
+          </p>
+        ) : null,
+        { modelValue: draft, onModelValueChange: $setter($state, 'draft') },
+        draft.schedule.length === 0 ? (
+          <p className="empty" data-r-e7737cb0="">
+            {
+              ' Старых карточек нет. Новые направления и группы добавляются выше. '
+            }
+          </p>
+        ) : null,
         draft.schedule.length,
         itemLimit,
         {
