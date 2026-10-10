@@ -15,10 +15,6 @@
 .workspace-view[data-r-09629bd3] {
   min-width: 0;
 }
-.workspace-live-preview[data-r-09629bd3] {
-  display: none;
-  min-width: 0;
-}
 @media (prefers-reduced-motion: no-preference) {
   .workspace-view[data-r-09629bd3] {
     animation: workspace-view-enter-data-r-09629bd3 160ms ease-out;
@@ -40,20 +36,5 @@
   }
   .workspace-main[data-r-09629bd3] {
     grid-row: 3;
-  }
-}
-@media (min-width: 1100px) {
-  .workspace-view--editing[data-r-09629bd3] {
-    align-items: start;
-    display: grid;
-    gap: 1.5rem;
-    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
-  }
-  .workspace-live-preview[data-r-09629bd3] {
-    display: block;
-    max-height: calc(100vh - 2rem);
-    overflow: auto;
-    position: sticky;
-    top: 1rem;
   }
 }

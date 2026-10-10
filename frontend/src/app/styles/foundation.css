@@ -55,6 +55,12 @@ button.danger {
   color: var(--color-danger);
 }
 
+button.danger:hover:not(:disabled) {
+  background: var(--color-danger-soft);
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
 button.quiet-danger {
   background: transparent;
   border-color: var(--color-danger-border);

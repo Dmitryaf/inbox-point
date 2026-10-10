@@ -5,6 +5,9 @@ import {
 } from '@frontend/shared/lib/component-model';
 import { classNames as $class } from '@frontend/shared/lib/component-view';
 
+import { unref as $unref } from '@frontend/shared/lib/model-state';
+import { setModelValue as $set } from '@frontend/shared/lib/component-bindings';
+
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
 import { renderContentPreviewPart1 } from './ContentPreview.part1';
@@ -24,6 +27,7 @@ export default function ContentPreview($incomingProps: ComponentProps) {
     componentDefaults,
     createComponentModel,
   );
+  const empty = $unref($state.empty);
   const $attributes = inheritedAttributes($props);
   return (
     <ModelScopeProvider scope={$scope}>
@@ -37,8 +41,23 @@ export default function ContentPreview($incomingProps: ComponentProps) {
           {'Предпросмотр ответов'}
         </h2>
         <p className="preview-intro" data-r-e038eaba="">
-          {'Здесь показаны содержание и порядок ответов'}
+          {
+            ' Нажимайте кнопки, чтобы пройти путь клиента. Здесь показаны текст и действия; оформление кнопок зависит от VK или Telegram. Сообщения не отправляются. '
+          }
         </p>
+        <button
+          type="button"
+          onClick={() => void $set($state, 'action', 'main')}
+          className="secondary-button"
+          data-r-e038eaba=""
+        >
+          {' Начать с меню '}
+        </button>
+        {empty ? (
+          <p className="empty" data-r-e038eaba="">
+            {' Заполните разделы — здесь появится будущий ответ. '}
+          </p>
+        ) : null}
         {renderContentPreviewPart1($state)}
       </section>
     </ModelScopeProvider>

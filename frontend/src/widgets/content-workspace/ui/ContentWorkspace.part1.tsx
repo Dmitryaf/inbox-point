@@ -1,4 +1,3 @@
-import { classNames as $class } from '@frontend/shared/lib/component-view';
 import {
   eventCallback as $callback,
   nativeHandler as $nativeHandler,
@@ -14,6 +13,7 @@ import SaveBar from '@frontend/features/save-content/ui/SaveBar';
 import ContentSummary from '@frontend/entities/content/ui/ContentSummary';
 
 import ContentEditor from '@frontend/widgets/content-editor/ui/ContentEditor';
+import ContentPreview from '@frontend/widgets/content-preview/ui/ContentPreview';
 
 import WorkspaceNavigation from './WorkspaceNavigation';
 
@@ -23,11 +23,12 @@ import type { createComponentModel } from './ContentWorkspace.model';
 export function renderContentWorkspacePart1(
   $state: ReturnType<typeof createComponentModel>,
 ) {
-  const { openSection, save } = $state;
+  const { openSection, preview, save } = $state;
   const workspace = $unref($state.workspace);
   const activeSection = $state.activeSection.value;
   const activeView = $state.activeView.value;
   const fieldErrors = $state.fieldErrors.value;
+  const previewAction = $state.previewAction.value;
   const validation = $state.validation.value;
 
   return (
@@ -63,15 +64,11 @@ export function renderContentWorkspacePart1(
               className="workspace-panel"
               data-r-09629bd3=""
             >
-              <div
-                className={$class('workspace-view', {
-                  'workspace-view--editing': activeView === 'edit',
-                })}
-                data-r-09629bd3=""
-              >
+              <div className="workspace-view" data-r-09629bd3="">
                 <ContentEditor
                   activeSection={activeSection}
                   errors={fieldErrors}
+                  onPreview={$callback(preview)}
                   modelValue={workspace.draft}
                   onModelValueChange={$propertySetter(
                     () => $unref($state.workspace),
@@ -83,6 +80,13 @@ export function renderContentWorkspacePart1(
                   )}
                   data-r-09629bd3=""
                 />
+                {activeView === 'preview' ? (
+                  <ContentPreview
+                    content={workspace.draft}
+                    startAction={previewAction}
+                    data-r-09629bd3=""
+                  />
+                ) : null}
                 {renderContentWorkspacePart2($state)}
               </div>
             </section>

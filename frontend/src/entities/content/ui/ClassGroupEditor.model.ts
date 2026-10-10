@@ -16,6 +16,7 @@ export type ComponentProps = {
 } & EventProps<{
   openTarget: [type: 'direction' | 'group', id: string];
   removed: [];
+  preview: [action: string];
 }> & {
     modelValue: ContentDraft;
     onModelValueChange?: (value: ContentDraft) => void;
@@ -36,6 +37,14 @@ export function createComponentModel(
   const group = computed(() =>
     draft.value.groups.find((item) => item.id === props.groupId),
   );
+  const schedule = computed({
+    get: () => group.value?.meetings.join('\n') ?? '',
+    set: (value: string) => {
+      if (group.value) {
+        group.value.meetings = value.split(/\r?\n/u);
+      }
+    },
+  });
   function remove(): void {
     if (
       !window.confirm(
@@ -47,5 +56,5 @@ export function createComponentModel(
     removeClassGroup(draft.value, props.groupId);
     emit('removed');
   }
-  return { draft, emit, group, remove };
+  return { draft, emit, group, schedule, remove };
 }

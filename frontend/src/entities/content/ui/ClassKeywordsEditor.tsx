@@ -42,9 +42,7 @@ export default function ClassKeywordsEditor($incomingProps: ComponentProps) {
           {$props.targetType === 'group'
             ? 'эту группу'
             : 'группы этого направления'}
-          {
-            '. Во время переписки с администратором слово остаётся обычным сообщением. '
-          }
+          {'. '}
         </p>
         {renderClassKeywordsEditorPart1($state, $props)}
         <button

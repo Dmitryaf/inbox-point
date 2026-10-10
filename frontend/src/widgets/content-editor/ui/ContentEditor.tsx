@@ -5,6 +5,7 @@ import {
 } from '@frontend/shared/lib/component-model';
 import { classNames as $class } from '@frontend/shared/lib/component-view';
 
+import { unref as $unref } from '@frontend/shared/lib/model-state';
 import {
   modelSetter as $setter,
   propertySetter as $propertySetter,
@@ -43,6 +44,7 @@ export default function ContentEditor($incomingProps: ComponentProps) {
         data-r-7c201b3b=""
       >
         <ClassScheduleEditor
+          onPreview={($event) => void $unref($state.emit)('preview', $event)}
           modelValue={draft}
           onModelValueChange={$setter($state, 'draft')}
           style={Object.assign(
