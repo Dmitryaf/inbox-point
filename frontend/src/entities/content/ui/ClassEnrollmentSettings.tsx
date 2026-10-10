@@ -4,8 +4,8 @@ import {
   ModelScopeProvider,
 } from '@frontend/shared/lib/component-model';
 import { classNames as $class } from '@frontend/shared/lib/component-view';
+import { nativeHandler as $nativeHandler } from '@frontend/shared/lib/component-events';
 
-import { checkboxProperty as $checkboxProperty } from '@frontend/shared/lib/component-inputs';
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
 import { renderClassEnrollmentSettingsPart1 } from './ClassEnrollmentSettings.part1';
@@ -27,7 +27,9 @@ export default function ClassEnrollmentSettings(
     componentDefaults,
     createComponentModel,
   );
+  const { changeEnrollment } = $state;
   const group = $state.group.value;
+  const notice = $state.notice.value;
   const $attributes = inheritedAttributes($props);
   return (
     <ModelScopeProvider scope={$scope}>
@@ -40,17 +42,18 @@ export default function ClassEnrollmentSettings(
         <h3 data-r-07c17d8d="">{'Запись в группу'}</h3>
         <label className="class-check" data-r-07c17d8d="">
           <input
-            type="checkbox"
-            disabled={Boolean(group.review)}
             checked={group.enrollmentOpen}
-            onChange={$checkboxProperty(
-              () => $state.group.value,
-              'enrollmentOpen',
-            )}
+            type="checkbox"
+            onChange={$nativeHandler(changeEnrollment)}
             data-r-07c17d8d=""
           />
           {' Открыть набор в группу '}
         </label>
+        {notice ? (
+          <p role="alert" data-r-07c17d8d="">
+            {notice}
+          </p>
+        ) : null}
         <p data-r-07c17d8d="">
           {
             ' Включите набор — в карточке этой группы бот покажет кнопку «Записаться на занятие». При закрытом наборе этой кнопки нет. '

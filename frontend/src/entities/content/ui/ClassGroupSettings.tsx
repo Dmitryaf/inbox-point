@@ -8,7 +8,6 @@ import { classNames as $class } from '@frontend/shared/lib/component-view';
 import { textProperty as $textProperty } from '@frontend/shared/lib/component-inputs';
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
-import { renderClassGroupSettingsPart1 } from './ClassGroupSettings.part1';
 import {
   createComponentModel,
   componentDefaults,
@@ -25,7 +24,6 @@ export default function ClassGroupSettings($incomingProps: ComponentProps) {
     componentDefaults,
     createComponentModel,
   );
-  const { $emit } = $state;
   const group = $state.group.value;
   const $attributes = inheritedAttributes($props);
   return (
@@ -47,20 +45,6 @@ export default function ClassGroupSettings($incomingProps: ComponentProps) {
           onChange={$textProperty(() => $state.group.value, 'description')}
           data-r-e1399ad4=""
         />
-        {!group.review ? (
-          <label htmlFor={'group-direction-' + group.id} data-r-e1399ad4="">
-            {'Направление'}
-          </label>
-        ) : null}
-        {renderClassGroupSettingsPart1($state, $props)}
-        <button
-          type="button"
-          onClick={() => void $emit('remove')}
-          className="danger"
-          data-r-e1399ad4=""
-        >
-          {' Удалить группу '}
-        </button>
       </details>
     </ModelScopeProvider>
   );

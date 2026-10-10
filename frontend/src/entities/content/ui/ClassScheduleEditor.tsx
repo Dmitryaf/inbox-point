@@ -57,10 +57,11 @@ export default function ClassScheduleEditor($incomingProps: ComponentProps) {
         ) : null}
         <h2 id="class-directions" tabIndex={-1} data-r-13661f32="">
           {group
-            ? (direction?.name ?? 'Нужно проверить') +
+            ? (direction?.name ?? 'Группа') +
               ' → ' +
               $or(group.name, () => 'Занятие')
-            : (direction?.name ?? (reviewing ? 'Нужно проверить' : 'Занятия'))}
+            : (direction?.name ??
+              (reviewing ? 'Старое расписание' : 'Занятия'))}
         </h2>
         {renderClassScheduleEditorPart1($state)}
       </section>

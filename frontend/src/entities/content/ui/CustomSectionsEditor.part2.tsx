@@ -80,7 +80,7 @@ export function renderCustomSectionsEditorPart2(
             maxLength={4000}
             placeholder={
               section.mode === 'application'
-                ? 'На какое занятие и в какой день хотите записаться?'
+                ? 'Как к вам обращаться и когда удобно позвонить?'
                 : undefined
             }
             required

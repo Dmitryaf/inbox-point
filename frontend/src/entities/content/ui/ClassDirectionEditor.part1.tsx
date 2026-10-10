@@ -56,7 +56,7 @@ export function renderClassDirectionEditorPart1(
               </strong>
               <small data-r-71dc3e8a="">
                 {group.review
-                  ? 'Нужно проверить'
+                  ? 'Заполните данные группы'
                   : group.enrollmentOpen
                     ? 'Набор открыт'
                     : 'Набор закрыт'}

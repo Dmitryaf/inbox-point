@@ -20,7 +20,7 @@ export function renderClassKeywordsEditorPart1(
   return (
     <>
       {$renderList(words, (word, index) => (
-        <div key={index} className="class-card" data-r-7964e07c="">
+        <div key={index} className="class-word" data-r-7964e07c="">
           <label
             htmlFor={'keyword-' + $props.targetId + '-' + index}
             data-r-7964e07c=""
