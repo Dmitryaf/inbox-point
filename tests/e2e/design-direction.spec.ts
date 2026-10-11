@@ -80,7 +80,10 @@ for (const width of [390, 1280]) {
     await expect(
       page.getByLabel('Дни и время занятий', { exact: true }),
     ).toHaveCSS('outline-width', '3px');
-    await page.getByText('Дополнительные настройки', { exact: true }).click();
+    await expect(page.getByLabel('Короткое описание группы')).toBeVisible();
+    await expect(
+      page.getByText('Дополнительные настройки', { exact: true }),
+    ).toHaveCount(0);
     await page
       .getByLabel('Короткое описание группы')
       .fill(

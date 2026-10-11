@@ -56,8 +56,9 @@ final class HandoffService {
         if (application == null) {
             var pending = store.pendingApplication(channel, chat, clock.instant());
             if (pending != null) {
-                var prefix = pending.question() ? "Вопрос о группе: " : "Заявка: ";
-                application = new TelegramStore.ApplicationText(pending.label(), prefix + pending.label() + "\n\n" + text, pending.question());
+                var prefix = pending.question() ? "Вопрос о группе: "
+                        : pending.classEnrollment() ? "Запись на занятие: " : "Заявка: ";
+                application = new TelegramStore.ApplicationText(pending.label(), prefix + pending.label() + "\n\n" + text, pending.question(), pending.classEnrollment());
             }
         }
         if (application != null) {

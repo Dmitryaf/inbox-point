@@ -66,16 +66,16 @@ final class TelegramStore implements AutoCloseable {
     }
 
     void beginQuestion(String channel, long conversation, Instant now, String application) throws SQLException {
-        beginQuestion(channel, conversation, now, application, null);
+        beginQuestion(channel, conversation, now, application, null, false);
     }
 
-    void beginQuestion(String channel, long conversation, Instant now, String application, String question) throws SQLException {
+    void beginQuestion(String channel, long conversation, Instant now, String application, String question, boolean classEnrollment) throws SQLException {
         update("""
-                INSERT INTO client_conversation_states(channel, external_conversation_id, state, updated_at, application_label, question_context)
-                VALUES (?, ?, 'awaiting_question', ?, ?, ?)
+                INSERT INTO client_conversation_states(channel, external_conversation_id, state, updated_at, application_label, question_context, class_enrollment)
+                VALUES (?, ?, 'awaiting_question', ?, ?, ?, ?)
                 ON CONFLICT(channel, external_conversation_id) DO UPDATE SET updated_at = excluded.updated_at,
-                    application_label = excluded.application_label, question_context = excluded.question_context
-                """, channel, Long.toString(conversation), now.toString(), application, question);
+                    application_label = excluded.application_label, question_context = excluded.question_context, class_enrollment = excluded.class_enrollment
+                """, channel, Long.toString(conversation), now.toString(), application, question, classEnrollment ? 1 : 0);
     }
 
     boolean awaitingQuestion(String channel, long conversation, Instant now) throws SQLException {
@@ -90,7 +90,7 @@ final class TelegramStore implements AutoCloseable {
 
     ApplicationText pendingApplication(String channel, long conversation, Instant checked) throws SQLException {
         try (var query = prepare("""
-                SELECT application_label, question_context FROM client_conversation_states WHERE channel = ? AND external_conversation_id = ?
+                SELECT application_label, question_context, class_enrollment FROM client_conversation_states WHERE channel = ? AND external_conversation_id = ?
                     AND julianday(updated_at) >= julianday(?)
                 """, channel, Long.toString(conversation), checked.minus(java.time.Duration.ofHours(2)).toString());
                 var rows = query.executeQuery()) {
@@ -98,11 +98,11 @@ final class TelegramStore implements AutoCloseable {
                 return null;
             }
             var application = rows.getString(1);
-            return new ApplicationText(application == null ? rows.getString(2) : application, "", application == null);
+            return new ApplicationText(application == null ? rows.getString(2) : application, "", application == null, rows.getInt(3) == 1);
         }
     }
 
-    record ApplicationText(String label, String text, boolean question) { }
+    record ApplicationText(String label, String text, boolean question, boolean classEnrollment) { }
 
     ApplicationText applicationForMessage(String request, String message) throws SQLException {
         try (var query = prepare("""
@@ -112,8 +112,8 @@ final class TelegramStore implements AutoCloseable {
             if (!rows.next()) {
                 return null;
             }
-            return rows.getString(1) == null ? new ApplicationText(rows.getString(3), rows.getString(2), true)
-                    : new ApplicationText(rows.getString(1), rows.getString(2), false);
+            return rows.getString(1) == null ? new ApplicationText(rows.getString(3), rows.getString(2), true, false)
+                    : new ApplicationText(rows.getString(1), rows.getString(2), false, false);
         }
     }
 

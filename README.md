@@ -60,7 +60,7 @@ service state below.
 
 ## Stack
 
-Java · Spring Boot · SQLite · React · TypeScript · Playwright
+Java 25 · Spring Boot · SQLite · React · TypeScript · Playwright
 
 ## Run locally
 

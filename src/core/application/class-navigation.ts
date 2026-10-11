@@ -24,6 +24,7 @@ export interface ClassResponse {
   actionKey?: string;
   actionLabel?: string;
   applicationLabel?: string;
+  classEnrollment?: true;
   questionContext?: string;
   beginQuestion?: true;
 }
@@ -311,7 +312,7 @@ export function renderClassAction(
       buttons: [menu()],
       beginQuestion: true,
       ...(operation === 'signup'
-        ? { applicationLabel: title }
+        ? { applicationLabel: title, classEnrollment: true }
         : { questionContext: title }),
       actionKey: `${operation === 'signup' ? 'signup' : 'group_question'}:${id}`,
       actionLabel: `${operation === 'signup' ? 'Начало записи' : 'Вопрос о группе'}: ${title}`,
