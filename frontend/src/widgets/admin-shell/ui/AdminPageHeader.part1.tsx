@@ -3,6 +3,7 @@ import { renderList as $renderList } from '@frontend/shared/lib/component-view';
 import { unref as $unref } from '@frontend/shared/lib/model-state';
 
 import ProductLogo from '@frontend/shared/ui/ProductLogo';
+
 import { RouterLink } from '@frontend/shared/lib/router';
 
 import { renderAdminPageHeaderPart2 } from './AdminPageHeader.part2';

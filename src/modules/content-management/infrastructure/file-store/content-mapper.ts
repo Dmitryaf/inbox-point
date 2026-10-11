@@ -34,6 +34,9 @@ export function validateContent(
 
 export function pickContent(value: ContentPayload): ClientInformationContent {
   return {
+    ...(value.organizationName
+      ? { organizationName: value.organizationName }
+      : {}),
     ...copyClassContent(value),
     ...(value.address ? { address: value.address } : {}),
     ...(value.customSections
@@ -70,6 +73,9 @@ export function toContentPayload(
 ): ContentPayload {
   const { legacySchedule, schedule } = value;
   return {
+    ...(value.organizationName
+      ? { organizationName: value.organizationName }
+      : {}),
     ...copyClassContent(value),
     ...(value.address ? { address: value.address } : {}),
     ...(value.customSections

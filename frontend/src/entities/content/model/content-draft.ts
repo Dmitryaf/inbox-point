@@ -8,6 +8,7 @@ import {
 
 export function createEmptyContent(): ContentDraft {
   return {
+    organizationName: '',
     directions: [],
     groups: [],
     keywords: [],
@@ -39,6 +40,7 @@ export function normalizeContentDraft(
     apiScheduleItems ??
     (Array.isArray(content.schedule) ? content.schedule : []);
   return {
+    organizationName: content.organizationName ?? '',
     directions: content.directions?.map((item) => ({ ...item })) ?? [],
     groups:
       content.groups?.map((item) => ({

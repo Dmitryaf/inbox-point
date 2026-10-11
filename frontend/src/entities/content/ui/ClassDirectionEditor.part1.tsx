@@ -4,14 +4,9 @@ import {
 } from '@frontend/shared/lib/component-view';
 import { nativeHandler as $nativeHandler } from '@frontend/shared/lib/component-events';
 import { unref as $unref } from '@frontend/shared/lib/model-state';
-import {
-  modelSetter as $setter,
-  logicalOr as $or,
-} from '@frontend/shared/lib/component-bindings';
+import { logicalOr as $or } from '@frontend/shared/lib/component-bindings';
 import { textProperty as $textProperty } from '@frontend/shared/lib/component-inputs';
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
-
-import ClassKeywordsEditor from './ClassKeywordsEditor';
 
 import type { WithDefaults } from '@frontend/shared/lib/component-model';
 import type {
@@ -73,16 +68,6 @@ export function renderClassDirectionEditorPart1(
           >
             {' Добавить группу '}
           </button>
-          <ClassKeywordsEditor
-            targetType="direction"
-            targetId={direction.id}
-            onOpenTarget={(type, id) =>
-              $unref($state.emit)('openTarget', type, id)
-            }
-            modelValue={draft}
-            onModelValueChange={$setter($state, 'draft')}
-            data-r-71dc3e8a=""
-          />
           <details className="class-card" data-r-71dc3e8a="">
             <summary data-r-71dc3e8a="">{'Настройки направления'}</summary>
             <label htmlFor={'direction-' + direction.id} data-r-71dc3e8a="">

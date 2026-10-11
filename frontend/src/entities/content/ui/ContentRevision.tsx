@@ -38,6 +38,12 @@ export default function ContentRevision($incomingProps: ComponentProps) {
         className={$class('revision-content', $attributes.className)}
         data-r-b485ff3e=""
       >
+        {content.organizationName ? (
+          <section data-r-b485ff3e="">
+            <h4 data-r-b485ff3e="">{'Название организации'}</h4>
+            <p data-r-b485ff3e="">{content.organizationName}</p>
+          </section>
+        ) : null}
         {renderContentRevisionPart1($state)}
         <section data-r-b485ff3e="">
           <h3 data-r-b485ff3e="">

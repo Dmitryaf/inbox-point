@@ -78,7 +78,7 @@ describe('ContentManagementPage states', () => {
 
     const correctionButton = wrapper
       .findAll('button')
-      .find((button) => button.text() === 'Исправить поля');
+      .find((button) => button.text() === 'Сохранить');
     expect(correctionButton).toBeDefined();
     await correctionButton?.trigger('click');
 

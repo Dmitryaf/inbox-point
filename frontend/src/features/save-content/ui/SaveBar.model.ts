@@ -23,6 +23,9 @@ export function createComponentModel(
 ) {
   const props = $props;
   const statusMessage = computed(() => {
+    if (props.saving) {
+      return 'Сохраняем изменения…';
+    }
     if (props.validationMessage) {
       return props.validationMessage;
     }

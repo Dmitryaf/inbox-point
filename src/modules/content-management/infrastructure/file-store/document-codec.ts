@@ -75,6 +75,9 @@ export function findChangedSections(
   next: ClientInformationContent,
 ): ContentSectionKey[] {
   const sections: ContentSectionKey[] = [];
+  if (previous.organizationName !== next.organizationName) {
+    sections.push('organization');
+  }
   if (
     JSON.stringify(previous.schedule ?? []) !==
       JSON.stringify(next.schedule ?? []) ||

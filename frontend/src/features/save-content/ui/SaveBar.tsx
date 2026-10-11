@@ -5,9 +5,10 @@ import {
 } from '@frontend/shared/lib/component-model';
 import { classNames as $class } from '@frontend/shared/lib/component-view';
 
+import { logicalOr as $or } from '@frontend/shared/lib/component-bindings';
+
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
-import { renderSaveBarPart1 } from './SaveBar.part1';
 import {
   createComponentModel,
   componentDefaults,
@@ -24,6 +25,7 @@ export default function SaveBar($incomingProps: ComponentProps) {
     componentDefaults,
     createComponentModel,
   );
+  const { $emit } = $state;
   const statusMessage = $state.statusMessage.value;
   const $attributes = inheritedAttributes($props);
   return (
@@ -45,7 +47,15 @@ export default function SaveBar($incomingProps: ComponentProps) {
             {statusMessage}
           </p>
         </div>
-        {renderSaveBarPart1($state, $props)}
+        <button
+          aria-busy={$props.saving}
+          disabled={$or($props.saving, () => !$props.dirty)}
+          type="button"
+          onClick={() => void $emit('save')}
+          data-r-80a75b00=""
+        >
+          {' Сохранить '}
+        </button>
       </div>
     </ModelScopeProvider>
   );

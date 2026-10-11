@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { classContentShape } from '@/modules/content-management/application/class-content-schema.js';
+import { organizationNameSchema } from '@/modules/content-management/application/organization-name.js';
 import {
   informationSectionIds,
   scheduleDayTimeLengthLimit,
@@ -40,6 +41,7 @@ const visibleSectionsSchema = z
   .refine((sections) => new Set(sections).size === sections.length);
 
 export const contentPayloadSchema = z.object({
+  organizationName: organizationNameSchema.min(1).optional(),
   ...classContentShape,
   address: z.string().min(1).max(4_000).optional(),
   customSections: z.array(customSectionSchema).max(6).optional(),
@@ -54,6 +56,7 @@ export const contentPayloadSchema = z.object({
   visibleSections: visibleSectionsSchema.optional(),
 });
 const contentSectionSchema = z.enum([
+  'organization',
   'schedule',
   'prices',
   'address',
@@ -63,7 +66,7 @@ const contentSectionSchema = z.enum([
 ]);
 const historyEntrySchema = z.object({
   changedAt: z.string().refine((value) => !Number.isNaN(Date.parse(value))),
-  sections: z.array(contentSectionSchema).min(1).max(6),
+  sections: z.array(contentSectionSchema).min(1).max(7),
 });
 const revisionSchema = historyEntrySchema.extend({
   content: contentPayloadSchema,

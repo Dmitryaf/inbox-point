@@ -10,6 +10,8 @@ import { useRoute, useRouter } from '@frontend/shared/lib/router';
 import { openAdminLogin } from '@frontend/features/admin-auth/lib/auth-navigation';
 import { provideAdminSession } from '@frontend/features/admin-auth/model/admin-session-context';
 import { useAdminSession } from '@frontend/features/admin-auth/model/use-admin-session';
+import { loadContent } from '@frontend/entities/content/api/content-api';
+import { setOrganizationName } from '@frontend/entities/content/model/organization-name';
 
 export type ComponentProps = ComponentAttributes;
 export const componentDefaults = {};
@@ -23,6 +25,17 @@ export function createComponentModel() {
   const title = computed(() => String(route.meta.pageTitle ?? 'Управление'));
   const intro = computed(() => String(route.meta.description ?? ''));
   provideAdminSession(session);
+  watch(
+    session.authenticated,
+    (authenticated) => {
+      if (authenticated && route.name !== 'manage') {
+        void loadContent().catch(() => setOrganizationName(undefined));
+      } else if (!authenticated) {
+        setOrganizationName(undefined);
+      }
+    },
+    { immediate: true },
+  );
   watch(
     [session.booting, session.authenticated],
     ([booting, authenticated]) => {

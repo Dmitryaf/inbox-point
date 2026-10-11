@@ -1,4 +1,5 @@
 const sectionNames: Record<string, string> = {
+  organization: 'название организации',
   address: 'адрес',
   customSections: 'дополнительные разделы',
   faq: 'частые вопросы',
