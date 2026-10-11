@@ -41,6 +41,9 @@ export function normalizeClassDraft(content: ClassContent): ClassContent {
       meetings: group.meetings.map((time) => time.trim()),
       description: group.description.trim(),
       applicationQuestion: group.applicationQuestion.trim(),
+      ...(group.confirmationText !== undefined
+        ? { confirmationText: group.confirmationText.trim() }
+        : {}),
     })),
     keywords: content.keywords?.map((word) => ({
       ...word,

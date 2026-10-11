@@ -1,6 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 
-export const sqliteSchemaVersion = 15;
+export const sqliteSchemaVersion = 16;
 
 export const requiredSqliteTables = [
   'client_conversation_states',
@@ -93,6 +93,36 @@ export function initializeSqliteSchema(database: DatabaseSync): void {
       15,
     );
     version = 15;
+  }
+  if (hasTables !== undefined && version === 15) {
+    database.exec('BEGIN IMMEDIATE');
+    try {
+      for (const [table, fields] of [
+        ['client_conversation_states', ['enrollment_confirmation_text']],
+        [
+          'conversation_messages',
+          [
+            'enrollment_confirmation_text',
+            'enrollment_notified_at',
+            'enrollment_notification_next_attempt_at',
+          ],
+        ],
+      ] as const) {
+        const columns = database
+          .prepare(`PRAGMA table_info(${table})`)
+          .all() as { name: string }[];
+        for (const field of fields) {
+          if (!columns.some((column) => column.name === field)) {
+            database.exec(`ALTER TABLE ${table} ADD COLUMN ${field} TEXT`);
+          }
+        }
+      }
+      database.exec('PRAGMA user_version = 16; COMMIT');
+    } catch (error: unknown) {
+      database.exec('ROLLBACK');
+      throw error;
+    }
+    version = 16;
   }
   if (hasTables !== undefined && version !== sqliteSchemaVersion) {
     throw new Error(
@@ -480,6 +510,7 @@ const clientConversationStateTableSql = `
     application_label TEXT,
     question_context TEXT,
     class_enrollment INTEGER NOT NULL DEFAULT 0 CHECK (class_enrollment IN (0, 1)),
+    enrollment_confirmation_text TEXT,
     PRIMARY KEY (channel, external_conversation_id)
   ) STRICT;
 
@@ -649,6 +680,9 @@ const initialSchemaSql = `
     application_label TEXT,
     question_context TEXT,
     text TEXT NOT NULL,
+    enrollment_confirmation_text TEXT,
+    enrollment_notified_at TEXT,
+    enrollment_notification_next_attempt_at TEXT,
     created_at TEXT NOT NULL,
     processing_state TEXT NOT NULL DEFAULT 'accepted' CHECK (
       processing_state IN ('accepted', 'held')

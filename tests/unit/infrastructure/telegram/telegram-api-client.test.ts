@@ -17,6 +17,71 @@ const requestPayloadSchema = z.object({
 });
 
 describe('TelegramApiClient', () => {
+  it('updates confirmation markup idempotently and does not treat other failures as success', async () => {
+    const fetchMock = vi
+      .fn<(input: string, init?: RequestInit) => Promise<Response>>()
+      .mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            ok: false,
+            error_code: 400,
+            description: 'Bad Request: message is not modified',
+          }),
+          { status: 400 },
+        ),
+      );
+    const client = new TelegramApiClient(syntheticToken, fetchMock);
+    const markup = {
+      inline_keyboard: [
+        [
+          {
+            text: 'Подтверждение отправлено',
+            callback_data: 'enroll:synthetic',
+          },
+        ],
+      ],
+    };
+    await expect(
+      client.editMessageReplyMarkup(-100, 12, markup),
+    ).resolves.toBeUndefined();
+    const editBody = fetchMock.mock.calls[0]![1]?.body;
+    if (typeof editBody !== 'string') {
+      throw new Error('Expected a JSON request');
+    }
+    expect(JSON.parse(editBody)).toEqual({
+      chat_id: -100,
+      message_id: 12,
+      reply_markup: markup,
+    });
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          ok: false,
+          error_code: 400,
+          description: 'Bad Request: message to edit not found',
+        }),
+        { status: 400 },
+      ),
+    );
+    await expect(
+      client.editMessageReplyMarkup(-100, 12, markup),
+    ).rejects.toThrow('request rejected');
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ ok: true, result: true })),
+    );
+    await client.answerCallbackQuery(
+      'synthetic-callback',
+      'Подтверждение отправляется клиенту.',
+    );
+    const callbackBody = fetchMock.mock.calls.at(-1)![1]?.body;
+    if (typeof callbackBody !== 'string') {
+      throw new Error('Expected a JSON request');
+    }
+    expect(JSON.parse(callbackBody)).toEqual({
+      callback_query_id: 'synthetic-callback',
+      text: 'Подтверждение отправляется клиенту.',
+    });
+  });
   it('recognizes errors for closed and deleted forum topics', () => {
     expect(
       isUnavailableForumTopicError(

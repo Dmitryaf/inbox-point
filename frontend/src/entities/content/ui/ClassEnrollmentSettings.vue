@@ -1,6 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import { defaultApplicationQuestion } from '@core/application/class-content';
+import { computed, ref } from 'vue';
+import {
+  defaultApplicationQuestion,
+  defaultEnrollmentConfirmation,
+} from '@core/application/class-content';
 import type {
   ClassDirection,
   ClassGroup,
@@ -12,6 +15,7 @@ const props = defineProps<{
   groups: ClassGroup[];
 }>();
 const notice = ref('');
+const confirmationId = computed(() => 'group-confirmation-' + group.value.id);
 function changeEnrollment(event: Event): void {
   const input = event.target as HTMLInputElement;
   notice.value = input.checked
@@ -55,7 +59,21 @@ function changeEnrollment(event: Event): void {
       />
       <p class="class-hint">
         После нажатия кнопки бот задаст этот вопрос. Ответ клиента придёт
-        администратору вместе с названием группы. Вы сможете подтвердить место.
+        администратору вместе с названием группы и кнопкой «Подтвердить запись».
+      </p>
+      <label :for="confirmationId">Ответ после подтверждения записи</label>
+      <textarea
+        :id="confirmationId"
+        v-model="group.confirmationText"
+        rows="3"
+        maxlength="1000"
+        :placeholder="defaultEnrollmentConfirmation"
+      />
+      <p class="class-hint">
+        Нажав «Подтвердить запись» в Telegram, администратор отправит клиенту
+        этот ответ. Если поле пустое, бот отправит: «{{
+          defaultEnrollmentConfirmation
+        }}».
       </p>
     </div>
   </section>

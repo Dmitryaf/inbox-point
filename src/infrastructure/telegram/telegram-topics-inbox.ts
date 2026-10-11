@@ -11,6 +11,7 @@ import {
   OperatorConversationUnavailableError,
 } from '@/core/contracts/operator-inbox.js';
 import type { DeliveryIncidentNotifier } from '@/core/contracts/delivery-incident-notifier.js';
+import type { EnrollmentConfirmationNotification } from '@/core/contracts/class-enrollment-store.js';
 import type { OperatorActionStore } from '@/core/contracts/support-repository.js';
 import {
   createOperatorLifecycleAction,
@@ -122,6 +123,28 @@ export class TelegramTopicsInbox
     });
   }
 
+  public async notifyEnrollmentConfirmed(
+    notification: EnrollmentConfirmationNotification,
+  ): Promise<void> {
+    if (!this.gateway.editMessageReplyMarkup) {
+      throw new Error('Enrollment notification is unavailable');
+    }
+    await this.gateway.editMessageReplyMarkup(
+      this.operatorChatId,
+      Number(notification.operatorMessageId),
+      {
+        inline_keyboard: [
+          [
+            {
+              text: 'Подтверждение отправлено',
+              callback_data: `enroll:${notification.enrollmentId}`,
+            },
+          ],
+        ],
+      },
+    );
+  }
+
   public async mirrorOperatorMessage(
     operatorTopicId: string,
     message: ChannelOperatorMessage,
@@ -225,6 +248,20 @@ export class TelegramTopicsInbox
                 chatId: this.operatorChatId,
                 messageThreadId: Number(operatorTopicId),
                 text,
+                ...(sequence === 0 && message.enrollmentId
+                  ? {
+                      replyMarkup: {
+                        inline_keyboard: [
+                          [
+                            {
+                              text: 'Подтвердить запись',
+                              callback_data: `enroll:${message.enrollmentId}`,
+                            },
+                          ],
+                        ],
+                      },
+                    }
+                  : {}),
               });
               return String(sent.messageId);
             },

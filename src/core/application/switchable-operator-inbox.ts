@@ -8,6 +8,7 @@ import {
   type RelayCustomerMessageOptions,
 } from '@/core/contracts/operator-inbox.js';
 import type { DeliveryIncidentNotifier } from '@/core/contracts/delivery-incident-notifier.js';
+import type { EnrollmentConfirmationNotification } from '@/core/contracts/class-enrollment-store.js';
 import type { FailedDelivery } from '@/core/model/support-request.js';
 import { isWebOperatorTopic } from '@/core/model/operator-topic.js';
 import type { SupportMessage } from '@/core/model/support-message.js';
@@ -57,6 +58,16 @@ export class SwitchableOperatorInbox
       return Promise.resolve();
     }
     return this.requireInbox().notifyDeliveryFailure(delivery);
+  }
+
+  public notifyEnrollmentConfirmed(
+    notification: EnrollmentConfirmationNotification,
+  ): Promise<void> {
+    const inbox = this.requireInbox();
+    if (!inbox.notifyEnrollmentConfirmed) {
+      throw new OperatorInboxUnavailableError();
+    }
+    return inbox.notifyEnrollmentConfirmed(notification);
   }
 
   public async mirrorOperatorMessage(

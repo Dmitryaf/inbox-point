@@ -113,7 +113,12 @@ export interface TelegramReplyKeyboard {
 }
 
 export interface TelegramGateway {
-  answerCallbackQuery?(id: string): Promise<void>;
+  answerCallbackQuery?(id: string, text?: string): Promise<void>;
+  editMessageReplyMarkup?(
+    chatId: number,
+    messageId: number,
+    replyMarkup: TelegramInlineKeyboard,
+  ): Promise<void>;
   closeForumTopic(chatId: number, messageThreadId: number): Promise<void>;
   createForumTopic(chatId: number, name: string): Promise<{ topicId: number }>;
   getUpdates(options: GetUpdatesOptions): Promise<readonly TelegramUpdate[]>;
@@ -134,11 +139,23 @@ export class TelegramApiClient implements TelegramGateway {
     this.fetchImplementation = fetchImplementation;
   }
 
-  public async answerCallbackQuery(id: string): Promise<void> {
+  public async answerCallbackQuery(id: string, text?: string): Promise<void> {
     await this.call(
       'answerCallbackQuery',
-      { callback_query_id: id },
+      { callback_query_id: id, ...(text ? { text } : {}) },
       z.literal(true),
+    );
+  }
+
+  public async editMessageReplyMarkup(
+    chatId: number,
+    messageId: number,
+    replyMarkup: TelegramInlineKeyboard,
+  ): Promise<void> {
+    await this.call(
+      'editMessageReplyMarkup',
+      { chat_id: chatId, message_id: messageId, reply_markup: replyMarkup },
+      z.union([telegramMessageSchema, z.literal(true)]),
     );
   }
 
@@ -344,6 +361,13 @@ export class TelegramApiClient implements TelegramGateway {
       );
     }
     if (!response.ok || !envelope.data.ok) {
+      if (
+        method === 'editMessageReplyMarkup' &&
+        envelope.data.error_code === 400 &&
+        /message is not modified/i.test(envelope.data.description ?? '')
+      ) {
+        return resultSchema.parse(true);
+      }
       const description = safeTelegramDescription(envelope.data.description);
       throw failure(
         envelope.data.error_code === 400 &&

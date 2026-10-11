@@ -18,6 +18,7 @@ export interface OperatorRequestSummary extends SupportRequest {
 }
 
 export interface ConversationMessage {
+  enrollmentConfirmationText?: string;
   applicationLabel?: string;
   questionContext?: string;
   createdAt: Date;

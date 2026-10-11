@@ -8,6 +8,7 @@ import type { DeliveryWorkerActivityReporter } from '@/core/contracts/delivery-w
 import type { OperatorInbox } from '@/core/contracts/operator-inbox.js';
 import type { OutboundDeliveryPolicy } from '@/core/contracts/outbound-delivery-policy.js';
 import type { SupportRepository } from '@/core/contracts/support-repository.js';
+import type { EnrollmentConfirmationStatus } from '@/core/contracts/class-enrollment-store.js';
 import type {
   ChannelOperatorMessage,
   OperatorMessage,
@@ -28,11 +29,13 @@ export class HandoffRuntime {
   private deliveryPromise: Promise<void> | undefined;
   private readonly handoffService: HandoffService;
   private readonly logger: HandoffRuntimeDependencies['logger'];
+  private readonly repository: SupportRepository;
   private readonly operatorInbox: SwitchableOperatorInbox;
   private recoveryPromise: Promise<void> | undefined;
 
   public constructor(dependencies: HandoffRuntimeDependencies) {
     this.logger = dependencies.logger;
+    this.repository = dependencies.repository;
     this.operatorInbox = new SwitchableOperatorInbox(
       new EmergencyOperatorInbox(),
       (error, operation, fallbackUsed) =>
@@ -87,6 +90,21 @@ export class HandoffRuntime {
     message: OperatorMessage,
   ): Promise<void> {
     return this.handoffService.handleOperatorMessage(externalEventId, message);
+  }
+
+  public handleEnrollmentConfirmation(
+    enrollmentId: string,
+    topicId: string,
+    messageId: string,
+  ): Promise<EnrollmentConfirmationStatus> {
+    return Promise.resolve(
+      this.repository.confirmClassEnrollment(
+        enrollmentId,
+        topicId,
+        messageId,
+        new Date(),
+      ),
+    );
   }
 
   public handleChannelOperatorMessage(
