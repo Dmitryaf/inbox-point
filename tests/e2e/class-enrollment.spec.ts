@@ -47,6 +47,9 @@ for (const width of [1440, 390]) {
       .fill('Пн 19:00, Чт 19:00');
     await page.getByLabel('Открыть набор в группу', { exact: true }).check();
     await page
+      .getByLabel('Ответ после подтверждения записи', { exact: true })
+      .fill('Запись подтверждена! Приходите за 10 минут.');
+    await page
       .getByRole('button', { name: 'Добавить ключевое слово', exact: true })
       .click();
     await page
@@ -68,6 +71,7 @@ for (const width of [1440, 390]) {
       expect.objectContaining({
         name: 'Начинающие',
         enrollmentOpen: true,
+        confirmationText: 'Запись подтверждена! Приходите за 10 минут.',
         meetings: ['Пн 19:00, Чт 19:00'],
       }),
     ]);
@@ -96,6 +100,9 @@ for (const width of [1440, 390]) {
     await expect(
       page.getByLabel('Слово или фраза 1', { exact: true }),
     ).toHaveValue('Тестовый танец');
+    await expect(
+      page.getByLabel('Ответ после подтверждения записи', { exact: true }),
+    ).toHaveValue('Запись подтверждена! Приходите за 10 минут.');
     await page
       .getByRole('button', { name: 'Посмотреть как клиент', exact: true })
       .click();

@@ -82,6 +82,14 @@ final class HandoffRuntime {
                 lastCycle = Instant.now();
                 var processed = worker.runOnce();
                 notifyFailures(store, routingInbox, Clock.systemUTC());
+                for (var notice : store.enrollmentNotices(Instant.now())) {
+                    try {
+                        routingInbox.enrollmentDelivered(notice);
+                        store.markEnrollment(notice.enrollment(), Instant.now(), true);
+                    } catch (IOException unavailable) {
+                        store.markEnrollment(notice.enrollment(), Instant.now().plusSeconds(30), false);
+                    }
+                }
                 Thread.sleep(Duration.ofMillis(processed > 0 ? 100 : 1000));
             }
         } catch (InterruptedException stopping) {

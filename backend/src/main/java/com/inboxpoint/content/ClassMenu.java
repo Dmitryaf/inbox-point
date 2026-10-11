@@ -12,7 +12,7 @@ public final class ClassMenu {
     public record State(Stage stage, boolean intakePaused, boolean awaitingQuestion) {
     }
 
-    public record Intent(String applicationLabel, String questionContext, boolean classEnrollment) {
+    public record Intent(String applicationLabel, String questionContext, String confirmation) {
     }
 
     public record Button(String label, String action, String command) {

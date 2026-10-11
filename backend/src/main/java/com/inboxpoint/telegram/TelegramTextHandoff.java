@@ -51,6 +51,24 @@ final class TelegramTextHandoff {
             var sender = callback.at("/from/id").asLong(0);
             var id = callback.path("id").asString("");
             var action = callback.path("data").asString("");
+            if (action.startsWith("enroll:") && !id.isBlank()) {
+                var enrollment = action.substring(7);
+                var message = callback.at("/message/message_id").asLong(0);
+                var topic = callback.at("/message/message_thread_id").asLong(0);
+                var status = "unavailable";
+                if (chat == operatorGroup && "supergroup".equals(callback.at("/message/chat/type").asString(""))
+                        && topic > 0 && message > 0 && sender > 0 && !callback.at("/from/is_bot").asBoolean(false)
+                        && enrollment.matches("[A-Za-z0-9_-]{1,36}")) {
+                    status = store.confirmEnrollment(enrollment, Long.toString(topic), Long.toString(message), clock.instant());
+                }
+                api.answerCallback(id, switch (status) {
+                    case "pending" -> "Подтверждение отправляется клиенту.";
+                    case "sent" -> "Подтверждение уже отправлено.";
+                    case "failed" -> "Не удалось отправить подтверждение. Проверьте ошибку доставки.";
+                    default -> "Эта запись больше недоступна для подтверждения.";
+                });
+                return;
+            }
             if (chat > 0 && chat == sender && !id.isBlank() && action.length() <= 64
                     && "private".equals(callback.at("/message/chat/type").asString(""))) {
                 queue.run("telegram", chat, () -> {

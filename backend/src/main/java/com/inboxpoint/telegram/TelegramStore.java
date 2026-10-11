@@ -66,16 +66,17 @@ final class TelegramStore implements AutoCloseable {
     }
 
     void beginQuestion(String channel, long conversation, Instant now, String application) throws SQLException {
-        beginQuestion(channel, conversation, now, application, null, false);
+        beginQuestion(channel, conversation, now, application, null, null);
     }
 
-    void beginQuestion(String channel, long conversation, Instant now, String application, String question, boolean classEnrollment) throws SQLException {
+    void beginQuestion(String channel, long conversation, Instant now, String application, String question, String confirmation) throws SQLException {
         update("""
-                INSERT INTO client_conversation_states(channel, external_conversation_id, state, updated_at, application_label, question_context, class_enrollment)
-                VALUES (?, ?, 'awaiting_question', ?, ?, ?, ?)
+                INSERT INTO client_conversation_states(channel, external_conversation_id, state, updated_at, application_label, question_context, class_enrollment, enrollment_confirmation_text)
+                VALUES (?, ?, 'awaiting_question', ?, ?, ?, ?, ?)
                 ON CONFLICT(channel, external_conversation_id) DO UPDATE SET updated_at = excluded.updated_at,
-                    application_label = excluded.application_label, question_context = excluded.question_context, class_enrollment = excluded.class_enrollment
-                """, channel, Long.toString(conversation), now.toString(), application, question, classEnrollment ? 1 : 0);
+                    application_label = excluded.application_label, question_context = excluded.question_context, class_enrollment = excluded.class_enrollment,
+                    enrollment_confirmation_text = excluded.enrollment_confirmation_text
+                """, channel, Long.toString(conversation), now.toString(), application, question, confirmation == null ? 0 : 1, confirmation);
     }
 
     boolean awaitingQuestion(String channel, long conversation, Instant now) throws SQLException {
@@ -90,7 +91,7 @@ final class TelegramStore implements AutoCloseable {
 
     ApplicationText pendingApplication(String channel, long conversation, Instant checked) throws SQLException {
         try (var query = prepare("""
-                SELECT application_label, question_context, class_enrollment FROM client_conversation_states WHERE channel = ? AND external_conversation_id = ?
+                SELECT application_label, question_context, class_enrollment, enrollment_confirmation_text FROM client_conversation_states WHERE channel = ? AND external_conversation_id = ?
                     AND julianday(updated_at) >= julianday(?)
                 """, channel, Long.toString(conversation), checked.minus(java.time.Duration.ofHours(2)).toString());
                 var rows = query.executeQuery()) {
@@ -98,22 +99,26 @@ final class TelegramStore implements AutoCloseable {
                 return null;
             }
             var application = rows.getString(1);
-            return new ApplicationText(application == null ? rows.getString(2) : application, "", application == null, rows.getInt(3) == 1);
+            return new ApplicationText(application == null ? rows.getString(2) : application, "", application == null, rows.getInt(3) == 1 ? enrollmentText(rows.getString(4)) : null);
         }
     }
 
-    record ApplicationText(String label, String text, boolean question, boolean classEnrollment) { }
+    record ApplicationText(String label, String text, boolean question, String confirmation) { }
+
+    private static String enrollmentText(String saved) {
+        return saved == null || saved.isBlank() ? "Ваша запись подтверждена. Ждём вас на занятии!" : saved;
+    }
 
     ApplicationText applicationForMessage(String request, String message) throws SQLException {
         try (var query = prepare("""
-                SELECT application_label, text, question_context FROM conversation_messages
+                SELECT application_label, text, question_context, enrollment_confirmation_text FROM conversation_messages
                 WHERE request_id = ? AND direction = 'client_to_operator' AND external_message_id = ? AND (application_label IS NOT NULL OR question_context IS NOT NULL)
                 """, request, message); var rows = query.executeQuery()) {
             if (!rows.next()) {
                 return null;
             }
-            return rows.getString(1) == null ? new ApplicationText(rows.getString(3), rows.getString(2), true, false)
-                    : new ApplicationText(rows.getString(1), rows.getString(2), false, false);
+            return rows.getString(1) == null ? new ApplicationText(rows.getString(3), rows.getString(2), true, null)
+                    : new ApplicationText(rows.getString(1), rows.getString(2), false, rows.getString(4));
         }
     }
 
@@ -122,9 +127,9 @@ final class TelegramStore implements AutoCloseable {
         try {
             if (update("""
                     INSERT OR IGNORE INTO conversation_messages (id, request_id, direction, external_message_id, sender_name,
-                        text, created_at, application_label, question_context)
-                    VALUES (?, ?, 'client_to_operator', ?, ?, ?, ?, ?, ?)
-                    """, UUID.randomUUID().toString(), request.id(), message, sender, item.text(), now.toString(), item.question() ? null : item.label(), item.question() ? item.label() : null) == 1) {
+                        text, created_at, application_label, question_context, enrollment_confirmation_text)
+                    VALUES (?, ?, 'client_to_operator', ?, ?, ?, ?, ?, ?, ?)
+                    """, UUID.randomUUID().toString(), request.id(), message, sender, item.text(), now.toString(), item.question() ? null : item.label(), item.question() ? item.label() : null, item.confirmation()) == 1) {
                 clearQuestion(request.channel(), request.conversation());
             }
             connection.commit();
@@ -134,6 +139,89 @@ final class TelegramStore implements AutoCloseable {
         } finally {
             connection.setAutoCommit(true);
         }
+    }
+
+    String enrollmentForMessage(String request, String message) throws SQLException {
+        try (var query = prepare("""
+                SELECT id FROM conversation_messages WHERE request_id = ? AND external_message_id = ?
+                    AND direction = 'client_to_operator' AND enrollment_confirmation_text IS NOT NULL
+                """, request, message); var rows = query.executeQuery()) {
+            return rows.next() ? rows.getString(1) : null;
+        }
+    }
+
+    String confirmEnrollment(String enrollment, String topic, String operatorMessage, Instant now) throws SQLException {
+        connection.setAutoCommit(false);
+        try {
+            var outcome = enqueueEnrollmentConfirmation(enrollment, topic, operatorMessage, now);
+            connection.commit();
+            return outcome;
+        } catch (SQLException | RuntimeException failure) {
+            connection.rollback();
+            throw failure;
+        } finally {
+            connection.setAutoCommit(true);
+        }
+    }
+
+    private String enqueueEnrollmentConfirmation(String enrollment, String topic, String operatorMessage, Instant now) throws SQLException {
+        String request;
+        String text;
+        try (var query = prepare("""
+                SELECT m.request_id, m.enrollment_confirmation_text FROM conversation_messages m
+                JOIN support_requests request ON request.id = m.request_id
+                WHERE m.id = ? AND m.direction = 'client_to_operator' AND m.enrollment_confirmation_text IS NOT NULL
+                    AND request.status = 'active' AND request.operator_topic_id = ?
+                    AND EXISTS (SELECT 1 FROM message_links link WHERE link.request_id = m.request_id
+                        AND link.direction = 'client_to_operator' AND link.client_message_id = m.external_message_id
+                        AND link.operator_message_id = ?)
+                """, enrollment, topic, operatorMessage); var rows = query.executeQuery()) {
+            if (!rows.next()) {
+                return "unavailable";
+            }
+            request = rows.getString(1);
+            text = rows.getString(2);
+        }
+        var key = "enrollment:" + enrollment;
+        try (var query = prepare("SELECT status FROM deliveries WHERE idempotency_key = ?", key); var rows = query.executeQuery()) {
+            if (rows.next()) {
+                return rows.getString(1);
+            }
+        }
+        var destination = byId(request);
+        recordMessage(request, "operator_to_client", operatorMessage, null, text, now);
+        usageEvent("first-reply:" + request, "first_reply", destination.channel(), request, now);
+        update("""
+                INSERT INTO deliveries (id, request_id, idempotency_key, operator_message_id, channel,
+                    external_conversation_id, text, status, created_at, next_attempt_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+                """, UUID.randomUUID().toString(), request, key, operatorMessage, destination.channel(),
+                Long.toString(destination.conversation()), text, now.toString(), now.toString());
+        return "pending";
+    }
+
+    record EnrollmentNotice(String enrollment, String topic, long message) { }
+
+    List<EnrollmentNotice> enrollmentNotices(Instant now) throws SQLException {
+        try (var query = prepare("""
+                SELECT m.id, r.operator_topic_id, d.operator_message_id FROM conversation_messages m
+                JOIN deliveries d ON d.idempotency_key = 'enrollment:' || m.id
+                JOIN support_requests r ON r.id = m.request_id
+                WHERE d.status = 'sent' AND m.enrollment_notified_at IS NULL AND r.operator_topic_id NOT LIKE 'web:%'
+                    AND (m.enrollment_notification_next_attempt_at IS NULL OR julianday(m.enrollment_notification_next_attempt_at) <= julianday(?))
+                ORDER BY d.created_at, d.id LIMIT 10
+                """, now.toString()); var rows = query.executeQuery()) {
+            var result = new ArrayList<EnrollmentNotice>();
+            while (rows.next()) {
+                result.add(new EnrollmentNotice(rows.getString(1), rows.getString(2), rows.getLong(3)));
+            }
+            return result;
+        }
+    }
+
+    void markEnrollment(String id, Instant at, boolean notified) throws SQLException {
+        update(notified ? "UPDATE conversation_messages SET enrollment_notified_at = ? WHERE id = ?"
+                : "UPDATE conversation_messages SET enrollment_notification_next_attempt_at = ? WHERE id = ?", at.toString(), id);
     }
 
     Request activeRequest(long conversation) throws SQLException {

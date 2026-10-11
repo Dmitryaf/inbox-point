@@ -27,6 +27,22 @@ final class SwitchableOperatorInbox implements OperatorInbox {
     }
 
     @Override
+    public Relay relayEnrollment(String request, String topic, String message, int part, boolean initial,
+            String text, String enrollment) throws TelegramBotApi.RequestFailed, InterruptedException {
+        return route(topic, target -> target.relayEnrollment(request, topic, message, part, initial, text, enrollment));
+    }
+
+    @Override
+    public void enrollmentDelivered(TelegramStore.EnrollmentNotice notice)
+            throws TelegramBotApi.RequestFailed, InterruptedException {
+        var target = primary.get();
+        if (target == null) {
+            throw new TelegramBotApi.RequestFailed("Operator Telegram topics are unavailable", false);
+        }
+        target.enrollmentDelivered(notice);
+    }
+
+    @Override
     public void mirror(String request, String topic, String message, int sequence, String text)
             throws TelegramBotApi.RequestFailed, InterruptedException {
         if (EmergencyOperatorInbox.isWebTopic(topic)) {

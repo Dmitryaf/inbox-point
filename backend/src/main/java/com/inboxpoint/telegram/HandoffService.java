@@ -57,8 +57,8 @@ final class HandoffService {
             var pending = store.pendingApplication(channel, chat, clock.instant());
             if (pending != null) {
                 var prefix = pending.question() ? "Вопрос о группе: "
-                        : pending.classEnrollment() ? "Запись на занятие: " : "Заявка: ";
-                application = new TelegramStore.ApplicationText(pending.label(), prefix + pending.label() + "\n\n" + text, pending.question(), pending.classEnrollment());
+                        : pending.confirmation() != null ? "Запись на занятие: " : "Заявка: ";
+                application = new TelegramStore.ApplicationText(pending.label(), prefix + pending.label() + "\n\n" + text, pending.question(), pending.confirmation());
             }
         }
         if (application != null) {
@@ -129,10 +129,13 @@ final class HandoffService {
             inbox.prepareRelay(request.id(), topic, message, index, initialRelay);
         }
         boolean uncertain = false;
+        var enrollment = store.enrollmentForMessage(request.id(), message);
         for (int index = 0; index < chunks.size(); index++) {
             OperatorInbox.Relay sent;
             try {
-                sent = inbox.relay(request.id(), topic, message, index, initialRelay, chunks.get(index));
+                sent = enrollment != null && index == 0
+                        ? inbox.relayEnrollment(request.id(), topic, message, index, initialRelay, chunks.get(index), enrollment)
+                        : inbox.relay(request.id(), topic, message, index, initialRelay, chunks.get(index));
             } catch (DurableTelegramInbox.UnknownOutcome unknown) {
                 uncertain = true;
                 continue;

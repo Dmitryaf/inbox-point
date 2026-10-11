@@ -174,7 +174,8 @@ final class ClassNavigation {
             return inline(title + "\n\nНабор в эту группу закрыт. Можно посмотреть другие направления или задать вопрос.",
                     List.of(back, DIRECTIONS, MENU));
         }
-        var intent = new Intent(signup ? title : null, signup ? null : title, signup);
+        var intent = new Intent(signup ? title : null, signup ? null : title,
+                !signup ? null : group.confirmation().isBlank() ? "Ваша запись подтверждена. Ждём вас на занятии!" : group.confirmation());
         var question = group.question().isBlank()
                 || "Как к вам обращаться и на какое занятие планируете прийти?".equals(group.question().strip())
                 ? DEFAULT_QUESTION : group.question();

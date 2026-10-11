@@ -75,7 +75,7 @@ final class ContentClasses {
     }
 
     private static ObjectNode group(JsonNode group, Set<String> directions, Set<String> ids, Set<String> names) {
-        object(group, true, "id", "directionId", "name", "review", "meetings", "description", "enrollmentOpen", "applicationQuestion");
+        object(group, true, "id", "directionId", "name", "review", "meetings", "description", "enrollmentOpen", "applicationQuestion", "confirmationText");
         var id = identifier(group.path("id"), false);
         var direction = identifier(group.path("directionId"), true);
         var review = group.has("review");

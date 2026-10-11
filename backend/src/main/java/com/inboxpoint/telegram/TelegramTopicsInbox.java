@@ -20,6 +20,25 @@ record TelegramTopicsInbox(TelegramBotApi api, long group) implements OperatorIn
     }
 
     @Override
+    public Relay relayEnrollment(String request, String topic, String message, int part, boolean initial,
+            String text, String enrollment) throws TelegramBotApi.RequestFailed, InterruptedException {
+        return new Relay(topic, Long.toString(api.sendMessage(group, Long.parseLong(topic), text,
+                enrollmentKeyboard(enrollment, "Подтвердить запись"))));
+    }
+
+    @Override
+    public void enrollmentDelivered(TelegramStore.EnrollmentNotice notice)
+            throws TelegramBotApi.RequestFailed, InterruptedException {
+        api.editMessageReplyMarkup(group, notice.message(), enrollmentKeyboard(notice.enrollment(), "Подтверждение отправлено"));
+    }
+
+    private static tools.jackson.databind.JsonNode enrollmentKeyboard(String enrollment, String title) {
+        var keyboard = tools.jackson.databind.json.JsonMapper.shared().createObjectNode();
+        keyboard.putArray("inline_keyboard").addArray().addObject().put("text", title).put("callback_data", "enroll:" + enrollment);
+        return keyboard;
+    }
+
+    @Override
     public void notifyFailure(TelegramRuntime.DeliveryIncident delivery)
             throws TelegramBotApi.RequestFailed, InterruptedException {
         var heading = delivery.outcomeUnknown() ? "⚠️ Не удалось подтвердить доставку ответа клиенту."

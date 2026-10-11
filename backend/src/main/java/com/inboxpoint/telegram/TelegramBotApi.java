@@ -154,6 +154,16 @@ final class TelegramBotApi {
         return sideEffectResultId("sendMessage", payload, "message_id");
     }
 
+    void editMessageReplyMarkup(long chatId, long messageId, JsonNode replyMarkup)
+            throws RequestFailed, InterruptedException {
+        var payload = JSON.createObjectNode().put("chat_id", chatId).put("message_id", messageId);
+        payload.set("reply_markup", replyMarkup);
+        var result = call("editMessageReplyMarkup", payload, requestTimeout, false);
+        if ((!result.isBoolean() || !result.booleanValue()) && !result.isObject()) {
+            throw invalidResponse("editMessageReplyMarkup", false);
+        }
+    }
+
     void closeTopic(long chatId, long threadId) throws RequestFailed, InterruptedException {
         try {
             changeTopic("closeForumTopic", chatId, threadId);
@@ -218,6 +228,9 @@ final class TelegramBotApi {
             var definitive = status < 500 && status != 408 && errorCode < 500 && errorCode != 408;
             var description = definitive && errorCode == 400
                     ? envelope.path("description").asString("").toLowerCase(java.util.Locale.ROOT) : "";
+            if ("editMessageReplyMarkup".equals(method) && description.contains("message is not modified")) {
+                return JSON.getNodeFactory().booleanNode(true);
+            }
             if ("editMessageReplyMarkup".equals(method) && description.contains("message is not modified")) {
                 return JSON.getNodeFactory().booleanNode(true);
             }

@@ -38,6 +38,20 @@ final class DurableTelegramInbox implements OperatorInbox {
         return new Relay(topic, perform(key, () -> delegate.relay(request, topic, message, sequence, initial, text).messageId()));
     }
 
+    @Override
+    public Relay relayEnrollment(String request, String topic, String message, int part, boolean initial,
+            String text, String enrollment) throws TelegramBotApi.RequestFailed, InterruptedException {
+        var key = relayKey(request, topic, message, part, initial);
+        return new Relay(topic, perform(key,
+                () -> delegate.relayEnrollment(request, topic, message, part, initial, text, enrollment).messageId()));
+    }
+
+    @Override
+    public void enrollmentDelivered(TelegramStore.EnrollmentNotice notice)
+            throws TelegramBotApi.RequestFailed, InterruptedException {
+        delegate.enrollmentDelivered(notice);
+    }
+
     static OperatorActions.Key relayKey(String request, String topic, String message, int sequence, boolean initial) {
         return new OperatorActions.Key("operator-relay:" + request + ":" + message + ":" + sequence,
                 request, "relay_message", topic, message, sequence, initial);

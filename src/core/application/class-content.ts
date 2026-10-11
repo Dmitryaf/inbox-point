@@ -11,6 +11,7 @@ export interface ClassGroup {
   description: string;
   enrollmentOpen: boolean;
   applicationQuestion: string;
+  confirmationText?: string | undefined;
 }
 export interface ClassKeyword {
   phrase: string;
@@ -42,6 +43,8 @@ export const classActionLabels = [
   'Назад',
 ];
 export const defaultApplicationQuestion = 'В какой день хотите прийти?';
+export const defaultEnrollmentConfirmation =
+  'Ваша запись подтверждена. Ждём вас на занятии!';
 export function normalizeApplicationQuestion(question: string): string {
   return question.trim() ===
     'Как к вам обращаться и на какое занятие планируете прийти?'
@@ -130,7 +133,10 @@ export function classContentIssue(
         group.description !== group.description.trim() ||
         group.description.length > 1000 ||
         group.applicationQuestion !== group.applicationQuestion.trim() ||
-        group.applicationQuestion.length > 1000,
+        group.applicationQuestion.length > 1000 ||
+        (group.confirmationText !== undefined &&
+          (group.confirmationText !== group.confirmationText.trim() ||
+            group.confirmationText.length > 1000)),
     ) ||
     new Set(groups.map((item) => item.id)).size !== groups.length ||
     new Set(
@@ -139,7 +145,7 @@ export function classContentIssue(
         .map((item) => `${item.directionId}:${normalizeKeyword(item.name)}`),
     ).size !== groups.filter((group) => !group.review).length
   ) {
-    return 'Для каждой группы выберите направление, укажите своё название и от 1 до 7 дней и времени занятий. Описание и вопрос — до 1000 символов.';
+    return 'Для каждой группы выберите направление, укажите своё название и от 1 до 7 дней и времени занятий. Описание, вопрос и ответ подтверждения — до 1000 символов.';
   }
   const forbidden = new Set(
     [

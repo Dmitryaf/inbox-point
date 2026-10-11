@@ -22,8 +22,12 @@ describe('one schedule field', () => {
     ]);
     await wrapper.get('.class-check input').setValue(true);
     await wrapper.get('#group-question-group').setValue('Когда хотите прийти?');
+    await wrapper
+      .get('#group-confirmation-group')
+      .setValue('Запись подтверждена!');
     await wrapper.get('.class-check input').setValue(false);
     expect(wrapper.get('#group-question-group').isVisible()).toBe(false);
     expect(draft.groups[0]!.applicationQuestion).toBe('Когда хотите прийти?');
+    expect(draft.groups[0]!.confirmationText).toBe('Запись подтверждена!');
   });
 });

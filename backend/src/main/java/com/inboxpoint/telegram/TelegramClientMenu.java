@@ -89,7 +89,7 @@ final class TelegramClientMenu {
         }
         try {
             if (response.intent() != null) {
-                store.beginQuestion("telegram", chat, now, response.intent().applicationLabel(), response.intent().questionContext(), response.intent().classEnrollment());
+                store.beginQuestion("telegram", chat, now, response.intent().applicationLabel(), response.intent().questionContext(), response.intent().confirmation());
             }
             var keyboard = JsonMapper.shared().createObjectNode();
             var rows = keyboard.putArray("inline_keyboard");
