@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { mergeClassInput } from '@/modules/content-management/application/class-content-schema.js';
-import { classContentShape } from '@/modules/content-management/application/class-content-schema.js';
+import { groupClassContentShape } from '@/modules/content-management/application/class-content-schema.js';
 import { classContentIssue } from '@/core/application/class-content.js';
 import {
   organizationNameSchema,
@@ -45,7 +45,7 @@ const scheduleItemSchema = z
 
 export const contentInputSchema = z
   .object({
-    ...classContentShape,
+    ...groupClassContentShape,
     organizationName: organizationNameSchema.optional(),
     address: z.string().max(4_000),
     customSections: z.array(customSectionInputSchema).max(6).default([]),

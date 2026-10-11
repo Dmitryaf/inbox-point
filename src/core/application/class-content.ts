@@ -24,6 +24,14 @@ export interface ClassContent {
   customSections?: readonly { label: string }[] | undefined;
 }
 
+export function groupKeywords(
+  content: ClassContent,
+): ClassKeyword[] | undefined {
+  return content.keywords
+    ?.filter((word) => word.targetType === 'group')
+    .map((word) => ({ ...word }));
+}
+
 export const classActionLabels = [
   'Записаться на занятие',
   'Расписание группы',

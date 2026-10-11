@@ -15,7 +15,6 @@ export function classContent(): ClientInformationContent {
     ],
     keywords: [
       { phrase: 'Тестовый танец', targetType: 'group', targetId: 'beginners' },
-      { phrase: 'Все группы', targetType: 'direction', targetId: 'dance' },
     ],
     prices: 'Пробное занятие — 500',
     address: 'Тестовый адрес',

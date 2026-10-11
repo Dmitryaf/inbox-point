@@ -58,10 +58,12 @@ for (const width of [390, 1440]) {
     await page.locator('.class-list-item').first().click();
     await expect(
       page.getByLabel('Сохранённое слово для всего направления'),
-    ).toHaveValue('Бачата');
-    await page
-      .getByRole('button', { name: 'Использовать «Бачата» для этой группы' })
-      .click();
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole('button', { name: /Использовать.*для этой группы/ }),
+    ).toHaveCount(0);
+    await page.getByRole('button', { name: 'Добавить ключевое слово' }).click();
+    await page.getByLabel('Слово или фраза 1').fill('Бачата');
     await page.getByLabel('Название организации').fill('Школа танцев «Пример»');
     await page.getByRole('button', { name: 'Сохранить', exact: true }).click();
     await expect(page.locator('.organization-name')).toHaveText(

@@ -17,21 +17,11 @@ const words = computed(() =>
       item.targetType === props.targetType && item.targetId === props.targetId,
   ),
 );
-const directionWords = computed(() => {
-  const group = draft.value.groups.find((item) => item.id === props.targetId);
-  return draft.value.keywords.filter(
-    (item) =>
-      item.targetType === 'direction' && item.targetId === group?.directionId,
-  );
-});
-function moveToGroup(word: ClassKeyword): void {
-  word.targetType = 'group';
-  word.targetId = props.targetId;
-}
 function conflict(word: ClassKeyword): ClassKeyword | undefined {
   return draft.value.keywords.find(
     (item) =>
       item !== word &&
+      item.targetType === 'group' &&
       normalizeKeyword(item.phrase) === normalizeKeyword(word.phrase) &&
       Boolean(word.phrase.trim()),
   );
@@ -51,32 +41,6 @@ function remove(word: ClassKeyword): void {
   <section class="class-card" aria-label="Переход из объявления">
     <h3>Переход из объявления</h3>
     <p>По этому слову в сообщениях бот покажет эту группу.</p>
-    <div
-      v-for="(word, index) in directionWords"
-      :key="index"
-      class="class-word"
-    >
-      <label :for="'direction-word-' + targetId + '-' + index">
-        Сохранённое слово для всего направления
-      </label>
-      <input
-        :id="'direction-word-' + targetId + '-' + index"
-        :value="word.phrase"
-        readonly
-      />
-      <div class="class-actions">
-        <button
-          type="button"
-          class="secondary-button"
-          @click="moveToGroup(word)"
-        >
-          Использовать «{{ word.phrase }}» для этой группы
-        </button>
-        <button type="button" class="danger" @click="remove(word)">
-          Удалить слово
-        </button>
-      </div>
-    </div>
     <div v-for="(word, index) in words" :key="index" class="class-word">
       <label :for="'keyword-' + targetId + '-' + index"
         >Слово или фраза {{ index + 1 }}</label
