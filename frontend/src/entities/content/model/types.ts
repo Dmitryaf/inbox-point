@@ -29,6 +29,7 @@ export const informationSectionIds = [
 export type InformationSectionId = (typeof informationSectionIds)[number];
 
 export interface ContentDraft {
+  organizationName?: string;
   directions: ClassDirection[];
   groups: ClassGroup[];
   keywords: ClassKeyword[];
@@ -45,6 +46,18 @@ export interface ContentChange {
   changedAt: string;
   revision?: number;
   sections: string[];
+}
+
+export interface ContentValidationResult {
+  issues: readonly ContentValidationIssue[];
+  message: string;
+  valid: boolean;
+}
+
+export interface ContentValidationIssue {
+  fieldId: string;
+  message: string;
+  section: 'core' | 'custom' | 'faq';
 }
 
 export interface ContentSnapshot {

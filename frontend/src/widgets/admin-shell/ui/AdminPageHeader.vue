@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import ProductLogo from '@frontend/shared/ui/ProductLogo.vue';
+import { organizationName } from '@frontend/entities/content/model/organization-name';
 
 export type AdminSection = 'answers' | 'channels' | 'analytics' | 'monitoring';
 
@@ -69,6 +70,9 @@ const sections: readonly {
       </div>
     </div>
     <div class="admin-page-heading">
+      <p v-if="organizationName" class="organization-name">
+        {{ organizationName }}
+      </p>
       <h1>{{ title }}</h1>
       <p v-if="intro" class="page-intro">{{ intro }}</p>
     </div>

@@ -2,6 +2,10 @@ import { z } from 'zod';
 import { mergeClassInput } from '@/modules/content-management/application/class-content-schema.js';
 import { classContentShape } from '@/modules/content-management/application/class-content-schema.js';
 import { classContentIssue } from '@/core/application/class-content.js';
+import {
+  organizationNameSchema,
+  normalizeOrganizationName,
+} from '@/modules/content-management/application/organization-name.js';
 
 import {
   type ClientInformationContent,
@@ -16,8 +20,8 @@ import {
   scheduleItemLimit,
   scheduleTitleLengthLimit,
 } from '@/core/application/client-information.js';
-import { formatScheduleCompatibilityText } from '@/core/application/schedule-response.js';
 import { customSectionInputSchema } from './custom-section-input.js';
+export { hasLegacyScheduleConflict } from './schedule-input.js';
 
 const visibleSectionsSchema = z
   .array(z.enum(informationSectionIds))
@@ -42,6 +46,7 @@ const scheduleItemSchema = z
 export const contentInputSchema = z
   .object({
     ...classContentShape,
+    organizationName: organizationNameSchema.optional(),
     address: z.string().max(4_000),
     customSections: z.array(customSectionInputSchema).max(6).default([]),
     faq: z
@@ -112,6 +117,10 @@ export function normalizeContentInput(
   }
 
   const normalized: ClientInformationContent = {
+    ...normalizeOrganizationName(
+      content.organizationName,
+      current.organizationName,
+    ),
     ...mergeClassInput(content, current),
     ...(address ? { address } : {}),
     ...(customSections.length > 0 ? { customSections } : {}),
@@ -133,15 +142,4 @@ export function normalizeContentInput(
   }
 
   return normalized;
-}
-
-export function hasLegacyScheduleConflict(
-  content: z.infer<typeof contentInputSchema>,
-  current: ClientInformationContent,
-): boolean {
-  return Boolean(
-    content.scheduleItems === undefined &&
-    current.schedule?.length &&
-    content.schedule !== formatScheduleCompatibilityText(current.schedule),
-  );
 }

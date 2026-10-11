@@ -5,7 +5,7 @@ import type { ClassKeyword } from '@core/application/class-content';
 import type { ContentDraft } from '@frontend/entities/content/model/types';
 const draft = defineModel<ContentDraft>({ required: true });
 const props = defineProps<{
-  targetType: 'direction' | 'group';
+  targetType: 'group';
   targetId: string;
 }>();
 const emit = defineEmits<{
@@ -17,6 +17,17 @@ const words = computed(() =>
       item.targetType === props.targetType && item.targetId === props.targetId,
   ),
 );
+const directionWords = computed(() => {
+  const group = draft.value.groups.find((item) => item.id === props.targetId);
+  return draft.value.keywords.filter(
+    (item) =>
+      item.targetType === 'direction' && item.targetId === group?.directionId,
+  );
+});
+function moveToGroup(word: ClassKeyword): void {
+  word.targetType = 'group';
+  word.targetId = props.targetId;
+}
 function conflict(word: ClassKeyword): ClassKeyword | undefined {
   return draft.value.keywords.find(
     (item) =>
@@ -39,10 +50,16 @@ function remove(word: ClassKeyword): void {
 <template>
   <section class="class-card" aria-label="Переход из объявления">
     <h3>Переход из объявления</h3>
-    <p>
-      По этому слову в сообщениях бот покажет
-      {{ targetType === 'group' ? 'эту группу' : 'группы этого направления' }}.
-    </p>
+    <p>По этому слову в сообщениях бот покажет эту группу.</p>
+    <div v-for="word in directionWords" :key="word.phrase" class="class-word">
+      <p>Слово «{{ word.phrase }}» пока открывает всё направление.</p>
+      <button type="button" class="secondary-button" @click="moveToGroup(word)">
+        Использовать «{{ word.phrase }}» для этой группы
+      </button>
+      <button type="button" class="danger" @click="remove(word)">
+        Удалить слово
+      </button>
+    </div>
     <div v-for="(word, index) in words" :key="index" class="class-word">
       <label :for="'keyword-' + targetId + '-' + index"
         >Слово или фраза {{ index + 1 }}</label

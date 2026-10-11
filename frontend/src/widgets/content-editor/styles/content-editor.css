@@ -1,4 +1,5 @@
-.editor {
+.editor,
+.information-editor {
   align-content: start;
   display: grid;
   gap: 1rem;

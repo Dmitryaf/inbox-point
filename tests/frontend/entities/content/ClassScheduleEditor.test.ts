@@ -115,19 +115,28 @@ describe('teacher class workspace', () => {
   });
   it('shows keyword conflicts with their destination and navigates there without discarding edits', async () => {
     const draft = populated();
+    draft.groups.push({
+      ...draft.groups[0]!,
+      id: 'other',
+      name: 'Продолжающие',
+    });
     draft.keywords.push(
-      { phrase: 'Тест', targetType: 'direction', targetId: 'dance' },
+      { phrase: 'Тест', targetType: 'group', targetId: 'other' },
       { phrase: 'ТЕСТ', targetType: 'group', targetId: 'group' },
     );
     const wrapper = mount(ClassScheduleEditor, {
       props: { modelValue: draft },
     });
     await wrapper.get('.class-list-item').trigger('click');
+    expect(wrapper.find('[aria-label="Переход из объявления"]').exists()).toBe(
+      false,
+    );
+    await wrapper.get('.class-list-item').trigger('click');
     expect(wrapper.get('[role=alert]').text()).toContain(
-      'Тестовый танец / Начинающие',
+      'Тестовый танец / Продолжающие',
     );
     await click(wrapper, 'Перейти к настройке');
-    expect(wrapper.find('#group-name-group').exists()).toBe(true);
+    expect(wrapper.find('#group-name-other').exists()).toBe(true);
     expect(validateContentDraft(draft).valid).toBe(false);
   });
 });

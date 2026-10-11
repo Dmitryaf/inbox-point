@@ -94,6 +94,13 @@ button.admin-session-actions__all:disabled {
   margin-bottom: 0;
 }
 
+.organization-name {
+  color: var(--color-text);
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+  overflow-wrap: anywhere;
+}
+
 .page-intro {
   color: var(--color-text-muted);
   font-size: var(--font-size-small);

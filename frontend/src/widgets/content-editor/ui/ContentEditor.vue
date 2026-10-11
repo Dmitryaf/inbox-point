@@ -4,6 +4,7 @@ import CoreSectionsFields from '@frontend/entities/content/ui/CoreSectionsFields
 import CustomSectionsEditor from '@frontend/entities/content/ui/CustomSectionsEditor.vue';
 import FaqEditor from '@frontend/entities/content/ui/FaqEditor.vue';
 import ClassScheduleEditor from '@frontend/entities/content/ui/ClassScheduleEditor.vue';
+import OrganizationNameField from '@frontend/entities/content/ui/OrganizationNameField.vue';
 import type { EditorSection } from '@frontend/widgets/content-workspace/model/navigation';
 
 const emit = defineEmits<{ preview: [action: string] }>();
@@ -16,12 +17,16 @@ defineProps<{
 
 <template>
   <div class="editor">
+    <OrganizationNameField
+      v-model="draft.organizationName"
+      :error="errors['organization-name']"
+    />
     <ClassScheduleEditor
       v-show="activeSection === 'core'"
       v-model="draft"
       @preview="emit('preview', $event)"
     />
-    <div v-show="activeSection === 'faq'">
+    <div v-show="activeSection === 'faq'" class="information-editor">
       <CoreSectionsFields v-model="draft" :errors="errors" />
       <FaqEditor v-model="draft" :errors="errors" />
     </div>

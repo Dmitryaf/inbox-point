@@ -17,6 +17,10 @@ function visibility(section: InformationSectionId): string {
 
 <template>
   <div class="revision-content">
+    <section v-if="content.organizationName">
+      <h4>Название организации</h4>
+      <p>{{ content.organizationName }}</p>
+    </section>
     <section>
       <h3>
         Расписание <small>{{ visibility('schedule') }}</small>

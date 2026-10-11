@@ -29,10 +29,6 @@ const { add, move, remove, itemKey } = useCollectionEditor({
       </div>
       <span>{{ sections.length }} / 6</span>
     </div>
-    <p class="class-hint">
-      Для записи в группу достаточно открыть набор в разделе «Занятия».
-      Дополнительная кнопка для этого не нужна.
-    </p>
     <p v-if="sections.length === 0" class="empty">
       Дополнительных разделов пока нет.
     </p>

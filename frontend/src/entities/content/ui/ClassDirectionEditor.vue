@@ -2,7 +2,6 @@
 import { computed, ref } from 'vue';
 import type { ContentDraft } from '@frontend/entities/content/model/types';
 import { addClassGroup } from '@frontend/entities/content/model/class-editor';
-import ClassKeywordsEditor from './ClassKeywordsEditor.vue';
 const draft = defineModel<ContentDraft>({ required: true });
 const props = defineProps<{ directionId: string }>();
 const emit = defineEmits<{
@@ -69,12 +68,6 @@ function remove(): void {
     >
       Добавить группу
     </button>
-    <ClassKeywordsEditor
-      v-model="draft"
-      target-type="direction"
-      :target-id="direction.id"
-      @open-target="(type, id) => emit('openTarget', type, id)"
-    />
     <details class="class-card">
       <summary>Настройки направления</summary>
       <label :for="'direction-' + direction.id">Название направления</label

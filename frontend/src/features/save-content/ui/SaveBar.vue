@@ -10,6 +10,9 @@ const props = defineProps<{
 defineEmits<{ save: [] }>();
 
 const statusMessage = computed(() => {
+  if (props.saving) {
+    return 'Сохраняем изменения…';
+  }
   if (props.validationMessage) {
     return props.validationMessage;
   }
@@ -28,10 +31,13 @@ const statusMessage = computed(() => {
         {{ statusMessage }}
       </p>
     </div>
-    <button :disabled="saving || !dirty" type="button" @click="$emit('save')">
-      {{
-        saving ? 'Сохраняем…' : !valid && dirty ? 'Исправить поля' : 'Сохранить'
-      }}
+    <button
+      :aria-busy="saving"
+      :disabled="saving || !dirty"
+      type="button"
+      @click="$emit('save')"
+    >
+      Сохранить
     </button>
   </div>
 </template>
