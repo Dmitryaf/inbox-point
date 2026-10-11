@@ -1,4 +1,9 @@
 import { mkdirSync } from 'node:fs';
+import { confirmClassEnrollment } from './sqlite-enrollment-confirmation.js';
+import type {
+  EnrollmentConfirmationStatus,
+  EnrollmentConfirmationNotification,
+} from '@/core/contracts/class-enrollment-store.js';
 import { dirname } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
@@ -880,6 +885,7 @@ export class SqliteSupportRepository implements SupportRepository {
              message.sender_name,
              message.application_label,
              message.question_context,
+             message.enrollment_confirmation_text,
              message.text,
              message.created_at,
              delivery.status AS delivery_status,
@@ -898,6 +904,9 @@ export class SqliteSupportRepository implements SupportRepository {
       .all(requestId, limit ?? -1) as unknown as ConversationMessageRow[];
 
     return rows.map((row) => ({
+      ...(row.enrollment_confirmation_text
+        ? { enrollmentConfirmationText: row.enrollment_confirmation_text }
+        : {}),
       ...(row.question_context
         ? { questionContext: row.question_context }
         : {}),
@@ -969,6 +978,84 @@ export class SqliteSupportRepository implements SupportRepository {
       .get(requestId, externalMessageId) as
       { label: string; text: string } | undefined;
     return row;
+  }
+
+  public findAwaitingEnrollmentConfirmation(
+    channel: ClientChannelKind,
+    conversationId: string,
+    checkedAt: Date,
+  ): string | undefined {
+    if (!this.isAwaitingClientQuestion(channel, conversationId, checkedAt)) {
+      return undefined;
+    }
+    const row = this.database
+      .prepare(
+        `SELECT enrollment_confirmation_text AS text
+      FROM client_conversation_states WHERE channel = ? AND external_conversation_id = ? AND class_enrollment = 1`,
+      )
+      .get(channel, conversationId) as { text: string | null } | undefined;
+    return row?.text ?? undefined;
+  }
+
+  public findClassEnrollment(
+    requestId: string,
+    externalMessageId: string,
+  ): { id: string; text: string } | undefined {
+    return this.database
+      .prepare(
+        `SELECT id, enrollment_confirmation_text AS text
+      FROM conversation_messages WHERE request_id = ? AND external_message_id = ?
+        AND direction = 'client_to_operator' AND enrollment_confirmation_text IS NOT NULL`,
+      )
+      .get(requestId, externalMessageId) as
+      { id: string; text: string } | undefined;
+  }
+
+  public confirmClassEnrollment(
+    enrollmentId: string,
+    operatorTopicId: string,
+    operatorMessageId: string,
+    confirmedAt: Date,
+  ): EnrollmentConfirmationStatus {
+    return confirmClassEnrollment(
+      this.database,
+      this,
+      enrollmentId,
+      operatorTopicId,
+      operatorMessageId,
+      confirmedAt,
+    );
+  }
+
+  public findEnrollmentNotifications(
+    availableBefore: Date,
+  ): readonly EnrollmentConfirmationNotification[] {
+    return this.database
+      .prepare(
+        `SELECT message.id AS enrollmentId, delivery.operator_message_id AS operatorMessageId
+      FROM conversation_messages AS message JOIN deliveries AS delivery ON delivery.idempotency_key = 'enrollment:' || message.id
+      WHERE delivery.status = 'sent' AND message.enrollment_notified_at IS NULL
+        AND COALESCE(message.enrollment_notification_next_attempt_at, message.created_at) <= ? LIMIT 25`,
+      )
+      .all(
+        availableBefore.toISOString(),
+      ) as unknown as EnrollmentConfirmationNotification[];
+  }
+
+  public markEnrollmentNotification(
+    enrollmentId: string,
+    notifiedAt: Date,
+    sent: boolean,
+  ): void {
+    this.database
+      .prepare(
+        `UPDATE conversation_messages SET enrollment_notified_at = ?, enrollment_notification_next_attempt_at = ? WHERE id = ?`,
+      )
+      .run(
+        sent ? notifiedAt.toISOString() : null,
+        sent ? null : new Date(notifiedAt.getTime() + 30_000).toISOString(),
+        enrollmentId,
+      );
   }
 
   public findUnnotifiedFailedDeliveries(
@@ -1841,9 +1928,10 @@ export class SqliteSupportRepository implements SupportRepository {
           sender_name,
           application_label,
           question_context,
+          enrollment_confirmation_text,
           text,
           created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         message.id,
@@ -1853,6 +1941,7 @@ export class SqliteSupportRepository implements SupportRepository {
         message.senderName ?? null,
         message.applicationLabel ?? null,
         message.questionContext ?? null,
+        message.enrollmentConfirmationText ?? null,
         message.text,
         message.createdAt.toISOString(),
       );
@@ -1884,6 +1973,7 @@ export class SqliteSupportRepository implements SupportRepository {
     applicationLabel?: string,
     questionContext?: string,
     classEnrollment = false,
+    enrollmentConfirmationText?: string,
   ): void {
     this.database
       .prepare(
@@ -1892,14 +1982,15 @@ export class SqliteSupportRepository implements SupportRepository {
           external_conversation_id,
           state,
           updated_at,
-          application_label, question_context, class_enrollment
-        ) VALUES (?, ?, 'awaiting_question', ?, ?, ?, ?)
+          application_label, question_context, class_enrollment, enrollment_confirmation_text
+        ) VALUES (?, ?, 'awaiting_question', ?, ?, ?, ?, ?)
         ON CONFLICT (channel, external_conversation_id) DO UPDATE SET
           state = excluded.state,
           updated_at = excluded.updated_at,
           application_label = excluded.application_label,
           question_context = excluded.question_context,
-          class_enrollment = excluded.class_enrollment`,
+          class_enrollment = excluded.class_enrollment,
+          enrollment_confirmation_text = excluded.enrollment_confirmation_text`,
       )
       .run(
         channel,
@@ -1908,6 +1999,7 @@ export class SqliteSupportRepository implements SupportRepository {
         applicationLabel ?? null,
         questionContext ?? null,
         classEnrollment ? 1 : 0,
+        classEnrollment ? (enrollmentConfirmationText ?? null) : null,
       );
   }
 

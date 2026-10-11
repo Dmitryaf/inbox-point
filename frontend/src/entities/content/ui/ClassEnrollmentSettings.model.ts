@@ -6,7 +6,7 @@ import {
   type ModelOptions,
   type ModelRef,
 } from '@frontend/shared/lib/component-props';
-import { ref } from '@frontend/shared/lib/model-state';
+import { computed, ref } from '@frontend/shared/lib/model-state';
 
 import type {
   ClassDirection,
@@ -34,6 +34,7 @@ export function createComponentModel(
   const group = $model<ClassGroup>('modelValue', { required: true });
   const props = $props;
   const notice = ref('');
+  const confirmationId = computed(() => 'group-confirmation-' + group.value.id);
   function changeEnrollment(event: Event): void {
     const input = event.target as HTMLInputElement;
     notice.value = input.checked
@@ -47,5 +48,5 @@ export function createComponentModel(
     }
     input.checked = group.value.enrollmentOpen;
   }
-  return { group, notice, changeEnrollment };
+  return { group, notice, confirmationId, changeEnrollment };
 }

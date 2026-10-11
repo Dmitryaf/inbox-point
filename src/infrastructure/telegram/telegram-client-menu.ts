@@ -175,6 +175,7 @@ export class TelegramClientMenu implements TelegramClientMenuHandler {
           response.applicationLabel,
           response.questionContext,
           response.classEnrollment,
+          response.enrollmentConfirmationText,
         );
       }
       if (response.actionKey && response.actionLabel) {

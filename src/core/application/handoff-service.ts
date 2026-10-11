@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { defaultEnrollmentConfirmation } from './class-content.js';
 
 import { KeyedTaskQueue } from '@/core/application/keyed-task-queue.js';
 import { enqueueHandoffAcknowledgement } from '@/core/application/handoff-acknowledgement.js';
@@ -334,6 +335,9 @@ export class HandoffService {
       ...(message.applicationLabel
         ? { applicationLabel: message.applicationLabel }
         : {}),
+      ...(message.enrollmentConfirmationText
+        ? { enrollmentConfirmationText: message.enrollmentConfirmationText }
+        : {}),
       createdAt: message.receivedAt,
       direction: 'client_to_operator',
       externalMessageId: message.externalMessageId,
@@ -354,9 +358,16 @@ export class HandoffService {
         message.conversationId,
       );
     }
+    const enrollment = this.repository.findClassEnrollment(
+      request.id,
+      message.externalMessageId,
+    );
     const relayed = await this.operatorInbox.relayCustomerMessage(
       request.operatorTopicId,
-      message,
+      {
+        ...message,
+        ...(enrollment ? { enrollmentId: enrollment.id } : {}),
+      },
       { initial, requestId: request.id },
     );
     if (relayed.operatorTopicId !== request.operatorTopicId) {
@@ -436,7 +447,16 @@ export class HandoffService {
         )
       : undefined;
     if (stored) {
-      return { ...message, applicationLabel: stored.label, text: stored.text };
+      const enrollment = this.repository.findClassEnrollment(
+        request!.id,
+        message.externalMessageId,
+      );
+      return {
+        ...message,
+        applicationLabel: stored.label,
+        text: stored.text,
+        ...(enrollment ? { enrollmentConfirmationText: enrollment.text } : {}),
+      };
     }
     const storedQuestion = request
       ? this.repository.findClientQuestionContext(
@@ -468,17 +488,26 @@ export class HandoffService {
       message.conversationId,
       this.clock(),
     );
-    const heading = this.repository.isAwaitingClassEnrollment(
+    const isEnrollment = this.repository.isAwaitingClassEnrollment(
       message.channel,
       message.conversationId,
       this.clock(),
-    )
-      ? 'Запись на занятие'
-      : 'Заявка';
+    );
+    const heading = isEnrollment ? 'Запись на занятие' : 'Заявка';
     return label
       ? {
           ...message,
           applicationLabel: label,
+          ...(isEnrollment
+            ? {
+                enrollmentConfirmationText:
+                  this.repository.findAwaitingEnrollmentConfirmation(
+                    message.channel,
+                    message.conversationId,
+                    this.clock(),
+                  ) ?? defaultEnrollmentConfirmation,
+              }
+            : {}),
           text: `${heading}: ${label}\n\n${message.text}`,
         }
       : message;
@@ -516,6 +545,9 @@ export class HandoffService {
         : {}),
       ...(message.applicationLabel
         ? { applicationLabel: message.applicationLabel }
+        : {}),
+      ...(message.enrollmentConfirmationText
+        ? { enrollmentConfirmationText: message.enrollmentConfirmationText }
         : {}),
       createdAt: message.receivedAt,
       direction: 'client_to_operator',
@@ -1159,6 +1191,12 @@ function createRecoveredSupportMessage(
       : {}),
     ...(message.applicationLabel
       ? { applicationLabel: message.applicationLabel }
+      : {}),
+    ...(message.enrollmentConfirmationText
+      ? {
+          enrollmentConfirmationText: message.enrollmentConfirmationText,
+          enrollmentId: message.id,
+        }
       : {}),
     externalMessageId: message.externalMessageId,
     receivedAt: message.createdAt,

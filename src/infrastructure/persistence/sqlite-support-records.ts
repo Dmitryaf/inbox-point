@@ -28,6 +28,7 @@ export interface OperatorRequestSummaryRow extends SupportRequestRow {
 }
 
 export interface ConversationMessageRow {
+  enrollment_confirmation_text: string | null;
   application_label: string | null;
   question_context: string | null;
   created_at: string;

@@ -42,7 +42,7 @@ afterEach(() => {
 });
 
 describe('ServiceSnapshotService', () => {
-  it.each([12, 14])(
+  it.each([12, 14, 15])(
     'restores a v%i snapshot with pending intent through the application migration',
     async (version) => {
       const directory = createTemporaryDirectory();
@@ -53,7 +53,7 @@ describe('ServiceSnapshotService', () => {
         'vk',
         '101',
         now,
-        version === 14 ? 'Заказать звонок' : undefined,
+        version >= 14 ? 'Заказать звонок' : undefined,
       );
       const snapshot = await new ServiceSnapshotService(
         sourcePath,
@@ -62,7 +62,11 @@ describe('ServiceSnapshotService', () => {
       const databasePath = join(snapshot.path, 'database.sqlite');
       const legacy = new DatabaseSync(databasePath);
       legacy.exec(
-        `ALTER TABLE client_conversation_states DROP COLUMN class_enrollment;
+        `ALTER TABLE client_conversation_states DROP COLUMN enrollment_confirmation_text;
+       ALTER TABLE conversation_messages DROP COLUMN enrollment_confirmation_text;
+       ALTER TABLE conversation_messages DROP COLUMN enrollment_notified_at;
+       ALTER TABLE conversation_messages DROP COLUMN enrollment_notification_next_attempt_at;
+       ${version < 15 ? 'ALTER TABLE client_conversation_states DROP COLUMN class_enrollment;' : ''}
        ${version === 12 ? 'ALTER TABLE client_conversation_states DROP COLUMN application_label; ALTER TABLE conversation_messages DROP COLUMN application_label;' : ''}
        PRAGMA user_version = ${version};`,
       );
@@ -95,7 +99,7 @@ describe('ServiceSnapshotService', () => {
       const repository = new SqliteSupportRepository(restored.databasePath);
       expect(repository.isAwaitingClientQuestion('vk', '101', now)).toBe(true);
       expect(repository.findAwaitingApplicationLabel('vk', '101', now)).toBe(
-        version === 14 ? 'Заказать звонок' : undefined,
+        version >= 14 ? 'Заказать звонок' : undefined,
       );
       expect(repository.isAwaitingClassEnrollment('vk', '101', now)).toBe(
         false,
@@ -258,7 +262,7 @@ describe('ServiceSnapshotService', () => {
       formatVersion: 1,
       instanceId: 'default',
       secretsIncluded: false,
-      sqliteSchemaVersion: 15,
+      sqliteSchemaVersion: 16,
     });
     expect(manifest.files.map((file) => file.name)).toEqual([
       'database.sqlite',
@@ -345,7 +349,7 @@ describe('ServiceSnapshotService', () => {
       readOnly: true,
     });
     expect(restoredDatabase.prepare('PRAGMA user_version').get()).toEqual({
-      user_version: 15,
+      user_version: 16,
     });
     restoredDatabase.close();
     const restoredSessionStore = new SqliteAdminSessionStore(

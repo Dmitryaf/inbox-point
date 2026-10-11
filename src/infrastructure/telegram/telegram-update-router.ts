@@ -6,8 +6,12 @@ import type { TelegramUpdate } from './telegram-types.js';
 import type { TelegramClientMenuHandler } from './telegram-client-menu.js';
 import type { TelegramGateway } from './telegram-api-client.js';
 import { TelegramCallbackExpiredError } from './telegram-api-client.js';
+import {
+  handleEnrollmentCallback,
+  type TelegramEnrollmentHandler,
+} from './telegram-enrollment-callback.js';
 
-export interface TelegramUpdateHandler {
+export interface TelegramUpdateHandler extends TelegramEnrollmentHandler {
   handleClientMessage(
     externalEventId: string,
     message: SupportMessage,
@@ -44,6 +48,16 @@ export class TelegramUpdateRouter {
     }
     const callback = update.callback_query;
     if (callback) {
+      if (
+        await handleEnrollmentCallback(
+          callback,
+          this.operatorChatId,
+          this.handoffService,
+          this.notifier,
+        )
+      ) {
+        return;
+      }
       const chat = callback.message?.chat;
       if (
         chat?.type === 'private' &&

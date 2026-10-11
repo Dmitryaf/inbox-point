@@ -9,6 +9,7 @@ import type {
   SupportRequest,
 } from '@/core/model/support-request.js';
 import type { ClientChannelKind } from '@/core/model/support-message.js';
+import type { ClassEnrollmentStore } from '@/core/contracts/class-enrollment-store.js';
 import type {
   OperatorAction,
   OperatorActionIncident,
@@ -90,7 +91,7 @@ export interface OperatorActionStore {
 }
 
 export interface SupportRepository
-  extends InboundEventStore, OperatorActionStore {
+  extends InboundEventStore, OperatorActionStore, ClassEnrollmentStore {
   addMessageLink(link: MessageLink): void;
   ensureMessageLink(link: MessageLink): void;
   claimDeliveryAttempt(deliveryId: string, startedAt: Date): boolean;
@@ -248,6 +249,7 @@ export interface SupportRepository
     applicationLabel?: string,
     questionContext?: string,
     classEnrollment?: boolean,
+    enrollmentConfirmationText?: string,
   ): void;
   isAwaitingClassEnrollment(
     channel: ClientChannelKind,

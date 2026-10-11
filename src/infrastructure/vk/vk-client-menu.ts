@@ -184,6 +184,7 @@ export class VkClientMenu implements VkClientMenuHandler {
           response.applicationLabel,
           response.questionContext,
           response.classEnrollment,
+          response.enrollmentConfirmationText,
         );
       }
       if (response.actionKey && response.actionLabel) {

@@ -87,6 +87,7 @@ export class DeliveryWorker {
   public async processPending(): Promise<number> {
     if (this.policy.isDeliveryPaused()) {
       await this.notifyFailedDeliveries();
+      await this.notifyEnrollmentConfirmations();
       return 0;
     }
     const deliveries = this.repository.findPendingDeliveries(this.clock(), 25);
@@ -148,7 +149,33 @@ export class DeliveryWorker {
       }
     }
     await this.notifyFailedDeliveries();
+    await this.notifyEnrollmentConfirmations();
     return processed;
+  }
+
+  private async notifyEnrollmentConfirmations(): Promise<void> {
+    if (!this.incidentNotifier?.notifyEnrollmentConfirmed) {
+      return;
+    }
+    for (const notification of this.repository.findEnrollmentNotifications(
+      this.clock(),
+    )) {
+      try {
+        await this.incidentNotifier.notifyEnrollmentConfirmed(notification);
+        this.repository.markEnrollmentNotification(
+          notification.enrollmentId,
+          this.clock(),
+          true,
+        );
+      } catch (error: unknown) {
+        this.repository.markEnrollmentNotification(
+          notification.enrollmentId,
+          this.clock(),
+          false,
+        );
+        this.onNotificationError(error, notification.enrollmentId);
+      }
+    }
   }
 
   private async notifyFailedDeliveries(): Promise<void> {

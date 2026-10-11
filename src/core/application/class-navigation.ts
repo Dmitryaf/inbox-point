@@ -7,6 +7,7 @@ import { clientMessages } from '@/core/application/client-messages.js';
 import { classSchedulePages } from './class-schedule.js';
 import {
   defaultApplicationQuestion,
+  defaultEnrollmentConfirmation,
   groupKeywords,
   groupTitle,
   normalizeKeyword,
@@ -25,6 +26,7 @@ export interface ClassResponse {
   actionLabel?: string;
   applicationLabel?: string;
   classEnrollment?: true;
+  enrollmentConfirmationText?: string;
   questionContext?: string;
   beginQuestion?: true;
 }
@@ -292,6 +294,7 @@ export function renderClassAction(
   const canEnroll =
     group.enrollmentOpen && (!state.intakePaused || state.stage === 'active');
   if (operation === 'signup' || operation === 'question') {
+    const confirmationText = group.confirmationText?.trim();
     if (state.intakePaused && state.stage !== 'active') {
       return {
         text: clientMessages.pausedIntake,
@@ -312,7 +315,13 @@ export function renderClassAction(
       buttons: [menu()],
       beginQuestion: true,
       ...(operation === 'signup'
-        ? { applicationLabel: title, classEnrollment: true }
+        ? {
+            applicationLabel: title,
+            classEnrollment: true,
+            enrollmentConfirmationText: confirmationText?.length
+              ? confirmationText
+              : defaultEnrollmentConfirmation,
+          }
         : { questionContext: title }),
       actionKey: `${operation === 'signup' ? 'signup' : 'group_question'}:${id}`,
       actionLabel: `${operation === 'signup' ? 'Начало записи' : 'Вопрос о группе'}: ${title}`,

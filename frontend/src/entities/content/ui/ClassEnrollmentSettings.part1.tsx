@@ -2,13 +2,17 @@ import { unref as $unref } from '@frontend/shared/lib/model-state';
 
 import { textProperty as $textProperty } from '@frontend/shared/lib/component-inputs';
 
-import { defaultApplicationQuestion } from '@core/application/class-content';
+import {
+  defaultApplicationQuestion,
+  defaultEnrollmentConfirmation,
+} from '@core/application/class-content';
 
 import type { createComponentModel } from './ClassEnrollmentSettings.model';
 export function renderClassEnrollmentSettingsPart1(
   $state: ReturnType<typeof createComponentModel>,
 ) {
   const group = $state.group.value;
+  const confirmationId = $state.confirmationId.value;
 
   return (
     <>
@@ -36,8 +40,27 @@ export function renderClassEnrollmentSettingsPart1(
         />
         <p className="class-hint" data-r-07c17d8d="">
           {
-            ' После нажатия кнопки бот задаст этот вопрос. Ответ клиента придёт администратору вместе с названием группы. Вы сможете подтвердить место. '
+            ' После нажатия кнопки бот задаст этот вопрос. Ответ клиента придёт администратору вместе с названием группы и кнопкой «Подтвердить запись». '
           }
+        </p>
+        <label htmlFor={confirmationId} data-r-07c17d8d="">
+          {'Ответ после подтверждения записи'}
+        </label>
+        <textarea
+          id={confirmationId}
+          rows={3}
+          maxLength={1000}
+          placeholder={$unref(defaultEnrollmentConfirmation)}
+          value={group.confirmationText ?? ''}
+          onChange={$textProperty(() => $state.group.value, 'confirmationText')}
+          data-r-07c17d8d=""
+        />
+        <p className="class-hint" data-r-07c17d8d="">
+          {
+            ' Нажав «Подтвердить запись» в Telegram, администратор отправит клиенту этот ответ. Если поле пустое, бот отправит: «'
+          }
+          {$unref(defaultEnrollmentConfirmation)}
+          {'». '}
         </p>
       </div>
     </>

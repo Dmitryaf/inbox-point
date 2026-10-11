@@ -42,6 +42,7 @@ export const classContentShape = {
           description: z.string().trim().max(1000),
           enrollmentOpen: z.boolean(),
           applicationQuestion: z.string().trim().max(1000),
+          confirmationText: z.string().trim().max(1000).optional(),
         })
         .strict(),
     )

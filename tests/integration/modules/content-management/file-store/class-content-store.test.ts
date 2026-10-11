@@ -24,6 +24,8 @@ describe('stored class content compatibility', () => {
     const path = join(directory, 'content.json');
     const store = new FileContentSettingsStore(path);
     const content = classContent();
+    content.groups![0]!.confirmationText =
+      'Запись подтверждена. Приходите заранее.';
     await store.save(content);
     const loaded = await new FileContentSettingsStore(path).load();
     expect(loaded?.directions).toEqual(content.directions);
@@ -47,12 +49,17 @@ describe('stored class content compatibility', () => {
         .safeParse(stored).success,
     ).toBe(false);
     content.groups![0]!.meetings[0] = 'Понедельник, 20:00';
+    content.groups![0]!.confirmationText = 'Новый ответ';
     await store.save(content);
     expect((await store.loadHistory())[0]?.sections).toContain('schedule');
     expect((await store.loadRevision(1))?.groups![0]!.meetings[0]).toContain(
       '19:00',
     );
-    expect((await store.restore(1)).groups![0]!.meetings[0]).toContain('19:00');
+    const restored = await store.restore(1);
+    expect(restored.groups![0]!.meetings[0]).toContain('19:00');
+    expect(restored.groups![0]!.confirmationText).toBe(
+      'Запись подтверждена. Приходите заранее.',
+    );
   });
   it('preserves new settings when an older client saves prices and rejects dangling keyword targets', () => {
     const current = classContent();
