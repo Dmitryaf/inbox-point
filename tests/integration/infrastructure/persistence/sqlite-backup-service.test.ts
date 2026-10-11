@@ -71,7 +71,7 @@ describe('SqliteBackupService', () => {
     expect(() => verifySqliteBackup(result.path)).not.toThrow();
     const backupDatabase = new DatabaseSync(result.path, { readOnly: true });
     expect(backupDatabase.prepare('PRAGMA user_version').get()).toEqual({
-      user_version: 14,
+      user_version: 15,
     });
     backupDatabase.close();
     const restored = new SqliteSupportRepository(result.path);

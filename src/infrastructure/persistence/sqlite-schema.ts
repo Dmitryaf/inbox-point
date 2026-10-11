@@ -1,6 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 
-export const sqliteSchemaVersion = 14;
+export const sqliteSchemaVersion = 15;
 
 export const requiredSqliteTables = [
   'client_conversation_states',
@@ -80,6 +80,19 @@ export function initializeSqliteSchema(database: DatabaseSync): void {
   if (hasTables !== undefined && version === 13) {
     migrateConversationContext(database, 'question_context', 14);
     version = 14;
+  }
+  if (hasTables !== undefined && version === 14) {
+    const columns = database
+      .prepare('PRAGMA table_info(client_conversation_states)')
+      .all() as { name: string }[];
+    migrateSchema(
+      database,
+      columns.some((column) => column.name === 'class_enrollment')
+        ? ''
+        : 'ALTER TABLE client_conversation_states ADD COLUMN class_enrollment INTEGER NOT NULL DEFAULT 0 CHECK (class_enrollment IN (0, 1));',
+      15,
+    );
+    version = 15;
   }
   if (hasTables !== undefined && version !== sqliteSchemaVersion) {
     throw new Error(
@@ -466,6 +479,7 @@ const clientConversationStateTableSql = `
     updated_at TEXT NOT NULL,
     application_label TEXT,
     question_context TEXT,
+    class_enrollment INTEGER NOT NULL DEFAULT 0 CHECK (class_enrollment IN (0, 1)),
     PRIMARY KEY (channel, external_conversation_id)
   ) STRICT;
 

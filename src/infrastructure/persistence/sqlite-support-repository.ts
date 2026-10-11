@@ -1575,6 +1575,22 @@ export class SqliteSupportRepository implements SupportRepository {
     return row?.application_label ?? undefined;
   }
 
+  public isAwaitingClassEnrollment(
+    channel: ClientChannelKind,
+    conversationId: string,
+    checkedAt: Date,
+  ): boolean {
+    if (!this.isAwaitingClientQuestion(channel, conversationId, checkedAt)) {
+      return false;
+    }
+    const row = this.database
+      .prepare(
+        'SELECT class_enrollment FROM client_conversation_states WHERE channel = ? AND external_conversation_id = ?',
+      )
+      .get(channel, conversationId) as { class_enrollment: number } | undefined;
+    return row?.class_enrollment === 1;
+  }
+
   public getDeliverySummary(): DeliverySummary {
     const row = this.database
       .prepare(
@@ -1867,6 +1883,7 @@ export class SqliteSupportRepository implements SupportRepository {
     updatedAt: Date,
     applicationLabel?: string,
     questionContext?: string,
+    classEnrollment = false,
   ): void {
     this.database
       .prepare(
@@ -1875,13 +1892,14 @@ export class SqliteSupportRepository implements SupportRepository {
           external_conversation_id,
           state,
           updated_at,
-          application_label, question_context
-        ) VALUES (?, ?, 'awaiting_question', ?, ?, ?)
+          application_label, question_context, class_enrollment
+        ) VALUES (?, ?, 'awaiting_question', ?, ?, ?, ?)
         ON CONFLICT (channel, external_conversation_id) DO UPDATE SET
           state = excluded.state,
           updated_at = excluded.updated_at,
           application_label = excluded.application_label,
-          question_context = excluded.question_context`,
+          question_context = excluded.question_context,
+          class_enrollment = excluded.class_enrollment`,
       )
       .run(
         channel,
@@ -1889,6 +1907,7 @@ export class SqliteSupportRepository implements SupportRepository {
         updatedAt.toISOString(),
         applicationLabel ?? null,
         questionContext ?? null,
+        classEnrollment ? 1 : 0,
       );
   }
 

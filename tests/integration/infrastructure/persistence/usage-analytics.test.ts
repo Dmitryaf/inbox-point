@@ -105,7 +105,7 @@ describe('usage analytics', () => {
           .all(),
       ).toEqual(before);
       expect(verification.prepare('PRAGMA user_version').get()).toEqual({
-        user_version: 14,
+        user_version: 15,
       });
       expect(verification.prepare('PRAGMA integrity_check').get()).toEqual({
         integrity_check: 'ok',

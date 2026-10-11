@@ -60,7 +60,7 @@ service state below.
 
 ## Stack
 
-TypeScript · Node.js · Fastify · SQLite · React · Playwright
+TypeScript · Node.js · Fastify · SQLite · Vue 3 · Playwright
 
 ## Run locally
 

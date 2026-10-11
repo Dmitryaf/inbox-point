@@ -247,7 +247,13 @@ export interface SupportRepository
     updatedAt: Date,
     applicationLabel?: string,
     questionContext?: string,
+    classEnrollment?: boolean,
   ): void;
+  isAwaitingClassEnrollment(
+    channel: ClientChannelKind,
+    conversationId: string,
+    checkedAt: Date,
+  ): boolean;
   retryFailedDelivery(deliveryId: string, retryAt: Date): boolean;
   resolveOperatorActionAsWeb(actionId: string, resolvedAt: Date): boolean;
   resolveOperatorLifecycleAction(

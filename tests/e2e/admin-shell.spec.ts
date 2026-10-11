@@ -211,7 +211,10 @@ test('a review record is completed in the group editor, saved and reopened witho
   await page
     .getByLabel('Дни и время занятий', { exact: true })
     .fill('Пн / Ср, 20:00');
-  await page.getByText('Дополнительные настройки', { exact: true }).click();
+  await expect(page.getByLabel('Короткое описание группы')).toBeVisible();
+  await expect(
+    page.getByText('Дополнительные настройки', { exact: true }),
+  ).toHaveCount(0);
   await page
     .getByLabel('Короткое описание группы')
     .fill('Для учеников с опытом.');

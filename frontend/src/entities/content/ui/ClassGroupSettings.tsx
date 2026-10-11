@@ -28,12 +28,11 @@ export default function ClassGroupSettings($incomingProps: ComponentProps) {
   const $attributes = inheritedAttributes($props);
   return (
     <ModelScopeProvider scope={$scope}>
-      <details
+      <section
         {...$attributes}
         className={$class('class-card', $attributes.className)}
         data-r-e1399ad4=""
       >
-        <summary data-r-e1399ad4="">{'Дополнительные настройки'}</summary>
         <label htmlFor={'group-description-' + group.id} data-r-e1399ad4="">
           {'Короткое описание группы'}
         </label>
@@ -45,7 +44,7 @@ export default function ClassGroupSettings($incomingProps: ComponentProps) {
           onChange={$textProperty(() => $state.group.value, 'description')}
           data-r-e1399ad4=""
         />
-      </details>
+      </section>
     </ModelScopeProvider>
   );
 }
