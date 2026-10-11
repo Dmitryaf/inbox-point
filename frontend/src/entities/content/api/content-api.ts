@@ -4,10 +4,13 @@ import type {
   ContentSnapshot,
 } from '@frontend/entities/content/model/types';
 import { HttpError, request } from '@frontend/shared/api/http-client';
+import { setOrganizationName } from '@frontend/entities/content/model/organization-name';
 
 export async function loadContent(): Promise<ContentSnapshot> {
-  return requireStructuredScheduleApi(
-    await request<ContentSnapshot>('/api/manage/content'),
+  return updateOrganization(
+    requireStructuredScheduleApi(
+      await request<ContentSnapshot>('/api/manage/content'),
+    ),
   );
 }
 
@@ -41,7 +44,9 @@ export function saveContent(
       version,
     }),
     method: 'POST',
-  }).then(requireStructuredScheduleApi);
+  })
+    .then(requireStructuredScheduleApi)
+    .then(updateOrganization);
 }
 
 export function restoreContent(
@@ -51,7 +56,14 @@ export function restoreContent(
   return request<ContentSnapshot>('/api/manage/content/restore', {
     body: JSON.stringify({ revision, version }),
     method: 'POST',
-  }).then(requireStructuredScheduleApi);
+  })
+    .then(requireStructuredScheduleApi)
+    .then(updateOrganization);
+}
+
+function updateOrganization(snapshot: ContentSnapshot): ContentSnapshot {
+  setOrganizationName(snapshot.content.organizationName);
+  return snapshot;
 }
 
 function requireStructuredScheduleApi(

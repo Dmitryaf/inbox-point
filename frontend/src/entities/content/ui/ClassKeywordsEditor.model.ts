@@ -13,7 +13,7 @@ import type { ClassKeyword } from '@core/application/class-content';
 import type { ContentDraft } from '@frontend/entities/content/model/types';
 
 export type ComponentProps = {
-  targetType: 'direction' | 'group';
+  targetType: 'group';
   targetId: string;
 } & EventProps<{
   openTarget: [type: 'direction' | 'group', id: string];
@@ -41,6 +41,17 @@ export function createComponentModel(
         item.targetId === props.targetId,
     ),
   );
+  const directionWords = computed(() => {
+    const group = draft.value.groups.find((item) => item.id === props.targetId);
+    return draft.value.keywords.filter(
+      (item) =>
+        item.targetType === 'direction' && item.targetId === group?.directionId,
+    );
+  });
+  function moveToGroup(word: ClassKeyword): void {
+    word.targetType = 'group';
+    word.targetId = props.targetId;
+  }
   function conflict(word: ClassKeyword): ClassKeyword | undefined {
     return draft.value.keywords.find(
       (item) =>
@@ -59,5 +70,14 @@ export function createComponentModel(
   function remove(word: ClassKeyword): void {
     draft.value.keywords = draft.value.keywords.filter((item) => item !== word);
   }
-  return { draft, emit, words, conflict, targetLabel, remove };
+  return {
+    draft,
+    emit,
+    words,
+    directionWords,
+    moveToGroup,
+    conflict,
+    targetLabel,
+    remove,
+  };
 }

@@ -10,6 +10,7 @@ import { requiredValue as $required } from '@frontend/shared/lib/component-bindi
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
 import { renderClassKeywordsEditorPart1 } from './ClassKeywordsEditor.part1';
+import { renderClassKeywordsEditorPart2 } from './ClassKeywordsEditor.part2';
 import {
   createComponentModel,
   componentDefaults,
@@ -38,13 +39,10 @@ export default function ClassKeywordsEditor($incomingProps: ComponentProps) {
       >
         <h3 data-r-7964e07c="">{'Переход из объявления'}</h3>
         <p data-r-7964e07c="">
-          {' По этому слову в сообщениях бот покажет '}
-          {$props.targetType === 'group'
-            ? 'эту группу'
-            : 'группы этого направления'}
-          {'. '}
+          {'По этому слову в сообщениях бот покажет эту группу.'}
         </p>
-        {renderClassKeywordsEditorPart1($state, $props)}
+        {renderClassKeywordsEditorPart1($state)}
+        {renderClassKeywordsEditorPart2($state, $props)}
         <button
           type="button"
           disabled={draft.keywords.length >= 40}

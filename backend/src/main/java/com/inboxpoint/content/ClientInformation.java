@@ -101,7 +101,16 @@ public final class ClientInformation {
         if (!input.path("schedule").asString("").isBlank() || !input.path("scheduleItems").isEmpty()) {
             throw new LegacyScheduleConflict();
         }
-        save(input);
+        if (input.has("organizationName")) {
+            save(input);
+        } else {
+            var compatible = (tools.jackson.databind.node.ObjectNode) JsonMapper.shared().valueToTree(input);
+            var current = state.content().standard().get("organizationName");
+            if (current != null) {
+                compatible.put("organizationName", current);
+            }
+            save(compatible);
+        }
         return snapshot();
     }
 
@@ -148,6 +157,7 @@ public final class ClientInformation {
         var fieldNames = new ArrayList<>(FIELDS);
         fieldNames.addAll(ContentClasses.FIELDS);
         fieldNames.add("legacySchedule");
+        fieldNames.add("organizationName");
         fieldNames.add("customSections");
         fieldNames.add("faq");
         fieldNames.add("visibleSections");
@@ -424,7 +434,7 @@ public final class ClientInformation {
             var sections = new ArrayList<String>();
             for (var section : row.path("sections")) {
                 var key = section.asString("");
-                if (!FIELDS.contains(key) && !List.of("customSections", "faq", "visibility", "directions", "groups", "keywords").contains(key)) {
+                if (!FIELDS.contains(key) && !List.of("customSections", "faq", "visibility", "directions", "groups", "keywords", "organizationName").contains(key)) {
                     throw new IllegalArgumentException("Unknown content history section");
                 }
                 sections.add(key);
@@ -616,6 +626,16 @@ public final class ClientInformation {
             var text = item.asString().strip();
             if (!text.isEmpty()) {
                 values.put(field, text);
+            }
+        }
+        var organization = input.path("organizationName");
+        if (!organization.isMissingNode()) {
+            var name = organization.asString("").strip();
+            if (!organization.isString() || name.length() > 120 || name.contains("\n") || name.contains("\r")) {
+                throw new IllegalArgumentException("Organization name is invalid");
+            }
+            if (!name.isBlank()) {
+                values.put("organizationName", name);
             }
         }
         return Map.copyOf(values);

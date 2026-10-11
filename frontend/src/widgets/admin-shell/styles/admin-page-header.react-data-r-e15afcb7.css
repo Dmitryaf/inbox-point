@@ -79,6 +79,12 @@ button.admin-session-actions__all[data-r-e15afcb7]:disabled {
 .page-intro[data-r-e15afcb7] {
   margin-bottom: 0;
 }
+.organization-name[data-r-e15afcb7] {
+  color: var(--color-text);
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+  overflow-wrap: anywhere;
+}
 .page-intro[data-r-e15afcb7] {
   color: var(--color-text-muted);
   font-size: var(--font-size-small);

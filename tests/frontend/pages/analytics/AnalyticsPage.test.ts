@@ -11,6 +11,18 @@ function authenticatedFetch(
 ) {
   const mock = vi.fn((input: RequestInfo | URL) => {
     const url = requestUrl(input);
+    if (url === '/api/manage/content') {
+      return Promise.resolve(
+        response({
+          content: {
+            organizationName: 'Синтетическая организация',
+            schedule: '',
+            scheduleItems: [],
+          },
+          version: 'a'.repeat(64),
+        }),
+      );
+    }
     return url.includes('/api/admin/session')
       ? Promise.resolve(response({ authenticated: true, mode: 'password' }))
       : loader(url);
@@ -82,6 +94,7 @@ describe('AnalyticsPage', () => {
     const { wrapper } = await mountAppAt('/analytics');
     await flushPromises();
     expect(wrapper.text()).toContain('Загружаем аналитику');
+    expect(wrapper.text()).toContain('Синтетическая организация');
     resolveRequest(response({}, 503));
     await flushPromises();
     expect(wrapper.get('[role="alert"]').text()).toContain(

@@ -8,6 +8,7 @@ import { classNames as $class } from '@frontend/shared/lib/component-view';
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
 import { renderAdminPageHeaderPart1 } from './AdminPageHeader.part1';
+import { renderAdminPageHeaderPart3 } from './AdminPageHeader.part3';
 import {
   createComponentModel,
   componentDefaults,
@@ -33,14 +34,7 @@ export default function AdminPageHeader($incomingProps: ComponentProps) {
         data-r-e15afcb7=""
       >
         {renderAdminPageHeaderPart1($state, $props)}
-        <div className="admin-page-heading" data-r-e15afcb7="">
-          <h1 data-r-e15afcb7="">{$props.title}</h1>
-          {$props.intro ? (
-            <p className="page-intro" data-r-e15afcb7="">
-              {$props.intro}
-            </p>
-          ) : null}
-        </div>
+        {renderAdminPageHeaderPart3($props)}
       </header>
     </ModelScopeProvider>
   );

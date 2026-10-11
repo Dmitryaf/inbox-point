@@ -16,6 +16,7 @@ import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 import CustomSectionsEditor from '@frontend/entities/content/ui/CustomSectionsEditor';
 
 import ClassScheduleEditor from '@frontend/entities/content/ui/ClassScheduleEditor';
+import OrganizationNameField from '@frontend/entities/content/ui/OrganizationNameField';
 
 import { renderContentEditorPart1 } from './ContentEditor.part1';
 import {
@@ -43,6 +44,15 @@ export default function ContentEditor($incomingProps: ComponentProps) {
         className={$class('editor', $attributes.className)}
         data-r-7c201b3b=""
       >
+        <OrganizationNameField
+          error={$props.errors['organization-name']}
+          modelValue={draft.organizationName}
+          onModelValueChange={$propertySetter(
+            () => $state.draft.value,
+            'organizationName',
+          )}
+          data-r-7c201b3b=""
+        />
         <ClassScheduleEditor
           onPreview={($event) => void $unref($state.emit)('preview', $event)}
           modelValue={draft}

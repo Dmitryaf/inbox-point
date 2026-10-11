@@ -54,6 +54,7 @@ export const reservedClientLabels = [
 ] as const;
 
 export interface ClientInformationContent extends ClassContent {
+  organizationName?: string;
   address?: string;
   customSections?: readonly CustomInformationSection[];
   faq?: readonly FaqItem[];

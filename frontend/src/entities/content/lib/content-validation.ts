@@ -2,27 +2,28 @@ import { normalizeClassDraft } from '@frontend/entities/content/model/class-edit
 import { reservedClientLabels } from '@core/application/client-information';
 import { classContentIssue } from '@core/application/class-content';
 import { findOversizedContentResponse } from '@frontend/entities/content/lib/content-response-limit';
-import type { ContentDraft } from '@frontend/entities/content/model/types';
+import type {
+  ContentDraft,
+  ContentValidationIssue,
+  ContentValidationResult,
+} from '@frontend/entities/content/model/types';
+export type {
+  ContentValidationIssue,
+  ContentValidationResult,
+} from '@frontend/entities/content/model/types';
+import { organizationNameIssue } from './organization-name-validation';
 
 const reservedLabels = new Set(
   reservedClientLabels.map((label) => label.toLowerCase()),
 );
 
-export interface ContentValidationResult {
-  issues: readonly ContentValidationIssue[];
-  message: string;
-  valid: boolean;
-}
-
-export interface ContentValidationIssue {
-  fieldId: string;
-  message: string;
-  section: 'core' | 'custom' | 'faq';
-}
-
 export function validateContentDraft(
   content: ContentDraft,
 ): ContentValidationResult {
+  const organizationIssue = organizationNameIssue(content.organizationName);
+  if (organizationIssue) {
+    return invalid(organizationIssue, 'organization-name', 'core');
+  }
   const classIssue = classContentIssue(normalizeClassDraft(content), [
     ...reservedLabels,
   ]);

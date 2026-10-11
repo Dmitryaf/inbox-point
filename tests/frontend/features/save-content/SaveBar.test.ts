@@ -17,9 +17,12 @@ describe('SaveBar', () => {
     });
 
     expect(wrapper.text()).toContain('Заполните название и текст раздела.');
-    expect(wrapper.get('button').text()).toBe('Исправить поля');
+    expect(wrapper.get('button').text()).toBe('Сохранить');
     expect(wrapper.get('button').attributes('disabled')).toBeUndefined();
     await wrapper.get('button').trigger('click');
     expect(wrapper.emitted('save')).toHaveLength(1);
+    await wrapper.setProps({ valid: true, saving: true });
+    expect(wrapper.get('button').text()).toBe('Сохранить');
+    expect(wrapper.get('button').attributes('disabled')).toBeDefined();
   });
 });

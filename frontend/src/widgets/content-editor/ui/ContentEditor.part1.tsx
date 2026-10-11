@@ -19,6 +19,7 @@ export function renderContentEditorPart1(
   return (
     <>
       <div
+        className="information-editor"
         style={Object.assign(
           {},
           { display: $props.activeSection === 'faq' ? undefined : 'none' },
