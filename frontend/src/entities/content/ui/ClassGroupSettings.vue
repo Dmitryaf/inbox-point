@@ -3,8 +3,7 @@ import type { ClassGroup } from '@core/application/class-content';
 const group = defineModel<ClassGroup>({ required: true });
 </script>
 <template>
-  <details class="class-card">
-    <summary>Дополнительные настройки</summary>
+  <section class="class-card">
     <label :for="'group-description-' + group.id"
       >Короткое описание группы</label
     >
@@ -14,6 +13,6 @@ const group = defineModel<ClassGroup>({ required: true });
       rows="3"
       maxlength="1000"
     />
-  </details>
+  </section>
 </template>
 <style scoped src="../styles/class-editor.css"></style>

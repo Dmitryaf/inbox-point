@@ -82,13 +82,16 @@ describe.each(['telegram', 'vk'] as const)('%s class enrollment', (channel) => {
     repositories.splice(repositories.indexOf(first.repository), 1);
     const database = new DatabaseSync(path);
     database.exec(
-      'ALTER TABLE client_conversation_states DROP COLUMN question_context; ALTER TABLE conversation_messages DROP COLUMN question_context; PRAGMA user_version = 13;',
+      'ALTER TABLE client_conversation_states DROP COLUMN question_context; ALTER TABLE client_conversation_states DROP COLUMN class_enrollment; ALTER TABLE conversation_messages DROP COLUMN question_context; PRAGMA user_version = 13;',
     );
     database.close();
     const restarted = setup(channel, path);
     expect(
       restarted.repository.findAwaitingApplicationLabel(channel, '101', now),
     ).toBe('Тестовый танец / Начинающие');
+    expect(
+      restarted.repository.isAwaitingClassEnrollment(channel, '101', now),
+    ).toBe(false);
     await restarted.answer('existing-application', 'Приду');
     expect(
       restarted.gateways.inbox.relayCustomerMessage.mock.calls[0]?.[1]
@@ -209,7 +212,7 @@ describe.each(['telegram', 'vk'] as const)('%s class enrollment', (channel) => {
       context.gateways.inbox.relayCustomerMessage.mock.calls[0]?.[1],
     ).toMatchObject({
       channel,
-      text: 'Заявка: Тестовый танец / Начинающие\n\nТестовый танец',
+      text: 'Запись на занятие: Тестовый танец / Начинающие\n\nТестовый танец',
     });
     expect(await context.handle('active-keyword', 'Тестовый танец')).toBe(true);
     const request = context.repository.findActiveRequest(channel, '101')!;
@@ -246,11 +249,65 @@ describe.each(['telegram', 'vk'] as const)('%s class enrollment', (channel) => {
     await restarted.handle('signup', '', 'classes:signup:beginners');
     expect(restarted.gateways.telegram.sendMessage).not.toHaveBeenCalled();
     expect(restarted.gateways.vk.sendMessage).not.toHaveBeenCalled();
+    restarted.gateways.inbox.relayCustomerMessage.mockRejectedValueOnce(
+      new Error('Synthetic relay failure'),
+    );
+    await expect(
+      restarted.answer('after-restart', 'В понедельник'),
+    ).rejects.toThrow('Synthetic relay failure');
+    restarted.repository.setAwaitingClientQuestion(
+      channel,
+      '101',
+      now,
+      'Заказать звонок',
+    );
+    await restarted.answer('after-restart', 'В понедельник');
     await restarted.answer('after-restart', 'В понедельник');
     expect(
       restarted.gateways.inbox.relayCustomerMessage.mock.calls[0]?.[1]
         .applicationLabel,
     ).toBe('Тестовый танец / Начинающие');
+    expect(
+      restarted.gateways.inbox.relayCustomerMessage.mock.calls.at(-1)?.[1].text,
+    ).toBe('Запись на занятие: Тестовый танец / Начинающие\n\nВ понедельник');
+    expect(
+      restarted.repository.findConversationMessages(
+        restarted.repository.findActiveRequest(channel, '101')!.id,
+      )[0]?.text,
+    ).toBe('Запись на занятие: Тестовый танец / Начинающие\n\nВ понедельник');
+    await restarted.answer('callback', 'Завтра');
+    expect(
+      restarted.gateways.inbox.relayCustomerMessage.mock.calls.at(-1)?.[1].text,
+    ).toBe('Заявка: Заказать звонок\n\nЗавтра');
+  });
+  it('upgrades v14 without changing existing applications or duplicating enrollment context', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'inbox-point-schema14-'));
+    directories.push(directory);
+    const path = join(directory, 'support.sqlite');
+    const first = setup(channel, path);
+    first.repository.setAwaitingClientQuestion(
+      channel,
+      '101',
+      now,
+      'Позвоните',
+    );
+    first.repository.close();
+    repositories.splice(repositories.indexOf(first.repository), 1);
+    const database = new DatabaseSync(path);
+    database.exec(
+      'ALTER TABLE client_conversation_states DROP COLUMN class_enrollment; PRAGMA user_version = 14;',
+    );
+    database.close();
+    const restarted = setup(channel, path);
+    await restarted.answer('old-application', 'Завтра');
+    expect(
+      restarted.gateways.inbox.relayCustomerMessage.mock.calls.at(-1)?.[1].text,
+    ).toBe('Заявка: Позвоните\n\nЗавтра');
+    await restarted.handle('signup', '', 'classes:signup:beginners');
+    await restarted.answer('new-enrollment', 'В пятницу');
+    expect(
+      restarted.gateways.inbox.relayCustomerMessage.mock.calls.at(-1)?.[1].text,
+    ).toBe('Запись на занятие: Тестовый танец / Начинающие\n\nВ пятницу');
   });
   it('cancels pending entry through Menu, handles closed enrollment and keeps old information available', async () => {
     const context = setup(channel);

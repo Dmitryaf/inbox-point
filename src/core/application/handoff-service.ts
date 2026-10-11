@@ -468,11 +468,18 @@ export class HandoffService {
       message.conversationId,
       this.clock(),
     );
+    const heading = this.repository.isAwaitingClassEnrollment(
+      message.channel,
+      message.conversationId,
+      this.clock(),
+    )
+      ? 'Запись на занятие'
+      : 'Заявка';
     return label
       ? {
           ...message,
           applicationLabel: label,
-          text: `Заявка: ${label}\n\n${message.text}`,
+          text: `${heading}: ${label}\n\n${message.text}`,
         }
       : message;
   }
