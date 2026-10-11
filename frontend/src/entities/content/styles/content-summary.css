@@ -1,23 +1,17 @@
 .content-summary {
-  align-items: center;
+  display: grid;
+  gap: 0.75rem;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-panel);
   padding: 0.75rem 0.85rem;
 }
 
-.content-summary summary {
-  cursor: pointer;
-}
-.content-summary summary:focus-visible {
-  outline: 3px solid var(--color-focus);
-  outline-offset: 3px;
+.summary-heading {
+  margin: 0;
 }
 .summary-title {
   font-weight: 600;
-}
-.content-summary[open] summary {
-  margin-bottom: 0.75rem;
 }
 
 .content-facts {

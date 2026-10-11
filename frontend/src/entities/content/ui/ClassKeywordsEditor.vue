@@ -51,14 +51,31 @@ function remove(word: ClassKeyword): void {
   <section class="class-card" aria-label="Переход из объявления">
     <h3>Переход из объявления</h3>
     <p>По этому слову в сообщениях бот покажет эту группу.</p>
-    <div v-for="word in directionWords" :key="word.phrase" class="class-word">
-      <p>Слово «{{ word.phrase }}» пока открывает всё направление.</p>
-      <button type="button" class="secondary-button" @click="moveToGroup(word)">
-        Использовать «{{ word.phrase }}» для этой группы
-      </button>
-      <button type="button" class="danger" @click="remove(word)">
-        Удалить слово
-      </button>
+    <div
+      v-for="(word, index) in directionWords"
+      :key="index"
+      class="class-word"
+    >
+      <label :for="'direction-word-' + targetId + '-' + index">
+        Сохранённое слово для всего направления
+      </label>
+      <input
+        :id="'direction-word-' + targetId + '-' + index"
+        :value="word.phrase"
+        readonly
+      />
+      <div class="class-actions">
+        <button
+          type="button"
+          class="secondary-button"
+          @click="moveToGroup(word)"
+        >
+          Использовать «{{ word.phrase }}» для этой группы
+        </button>
+        <button type="button" class="danger" @click="remove(word)">
+          Удалить слово
+        </button>
+      </div>
     </div>
     <div v-for="(word, index) in words" :key="index" class="class-word">
       <label :for="'keyword-' + targetId + '-' + index"

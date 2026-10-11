@@ -42,6 +42,7 @@ describe('class catalog and navigation', () => {
       expect(
         resolveClassNavigation(catalog, 'Тестовый танец', undefined, {
           stage,
+          awaitingQuestion: true,
           intakePaused: false,
         }),
       ).toBeUndefined();

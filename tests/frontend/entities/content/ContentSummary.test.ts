@@ -19,6 +19,8 @@ describe('ContentSummary', () => {
     expect(wrapper.text()).toContain('Готово к показу');
     expect(wrapper.text()).toContain('1 из 4');
     expect(wrapper.text()).toContain('Свои разделы1');
+    expect(wrapper.find('details').exists()).toBe(false);
+    expect(wrapper.find('summary').exists()).toBe(false);
   });
 
   it('does not count a fully empty schedule card as ready', () => {
@@ -37,8 +39,12 @@ describe('ContentSummary', () => {
     content.customSections = [{ label: '', text: '' }];
     const wrapper = mount(ContentSummary, { props: { content } });
 
-    expect(wrapper.get('summary').text()).toContain('Нужно исправить поля');
-    expect(wrapper.get('summary').text()).toContain('Ответов в меню: 1');
+    expect(wrapper.get('.summary-heading').text()).toContain(
+      'Нужно исправить поля',
+    );
+    expect(wrapper.get('.summary-heading').text()).toContain(
+      'Ответов в меню: 1',
+    );
     expect(wrapper.text()).toContain('Свои разделы0');
     expect(wrapper.text()).not.toContain('Готово к показу');
 
@@ -48,8 +54,10 @@ describe('ContentSummary', () => {
         customSections: [{ label: 'First visit', text: 'Come early.' }],
       },
     });
-    expect(wrapper.get('summary').text()).toContain('Готово к показу');
-    expect(wrapper.get('summary').text()).toContain('Ответов в меню: 2');
+    expect(wrapper.get('.summary-heading').text()).toContain('Готово к показу');
+    expect(wrapper.get('.summary-heading').text()).toContain(
+      'Ответов в меню: 2',
+    );
   });
 
   it('does not claim readiness for incomplete FAQ or an oversized answer', () => {
@@ -58,7 +66,9 @@ describe('ContentSummary', () => {
       { ...createEmptyContent(), address: 'x'.repeat(4000) },
     ]) {
       const wrapper = mount(ContentSummary, { props: { content } });
-      expect(wrapper.get('summary').text()).toContain('Нужно исправить поля');
+      expect(wrapper.get('.summary-heading').text()).toContain(
+        'Нужно исправить поля',
+      );
     }
   });
 });

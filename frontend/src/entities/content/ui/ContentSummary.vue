@@ -28,13 +28,13 @@ const summaryTitle = computed(() => {
 </script>
 
 <template>
-  <details class="content-summary">
-    <summary>
+  <section class="content-summary" aria-label="Готовность ответов">
+    <p class="summary-heading">
       <span class="summary-title">
         {{ summaryTitle }}
       </span>
       <span> · Ответов в меню: {{ responses.length }}</span>
-    </summary>
+    </p>
 
     <dl class="content-facts">
       <div>
@@ -55,7 +55,7 @@ const summaryTitle = computed(() => {
       <AppIcon name="check" /> После сохранения изменения появятся в Telegram и
       VK.
     </p>
-  </details>
+  </section>
 </template>
 
 <style scoped src="../styles/content-summary.css"></style>

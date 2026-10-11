@@ -68,8 +68,7 @@ function remove(): void {
     >
       Добавить группу
     </button>
-    <details class="class-card">
-      <summary>Настройки направления</summary>
+    <section class="class-card">
       <label :for="'direction-' + direction.id">Название направления</label
       ><input
         :id="'direction-' + direction.id"
@@ -80,7 +79,7 @@ function remove(): void {
         Удалить направление
       </button>
       <p v-if="notice" role="status">{{ notice }}</p>
-    </details>
+    </section>
   </div>
 </template>
 <style scoped src="../styles/class-editor.css"></style>
