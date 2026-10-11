@@ -41,7 +41,7 @@ export default function ClassKeywordsEditor($incomingProps: ComponentProps) {
         <p data-r-7964e07c="">
           {'По этому слову в сообщениях бот покажет эту группу.'}
         </p>
-        {renderClassKeywordsEditorPart1($state)}
+        {renderClassKeywordsEditorPart1($state, $props)}
         {renderClassKeywordsEditorPart2($state, $props)}
         <button
           type="button"

@@ -42,7 +42,13 @@ for (const width of [390, 1440]) {
     await page.goto('/login');
     await page.getByLabel('Пароль').fill('synthetic-admin-password');
     await page.getByRole('button', { name: 'Войти', exact: true }).click();
+    await expect(page.locator('.content-summary dl')).toBeVisible();
+    await expect(page.locator('.content-summary summary')).toHaveCount(0);
     await page.locator('.class-list-item').first().click();
+    await expect(page.getByLabel('Название направления')).toBeVisible();
+    await expect(
+      page.getByText('Настройки направления', { exact: true }),
+    ).toHaveCount(0);
     await expect(
       page.getByRole('region', { name: 'Переход из объявления' }),
     ).toHaveCount(0);
@@ -50,6 +56,9 @@ for (const width of [390, 1440]) {
       page.getByRole('button', { name: 'Добавить ключевое слово' }),
     ).toHaveCount(0);
     await page.locator('.class-list-item').first().click();
+    await expect(
+      page.getByLabel('Сохранённое слово для всего направления'),
+    ).toHaveValue('Бачата');
     await page
       .getByRole('button', { name: 'Использовать «Бачата» для этой группы' })
       .click();

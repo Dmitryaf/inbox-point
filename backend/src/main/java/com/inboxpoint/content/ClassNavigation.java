@@ -36,14 +36,14 @@ final class ClassNavigation {
             return Optional.empty();
         }
         var word = normalize(label);
-        if (state.stage() == Stage.ACTIVE && !label.contains(":")) {
-            return Optional.empty();
-        }
         var keyword = catalog.keywords().stream().filter(item -> normalize(item.phrase()).equals(word)).findFirst();
         if (keyword.isPresent()) {
             var item = keyword.get();
             return Optional.of(render("classes:" + item.targetType() + ":" + item.targetId()
                     + ("direction".equals(item.targetType()) ? ":0" : ""), state));
+        }
+        if (state.stage() == Stage.ACTIVE && !label.contains(":")) {
+            return Optional.empty();
         }
         return Optional.ofNullable(textAction(word)).map(action -> render(action, state));
     }

@@ -45,7 +45,7 @@ final class VkClientMenu {
             text = "Меню";
         }
         var navigation = information.classAction(text.strip(), command,
-                new com.inboxpoint.content.ClassMenu.State(classStage, pausedNow, stage == ClientMenuPolicy.Stage.AWAITING));
+                new com.inboxpoint.content.ClassMenu.State(classStage, pausedNow, store.awaitingQuestion("vk", peer, now)));
         if (navigation != null) {
             return sendClassNavigation(store, event, peer, navigation, now);
         }

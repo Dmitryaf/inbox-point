@@ -45,7 +45,7 @@ final class TelegramClientMenu {
             case CLOSED -> com.inboxpoint.content.ClassMenu.Stage.CLOSED;
         };
         var navigation = information.classAction(text.strip(), action,
-                new com.inboxpoint.content.ClassMenu.State(classStage, pausedNow, stage == ClientMenuPolicy.Stage.AWAITING));
+                new com.inboxpoint.content.ClassMenu.State(classStage, pausedNow, store.awaitingQuestion("telegram", chat, now)));
         if (navigation != null) {
             return sendClassNavigation(chat, event, navigation, now);
         }

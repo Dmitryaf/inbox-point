@@ -47,12 +47,17 @@ export function resolveClassNavigation(
 ): ClassResponse | undefined {
   const content = information.getContent?.() ?? {};
   let key = action?.startsWith('classes:') ? action : undefined;
-  // Explicit buttons remain available in a conversation. Free text belongs to the administrator or pending application.
+  // Exact configured words are navigation; a pending application still owns its next free-text answer.
   if (
     !key &&
     !action &&
     state.stage !== 'awaiting_question' &&
-    (state.stage !== 'active' || text.includes(':'))
+    !state.awaitingQuestion &&
+    (state.stage !== 'active' ||
+      text.includes(':') ||
+      content.keywords?.some(
+        (item) => normalizeKeyword(item.phrase) === normalizeKeyword(text),
+      ))
   ) {
     key = resolveClassText(content, text);
   }

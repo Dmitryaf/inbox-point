@@ -78,6 +78,16 @@ final class TelegramStore implements AutoCloseable {
                 """, channel, Long.toString(conversation), now.toString(), application, question);
     }
 
+    boolean awaitingQuestion(String channel, long conversation, Instant now) throws SQLException {
+        try (var query = prepare("""
+                SELECT 1 FROM client_conversation_states WHERE channel = ? AND external_conversation_id = ?
+                    AND state = 'awaiting_question' AND julianday(updated_at) >= julianday(?)
+                """, channel, Long.toString(conversation), now.minus(java.time.Duration.ofHours(2)).toString());
+                var result = query.executeQuery()) {
+            return result.next();
+        }
+    }
+
     ApplicationText pendingApplication(String channel, long conversation, Instant checked) throws SQLException {
         try (var query = prepare("""
                 SELECT application_label, question_context FROM client_conversation_states WHERE channel = ? AND external_conversation_id = ?

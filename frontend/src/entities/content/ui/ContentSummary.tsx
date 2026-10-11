@@ -31,12 +31,13 @@ export default function ContentSummary($incomingProps: ComponentProps) {
   const $attributes = inheritedAttributes($props);
   return (
     <ModelScopeProvider scope={$scope}>
-      <details
+      <section
         {...$attributes}
+        aria-label="Готовность ответов"
         className={$class('content-summary', $attributes.className)}
         data-r-109c0780=""
       >
-        <summary data-r-109c0780="">
+        <p className="summary-heading" data-r-109c0780="">
           <span className="summary-title" data-r-109c0780="">
             {summaryTitle}
           </span>
@@ -44,13 +45,13 @@ export default function ContentSummary($incomingProps: ComponentProps) {
             {' · Ответов в меню: '}
             {responses.length}
           </span>
-        </summary>
+        </p>
         {renderContentSummaryPart1($state, $props)}
         <p className="channel-note" data-r-109c0780="">
           <AppIcon name="check" data-r-109c0780="" />
           {' После сохранения изменения появятся в Telegram и VK. '}
         </p>
-      </details>
+      </section>
     </ModelScopeProvider>
   );
 }

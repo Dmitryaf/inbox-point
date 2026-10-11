@@ -15,7 +15,8 @@ describe('group announcement keywords', () => {
     const wrapper = mount(ClassKeywordsEditor, {
       props: { modelValue: draft, targetType: 'group', targetId: 'group' },
     });
-    expect(wrapper.find('input').exists()).toBe(false);
+    expect(wrapper.get('input').element).toHaveProperty('value', 'Бачата');
+    expect(wrapper.text()).not.toContain('пока открывает всё направление');
     expect(draft.keywords[0]!.targetType).toBe('direction');
     await wrapper
       .findAll('button')

@@ -68,8 +68,7 @@ export function renderClassDirectionEditorPart1(
           >
             {' Добавить группу '}
           </button>
-          <details className="class-card" data-r-71dc3e8a="">
-            <summary data-r-71dc3e8a="">{'Настройки направления'}</summary>
+          <section className="class-card" data-r-71dc3e8a="">
             <label htmlFor={'direction-' + direction.id} data-r-71dc3e8a="">
               {'Название направления'}
             </label>
@@ -93,7 +92,7 @@ export function renderClassDirectionEditorPart1(
                 {notice}
               </p>
             ) : null}
-          </details>
+          </section>
         </div>
       ) : null}
     </>
