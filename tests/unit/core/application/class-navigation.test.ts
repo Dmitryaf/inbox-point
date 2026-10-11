@@ -25,7 +25,7 @@ describe('class catalog and navigation', () => {
     expect(
       resolveClassNavigation(
         catalog,
-        'Все группы',
+        'Направление: Тестовый танец',
         undefined,
         state,
       )?.buttons.map((item) => item.label),

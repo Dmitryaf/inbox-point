@@ -1,5 +1,6 @@
 import {
   copyClassContent,
+  groupKeywords,
   type ClassContent,
 } from '@/core/application/class-content.js';
 import { z } from 'zod';
@@ -60,6 +61,14 @@ export const classContentShape = {
     .optional(),
 };
 
+export const groupClassContentShape = {
+  ...classContentShape,
+  keywords: classContentShape.keywords.refine(
+    (words) => !words || words.every((word) => word.targetType === 'group'),
+    'Ключевые слова доступны только для групп.',
+  ),
+};
+
 export function mergeClassInput(
   input: ClassContent,
   current: ClassContent,
@@ -67,6 +76,6 @@ export function mergeClassInput(
   return copyClassContent({
     directions: input.directions ?? current.directions,
     groups: input.groups ?? current.groups,
-    keywords: input.keywords ?? current.keywords,
+    keywords: groupKeywords({ keywords: input.keywords ?? current.keywords }),
   });
 }

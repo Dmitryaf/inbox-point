@@ -5,6 +5,23 @@ import { resolveClassNavigation } from '@/core/application/class-navigation.js';
 import type { ClientConversationStage } from '@/core/model/client-conversation.js';
 
 describe('explicit class keywords', () => {
+  it.each(['first_contact', 'closed', 'active', 'awaiting_question'] as const)(
+    'does not route a stored legacy direction word in %s',
+    (stage) => {
+      const content = classContent();
+      content.keywords = [
+        { phrase: 'Все группы', targetType: 'direction', targetId: 'dance' },
+      ];
+      expect(
+        resolveClassNavigation(
+          new ClientInformationCatalog(content),
+          'Все группы',
+          undefined,
+          { stage, intakePaused: false },
+        ),
+      ).toBeUndefined();
+    },
+  );
   it.each<ClientConversationStage>([
     'first_contact',
     'closed',
