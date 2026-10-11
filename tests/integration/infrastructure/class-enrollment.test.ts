@@ -211,9 +211,7 @@ describe.each(['telegram', 'vk'] as const)('%s class enrollment', (channel) => {
       channel,
       text: 'Заявка: Тестовый танец / Начинающие\n\nТестовый танец',
     });
-    expect(await context.handle('active-keyword', 'Тестовый танец')).toBe(
-      false,
-    );
+    expect(await context.handle('active-keyword', 'Тестовый танец')).toBe(true);
     const request = context.repository.findActiveRequest(channel, '101')!;
     const actions = context.repository.getUsageAnalytics(
       new Date('2026-10-10'),

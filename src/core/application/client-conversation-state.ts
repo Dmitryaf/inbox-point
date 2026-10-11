@@ -12,6 +12,11 @@ export function resolveClientConversationState(
 ): ClientConversationState {
   if (repository.findActiveRequest(channel, conversationId)) {
     return {
+      awaitingQuestion: repository.isAwaitingClientQuestion(
+        channel,
+        conversationId,
+        checkedAt,
+      ),
       intakePaused: intakePolicy.isPaused(channel),
       stage: 'active',
     };
