@@ -10,7 +10,6 @@ import { requiredValue as $required } from '@frontend/shared/lib/component-bindi
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
 
 import { renderClassKeywordsEditorPart1 } from './ClassKeywordsEditor.part1';
-import { renderClassKeywordsEditorPart2 } from './ClassKeywordsEditor.part2';
 import {
   createComponentModel,
   componentDefaults,
@@ -42,7 +41,6 @@ export default function ClassKeywordsEditor($incomingProps: ComponentProps) {
           {'По этому слову в сообщениях бот покажет эту группу.'}
         </p>
         {renderClassKeywordsEditorPart1($state, $props)}
-        {renderClassKeywordsEditorPart2($state, $props)}
         <button
           type="button"
           disabled={draft.keywords.length >= 40}

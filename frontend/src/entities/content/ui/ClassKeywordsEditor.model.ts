@@ -41,21 +41,11 @@ export function createComponentModel(
         item.targetId === props.targetId,
     ),
   );
-  const directionWords = computed(() => {
-    const group = draft.value.groups.find((item) => item.id === props.targetId);
-    return draft.value.keywords.filter(
-      (item) =>
-        item.targetType === 'direction' && item.targetId === group?.directionId,
-    );
-  });
-  function moveToGroup(word: ClassKeyword): void {
-    word.targetType = 'group';
-    word.targetId = props.targetId;
-  }
   function conflict(word: ClassKeyword): ClassKeyword | undefined {
     return draft.value.keywords.find(
       (item) =>
         item !== word &&
+        item.targetType === 'group' &&
         normalizeKeyword(item.phrase) === normalizeKeyword(word.phrase) &&
         Boolean(word.phrase.trim()),
     );
@@ -70,14 +60,5 @@ export function createComponentModel(
   function remove(word: ClassKeyword): void {
     draft.value.keywords = draft.value.keywords.filter((item) => item !== word);
   }
-  return {
-    draft,
-    emit,
-    words,
-    directionWords,
-    moveToGroup,
-    conflict,
-    targetLabel,
-    remove,
-  };
+  return { draft, emit, words, conflict, targetLabel, remove };
 }

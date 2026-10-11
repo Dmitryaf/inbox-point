@@ -36,11 +36,10 @@ final class ClassNavigation {
             return Optional.empty();
         }
         var word = normalize(label);
-        var keyword = catalog.keywords().stream().filter(item -> normalize(item.phrase()).equals(word)).findFirst();
+        var keyword = catalog.keywords().stream().filter(item -> "group".equals(item.targetType()) && normalize(item.phrase()).equals(word)).findFirst();
         if (keyword.isPresent()) {
             var item = keyword.get();
-            return Optional.of(render("classes:" + item.targetType() + ":" + item.targetId()
-                    + ("direction".equals(item.targetType()) ? ":0" : ""), state));
+            return Optional.of(render("classes:group:" + item.targetId(), state));
         }
         if (state.stage() == Stage.ACTIVE && !label.contains(":")) {
             return Optional.empty();

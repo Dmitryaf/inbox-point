@@ -7,6 +7,7 @@ import { clientMessages } from '@/core/application/client-messages.js';
 import { classSchedulePages } from './class-schedule.js';
 import {
   defaultApplicationQuestion,
+  groupKeywords,
   groupTitle,
   normalizeKeyword,
   normalizeApplicationQuestion,
@@ -55,7 +56,7 @@ export function resolveClassNavigation(
     !state.awaitingQuestion &&
     (state.stage !== 'active' ||
       text.includes(':') ||
-      content.keywords?.some(
+      groupKeywords(content)?.some(
         (item) => normalizeKeyword(item.phrase) === normalizeKeyword(text),
       ))
   ) {
@@ -84,11 +85,11 @@ export function resolveClassText(
   text: string,
 ): string | undefined {
   const normalized = normalizeKeyword(text);
-  const keyword = content.keywords?.find(
+  const keyword = groupKeywords(content)?.find(
     (item) => normalizeKeyword(item.phrase) === normalized,
   );
   if (keyword) {
-    return `classes:${keyword.targetType}:${keyword.targetId}${keyword.targetType === 'direction' ? ':0' : ''}`;
+    return `classes:group:${keyword.targetId}`;
   }
   if (
     normalized === 'другие направления' ||

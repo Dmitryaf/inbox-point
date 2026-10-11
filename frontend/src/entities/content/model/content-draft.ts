@@ -1,4 +1,7 @@
-import { normalizeApplicationQuestion } from '@core/application/class-content';
+import {
+  groupKeywords,
+  normalizeApplicationQuestion,
+} from '@core/application/class-content';
 import {
   informationSectionIds,
   type ContentDraft,
@@ -51,7 +54,7 @@ export function normalizeContentDraft(
         meetings: [...item.meetings],
         ...(item.review ? { review: { ...item.review } } : {}),
       })) ?? [],
-    keywords: content.keywords?.map((item) => ({ ...item })) ?? [],
+    keywords: groupKeywords(content) ?? [],
     address: content.address ?? '',
     customSections:
       content.customSections?.map((section) => ({ ...section })) ?? [],

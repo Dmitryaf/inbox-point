@@ -61,6 +61,9 @@ final class ContentClasses {
                 object(keyword, true, "phrase", "targetType", "targetId");
                 var type = text(keyword.path("targetType"), 1, 9, false);
                 require(Set.of("direction", "group").contains(type));
+                if ("direction".equals(type)) {
+                    continue;
+                }
                 var id = identifier(keyword.path("targetId"), false);
                 var phrase = name(keyword.path("phrase"), 1);
                 var normalized = ClientCatalog.normalizeLabel(phrase);
