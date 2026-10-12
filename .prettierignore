@@ -1,4 +1,5 @@
 .ai-rules/
+.agents/
 .local/
 AGENTS.md
 coverage/
