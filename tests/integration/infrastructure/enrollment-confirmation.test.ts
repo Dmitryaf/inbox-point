@@ -18,6 +18,8 @@ import { TelegramClientMenu } from '@/infrastructure/telegram/telegram-client-me
 import { VkClientMenu } from '@/infrastructure/vk/vk-client-menu.js';
 import { TelegramTopicsInbox } from '@/infrastructure/telegram/telegram-topics-inbox.js';
 import { TelegramUpdateRouter } from '@/infrastructure/telegram/telegram-update-router.js';
+import { VkUpdateRouter } from '@/infrastructure/vk/vk-update-router.js';
+import { TelegramCallbackExpiredError } from '@/infrastructure/telegram/telegram-api-client.js';
 
 const repositories: SqliteSupportRepository[] = [];
 const directories: string[] = [];
@@ -122,6 +124,9 @@ function setup(channel: 'telegram' | 'vk', path = ':memory:') {
     );
   return {
     repository,
+    router,
+    menu,
+    gateways,
     gateway,
     catalog,
     runtime,
@@ -140,6 +145,184 @@ function setup(channel: 'telegram' | 'vk', path = ':memory:') {
 describe.each(['telegram', 'vk'] as const)(
   '%s enrollment confirmation',
   (channel) => {
+    it('routes signup and day through the channel entrypoint before confirmation', async () => {
+      const context = setup(channel);
+      if (channel === 'telegram') {
+        const inbound = new TelegramUpdateRouter(
+          context.runtime,
+          -100,
+          context.menu as TelegramClientMenu,
+          context.gateway,
+        );
+        await inbound.route({
+          update_id: 1,
+          callback_query: {
+            id: 'signup',
+            from: { id: 101, first_name: 'Synthetic', is_bot: false },
+            data: 'classes:signup:beginners',
+            message: {
+              chat: { id: 101, type: 'private' },
+              message_id: 1,
+              date: Math.floor(Date.now() / 1_000),
+            },
+          },
+        });
+        await inbound.route({
+          update_id: 2,
+          message: {
+            chat: { id: 101, type: 'private' },
+            from: { id: 101, first_name: 'Synthetic', is_bot: false },
+            message_id: 2,
+            date: Math.floor(Date.now() / 1_000),
+            text: 'В четверг',
+          },
+        });
+      } else {
+        const inbound = new VkUpdateRouter(
+          context.runtime,
+          context.gateways.vk,
+          context.menu as VkClientMenu,
+        );
+        for (const [id, text, action] of [
+          [1, 'Записаться на занятие', 'classes:signup:beginners'],
+          [2, 'В четверг', undefined],
+        ] as const) {
+          await inbound.route({
+            type: 'message_new',
+            group_id: 1,
+            event_id: `inbound-${id}`,
+            object: {
+              message: {
+                id,
+                conversation_message_id: id,
+                peer_id: 101,
+                from_id: 101,
+                out: 0,
+                date: Math.floor(Date.now() / 1_000),
+                text,
+                ...(action ? { payload: JSON.stringify({ action }) } : {}),
+              },
+            },
+          });
+        }
+      }
+      const request = context.repository.findActiveRequest(channel, '101')!;
+      const enrollment = context.repository.findClassEnrollment(
+        request.id,
+        channel === 'telegram' ? '2' : '101:2',
+      )!;
+      const relay = context.gateway.sendMessage.mock.calls.findIndex(
+        ([options]) => options.chatId === -100 && options.replyMarkup,
+      );
+      expect(enrollment).toBeDefined();
+      expect(relay).toBeGreaterThanOrEqual(0);
+      const sent = await (context.gateway.sendMessage.mock.results[relay]!
+        .value as Promise<{ messageId: number }>);
+      await context.click({
+        id: enrollment.id,
+        topic: request.operatorTopicId,
+        operatorMessageId: String(sent.messageId),
+      });
+      await context.worker.processPending();
+      await context.worker.processPending();
+      expect(context.confirmations()).toHaveLength(1);
+      expect(context.confirmations()[0]?.[0]).toMatchObject({
+        conversationId: '101',
+        text: 'Запись подтверждена. Приходите за 10 минут.',
+      });
+    });
+
+    it('rolls back history and outbox together when enqueue fails and permits a clean retry', async () => {
+      const context = setup(channel);
+      await context.signup();
+      await context.answer();
+      const request = context.repository.findActiveRequest(channel, '101')!;
+      const before = context.repository.findConversationMessages(request.id);
+      const enqueue = vi.spyOn(context.repository, 'enqueueDelivery');
+      enqueue.mockImplementationOnce(() => {
+        throw new Error('Synthetic disk failure');
+      });
+      await expect(context.click()).rejects.toThrow('Synthetic disk failure');
+      expect(context.repository.findConversationMessages(request.id)).toEqual(
+        before,
+      );
+      await context.worker.processPending();
+      expect(context.confirmations()).toHaveLength(0);
+      await context.click();
+      await context.worker.processPending();
+      expect(context.confirmations()).toHaveLength(1);
+      expect(
+        context.repository
+          .findConversationMessages(request.id)
+          .filter(
+            (message) =>
+              message.text === 'Запись подтверждена. Приходите за 10 минут.',
+          ),
+      ).toHaveLength(1);
+    });
+
+    it('ignores bot callbacks and tolerates an expired acknowledgement without duplicating delivery', async () => {
+      const context = setup(channel);
+      await context.signup();
+      await context.answer();
+      const data = context.enrollment();
+      await context.router.route({
+        update_id: 91,
+        callback_query: {
+          id: 'bot-callback',
+          from: { id: 9, first_name: 'Synthetic bot', is_bot: true },
+          data: `enroll:${data.id}`,
+          message: {
+            chat: { id: -100, type: 'supergroup' },
+            message_id: Number(data.operatorMessageId),
+            message_thread_id: Number(data.topic),
+            date: 1,
+          },
+        },
+      });
+      await context.worker.processPending();
+      expect(context.confirmations()).toHaveLength(0);
+      context.gateway.answerCallbackQuery.mockRejectedValueOnce(
+        new TelegramCallbackExpiredError('Synthetic expired callback'),
+      );
+      await context.click();
+      await context.click();
+      await Promise.all([
+        context.worker.processPending(),
+        context.worker.processPending(),
+      ]);
+      expect(context.confirmations()).toHaveLength(1);
+    });
+
+    it('recovers the button after restart following a sent reply and failed markup update', async () => {
+      const directory = mkdtempSync(join(tmpdir(), 'enrollment-sent-restart-'));
+      directories.push(directory);
+      const path = join(directory, 'state.sqlite');
+      const first = setup(channel, path);
+      await first.signup();
+      await first.answer();
+      await first.click();
+      first.gateway.editMessageReplyMarkup.mockRejectedValueOnce(
+        new Error('Synthetic edit failure'),
+      );
+      await first.worker.processPending();
+      await first.worker.processPending();
+      expect(first.confirmations()).toHaveLength(1);
+      first.repository.close();
+      repositories.splice(repositories.indexOf(first.repository), 1);
+      const restarted = setup(channel, path);
+      const worker = new DeliveryWorker({
+        repository: restarted.repository,
+        channels: [restarted.outgoing],
+        incidentNotifier: restarted.inbox,
+        clock: () => new Date(Date.now() + 120_000),
+      });
+      await worker.processPending();
+      await worker.processPending();
+      expect(restarted.confirmations()).toHaveLength(0);
+      expect(restarted.gateway.editMessageReplyMarkup).toHaveBeenCalledTimes(1);
+    });
+
     it('keeps the selected reply through restart before the client submits the day', async () => {
       const directory = mkdtempSync(join(tmpdir(), 'enrollment-pending-'));
       directories.push(directory);
