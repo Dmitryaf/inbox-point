@@ -82,13 +82,13 @@ for (const width of [1440, 390]) {
       await page.getByLabel('Режим', { exact: true }).selectOption('preview');
     }
     await page
-      .locator('.preview')
+      .locator('[aria-label="Предпросмотр ответов"]')
       .getByRole('button', { name: 'Записаться на занятие', exact: true })
       .click();
-    await expect(page.locator('.preview-response')).toContainText(
+    await expect(page.locator('[class*="_preview-response_"]')).toContainText(
       'Он придёт администратору как заявка «Записаться на занятие»',
     );
-    await expect(page.locator('.preview-response')).toContainText(
+    await expect(page.locator('[class*="_preview-response_"]')).toContainText(
       'На какое занятие и в какой день хотите записаться?',
     );
     await page.screenshot({
@@ -106,7 +106,7 @@ test('remembered login, navigation, reload and logout keep the admin boundary', 
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
     'Вход в управление',
   );
-  await expect(page.locator('.product-logo__mark')).toBeVisible();
+  await expect(page.locator('[class*="_product-logo__mark_"]')).toBeVisible();
 
   await page.getByLabel('Пароль').fill(password);
   await page.getByLabel('Запомнить это устройство на 30 дней').check();
@@ -199,8 +199,8 @@ test('a review record is completed in the group editor, saved and reopened witho
   await page
     .getByRole('button', { name: 'Старые записи расписания: 1' })
     .click();
-  await page.locator('.class-list-item').click();
-  await expect(page.locator('.class-review pre')).toHaveText(
+  await page.locator('[class*="_class-list-item_"]').click();
+  await expect(page.locator('[class*="_class-review_"] pre')).toHaveText(
     content.groups[0]!.review.source,
   );
   await expect(page.getByLabel('Открыть набор в группу')).toBeEnabled();
@@ -219,12 +219,12 @@ test('a review record is completed in the group editor, saved and reopened witho
     .getByLabel('Короткое описание группы')
     .fill('Для учеников с опытом.');
   await page.getByLabel('Открыть набор в группу').check();
-  await expect(page.locator('.class-review')).toHaveCount(0);
+  await expect(page.locator('[class*="_class-review_"]')).toHaveCount(0);
   await page.getByRole('button', { name: 'Сохранить', exact: true }).click();
   await expect(page.getByText('Все изменения сохранены')).toBeVisible();
   await page.reload();
-  await page.locator('.class-list-item').click();
-  await page.locator('.class-list-item').click();
+  await page.locator('[class*="_class-list-item_"]').click();
+  await page.locator('[class*="_class-list-item_"]').click();
   await expect(page.getByLabel('Название группы', { exact: true })).toHaveValue(
     'Вечерняя группа',
   );
@@ -235,9 +235,9 @@ test('a review record is completed in the group editor, saved and reopened witho
   await page
     .getByRole('button', { name: 'Посмотреть как клиент', exact: true })
     .click();
-  await expect(page.locator('.preview-service-message')).toContainText(
-    'Для учеников с опытом.',
-  );
+  await expect(
+    page.locator('[class*="_preview-service-message_"]'),
+  ).toContainText('Для учеников с опытом.');
 });
 
 test('message controls distinguish disconnected channels from active intake', async ({
@@ -245,7 +245,7 @@ test('message controls distinguish disconnected channels from active intake', as
 }) => {
   await login(page);
   await page.goto('/ops');
-  const connectionGuide = page.locator('.connection-guide');
+  const connectionGuide = page.locator('[class*="_connection-guide_"]');
   await expect(
     page.getByRole('heading', { name: 'Закончите подключение' }),
   ).toBeVisible();
@@ -255,7 +255,7 @@ test('message controls distinguish disconnected channels from active intake', as
   ).toHaveAttribute('href', '/setup');
   await page.getByText('Открыть управление').click();
 
-  const controls = page.locator('.intake-channel-list');
+  const controls = page.locator('[class*="_intake-channel-list_"]');
   await expect(controls.getByText('Не подключён', { exact: true })).toHaveCount(
     2,
   );
@@ -280,7 +280,7 @@ for (const viewport of [
     await page.getByRole('button', { name: 'Подключить Telegram' }).click();
 
     await expect(page.getByText('Что вы настраиваете')).toBeVisible();
-    await expect(page.locator('.setup-steps > li')).toHaveCount(6);
+    await expect(page.locator('[class*="_setup-steps_"] > li')).toHaveCount(6);
     await expect(
       page.getByRole('link', { name: '«Открыть @BotFather»' }),
     ).toHaveAttribute('href', 'https://t.me/BotFather');
@@ -314,7 +314,9 @@ test('VK setup stays anchored while details open', async ({ page }) => {
   });
   await page.goto('/setup');
 
-  const vkCard = page.locator('.setup-card').filter({ hasText: 'VK' });
+  const vkCard = page
+    .locator('[class*="_setup-card_"]')
+    .filter({ hasText: 'VK' });
   const collapsed = await requiredBox(vkCard);
   await vkCard.getByRole('button', { name: 'Подключить VK' }).click();
   await expect(
@@ -369,11 +371,11 @@ for (const viewport of [
     await page.setViewportSize(viewport);
     await login(page);
 
-    const workspaceMain = page.locator('.workspace-main');
+    const workspaceMain = page.locator('[class*="_workspace-main_"]');
     const navigation =
       viewport.width >= 900
         ? page.getByRole('navigation', { name: 'Разделы информации' })
-        : page.locator('.mobile-workspace-navigation');
+        : page.locator('[class*="_mobile-workspace-navigation_"]');
     const initialMainBox = await requiredBox(workspaceMain);
     const initialNavigationBox = await requiredBox(navigation);
 
@@ -433,8 +435,8 @@ for (const viewport of [
     const positions: { left: number; width: number }[] = [];
     for (const path of ['/manage', '/setup', '/ops']) {
       await page.goto(path);
-      await expect(page.locator('.admin-topbar')).toBeVisible();
-      const box = await page.locator('.admin-topbar').boundingBox();
+      await expect(page.locator('[class*="_admin-topbar_"]')).toBeVisible();
+      const box = await page.locator('[class*="_admin-topbar_"]').boundingBox();
       expect(box).not.toBeNull();
       positions.push({ left: box?.x ?? 0, width: box?.width ?? 0 });
       expect(
@@ -504,10 +506,10 @@ test('opening channel details does not resize the other channel card', async ({
   });
   await page.goto('/ops');
 
-  const telegramCard = page.locator('.status-card').filter({
+  const telegramCard = page.locator('[class*="_status-card_"]').filter({
     has: page.getByRole('heading', { name: 'Telegram' }),
   });
-  const vkCard = page.locator('.status-card').filter({
+  const vkCard = page.locator('[class*="_status-card_"]').filter({
     has: page.getByRole('heading', { name: 'VK', exact: true }),
   });
   const telegramCollapsed = await requiredBox(telegramCard);
@@ -564,7 +566,7 @@ async function requiredVerticalGap(
 }
 
 async function expectTelegramKeyboardLayout(page: Page): Promise<void> {
-  const rows = page.locator('.message-preview-button-row');
+  const rows = page.locator('[class*="_message-preview-button-row_"]');
   await expect(rows).toHaveCount(3);
   await expect(rows.nth(0).locator('button')).toHaveText([
     'Расписание',

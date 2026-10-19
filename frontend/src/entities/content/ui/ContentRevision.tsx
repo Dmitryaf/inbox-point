@@ -1,67 +1,109 @@
-import '@frontend/entities/content/styles/content-revision.react-data-r-b485ff3e.css';
-import {
-  useComponentModel,
-  ModelScopeProvider,
-} from '@frontend/shared/lib/component-model';
-import { classNames as $class } from '@frontend/shared/lib/component-view';
+import { normalizeContentDraft } from '@frontend-common/entities/content/model/content-draft';
+import type { ContentSnapshot } from '@frontend-common/entities/content/model/types';
+import styles from '@frontend/entities/content/styles/content-revision.module.css';
 
-import { logicalOr as $or } from '@frontend/shared/lib/component-bindings';
-
-import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
-
-import { renderContentRevisionPart1 } from './ContentRevision.part1';
-import { renderContentRevisionPart3 } from './ContentRevision.part3';
-import { renderContentRevisionPart5 } from './ContentRevision.part5';
-import {
-  createComponentModel,
-  componentDefaults,
-  type ComponentProps,
-} from './ContentRevision.model';
-
-export default function ContentRevision($incomingProps: ComponentProps) {
-  const {
-    state: $state,
-    props: $props,
-    scope: $scope,
-  } = useComponentModel(
-    $incomingProps,
-    componentDefaults,
-    createComponentModel,
-  );
-  const { visibility } = $state;
-  const content = $state.content.value;
-  const $attributes = inheritedAttributes($props);
+export function ContentRevision({ snapshot }: { snapshot: ContentSnapshot }) {
+  const content = normalizeContentDraft(snapshot.content);
   return (
-    <ModelScopeProvider scope={$scope}>
-      <div
-        {...$attributes}
-        className={$class('revision-content', $attributes.className)}
-        data-r-b485ff3e=""
-      >
-        {content.organizationName ? (
-          <section data-r-b485ff3e="">
-            <h4 data-r-b485ff3e="">{'Название организации'}</h4>
-            <p data-r-b485ff3e="">{content.organizationName}</p>
-          </section>
-        ) : null}
-        {renderContentRevisionPart1($state)}
-        <section data-r-b485ff3e="">
-          <h3 data-r-b485ff3e="">
-            {' Цены '}
-            <small data-r-b485ff3e="">{visibility('prices')}</small>
+    <div className={styles['revision-content']}>
+      <section>
+        <h3>Название организации</h3>
+        <p>
+          {content.organizationName?.trim()
+            ? content.organizationName
+            : 'Не заполнено'}
+        </p>
+      </section>
+      <section>
+        <h3>
+          Занятия{' '}
+          <small>
+            {content.visibleSections.includes('schedule')
+              ? 'Кнопка включена'
+              : 'Скрыто в меню'}
+          </small>
+        </h3>
+        <ul>
+          {content.directions.map((item) => (
+            <li key={item.id}>{item.name}</li>
+          ))}
+        </ul>
+        {content.groups.map((group) => (
+          <article key={group.id}>
+            <h4>{group.name || 'Старое расписание'}</h4>
+            <p>{group.meetings.join('\n')}</p>
+            <p>{group.description}</p>
+            <p>{group.enrollmentOpen ? 'Набор открыт' : 'Набор закрыт'}</p>
+            <p>{group.applicationQuestion}</p>
+            <p>{group.confirmationText}</p>
+            {group.review && <pre>{group.review.source}</pre>}
+          </article>
+        ))}
+        {content.schedule.map((item, index) => (
+          <p key={index}>
+            {item.title} · {item.dayTime} · {item.description}
+          </p>
+        ))}
+        {content.legacySchedule && <pre>{content.legacySchedule}</pre>}
+        {!!content.keywords.length && (
+          <ul>
+            {content.keywords.map((word, index) => (
+              <li key={index}>{word.phrase}</li>
+            ))}
+          </ul>
+        )}
+      </section>
+      {(['prices', 'address'] as const).map((id) => (
+        <section key={id}>
+          <h3>
+            {id === 'prices' ? 'Цены' : 'Адрес'}{' '}
+            <small>
+              {content.visibleSections.includes(id)
+                ? 'Кнопка включена'
+                : 'Скрыто в меню'}
+            </small>
           </h3>
-          <p data-r-b485ff3e="">{$or(content.prices, () => 'Не заполнено')}</p>
+          <p>{content[id] || 'Не заполнено'}</p>
         </section>
-        <section data-r-b485ff3e="">
-          <h3 data-r-b485ff3e="">
-            {' Адрес '}
-            <small data-r-b485ff3e="">{visibility('address')}</small>
-          </h3>
-          <p data-r-b485ff3e="">{$or(content.address, () => 'Не заполнено')}</p>
-        </section>
-        {renderContentRevisionPart3($state)}
-        {renderContentRevisionPart5($state)}
-      </div>
-    </ModelScopeProvider>
+      ))}
+      <section>
+        <h3>
+          Частые вопросы{' '}
+          <small>
+            {content.visibleSections.includes('faq')
+              ? 'Кнопка включена'
+              : 'Скрыто в меню'}
+          </small>
+        </h3>
+        {content.faq.length ? (
+          content.faq.map((item, index) => (
+            <div key={index}>
+              <strong>{item.question}</strong>
+              <p>{item.answer}</p>
+            </div>
+          ))
+        ) : (
+          <p>Не заполнено</p>
+        )}
+      </section>
+      <section>
+        <h3>Свои разделы</h3>
+        {content.customSections.length ? (
+          content.customSections.map((item, index) => (
+            <div key={item.id ?? index}>
+              <strong>{item.label}</strong>
+              <p>{item.text}</p>
+              <p>
+                {item.mode === 'application'
+                  ? 'Принять заявку'
+                  : 'Показать информацию'}
+              </p>
+            </div>
+          ))
+        ) : (
+          <p>Не заполнено</p>
+        )}
+      </section>
+    </div>
   );
 }

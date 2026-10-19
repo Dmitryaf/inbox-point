@@ -1,16 +1,18 @@
-import { RouterHost } from '@frontend/shared/lib/router';
+import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
-import App from '@frontend/app/App';
+import { App } from '@frontend/app/App';
+import { createAppQueryClient } from '@frontend/app/query-client';
 import { createAdminRouter } from '@frontend/app/router';
-import '@frontend/app/styles/global.css';
+import '@frontend-styles/global.css';
 
-const root = document.getElementById('app');
-if (!root) {
+const container = document.getElementById('app');
+if (!container) {
   throw new Error('Application root is missing');
 }
-createRoot(root).render(
-  <RouterHost router={createAdminRouter()}>
-    <App />
-  </RouterHost>,
+
+createRoot(container).render(
+  <StrictMode>
+    <App router={createAdminRouter()} queryClient={createAppQueryClient()} />
+  </StrictMode>,
 );

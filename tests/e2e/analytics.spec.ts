@@ -12,8 +12,12 @@ for (const width of [1440, 390]) {
     await expect(
       page.getByRole('link', { name: 'Аналитика', exact: true }),
     ).toHaveAttribute('aria-current', 'page');
-    await expect(page.locator('.metric-value').first()).toHaveText('14');
-    await expect(page.locator('.metric-value').nth(1)).toHaveText('83');
+    await expect(page.locator('[class*="_metric-value_"]').first()).toHaveText(
+      '14',
+    );
+    await expect(page.locator('[class*="_metric-value_"]').nth(1)).toHaveText(
+      '83',
+    );
     await expect(
       page.getByRole('rowheader', { name: 'Цены', exact: true }),
     ).toBeVisible();
@@ -34,32 +38,40 @@ for (const width of [1440, 390]) {
       await expect(button).toBeFocused();
       await page.keyboard.press('Space');
       await expect(button).toHaveAttribute('aria-pressed', 'true');
-      const dailyToggle = page.locator('.daily-toggle');
+      const dailyToggle = page.locator('[class*="_daily-toggle_"]');
       if (width > 600) {
         await dailyToggle.click();
         await expect(dailyToggle).toHaveAttribute('aria-expanded', 'true');
-        await expect(page.locator('.activity-chart')).toBeVisible();
+        await expect(page.locator('[class*="_activity-chart_"]')).toBeVisible();
       } else {
         await expect(dailyToggle).toBeHidden();
-        await expect(page.locator('.activity-chart')).toBeHidden();
+        await expect(page.locator('[class*="_activity-chart_"]')).toBeHidden();
       }
-      await expect(page.locator('.daily-values')).toBeVisible();
-      await expect(page.locator('.daily-values tbody tr')).toHaveCount(rows);
+      await expect(page.locator('[class*="_daily-values_"]')).toBeVisible();
+      await expect(
+        page.locator('[class*="_daily-values_"] tbody tr'),
+      ).toHaveCount(rows);
       const dates = await page
-        .locator('.daily-values tbody th')
+        .locator('[class*="_daily-values_"] tbody th')
         .allTextContents();
       expect(dates[0]).toBe('4 окт.');
       expect(new Set(dates).size).toBe(rows);
     }
     await page.getByRole('button', { name: 'Telegram', exact: true }).click();
-    await expect(page.locator('.metric-value').first()).toHaveText('8');
+    await expect(page.locator('[class*="_metric-value_"]').first()).toHaveText(
+      '8',
+    );
     await expect(
       page.getByRole('columnheader', { name: 'VK', exact: true }),
     ).toHaveCount(0);
     await page.getByRole('button', { name: 'VK', exact: true }).click();
-    await expect(page.locator('.metric-value').first()).toHaveText('6');
+    await expect(page.locator('[class*="_metric-value_"]').first()).toHaveText(
+      '6',
+    );
     await page.getByRole('button', { name: 'Все каналы', exact: true }).click();
-    await expect(page.locator('.metric-value').first()).toHaveText('14');
+    await expect(page.locator('[class*="_metric-value_"]').first()).toHaveText(
+      '14',
+    );
     await expect(
       page.getByRole('columnheader', { name: 'Telegram', exact: true }),
     ).toBeVisible();
@@ -122,7 +134,7 @@ test('analytics loading, error retry and empty period stay understandable', asyn
   await expect(
     page.getByRole('heading', { name: 'Пока нет активности' }),
   ).toBeVisible();
-  await expect(page.locator('.metric-value')).toHaveCount(0);
+  await expect(page.locator('[class*="_metric-value_"]')).toHaveCount(0);
 });
 
 test('analytics uses the existing login and keeps API access closed after logout', async ({
@@ -135,7 +147,9 @@ test('analytics uses the existing login and keeps API access closed after logout
   await page.getByRole('button', { name: 'Войти', exact: true }).click();
   await page.getByRole('link', { name: 'Аналитика', exact: true }).click();
   await page.reload();
-  await expect(page.locator('.metric-value').first()).toHaveText('14');
+  await expect(page.locator('[class*="_metric-value_"]').first()).toHaveText(
+    '14',
+  );
   await page.getByRole('button', { name: 'Выйти', exact: true }).click();
   expect((await page.request.get('/api/analytics')).status()).toBe(401);
 });

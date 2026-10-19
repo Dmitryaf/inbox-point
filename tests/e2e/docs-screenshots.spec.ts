@@ -38,8 +38,8 @@ test('documentation: populated content management', async ({ page }) => {
   await expect(
     page.getByRole('region', { name: 'Занятия', exact: true }),
   ).toBeVisible();
-  await expect(page.locator('.class-list-item')).toHaveCount(2);
-  await expect(page.locator('.content-summary')).toContainText(
+  await expect(page.locator('[class*="_class-list-item_"]')).toHaveCount(2);
+  await expect(page.locator('[class*="_content-summary_"]')).toContainText(
     'Ответов в меню: 5',
   );
   await capture(page, 'inbox-point-content.png');
@@ -56,14 +56,14 @@ test('documentation: delivery incident and service overview', async ({
   await expect(
     page.getByRole('button', { name: 'Повторить отправку' }),
   ).toBeVisible();
-  await expect(page.locator('.status-grid')).toContainText('VK');
-  await expect(page.locator('.service-summary')).toContainText(
+  await expect(page.locator('[class*="_status-grid_"]')).toContainText('VK');
+  await expect(page.locator('[class*="_service-summary_"]')).toContainText(
     'Нужно проверить',
   );
-  await expect(page.locator('.delivery-incidents')).toContainText(
+  await expect(page.locator('[class*="_delivery-incidents_"]')).toContainText(
     'Учебный клиент',
   );
-  await expect(page.locator('.delivery-incidents')).toContainText(
+  await expect(page.locator('[class*="_delivery-incidents_"]')).toContainText(
     'Приходите в понедельник',
   );
   await capture(page, 'inbox-point-operations.png');

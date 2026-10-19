@@ -1,45 +1,19 @@
-import '@frontend/pages/not-found/styles/not-found-page.react-data-r-e17337c8.css';
-import {
-  useComponentModel,
-  ModelScopeProvider,
-} from '@frontend/shared/lib/component-model';
-import { classNames as $class } from '@frontend/shared/lib/component-view';
+import { Link } from 'react-router';
 
-import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
-import ProductLogo from '@frontend/shared/ui/ProductLogo';
-import { RouterLink } from '@frontend/shared/lib/router';
+import { ProductLogo } from '@frontend/shared/ui/ProductLogo';
+import styles from '@frontend/pages/not-found/styles/not-found-page.module.css';
 
-import {
-  createComponentModel,
-  componentDefaults,
-  type ComponentProps,
-} from './NotFoundPage.model';
-
-export default function NotFoundPage($incomingProps: ComponentProps) {
-  const { props: $props, scope: $scope } = useComponentModel(
-    $incomingProps,
-    componentDefaults,
-    createComponentModel,
-  );
-  const $attributes = inheritedAttributes($props);
+export function NotFoundPage() {
   return (
-    <ModelScopeProvider scope={$scope}>
-      <main
-        {...$attributes}
-        className={$class('not-found-page', $attributes.className)}
-        data-r-e17337c8=""
-      >
-        <section data-r-e17337c8="">
-          <ProductLogo className="not-found-logo" data-r-e17337c8="" />
-          <h1 data-r-e17337c8="">{'Страница не найдена'}</h1>
-          <p data-r-e17337c8="">
-            {'Проверьте адрес или вернитесь в раздел с ответами.'}
-          </p>
-          <RouterLink to="/manage" className="button-link" data-r-e17337c8="">
-            {'Открыть ответы'}
-          </RouterLink>
-        </section>
-      </main>
-    </ModelScopeProvider>
+    <main className={styles['not-found-page']}>
+      <section>
+        <ProductLogo className={styles['not-found-logo']} />
+        <h1>Страница не найдена</h1>
+        <p>Проверьте адрес или вернитесь в раздел с ответами.</p>
+        <Link className={styles['button-link']} to="/manage">
+          Открыть ответы
+        </Link>
+      </section>
+    </main>
   );
 }

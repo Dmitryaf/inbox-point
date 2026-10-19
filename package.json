@@ -12,13 +12,10 @@
   "scripts": {
     "build": "npm run build:frontend && npm run build:server",
     "build:frontend": "vite build --config frontend/vite.config.ts",
-    "build:frontend:react": "vite build --config frontend/vite.config.ts --mode react",
     "build:server": "node scripts/run-java.mjs build",
     "backup:create": "node --env-file-if-exists=.env scripts/run-java.mjs backup-create",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run test:deploy && npm run build",
     "check:e2e": "npm run build && playwright test",
-    "check:react": "npm run typecheck:react && npm run test:react && npm run build:frontend:react",
-    "check:react:e2e": "npm run build:server && npm run build:frontend:react && playwright test --config playwright.react.config.ts",
     "dev": "npm run build && npm run start",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -29,13 +26,11 @@
     "start": "node --env-file-if-exists=.env scripts/run-java.mjs start",
     "start:availability-monitor": "node scripts/run-java.mjs availability-monitor",
     "test": "vitest run",
-    "test:react": "vitest run --config vitest.react.config.ts",
     "test:deploy": "node tests/deploy/run-update-instance-tests.mjs",
     "test:e2e:server": "node tests/e2e/support/java-server.mjs",
     "typecheck": "npm run typecheck:frontend && npm run typecheck:frontend-tests",
     "typecheck:frontend": "tsc --noEmit -p frontend/tsconfig.json",
-    "typecheck:frontend-tests": "tsc --noEmit -p tests/frontend/tsconfig.json",
-    "typecheck:react": "tsc --noEmit -p frontend/react/tsconfig.json && tsc --noEmit -p tests/react/tsconfig.json"
+    "typecheck:frontend-tests": "tsc --noEmit -p tests/frontend/tsconfig.json"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.104.4",

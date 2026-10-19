@@ -42,9 +42,11 @@ for (const width of [390, 1440]) {
     await page.goto('/login');
     await page.getByLabel('Пароль').fill('synthetic-admin-password');
     await page.getByRole('button', { name: 'Войти', exact: true }).click();
-    await expect(page.locator('.content-summary dl')).toBeVisible();
-    await expect(page.locator('.content-summary summary')).toHaveCount(0);
-    await page.locator('.class-list-item').first().click();
+    await expect(page.locator('[class*="_content-summary_"] dl')).toBeVisible();
+    await expect(
+      page.locator('[class*="_content-summary_"] summary'),
+    ).toHaveCount(0);
+    await page.locator('[class*="_class-list-item_"]').first().click();
     await expect(page.getByLabel('Название направления')).toBeVisible();
     await expect(
       page.getByText('Настройки направления', { exact: true }),
@@ -55,7 +57,7 @@ for (const width of [390, 1440]) {
     await expect(
       page.getByRole('button', { name: 'Добавить ключевое слово' }),
     ).toHaveCount(0);
-    await page.locator('.class-list-item').first().click();
+    await page.locator('[class*="_class-list-item_"]').first().click();
     await expect(
       page.getByLabel('Сохранённое слово для всего направления'),
     ).toHaveCount(0);
@@ -66,7 +68,7 @@ for (const width of [390, 1440]) {
     await page.getByLabel('Слово или фраза 1').fill('Бачата');
     await page.getByLabel('Название организации').fill('Школа танцев «Пример»');
     await page.getByRole('button', { name: 'Сохранить', exact: true }).click();
-    await expect(page.locator('.organization-name')).toHaveText(
+    await expect(page.locator('[class*="_organization-name_"]')).toHaveText(
       'Школа танцев «Пример»',
     );
     expect(snapshot.content.keywords).toEqual([
@@ -81,11 +83,11 @@ for (const width of [390, 1440]) {
         .getByRole('navigation', { name: 'Разделы администратора' })
         .getByRole('link', { name: section, exact: true })
         .click();
-      await expect(page.locator('.organization-name')).toHaveText(
+      await expect(page.locator('[class*="_organization-name_"]')).toHaveText(
         'Школа танцев «Пример»',
       );
       await page.reload();
-      await expect(page.locator('.organization-name')).toHaveText(
+      await expect(page.locator('[class*="_organization-name_"]')).toHaveText(
         'Школа танцев «Пример»',
       );
     }

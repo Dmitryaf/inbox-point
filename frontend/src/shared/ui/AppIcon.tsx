@@ -1,42 +1,35 @@
-import '@frontend/shared/styles/app-icon.react-data-r-5d93b4d9.css';
-import {
-  useComponentModel,
-  ModelScopeProvider,
-} from '@frontend/shared/lib/component-model';
-import { classNames as $class } from '@frontend/shared/lib/component-view';
-
-import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
-
-import { renderAppIconPart1 } from './AppIcon.part1';
-import {
-  createComponentModel,
-  componentDefaults,
-  type ComponentProps,
-} from './AppIcon.model';
-export type { AppIconName } from './AppIcon.model';
-export default function AppIcon($incomingProps: ComponentProps) {
-  const { props: $props, scope: $scope } = useComponentModel(
-    $incomingProps,
-    componentDefaults,
-    createComponentModel,
-  );
-  const $attributes = inheritedAttributes($props);
+import styles from '@frontend/shared/styles/app-icon.module.css';
+export function AppIcon({ name }: { name: 'core' | 'faq' | 'custom' }) {
   return (
-    <ModelScopeProvider scope={$scope}>
-      <svg
-        {...$attributes}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-        aria-hidden="true"
-        className={$class('app-icon', $attributes.className)}
-        data-r-5d93b4d9=""
-      >
-        {renderAppIconPart1($props)}
-      </svg>
-    </ModelScopeProvider>
+    <svg
+      className={styles['app-icon']}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.8"
+      aria-hidden="true"
+    >
+      {name === 'core' ? (
+        <>
+          <rect x="4" y="4" width="6" height="6" rx="1.5" />
+          <rect x="14" y="4" width="6" height="6" rx="1.5" />
+          <rect x="4" y="14" width="6" height="6" rx="1.5" />
+          <rect x="14" y="14" width="6" height="6" rx="1.5" />
+        </>
+      ) : name === 'faq' ? (
+        <>
+          <path d="M5 5h14v11H9l-4 3V5Z" />
+          <path d="M9.5 9a2.5 2.5 0 0 1 4.8 1c0 1.8-2.3 1.8-2.3 3" />
+          <path d="M12 14.7h.01" />
+        </>
+      ) : (
+        <>
+          <path d="M12 3v18M3 12h18" />
+          <circle cx="12" cy="12" r="8" />
+        </>
+      )}
+    </svg>
   );
 }

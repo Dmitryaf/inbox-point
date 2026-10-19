@@ -49,13 +49,19 @@ for (const width of [390, 1440]) {
     await page
       .getByRole('button', { name: 'Старые записи расписания: 1' })
       .click();
-    await page.locator('.class-list-item').click();
-    await expect(page.locator('.class-review pre')).toHaveText(source);
-    await expect(page.locator('.class-review')).toContainText('уже есть');
+    await page.locator('[class*="_class-list-item_"]').click();
+    await expect(page.locator('[class*="_class-review_"] pre')).toHaveText(
+      source,
+    );
+    await expect(page.locator('[class*="_class-review_"]')).toContainText(
+      'уже есть',
+    );
     const checkbox = page.getByLabel('Открыть набор в группу');
     await checkbox.click();
     await expect(checkbox).not.toBeChecked();
-    await expect(page.locator('.class-review pre')).toHaveText(source);
+    await expect(page.locator('[class*="_class-review_"] pre')).toHaveText(
+      source,
+    );
     await expect(
       page.getByRole('button', { name: 'Подтвердить данные' }),
     ).toHaveCount(0);
@@ -69,7 +75,7 @@ for (const width of [390, 1440]) {
     await expect(page.getByLabel('Название группы')).toHaveValue('Начинающие');
     await page.getByLabel('Название группы').fill('Новая группа');
     await checkbox.check();
-    await expect(page.locator('.class-review')).toHaveCount(0);
+    await expect(page.locator('[class*="_class-review_"]')).toHaveCount(0);
     await expect(checkbox).toBeChecked();
     await page.getByRole('button', { name: 'Сохранить', exact: true }).click();
     await expect(page.getByText('Все изменения сохранены')).toBeVisible();
@@ -77,7 +83,7 @@ for (const width of [390, 1440]) {
       content.groups.find((group) => group.id === 'old')?.enrollmentOpen,
     ).toBe(true);
     await page.reload();
-    await page.locator('.class-list-item').click();
+    await page.locator('[class*="_class-list-item_"]').click();
     await page
       .getByRole('button', { name: 'Новая группа Набор открыт' })
       .click();
@@ -97,9 +103,9 @@ for (const width of [390, 1440]) {
     await page.getByRole('button', { name: 'Сохранить', exact: true }).click();
     await expect(page.getByText('Все изменения сохранены')).toBeVisible();
     await page.reload();
-    await page.locator('.class-list-item').click();
-    await expect(page.locator('.class-list-item')).toHaveCount(1);
-    await expect(page.locator('.class-list-item')).toHaveText(
+    await page.locator('[class*="_class-list-item_"]').click();
+    await expect(page.locator('[class*="_class-list-item_"]')).toHaveCount(1);
+    await expect(page.locator('[class*="_class-list-item_"]')).toHaveText(
       'НачинающиеНабор открыт',
     );
     expect(content.groups.map((group) => group.id)).toEqual(['ready']);

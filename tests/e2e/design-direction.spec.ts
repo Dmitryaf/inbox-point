@@ -51,13 +51,13 @@ for (const width of [390, 1280]) {
     await expect(save).toBeDisabled();
     if (width === 390) {
       const firstActionTop = await page
-        .locator('.class-list-item')
+        .locator('[class*="_class-list-item_"]')
         .first()
         .evaluate((el) => el.getBoundingClientRect().top + scrollY);
       expect(firstActionTop).toBeLessThan(550);
     }
-    await page.locator('.class-list-item').first().click();
-    await page.locator('.class-list-item').first().click();
+    await page.locator('[class*="_class-list-item_"]').first().click();
+    await page.locator('[class*="_class-list-item_"]').first().click();
     await expect(
       page.getByLabel('Название группы', { exact: true }),
     ).toBeVisible();
@@ -94,8 +94,12 @@ for (const width of [390, 1280]) {
     await page
       .getByRole('button', { name: 'Посмотреть как клиент', exact: true })
       .click();
-    await expect(page.locator('.preview')).toHaveCount(1);
-    await expect(page.locator('.preview-service-message')).toContainText(title);
+    await expect(
+      page.locator('[aria-label="Предпросмотр ответов"]'),
+    ).toHaveCount(1);
+    await expect(
+      page.locator('[class*="_preview-service-message_"]'),
+    ).toContainText(title);
     if (width >= 900) {
       await page
         .getByRole('button', { name: 'Редактирование', exact: true })
@@ -160,7 +164,7 @@ for (const width of [390, 1280]) {
     await page
       .getByRole('button', { name: 'Повторить', exact: true })
       .press('Enter');
-    await expect(page.locator('.content-summary')).toContainText(
+    await expect(page.locator('[class*="_content-summary_"]')).toContainText(
       'Пока не заполнено',
     );
     await enlargeText(page);
@@ -223,30 +227,36 @@ for (const width of [390, 1280]) {
         name: 'Записаться на первое пробное занятие',
       }),
     ).toBeVisible();
-    await expect(page.locator('.usage-channels')).toContainText('Обращения: 8');
-    await expect(page.locator('.question-context')).toContainText(
+    await expect(page.locator('[class*="_usage-channels_"]')).toContainText(
+      'Обращения: 8',
+    );
+    await expect(page.locator('[class*="_question-context_"]')).toContainText(
       'Кнопки для вопросов',
     );
-    await expect(page.locator('.question-path dd')).toHaveText('13');
+    await expect(page.locator('[class*="_question-path_"] dd')).toHaveText(
+      '13',
+    );
     const numericWidths = await page
-      .locator('.menu-usage thead th')
+      .locator('[class*="_menu-usage_"] thead th')
       .evaluateAll((headers) =>
         headers.slice(1).map((header) => header.getBoundingClientRect().width),
       );
     expect(
       Math.max(...numericWidths) - Math.min(...numericWidths),
     ).toBeLessThanOrEqual(1);
-    const context = page.locator('.question-context');
+    const context = page.locator('[class*="_question-context_"]');
     if (width === 390) {
       expect(await documentTop(context)).toBeGreaterThan(
-        await documentTop(page.locator('.menu-usage')),
+        await documentTop(page.locator('[class*="_menu-usage_"]')),
       );
     } else {
-      const menuBox = await page.locator('.menu-usage').boundingBox();
+      const menuBox = await page
+        .locator('[class*="_menu-usage_"]')
+        .boundingBox();
       const contextBox = await context.boundingBox();
       expect(contextBox!.x).toBeGreaterThan(menuBox!.x + menuBox!.width);
     }
-    const days = page.locator('.daily-toggle');
+    const days = page.locator('[class*="_daily-toggle_"]');
     if (width > 600) {
       await days.press('Enter');
       await expect(days).toBeFocused();
@@ -254,8 +264,8 @@ for (const width of [390, 1280]) {
       await expect(days).toHaveCSS('outline-width', '3px');
     } else {
       await expect(days).toBeHidden();
-      await expect(page.locator('.activity-chart')).toBeHidden();
-      const values = page.locator('.daily-values');
+      await expect(page.locator('[class*="_activity-chart_"]')).toBeHidden();
+      const values = page.locator('[class*="_daily-values_"]');
       await values.focus();
       await expect(values).toHaveCSS('outline-width', '3px');
       await values.press('End');
@@ -263,7 +273,9 @@ for (const width of [390, 1280]) {
         .poll(() => values.evaluate((el) => el.scrollTop))
         .toBeGreaterThan(0);
     }
-    await expect(page.locator('.daily-values tbody tr')).toHaveCount(30);
+    await expect(
+      page.locator('[class*="_daily-values_"] tbody tr'),
+    ).toHaveCount(30);
     await noHorizontalOverflow(page);
   });
 
@@ -339,15 +351,17 @@ for (const width of [390, 1280]) {
     await expect(retry).toBeVisible();
     await enlargeText(page);
     expect(await documentTop(retry)).toBeLessThan(
-      await documentTop(page.locator('.service-summary')),
+      await documentTop(page.locator('[class*="_service-summary_"]')),
     );
-    expect(await documentTop(page.locator('.service-summary'))).toBeLessThan(
-      await documentTop(page.locator('.status-grid')),
+    expect(
+      await documentTop(page.locator('[class*="_service-summary_"]')),
+    ).toBeLessThan(await documentTop(page.locator('[class*="_status-grid_"]')));
+    expect(
+      await documentTop(page.locator('[class*="_status-grid_"]')),
+    ).toBeLessThan(
+      await documentTop(page.locator('[class*="_message-flow-control_"]')),
     );
-    expect(await documentTop(page.locator('.status-grid'))).toBeLessThan(
-      await documentTop(page.locator('.message-flow-control')),
-    );
-    const details = page.locator('.delivery-incidents summary');
+    const details = page.locator('[class*="_delivery-incidents_"] summary');
     await details.press('Enter');
     await expect(
       page.getByText('synthetic-request', { exact: true }),
@@ -357,12 +371,11 @@ for (const width of [390, 1280]) {
       page.getByText('synthetic-request', { exact: true }),
     ).toBeHidden();
     await retry.press('Tab');
-    await page.locator('.message-flow-summary').press('Enter');
-    await expect(page.locator('.message-flow-control')).toHaveAttribute(
-      'open',
-      '',
-    );
-    await expect(page.locator('.message-flow-summary')).toHaveCSS(
+    await page.locator('[class*="_message-flow-summary_"]').press('Enter');
+    await expect(
+      page.locator('[class*="_message-flow-control_"]'),
+    ).toHaveAttribute('open', '');
+    await expect(page.locator('[class*="_message-flow-summary_"]')).toHaveCSS(
       'outline-width',
       '3px',
     );
@@ -393,27 +406,33 @@ for (const width of [390, 1280]) {
       });
     });
     await page.goto('http://127.0.0.1:4175/ops');
-    const selected = page.locator('.operator-request-button').first();
+    const selected = page
+      .locator('[class*="_operator-request-button_"]')
+      .first();
     await expect(selected).toHaveAttribute('aria-pressed', 'true');
-    await expect(page.locator('.operator-message-list li')).toHaveCount(24);
+    await expect(
+      page.locator('[class*="_operator-message-list_"] li'),
+    ).toHaveCount(24);
     await enlargeText(page);
     const fits = await selected.evaluate(
       (element) => element.scrollHeight <= element.clientHeight + 1,
     );
     expect(fits).toBe(true);
-    const list = page.locator('.operator-request-list');
+    const list = page.locator('[class*="_operator-request-list_"]');
     const conversation = page.getByRole('article', {
       name: 'Выбранное обращение',
     });
     const listBox = await list.boundingBox();
     const conversationBox = await conversation.boundingBox();
     const headingBox = await page
-      .locator('.operator-conversation-heading')
+      .locator('[class*="_operator-conversation-heading_"]')
       .boundingBox();
     const messagesBox = await page
-      .locator('.operator-message-list')
+      .locator('[class*="_operator-message-list_"]')
       .boundingBox();
-    const replyBox = await page.locator('.operator-reply-form').boundingBox();
+    const replyBox = await page
+      .locator('[class*="_operator-reply-form_"]')
+      .boundingBox();
     expect(messagesBox!.y).toBeGreaterThanOrEqual(
       headingBox!.y + headingBox!.height,
     );
@@ -439,7 +458,10 @@ for (const width of [390, 1280]) {
     await expect(
       page.getByRole('button', { name: 'Отправить', exact: true }),
     ).toBeEnabled();
-    await page.locator('.operator-request-button').nth(1).press('Enter');
+    await page
+      .locator('[class*="_operator-request-button_"]')
+      .nth(1)
+      .press('Enter');
     await expect(
       page.getByRole('button', { name: 'Повторить загрузку переписки' }),
     ).toBeVisible();
@@ -449,12 +471,17 @@ for (const width of [390, 1280]) {
     await page
       .getByRole('button', { name: 'Повторить загрузку переписки' })
       .press('Enter');
-    await expect(page.locator('.operator-message-list li')).toHaveCount(24);
+    await expect(
+      page.locator('[class*="_operator-message-list_"] li'),
+    ).toHaveCount(24);
     await selected.press('Enter');
     await expect(page.getByLabel('Ответ', { exact: true })).toHaveValue(
       'Подскажем время занятия.',
     );
-    await page.locator('.operator-request-button').nth(2).press('Enter');
+    await page
+      .locator('[class*="_operator-request-button_"]')
+      .nth(2)
+      .press('Enter');
     await expect(
       page.getByText('Сообщений пока нет.', { exact: true }),
     ).toBeVisible();

@@ -1,65 +1,131 @@
-import '@frontend/entities/setup/styles/setup-card.react-data-r-712bbad4.css';
-import {
-  useComponentModel,
-  ModelScopeProvider,
-} from '@frontend/shared/lib/component-model';
-import { classNames as $class } from '@frontend/shared/lib/component-view';
+import { useState } from 'react';
+import { disconnectVk } from '@frontend-common/entities/setup/api/setup-api';
+import type { ChannelSetupStatus } from '@frontend-common/entities/setup/model/types';
+import { useSetupCommand } from '@frontend/features/channel-setup/model/use-setup-command';
+import { useVkConnection } from '@frontend/features/setup-vk/model/use-vk-connection';
+import styles from '@frontend/entities/setup/styles/setup-card.module.css';
+import { VkConnectionForm } from './VkConnectionForm';
+import { VkSetupInstructions } from './VkSetupInstructions';
 
-import { setModelValue as $set } from '@frontend/shared/lib/component-bindings';
-
-import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
-
-import { renderVkSetupCardPart1 } from './VkSetupCard.part1';
-import { renderVkSetupCardPart2 } from './VkSetupCard.part2';
-import {
-  createComponentModel,
-  componentDefaults,
-  type ComponentProps,
-} from './VkSetupCard.model';
-
-export default function VkSetupCard($incomingProps: ComponentProps) {
-  const {
-    state: $state,
-    props: $props,
-    scope: $scope,
-  } = useComponentModel(
-    $incomingProps,
-    componentDefaults,
-    createComponentModel,
-  );
-  const expanded = $state.expanded.value;
-  const toggleLabel = $state.toggleLabel.value;
-  const $attributes = inheritedAttributes($props);
+export function VkSetupCard({
+  status,
+  telegramConnected,
+  onChange,
+}: {
+  status: ChannelSetupStatus;
+  telegramConnected: boolean;
+  onChange: (connected: boolean) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const { pending, error, run } = useSetupCommand();
+  const connection = useVkConnection(() => onChange(true));
+  const locked = !telegramConnected && !status.connected;
+  function disconnect() {
+    if (
+      !window.confirm(
+        'Отключить VK? Новые сообщения из сообщества перестанут появляться у администратора. История обращений сохранится.',
+      )
+    ) {
+      return;
+    }
+    void run('disconnect', disconnectVk, () => onChange(false));
+  }
   return (
-    <ModelScopeProvider scope={$scope}>
-      <section
-        {...$attributes}
-        aria-labelledby="vk-setup-title"
-        className={$class(
-          'setup-card card',
-          {
-            'setup-card--expanded': expanded,
-            'setup-card--locked':
-              !$props.telegramConnected && !$props.status.connected,
-          },
-          $attributes.className,
-        )}
-        data-r-712bbad4=""
-      >
-        {renderVkSetupCardPart1($props)}
-        <button
-          disabled={!$props.telegramConnected && !$props.status.connected}
-          type="button"
-          aria-expanded={expanded}
-          aria-controls="vk-setup-details"
-          onClick={() => void $set($state, 'expanded', !$state.expanded.value)}
-          className="quiet setup-toggle"
-          data-r-712bbad4=""
+    <section
+      className={`card ${styles['setup-card']} ${locked ? styles['setup-card--locked'] : ''}`}
+      aria-labelledby="vk-setup-title"
+    >
+      <header className={styles['setup-card-heading']}>
+        <div>
+          <h2 id="vk-setup-title">VK</h2>
+          <p>
+            Сообщения клиентов из сообщества приходят в ту же группу Telegram.
+          </p>
+        </div>
+        <span
+          className={`status-pill status-pill--${status.connected ? 'healthy' : 'neutral'}`}
         >
-          {toggleLabel}
-        </button>
-        {renderVkSetupCardPart2($state, $props)}
-      </section>
-    </ModelScopeProvider>
+          {status.connected ? 'Подключён' : 'Не подключён'}
+        </span>
+      </header>
+      <button
+        className={`quiet ${styles['setup-toggle']}`}
+        disabled={locked}
+        type="button"
+        aria-expanded={expanded}
+        aria-controls="vk-setup-details"
+        onClick={() => setExpanded(!expanded)}
+      >
+        {locked
+          ? 'Сначала Telegram'
+          : expanded
+            ? 'Скрыть'
+            : status.source !== 'none'
+              ? 'Сведения'
+              : 'Подключить VK'}
+      </button>
+      <div
+        hidden={!expanded}
+        id="vk-setup-details"
+        className={styles['setup-details']}
+      >
+        {expanded && (
+          <>
+            {status.source !== 'none' ? (
+              <>
+                {status.connected && (
+                  <p
+                    className={`${styles['setup-status']} ${styles['setup-status--success']}`}
+                    role="status"
+                  >
+                    Подключение активно.
+                  </p>
+                )}
+                {status.source === 'environment' ? (
+                  <p
+                    className={`${styles['setup-status']} ${styles['setup-status--info']}`}
+                  >
+                    Управляется на сервере.
+                  </p>
+                ) : (
+                  <>
+                    <button
+                      className="danger"
+                      type="button"
+                      disabled={Boolean(pending)}
+                      onClick={disconnect}
+                    >
+                      {pending ? 'Отключаем…' : 'Отключить VK'}
+                    </button>
+                    {error && (
+                      <p
+                        className={`${styles['setup-status']} ${styles['setup-status--error']}`}
+                        role="alert"
+                      >
+                        {error}
+                      </p>
+                    )}
+                  </>
+                )}
+              </>
+            ) : (
+              <>
+                <VkSetupInstructions />
+                {status.locked ? (
+                  <p
+                    className={`${styles['setup-status']} ${styles['setup-status--info']}`}
+                  >
+                    VK подключён при установке. Если он не работает, откройте
+                    раздел «Мониторинг».
+                  </p>
+                ) : (
+                  <VkConnectionForm connection={connection} />
+                )}
+              </>
+            )}
+          </>
+        )}
+      </div>
+    </section>
   );
 }
