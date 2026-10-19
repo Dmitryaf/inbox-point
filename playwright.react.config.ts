@@ -9,6 +9,12 @@ export default defineConfig({
   testDir: './tests/react-e2e',
   use: { ...base.use, baseURL },
   webServer: [
+    ...[4193, 4194].map((port) => ({
+      command: `npx tsx tests/react-e2e/support/operations-server.ts --port=${port}`,
+      reuseExistingServer: false,
+      timeout: 30_000,
+      url: `http://127.0.0.1:${port}/health`,
+    })),
     {
       command: 'npx tsx tests/react-e2e/support/setup-server.ts',
       reuseExistingServer: false,

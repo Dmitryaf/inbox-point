@@ -1,4 +1,5 @@
 import { vi } from 'vitest';
+import { attentionOperationsStatus } from '@test/frontend/pages/operations-dashboard/operations-status-fixture';
 
 import {
   requestUrl,
@@ -80,6 +81,20 @@ export function mockSession(
     if (url.startsWith('/api/analytics?')) {
       return Promise.resolve(
         response({ summary: { requests: 0, menuActions: 0 } }),
+      );
+    }
+    if (url === '/api/ops/status') {
+      return Promise.resolve(response(attentionOperationsStatus()));
+    }
+    if (url === '/api/ops/inbox/requests') {
+      return Promise.resolve(response({ requests: [] }));
+    }
+    if (url === '/api/ops/service-control') {
+      return Promise.resolve(
+        response({
+          channels: { telegram: { mode: 'active' }, vk: { mode: 'active' } },
+          delivery: { mode: 'active' },
+        }),
       );
     }
     throw new Error(`Unexpected request: ${url}`);
