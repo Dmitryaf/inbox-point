@@ -12,13 +12,10 @@
   "scripts": {
     "build": "npm run build:frontend && npm run build:server",
     "build:frontend": "vite build --config frontend/vite.config.ts",
-    "build:frontend:react": "vite build --config frontend/vite.config.ts --mode react",
     "build:server": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json -f -fe .js",
     "backup:create": "node --env-file-if-exists=.env dist/create-external-backup.js",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run test:deploy && npm run build",
     "check:e2e": "npm run build:frontend && playwright test",
-    "check:react": "npm run typecheck:react && npm run test:react && npm run build:frontend:react",
-    "check:react:e2e": "npm run build:frontend:react && playwright test --config playwright.react.config.ts",
     "dev": "npm run build:frontend && tsx watch --env-file-if-exists=.env src/main.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -29,13 +26,11 @@
     "start": "node --env-file-if-exists=.env dist/main.js",
     "start:availability-monitor": "node --env-file-if-exists=.env.monitor dist/availability-monitor.js",
     "test": "vitest run",
-    "test:react": "vitest run --config vitest.react.config.ts",
     "test:deploy": "node tests/deploy/run-update-instance-tests.mjs",
     "test:e2e:server": "tsx tests/e2e/support/server.ts",
     "typecheck": "npm run typecheck:server && npm run typecheck:frontend && npm run typecheck:frontend-tests",
     "typecheck:frontend": "tsc --noEmit -p frontend/tsconfig.json",
     "typecheck:frontend-tests": "tsc --noEmit -p tests/frontend/tsconfig.json",
-    "typecheck:react": "tsc --noEmit -p frontend/react/tsconfig.json && tsc --noEmit -p tests/react/tsconfig.json",
     "typecheck:server": "tsc --noEmit"
   },
   "dependencies": {

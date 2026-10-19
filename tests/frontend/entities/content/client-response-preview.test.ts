@@ -9,13 +9,13 @@ import {
   buildClientResponsePreviews,
   buildTelegramMenuPreviewRows,
   formatFaqResponse,
-} from '@frontend/entities/content/lib/client-response-preview';
+} from '@frontend-common/entities/content/lib/client-response-preview';
 import {
   formatScheduleCompatibilityResponse,
   formatScheduleResponse,
-} from '@frontend/entities/content/lib/schedule-response';
-import { validateContentDraft } from '@frontend/entities/content/lib/content-validation';
-import { createEmptyContent } from '@frontend/entities/content/model/content-draft';
+} from '@frontend-common/entities/content/lib/schedule-response';
+import { validateContentDraft } from '@frontend-common/entities/content/lib/content-validation';
+import { createEmptyContent } from '@frontend-common/entities/content/model/content-draft';
 
 describe('client response preview', () => {
   it('matches the formatted responses produced by the backend catalog', () => {

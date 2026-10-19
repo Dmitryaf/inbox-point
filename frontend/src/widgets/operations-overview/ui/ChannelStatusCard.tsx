@@ -1,62 +1,44 @@
-import '@frontend/widgets/operations-overview/styles/channel-status-card.react-data-r-0b4df92b.css';
-import '@frontend/widgets/operations-overview/styles/status-card.react-data-r-0b4df92b.css';
-import {
-  useComponentModel,
-  ModelScopeProvider,
-} from '@frontend/shared/lib/component-model';
-import { classNames as $class } from '@frontend/shared/lib/component-view';
+import { connectionSourceLabel } from '@frontend-common/entities/operations/lib/status-format';
+import type {
+  ChannelOperationsStatus,
+  ClientIntakeOperationsStatus,
+} from '@frontend-common/entities/operations/model/types';
+import base from '@frontend/widgets/operations-overview/styles/status-card.module.css';
+import styles from '@frontend/widgets/operations-overview/styles/channel-status-card.module.css';
+import { ChannelDiagnostics } from './ChannelDiagnostics';
 
-import { unref as $unref } from '@frontend/shared/lib/model-state';
-
-import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
-
-import { connectionSourceLabel } from '@frontend/entities/operations/lib/status-format';
-
-import { renderChannelStatusCardPart1 } from './ChannelStatusCard.part1';
-import {
-  createComponentModel,
-  componentDefaults,
-  type ComponentProps,
-} from './ChannelStatusCard.model';
-
-export default function ChannelStatusCard($incomingProps: ComponentProps) {
-  const {
-    state: $state,
-    props: $props,
-    scope: $scope,
-  } = useComponentModel(
-    $incomingProps,
-    componentDefaults,
-    createComponentModel,
-  );
-  const state = $state.state.value;
-  const $attributes = inheritedAttributes($props);
+const states = {
+  configuration_missing: ['Нужно подключить', 'attention'],
+  not_configured: ['Не настроен', 'neutral'],
+  poll_failed: ['Ошибка связи', 'attention'],
+  poll_stale: ['Нет свежих данных', 'attention'],
+  running: ['Работает', 'healthy'],
+  starting: ['Запускается', 'neutral'],
+  stopped: ['Не работает', 'attention'],
+} as const;
+export function ChannelStatusCard({
+  channel,
+  intake,
+  name,
+}: {
+  channel: ChannelOperationsStatus;
+  intake: ClientIntakeOperationsStatus;
+  name: string;
+}) {
+  const [label, tone] = states[channel.state];
   return (
-    <ModelScopeProvider scope={$scope}>
-      <article
-        {...$attributes}
-        className={$class('status-card', $attributes.className)}
-        data-r-0b4df92b=""
-      >
-        <div className="status-card-heading" data-r-0b4df92b="">
-          <h3 data-r-0b4df92b="">{$props.name}</h3>
-          <span
-            className={$class('status-pill', `status-pill--${state.tone}`)}
-            data-r-0b4df92b=""
-          >
-            {state.label}
-          </span>
-        </div>
-        <p data-r-0b4df92b="">
-          {$unref(connectionSourceLabel)($props.channel.source)}
+    <article className={base['status-card']}>
+      <div className={base['status-card-heading']}>
+        <h3>{name}</h3>
+        <span className={`status-pill status-pill--${tone}`}>{label}</span>
+      </div>
+      <p>{connectionSourceLabel(channel.source)}</p>
+      {intake.mode === 'paused' && (
+        <p className={styles['channel-maintenance-note']}>
+          Новые обращения приостановлены вручную.
         </p>
-        {$props.intake.mode === 'paused' ? (
-          <p className="channel-maintenance-note" data-r-0b4df92b="">
-            {' Новые обращения приостановлены вручную. '}
-          </p>
-        ) : null}
-        {renderChannelStatusCardPart1($props)}
-      </article>
-    </ModelScopeProvider>
+      )}
+      {channel.configured && <ChannelDiagnostics channel={channel} />}
+    </article>
   );
 }

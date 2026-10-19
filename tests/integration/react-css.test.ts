@@ -40,7 +40,7 @@ it('detects actual bare-tag leakage and permits class-scoped tags, global tokens
   ).toEqual([]);
 });
 it('keeps all React CSS Module tag selectors inside an explicit class boundary', async () => {
-  const paths = await modules('frontend/react');
+  const paths = await modules('frontend/src');
   expect(paths.length).toBeGreaterThan(20);
   const violations = await Promise.all(
     paths.map(async (path) => ({

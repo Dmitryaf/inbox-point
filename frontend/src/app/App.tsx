@@ -1,27 +1,21 @@
-import {
-  useComponentModel,
-  ModelScopeProvider,
-} from '@frontend/shared/lib/component-model';
+import { QueryClientProvider, type QueryClient } from '@tanstack/react-query';
+import { RouterProvider } from 'react-router/dom';
 
-import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
-import { RouterView } from '@frontend/shared/lib/router';
+import { SessionProvider } from '@frontend/features/admin-auth/model/SessionProvider';
+import type { createAdminRouter } from './router';
 
-import {
-  createComponentModel,
-  componentDefaults,
-  type ComponentProps,
-} from './App.model';
-
-export default function App($incomingProps: ComponentProps) {
-  const { props: $props, scope: $scope } = useComponentModel(
-    $incomingProps,
-    componentDefaults,
-    createComponentModel,
-  );
-  const $attributes = inheritedAttributes($props);
+export function App({
+  router,
+  queryClient,
+}: {
+  router: ReturnType<typeof createAdminRouter>;
+  queryClient: QueryClient;
+}) {
   return (
-    <ModelScopeProvider scope={$scope}>
-      <RouterView {...$attributes} />
-    </ModelScopeProvider>
+    <QueryClientProvider client={queryClient}>
+      <SessionProvider>
+        <RouterProvider router={router} />
+      </SessionProvider>
+    </QueryClientProvider>
   );
 }

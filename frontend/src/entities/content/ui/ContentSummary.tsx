@@ -1,57 +1,44 @@
-import '@frontend/entities/content/styles/content-summary.react-data-r-109c0780.css';
-import {
-  useComponentModel,
-  ModelScopeProvider,
-} from '@frontend/shared/lib/component-model';
-import { classNames as $class } from '@frontend/shared/lib/component-view';
-
-import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
-
-import AppIcon from '@frontend/shared/ui/AppIcon';
-
-import { renderContentSummaryPart1 } from './ContentSummary.part1';
-import {
-  createComponentModel,
-  componentDefaults,
-  type ComponentProps,
-} from './ContentSummary.model';
-
-export default function ContentSummary($incomingProps: ComponentProps) {
-  const {
-    state: $state,
-    props: $props,
-    scope: $scope,
-  } = useComponentModel(
-    $incomingProps,
-    componentDefaults,
-    createComponentModel,
-  );
-  const summaryTitle = $state.summaryTitle.value;
-  const responses = $state.responses.value;
-  const $attributes = inheritedAttributes($props);
+import { buildClientResponsePreviews } from '@frontend-common/entities/content/lib/client-response-preview';
+import { validateContentDraft } from '@frontend-common/entities/content/lib/content-validation';
+import type { ContentDraft } from '@frontend-common/entities/content/model/types';
+import styles from '@frontend/entities/content/styles/content-summary.module.css';
+export function ContentSummary({ draft }: { draft: ContentDraft }) {
+  const responses = buildClientResponsePreviews(draft);
   return (
-    <ModelScopeProvider scope={$scope}>
-      <section
-        {...$attributes}
-        aria-label="Готовность ответов"
-        className={$class('content-summary', $attributes.className)}
-        data-r-109c0780=""
-      >
-        <p className="summary-heading" data-r-109c0780="">
-          <span className="summary-title" data-r-109c0780="">
-            {summaryTitle}
-          </span>
-          <span data-r-109c0780="">
-            {' · Ответов в меню: '}
-            {responses.length}
-          </span>
-        </p>
-        {renderContentSummaryPart1($state, $props)}
-        <p className="channel-note" data-r-109c0780="">
-          <AppIcon name="check" data-r-109c0780="" />
-          {' После сохранения изменения появятся в Telegram и VK. '}
-        </p>
-      </section>
-    </ModelScopeProvider>
+    <section
+      className={styles['content-summary']}
+      aria-label="Готовность ответов"
+    >
+      <p className={styles['summary-heading']}>
+        <span className={styles['summary-title']}>
+          {!validateContentDraft(draft).valid
+            ? 'Нужно исправить поля'
+            : responses.length
+              ? 'Готово к показу'
+              : 'Пока не заполнено'}
+        </span>{' '}
+        · Ответов в меню: {responses.length}
+      </p>
+      <dl className={styles['content-facts']}>
+        <div>
+          <dt>Основные ответы</dt>
+          <dd>
+            {responses.filter((item) => item.group === 'information').length} из
+            4
+          </dd>
+        </div>
+        <div>
+          <dt>Частые вопросы</dt>
+          <dd>{draft.faq.length}</dd>
+        </div>
+        <div>
+          <dt>Свои разделы</dt>
+          <dd>{responses.filter((item) => item.group === 'custom').length}</dd>
+        </div>
+      </dl>
+      <p className={styles['channel-note']}>
+        После сохранения изменения появятся в Telegram и VK.
+      </p>
+    </section>
   );
 }

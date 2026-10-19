@@ -2,31 +2,28 @@ const returnPathKey = 'inbox-point:return-path';
 const loginMessageKey = 'inbox-point:login-message';
 const adminPaths = new Set(['/manage', '/ops', '/setup']);
 
-export function openAdminLogin(
-  router: Router,
-  returnPath = window.location.pathname,
-  message?: string,
-): void {
-  if (adminPaths.has(returnPath)) {
-    window.sessionStorage.setItem(returnPathKey, returnPath);
+export function rememberAdminLogin(path: string, message?: string): void {
+  if (adminPaths.has(path)) {
+    window.sessionStorage.setItem(returnPathKey, path);
   }
   if (message) {
     window.sessionStorage.setItem(loginMessageKey, message);
   }
-  void router.replace('/login');
 }
 
-export function takeAdminLoginMessage(): string {
-  const message = window.sessionStorage.getItem(loginMessageKey) ?? '';
+export function readLoginDestination(): string {
+  const path = window.sessionStorage.getItem(returnPathKey);
+  return path && adminPaths.has(path) ? path : '/manage';
+}
+
+export function readLoginMessage(): string {
+  return window.sessionStorage.getItem(loginMessageKey) ?? '';
+}
+
+export function clearLoginMessage(): void {
   window.sessionStorage.removeItem(loginMessageKey);
-  return message;
 }
 
-export function leaveAdminLogin(router: Router): void {
-  const savedPath = window.sessionStorage.getItem(returnPathKey);
+export function clearLoginDestination(): void {
   window.sessionStorage.removeItem(returnPathKey);
-  void router.replace(
-    savedPath && adminPaths.has(savedPath) ? savedPath : '/manage',
-  );
 }
-import type { Router } from '@frontend/shared/lib/router';

@@ -90,11 +90,11 @@ for (const width of [1440, 390]) {
     ).toHaveValue('Пн 19:00, Чт 19:00');
     await page.reload();
     await page
-      .locator('.class-list-item')
+      .locator('[class*="_class-list-item_"]')
       .filter({ hasText: 'Тестовый танец' })
       .click();
     await page
-      .locator('.class-list-item')
+      .locator('[class*="_class-list-item_"]')
       .filter({ hasText: 'Начинающие' })
       .click();
     await expect(
@@ -106,16 +106,16 @@ for (const width of [1440, 390]) {
     await page
       .getByRole('button', { name: 'Посмотреть как клиент', exact: true })
       .click();
-    await expect(page.locator('.preview-service-message')).toContainText(
-      'Тестовый танец / Начинающие',
-    );
+    await expect(
+      page.locator('[class*="_preview-service-message_"]'),
+    ).toContainText('Тестовый танец / Начинающие');
     await page
-      .locator('.preview')
+      .locator('[aria-label="Предпросмотр ответов"]')
       .getByRole('button', { name: 'Записаться на занятие', exact: true })
       .click();
-    await expect(page.locator('.preview-service-message')).toContainText(
-      'В какой день хотите прийти?',
-    );
+    await expect(
+      page.locator('[class*="_preview-service-message_"]'),
+    ).toContainText('В какой день хотите прийти?');
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth,

@@ -1,52 +1,60 @@
-import '@frontend/widgets/operations-overview/styles/delivery-status-card.react-data-r-39c836f9.css';
-import '@frontend/widgets/operations-overview/styles/status-card.react-data-r-39c836f9.css';
-import {
-  useComponentModel,
-  ModelScopeProvider,
-} from '@frontend/shared/lib/component-model';
-import { classNames as $class } from '@frontend/shared/lib/component-view';
+import { formatUptime } from '@frontend-common/entities/operations/lib/status-format';
+import type { OperationsStatus } from '@frontend-common/entities/operations/model/types';
+import base from '@frontend/widgets/operations-overview/styles/status-card.module.css';
+import styles from '@frontend/widgets/operations-overview/styles/delivery-status-card.module.css';
 
-import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
-
-import { renderDeliveryStatusCardPart1 } from './DeliveryStatusCard.part1';
-import { renderDeliveryStatusCardPart2 } from './DeliveryStatusCard.part2';
-import {
-  createComponentModel,
-  componentDefaults,
-  type ComponentProps,
-} from './DeliveryStatusCard.model';
-
-export default function DeliveryStatusCard($incomingProps: ComponentProps) {
-  const {
-    state: $state,
-    props: $props,
-    scope: $scope,
-  } = useComponentModel(
-    $incomingProps,
-    componentDefaults,
-    createComponentModel,
-  );
-  const state = $state.state.value;
-  const $attributes = inheritedAttributes($props);
+const states = {
+  paused: ['Отправка приостановлена', 'neutral'],
+  failed: ['Есть ошибки', 'attention'],
+  stalled: ['Отправка приостановлена', 'attention'],
+  backlog: ['Ответы задерживаются', 'attention'],
+  healthy: ['Работает', 'healthy'],
+} as const;
+export function DeliveryStatusCard({
+  deliveries,
+}: {
+  deliveries: OperationsStatus['deliveries'];
+}) {
+  const [label, tone] = states[deliveries.state];
   return (
-    <ModelScopeProvider scope={$scope}>
-      <article
-        {...$attributes}
-        className={$class('status-card delivery-card', $attributes.className)}
-        data-r-39c836f9=""
-      >
-        <div className="status-card-heading" data-r-39c836f9="">
-          <h3 data-r-39c836f9="">{'Отправка ответов'}</h3>
-          <span
-            className={$class('status-pill', `status-pill--${state.tone}`)}
-            data-r-39c836f9=""
-          >
-            {state.label}
-          </span>
+    <article className={`${base['status-card']} ${base['delivery-card']}`}>
+      <div className={base['status-card-heading']}>
+        <h3>Отправка ответов</h3>
+        <span className={`status-pill status-pill--${tone}`}>{label}</span>
+      </div>
+      <dl className={styles['delivery-facts']}>
+        <div>
+          <dt>Ожидают отправки</dt>
+          <dd>{deliveries.pending}</dd>
         </div>
-        {renderDeliveryStatusCardPart1($props)}
-        {renderDeliveryStatusCardPart2($props)}
-      </article>
-    </ModelScopeProvider>
+        <div>
+          <dt>Не доставлены</dt>
+          <dd>{deliveries.failed}</dd>
+        </div>
+        {deliveries.uncertain > 0 && (
+          <div>
+            <dt>Требуют ручной проверки</dt>
+            <dd>{deliveries.uncertain}</dd>
+          </div>
+        )}
+        {deliveries.oldestPendingAgeSeconds !== undefined && (
+          <div>
+            <dt>Самое старое ожидание</dt>
+            <dd>{formatUptime(deliveries.oldestPendingAgeSeconds)}</dd>
+          </div>
+        )}
+      </dl>
+      <details
+        className={`${base['technical-details']} ${styles['status-technical-details']}`}
+      >
+        <summary>Технические данные</summary>
+        <dl className={styles['delivery-facts']}>
+          <div>
+            <dt>Система отправки</dt>
+            <dd>{deliveries.worker.running ? 'Запущена' : 'Остановлена'}</dd>
+          </div>
+        </dl>
+      </details>
+    </article>
   );
 }

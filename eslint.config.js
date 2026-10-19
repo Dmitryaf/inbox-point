@@ -44,7 +44,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['frontend/common/**/*.{ts,tsx}'],
+    files: ['frontend/common/**/*.ts'],
     rules: {
       'no-restricted-imports': restrictedImports(
         'vue',
@@ -63,12 +63,12 @@ export default tseslint.config(
     },
   },
   {
-    files: ['frontend/react/**/*.{ts,tsx}', 'tests/react/**/*.{ts,tsx}'],
+    files: ['frontend/src/**/*.{ts,tsx}', 'tests/frontend/**/*.{ts,tsx}'],
     plugins: { 'react-hooks': reactHooks },
     rules: reactHooks.configs.recommended.rules,
   },
   {
-    files: ['frontend/**/*.{ts,tsx}', 'tests/{frontend,react}/**/*.{ts,tsx}'],
+    files: ['frontend/**/*.{ts,tsx}', 'tests/frontend/**/*.{ts,tsx}'],
     rules: {
       'max-lines': [
         'error',
@@ -87,7 +87,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['frontend/{src,react}/shared/**/*.{ts,tsx}'],
+    files: ['frontend/src/shared/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': restrictedImports(
         '@frontend/entities/**',
@@ -99,7 +99,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['frontend/{src,react}/entities/**/*.{ts,tsx}'],
+    files: ['frontend/src/entities/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': restrictedImports(
         '@frontend/features/**',
@@ -110,7 +110,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['frontend/{src,react}/features/**/*.{ts,tsx}'],
+    files: ['frontend/src/features/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': restrictedImports(
         '@frontend/widgets/**',
@@ -120,7 +120,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['frontend/{src,react}/widgets/**/*.{ts,tsx}'],
+    files: ['frontend/src/widgets/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': restrictedImports(
         '@frontend/pages/**',
@@ -129,7 +129,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['frontend/{src,react}/pages/**/*.{ts,tsx}'],
+    files: ['frontend/src/pages/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': restrictedImports('@frontend/app/**'),
     },
@@ -173,17 +173,6 @@ export default tseslint.config(
     files: ['src/infrastructure/**/*.ts'],
     rules: {
       'no-restricted-imports': restrictedImports('@/modules/*/presentation/**'),
-    },
-  },
-
-  {
-    files: ['frontend/src/**/*.tsx'],
-    rules: {
-      curly: ['error', 'all'],
-      'max-lines': [
-        'error',
-        { max: 140, skipBlankLines: true, skipComments: true },
-      ],
     },
   },
 );

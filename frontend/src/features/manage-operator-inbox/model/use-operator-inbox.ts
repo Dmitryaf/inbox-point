@@ -1,83 +1,73 @@
-import { computed, ref } from '@frontend/shared/lib/model-state';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useAdminSession } from '@frontend/features/admin-auth/model/SessionProvider';
+import { executeInboxAction } from './inbox-actions';
+import { refreshInbox, refreshMessages } from './inbox-reads';
+import {
+  initialInbox,
+  messagesReady,
+  type InboxContext,
+  type InboxLifetime,
+  type InboxState,
+} from './inbox-state';
 
-import { readOperatorInboxRequests } from '@frontend/entities/operations/api/operations-api';
-import type { OperatorInboxRequest } from '@frontend/entities/operations/model/types';
-import { requestErrorMessage } from '@frontend/shared/lib/request-error-message';
-import { useOperatorMessages } from './use-operator-messages';
-import { useOperatorActions } from './use-operator-actions';
-
-export function useOperatorInbox(onUnauthorized: () => void) {
-  const loading = ref(false);
-  const drafts = ref<Record<string, string>>({});
-  const requests = ref<readonly OperatorInboxRequest[]>([]);
-  const selectedRequestId = ref('');
-  let refreshVersion = 0;
-
-  const messageState = useOperatorMessages(selectedRequestId, onUnauthorized);
-  const { refreshMessages, messagesReady } = messageState;
-  const actions = useOperatorActions(
-    selectedRequestId,
-    messagesReady,
-    drafts,
-    refresh,
-    onUnauthorized,
+export function useOperatorInbox() {
+  const client = useQueryClient();
+  const { epoch, expireSession } = useAdminSession();
+  const [state, setState] = useState(initialInbox);
+  const stateRef = useRef(state);
+  const lifetime = useRef<InboxLifetime>({
+    active: false,
+    generation: 0,
+    refreshVersion: 0,
+    messagesVersion: 0,
+    command: false,
+    failedReplies: {},
+  });
+  const context = useCallback(
+    (): InboxContext => ({
+      client,
+      key: ['session', epoch, 'operations', 'inbox'],
+      lifetime: lifetime.current,
+      get: () => stateRef.current,
+      patch: (patch: Partial<InboxState>) => {
+        if (!lifetime.current.active) {
+          return;
+        }
+        stateRef.current = { ...stateRef.current, ...patch };
+        setState(stateRef.current);
+      },
+      expire: () => expireSession(epoch),
+    }),
+    [client, epoch, expireSession],
   );
-
-  const selectedRequest = computed(() =>
-    requests.value.find((request) => request.id === selectedRequestId.value),
-  );
-
-  async function refresh(): Promise<string> {
-    const version = ++refreshVersion;
-    loading.value = true;
-    try {
-      const result = await readOperatorInboxRequests();
-      if (version !== refreshVersion) {
-        return '';
-      }
-      requests.value = Array.isArray(result.requests) ? result.requests : [];
-      if (
-        !requests.value.some(
-          (request) => request.id === selectedRequestId.value,
-        )
-      ) {
-        selectedRequestId.value = requests.value[0]?.id ?? '';
-      }
-      await refreshMessages();
-      return '';
-    } catch (cause: unknown) {
-      if (version !== refreshVersion) {
-        return '';
-      }
-      return requestErrorMessage(cause, onUnauthorized);
-    } finally {
-      if (version === refreshVersion) {
-        loading.value = false;
-      }
-    }
-  }
-
-  async function select(requestId: string): Promise<void> {
-    selectedRequestId.value = requestId;
-    actions.actionError.value = '';
-    actions.notice.value = '';
-    await refreshMessages();
-  }
-
-  function setDraft(requestId: string, text: string): void {
-    drafts.value[requestId] = text;
-  }
-
+  const refresh = useCallback(() => refreshInbox(context()), [context]);
+  useEffect(() => {
+    const current = context();
+    current.lifetime.active = true;
+    current.lifetime.generation++;
+    void refreshInbox(current);
+    return () => {
+      current.lifetime.active = false;
+      current.lifetime.generation++;
+      void client.cancelQueries({ queryKey: current.key });
+    };
+  }, [client, context]);
   return {
-    ...messageState,
-    ...actions,
-    drafts,
-    loading,
+    state,
     refresh,
-    requests,
-    select,
-    setDraft,
-    selectedRequest,
-    selectedRequestId,
+    ready: messagesReady(state),
+    select: (id: string) => {
+      const current = context();
+      current.patch({ selectedId: id, actionError: '', notice: '' });
+      void refreshMessages(current);
+    },
+    setDraft: (id: string, text: string) => {
+      const current = context();
+      current.patch({ drafts: { ...current.get().drafts, [id]: text } });
+    },
+    retryMessages: () => void refreshMessages(context()),
+    reply: (text: string) => void executeInboxAction(context(), 'reply', text),
+    close: () => void executeInboxAction(context(), 'close'),
   };
 }

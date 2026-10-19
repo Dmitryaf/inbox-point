@@ -1,40 +1,45 @@
-import '@frontend/widgets/content-workspace/styles/content-workspace.react-data-r-09629bd3.css';
-import {
-  useComponentModel,
-  ModelScopeProvider,
-} from '@frontend/shared/lib/component-model';
+import { useContentWorkspace } from '@frontend/widgets/content-workspace/model/use-content-workspace';
+import { EditorPanels } from './EditorPanels';
 
-import { unref as $unref } from '@frontend/shared/lib/model-state';
+export function ContentWorkspace() {
+  const editor = useContentWorkspace();
 
-import AsyncMessage from '@frontend/shared/ui/AsyncMessage';
-
-import { renderContentWorkspacePart1 } from './ContentWorkspace.part1';
-import {
-  createComponentModel,
-  componentDefaults,
-  type ComponentProps,
-} from './ContentWorkspace.model';
-
-export default function ContentWorkspace($incomingProps: ComponentProps) {
-  const { state: $state, scope: $scope } = useComponentModel(
-    $incomingProps,
-    componentDefaults,
-    createComponentModel,
-  );
-  const workspace = $unref($state.workspace);
   return (
-    <ModelScopeProvider scope={$scope}>
-      <AsyncMessage
-        kind="error"
-        text={workspace.error.value}
-        data-r-09629bd3=""
-      />
-      <AsyncMessage
-        kind="success"
-        text={workspace.notice.value}
-        data-r-09629bd3=""
-      />
-      {renderContentWorkspacePart1($state)}
-    </ModelScopeProvider>
+    <>
+      {editor.error && (
+        <p className="message message--error" role="alert">
+          {editor.error}
+        </p>
+      )}
+      {editor.notice && (
+        <p className="message message--success" role="status">
+          {editor.notice}
+        </p>
+      )}
+      {editor.historyError && (
+        <p className="message message--error" role="alert">
+          {editor.historyError}
+        </p>
+      )}
+      {editor.loading ? (
+        <p role="status" className="card">
+          Загружаем информацию…
+        </p>
+      ) : !editor.draft ? (
+        <section className="card">
+          <p>Редактор не открыт. Повторите загрузку.</p>
+          <button
+            type="button"
+            onClick={() => {
+              void editor.load();
+            }}
+          >
+            Повторить
+          </button>
+        </section>
+      ) : (
+        <EditorPanels editor={editor} />
+      )}
+    </>
   );
 }
