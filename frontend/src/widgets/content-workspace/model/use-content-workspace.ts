@@ -1,145 +1,103 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { HttpError } from '@frontend-common/shared/api/http-client';
+import { errorMessage } from '@frontend-common/shared/lib/error-message';
+import type { ContentDraft } from '@frontend-common/entities/content/model/types';
+import { useAdminSession } from '@frontend/features/admin-auth/model/SessionProvider';
+import { preserveDraft } from './draft-recovery';
+import { editorKey } from './editor-context';
 import {
-  loadContent,
-  restoreContent,
-  saveContent,
-} from '@frontend/entities/content/api/content-api';
-import {
-  copyContentDraft,
-  normalizeContentDraft,
-  snapshotContent,
-} from '@frontend/entities/content/model/content-draft';
-import { takeContentDraftRecovery } from './content-draft-recovery';
-import { createContentWorkspaceState } from './content-workspace-state';
-import { useContentHistory } from './use-content-history';
-import { useUnsavedExitGuard } from './use-unsaved-exit-guard';
+  initialEditorState,
+  isDirty,
+  type EditorLifetime,
+  type EditorState,
+} from './editor-state';
+import { loadEditor, refreshHistory, previewRevision } from './editor-reads';
+import { createEditorSave } from './editor-save';
+import { restoreEditor } from './editor-restore';
+import { useEditorExitGuard } from './use-editor-exit-guard';
 
-interface ContentWorkspaceOptions {
-  onUnauthorized: () => void;
-}
-
-export function useContentWorkspace(options: ContentWorkspaceOptions) {
-  const state = createContentWorkspaceState(options.onUnauthorized);
-  const historyState = useContentHistory((cause) => state.reportFailure(cause));
-  useUnsavedExitGuard(state.dirty);
-
-  const load = async (): Promise<void> => {
-    state.loading.value = true;
-    state.error.value = '';
-    state.notice.value = '';
-    try {
-      const snapshot = await loadContent();
-      const savedContent = normalizeContentDraft(snapshot.content);
-      const recovery = takeContentDraftRecovery();
-      Object.assign(state.draft, recovery?.draft ?? savedContent);
-      state.savedSnapshot.value =
-        recovery?.savedSnapshot ?? snapshotContent(savedContent);
-      state.version.value = recovery?.version ?? snapshot.version;
-      if (recovery) {
-        state.notice.value = 'Несохранённый черновик восстановлен.';
+export function useContentWorkspace() {
+  const [state, setState] = useState(initialEditorState);
+  const lifetime = useRef<EditorLifetime>({
+    state,
+    active: false,
+    generation: 0,
+    command: false,
+    released: false,
+    previewSequence: 0,
+  });
+  const cache = useQueryClient();
+  const { epoch, expireSession } = useAdminSession();
+  const patch = useCallback((change: Partial<EditorState>) => {
+    if (lifetime.current.active) {
+      lifetime.current.state = { ...lifetime.current.state, ...change };
+      setState(lifetime.current.state);
+    }
+  }, []);
+  const report = useCallback(
+    (cause: unknown) => {
+      if (cause instanceof HttpError && cause.status === 401) {
+        const current = lifetime.current;
+        try {
+          if (current.state.draft && isDirty(current.state)) {
+            preserveDraft({
+              draft: current.state.draft,
+              savedSnapshot: current.state.savedSnapshot,
+              version: current.state.version,
+            });
+          }
+        } catch {
+          return 'Не удалось сохранить черновик для повторного входа. Скопируйте изменения с этой страницы перед выходом.';
+        }
+        current.released = true;
+        expireSession(epoch);
+        return '';
       }
-      state.loaded.value = true;
-    } catch (cause: unknown) {
-      state.reportFailure(cause);
-      return;
-    } finally {
-      state.loading.value = false;
-    }
-    await refreshHistory(
-      'Информация загружена, но историю изменений сейчас открыть нельзя. Попробуйте обновить страницу позже.',
-    );
-  };
-
-  const save = async (): Promise<void> => {
-    state.saving.value = true;
-    state.error.value = '';
-    state.notice.value = '';
-    const submission = copyContentDraft(state.draft);
-    const submittedSnapshot = snapshotContent(submission);
-    let saved = false;
-    try {
-      const result = await saveContent(submission, state.version.value);
-      const savedContent = normalizeContentDraft(result.content);
-      state.version.value = result.version;
-      state.savedSnapshot.value = snapshotContent(savedContent);
-      if (snapshotContent(state.draft) === submittedSnapshot) {
-        Object.assign(state.draft, savedContent);
-      }
-      state.notice.value =
-        'Информация сохранена. Новые ответы доступны сразу. Открытые у клиентов кнопки обновятся со следующим ответом бота. Если клиент нажмёт кнопку из недавней версии меню, бот покажет актуальные варианты без создания обращения.';
-      saved = true;
-    } catch (cause: unknown) {
-      const message = state.reportFailure(cause);
-      if (message) {
-        state.error.value = `${message} Ваши изменения остались на этой странице.`;
-      }
-    } finally {
-      state.saving.value = false;
-    }
-    if (saved) {
-      await refreshHistory(
-        'Информация сохранена, но историю изменений сейчас открыть нельзя. Попробуйте обновить страницу позже.',
-      );
-    }
-  };
-
-  const restore = async (revision: number): Promise<void> => {
-    state.restoring.value = true;
-    state.error.value = '';
-    state.notice.value = '';
-    const draftAtStart = snapshotContent(state.draft);
-    let restored = false;
-    try {
-      const result = await restoreContent(revision, state.version.value);
-      const restoredContent = normalizeContentDraft(result.content);
-      const restoredSnapshot = snapshotContent(restoredContent);
-      if (snapshotContent(state.draft) === draftAtStart) {
-        Object.assign(state.draft, restoredContent);
-      }
-      state.savedSnapshot.value = restoredSnapshot;
-      state.version.value = result.version;
-      state.notice.value =
-        snapshotContent(state.draft) === restoredSnapshot
-          ? 'Предыдущая версия восстановлена. Новые ответы доступны сразу, а кнопки обновятся со следующим сообщением бота.'
-          : 'Предыдущая версия восстановлена. Ваши новые правки остались в редакторе и ещё не сохранены.';
-      restored = true;
-    } catch (cause: unknown) {
-      state.reportFailure(cause);
-    } finally {
-      state.restoring.value = false;
-    }
-    if (restored) {
-      await refreshHistory(
-        'Версия восстановлена, но историю изменений сейчас открыть нельзя. Попробуйте обновить страницу позже.',
-      );
-    }
-  };
-
-  const resumeAfterAuthentication = async (): Promise<void> => {
-    if (!state.loaded.value) {
-      await load();
-      return;
-    }
-    if (!historyState.historyLoaded.value) {
-      await refreshHistory(
-        'Историю изменений сейчас открыть нельзя. Попробуйте обновить страницу позже.',
-      );
-    }
-  };
-
-  async function refreshHistory(failureMessage: string): Promise<void> {
-    const message = await historyState.refreshHistory();
-    if (message) {
-      state.error.value = failureMessage;
+      return errorMessage(cause);
+    },
+    [epoch, expireSession],
+  );
+  const operations = useMemo(() => {
+    const context = { lifetime, patch, cache, epoch, report };
+    return {
+      load: () => loadEditor(context),
+      refreshHistory: (saved: boolean | 'restored' = false) =>
+        refreshHistory(context, saved),
+      previewRevision: (revision: number) => previewRevision(context, revision),
+      cancelPreview: () => {
+        lifetime.current.previewSequence++;
+        patch({
+          preview: undefined,
+          reviewedRevision: undefined,
+          previewLoading: false,
+        });
+      },
+      restore: (revision: number) =>
+        restoreEditor(context, revision, () =>
+          refreshHistory(context, 'restored'),
+        ),
+      save: () =>
+        createEditorSave(context, (saved) => refreshHistory(context, saved))(),
+    };
+  }, [patch, cache, epoch, report]);
+  useEffect(() => {
+    const current = lifetime.current;
+    current.active = true;
+    current.generation++;
+    void operations.load();
+    return () => {
+      current.active = false;
+      current.generation++;
+      void cache.cancelQueries({ queryKey: editorKey(epoch) });
+    };
+  }, [operations, cache, epoch]);
+  useEditorExitGuard(lifetime);
+  function edit(change: Partial<ContentDraft>): void {
+    const draft = lifetime.current.state.draft;
+    if (draft) {
+      patch({ draft: { ...draft, ...change } });
     }
   }
-
-  return {
-    ...state,
-    history: historyState.history,
-    historyLoading: historyState.historyLoading,
-    load,
-    restore,
-    resumeAfterAuthentication,
-    save,
-  };
+  return { ...state, ...operations, edit, dirty: isDirty(state) };
 }

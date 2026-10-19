@@ -19,7 +19,7 @@ it('keeps common HTTP and session code independent of frontend frameworks', asyn
 });
 
 it('permits lower layer imports and rejects upward imports in React TSX', async () => {
-  const filePath = 'frontend/react/shared/lib/boundary-probe.tsx';
+  const filePath = 'frontend/src/shared/lib/boundary-probe.tsx';
   const allowed = await eslint.lintText(
     "import { value } from '@frontend/shared/lib/value'; export { value };",
     { filePath },
@@ -39,7 +39,7 @@ it('permits lower layer imports and rejects upward imports in React TSX', async 
 it('detects conditional hooks in React TSX', async () => {
   const results = await eslint.lintText(
     "import { useState } from 'react'; export function Probe({ enabled }: { enabled: boolean }) { if (enabled) { useState(0); } return null; }",
-    { filePath: 'frontend/react/app/HookProbe.tsx' },
+    { filePath: 'frontend/src/app/HookProbe.tsx' },
   );
   expect(
     results.flatMap((result) =>

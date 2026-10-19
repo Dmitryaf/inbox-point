@@ -1,5 +1,4 @@
 import tseslint from 'typescript-eslint';
-import pluginVue from 'eslint-plugin-vue';
 import reactHooks from 'eslint-plugin-react-hooks';
 
 const crossDirectoryImportPattern = {
@@ -44,7 +43,6 @@ export default tseslint.config(
       'no-restricted-imports': restrictedImports(),
     },
   },
-  ...pluginVue.configs['flat/recommended'],
   {
     files: ['frontend/common/**/*.ts'],
     rules: {
@@ -65,34 +63,12 @@ export default tseslint.config(
     },
   },
   {
-    files: ['frontend/react/**/*.{ts,tsx}', 'tests/react/**/*.{ts,tsx}'],
+    files: ['frontend/src/**/*.{ts,tsx}', 'tests/frontend/**/*.{ts,tsx}'],
     plugins: { 'react-hooks': reactHooks },
     rules: reactHooks.configs.recommended.rules,
   },
   {
-    files: ['frontend/src/**/*.vue'],
-    languageOptions: {
-      parserOptions: {
-        extraFileExtensions: ['.vue'],
-        parser: tseslint.parser,
-        projectService: true,
-        tsconfigRootDir: import.meta.dirname,
-      },
-    },
-    rules: {
-      curly: ['error', 'all'],
-      'max-lines': [
-        'error',
-        { max: 140, skipBlankLines: true, skipComments: true },
-      ],
-      'vue/html-self-closing': 'off',
-      'vue/max-attributes-per-line': 'off',
-      'vue/multi-word-component-names': 'off',
-      'vue/singleline-html-element-content-newline': 'off',
-    },
-  },
-  {
-    files: ['frontend/**/*.{ts,tsx}', 'tests/{frontend,react}/**/*.{ts,tsx}'],
+    files: ['frontend/**/*.{ts,tsx}', 'tests/frontend/**/*.{ts,tsx}'],
     rules: {
       'max-lines': [
         'error',
@@ -111,7 +87,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['frontend/{src,react}/shared/**/*.{ts,tsx,vue}'],
+    files: ['frontend/src/shared/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': restrictedImports(
         '@frontend/entities/**',
@@ -123,7 +99,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['frontend/{src,react}/entities/**/*.{ts,tsx,vue}'],
+    files: ['frontend/src/entities/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': restrictedImports(
         '@frontend/features/**',
@@ -134,7 +110,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['frontend/{src,react}/features/**/*.{ts,tsx,vue}'],
+    files: ['frontend/src/features/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': restrictedImports(
         '@frontend/widgets/**',
@@ -144,7 +120,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['frontend/{src,react}/widgets/**/*.{ts,tsx,vue}'],
+    files: ['frontend/src/widgets/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': restrictedImports(
         '@frontend/pages/**',
@@ -153,7 +129,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['frontend/{src,react}/pages/**/*.{ts,tsx,vue}'],
+    files: ['frontend/src/pages/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': restrictedImports('@frontend/app/**'),
     },

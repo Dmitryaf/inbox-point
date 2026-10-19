@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { HttpError } from '@frontend/shared/api/http-client';
-import { errorMessage } from '@frontend/shared/lib/error-message';
+import { HttpError } from '@frontend-common/shared/api/http-client';
+import { errorMessage } from '@frontend-common/shared/lib/error-message';
 
 describe('errorMessage', () => {
   it('keeps a prepared server message', () => {

@@ -6,8 +6,9 @@
       "@core/*": ["../../src/core/*"],
       "@frontend/*": ["../../frontend/src/*"],
       "@frontend-common/*": ["../../frontend/common/*"],
+      "@frontend-styles/*": ["../../frontend/src/app/styles/*"],
       "@test/*": ["../*"]
     }
   },
-  "include": ["**/*.ts", "../../frontend/src/**/*.d.ts"]
+  "include": ["**/*.ts", "**/*.tsx"]
 }

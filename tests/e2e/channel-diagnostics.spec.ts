@@ -31,7 +31,7 @@ for (const width of [390, 1280]) {
       route.fulfill({ json: status }),
     );
     await page.goto('http://127.0.0.1:4175/ops');
-    const card = page.locator('.status-card').filter({
+    const card = page.locator('[class*="_status-card_"]').filter({
       has: page.getByRole('heading', { name: 'Telegram', exact: true }),
     });
     await expect(card).toContainText('Ошибка связи');

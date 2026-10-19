@@ -25,10 +25,8 @@
     "tests/unit/**/*.ts",
     "tests/integration/**/*.ts",
     "tests/e2e/**/*.ts",
-    "tests/react-e2e/**/*.ts",
     "eslint.config.js",
     "vitest.config.ts",
-    "vitest.react.config.ts",
-    "playwright.react.config.ts"
+    "playwright.config.ts"
   ]
 }

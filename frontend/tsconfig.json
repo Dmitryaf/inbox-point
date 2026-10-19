@@ -3,11 +3,13 @@
     "target": "ES2024",
     "module": "ESNext",
     "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
     "paths": {
       "@/*": ["../src/*"],
       "@core/*": ["../src/core/*"],
       "@frontend/*": ["./src/*"],
-      "@frontend-common/*": ["./common/*"]
+      "@frontend-common/*": ["./common/*"],
+      "@frontend-styles/*": ["./src/app/styles/*"]
     },
     "strict": true,
     "noUncheckedIndexedAccess": true,
@@ -20,5 +22,5 @@
     "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "types": ["vite/client", "vitest/globals"]
   },
-  "include": ["src/**/*.ts", "src/**/*.vue", "common/**/*.ts", "vite.config.ts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "common/**/*.ts", "vite.config.ts"]
 }

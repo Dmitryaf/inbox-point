@@ -1,10 +1,8 @@
 import { fileURLToPath } from 'node:url';
-
-import vue from '@vitejs/plugin-vue';
-import { configDefaults, defineConfig } from 'vitest/config';
-
+import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vitest/config';
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [react()],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
@@ -13,20 +11,36 @@ export default defineConfig({
       '@frontend-common': fileURLToPath(
         new URL('./frontend/common', import.meta.url),
       ),
+      '@frontend-styles': fileURLToPath(
+        new URL('./frontend/src/app/styles', import.meta.url),
+      ),
       '@test': fileURLToPath(new URL('./tests', import.meta.url)),
     },
   },
   test: {
-    coverage: {
-      reporter: ['text', 'json', 'html'],
-    },
-    environment: 'node',
-    exclude: [
-      ...configDefaults.exclude,
-      'tests/e2e/**',
-      'tests/react/**',
-      'tests/react-e2e/**',
-    ],
+    coverage: { reporter: ['text', 'json', 'html'] },
     restoreMocks: true,
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: 'server',
+          include: [
+            'tests/unit/**/*.test.ts',
+            'tests/integration/**/*.test.ts',
+          ],
+          environment: 'node',
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'frontend',
+          include: ['tests/frontend/**/*.test.{ts,tsx}'],
+          environment: 'jsdom',
+          setupFiles: ['tests/frontend/setup.ts'],
+        },
+      },
+    ],
   },
 });
