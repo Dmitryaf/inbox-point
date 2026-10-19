@@ -1,0 +1,14 @@
+{
+  "extends": "../../frontend/react/tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["../../src/*"],
+      "@core/*": ["../../src/core/*"],
+      "@frontend/*": ["../../frontend/react/*"],
+      "@frontend-common/*": ["../../frontend/common/*"],
+      "@frontend-styles/*": ["../../frontend/src/app/styles/*"],
+      "@test/*": ["../*"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx"]
+}

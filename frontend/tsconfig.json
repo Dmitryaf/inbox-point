@@ -6,7 +6,8 @@
     "paths": {
       "@/*": ["../src/*"],
       "@core/*": ["../src/core/*"],
-      "@frontend/*": ["./src/*"]
+      "@frontend/*": ["./src/*"],
+      "@frontend-common/*": ["./common/*"]
     },
     "strict": true,
     "noUncheckedIndexedAccess": true,
@@ -20,5 +21,11 @@
     "types": ["vite/client", "vitest/globals"],
     "jsx": "react-jsx"
   },
-  "include": ["src/**/*.ts", "vite.config.ts", "src/**/*.tsx"]
+  "include": [
+    "src/**/*.ts",
+    "common/**/*.ts",
+    "vite.config.ts",
+    "src/**/*.tsx",
+    "common/**/*.tsx"
+  ]
 }

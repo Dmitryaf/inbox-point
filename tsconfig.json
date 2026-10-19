@@ -6,8 +6,8 @@
     "paths": {
       "@/*": ["./src/*"],
       "@test/*": ["./tests/*"],
-      "@core/*": ["./src/core/*"],
-      "@frontend/*": ["./frontend/src/*"]
+      "@frontend/*": ["./frontend/src/*"],
+      "@frontend-common/*": ["./frontend/common/*"]
     },
     "strict": true,
     "noUncheckedIndexedAccess": true,
@@ -15,6 +15,8 @@
     "noImplicitOverride": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
     "types": ["node"],
@@ -24,9 +26,11 @@
     "src/**/*.ts",
     "tests/unit/**/*.ts",
     "tests/integration/**/*.ts",
+    "tests/e2e/**/*.ts",
+    "tests/react-e2e/**/*.ts",
     "eslint.config.js",
     "vitest.config.ts",
-    "tests/e2e/**/*.ts",
-    "playwright.config.ts"
+    "vitest.react.config.ts",
+    "playwright.react.config.ts"
   ]
 }

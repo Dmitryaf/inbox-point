@@ -1,0 +1,97 @@
+import {
+  groupKeywords,
+  normalizeApplicationQuestion,
+} from '@core/application/class-content';
+import {
+  informationSectionIds,
+  type ContentDraft,
+  type ContentSnapshot,
+  type InformationSectionId,
+} from './types';
+
+export function createEmptyContent(): ContentDraft {
+  return {
+    organizationName: '',
+    directions: [],
+    groups: [],
+    keywords: [],
+    address: '',
+    customSections: [],
+    faq: [],
+    legacySchedule: '',
+    prices: '',
+    schedule: [],
+    visibleSections: [...informationSectionIds],
+  };
+}
+
+export function normalizeContentDraft(
+  content: ContentSnapshot['content'] | ContentDraft,
+): ContentDraft {
+  const apiScheduleItems =
+    'scheduleItems' in content && Array.isArray(content.scheduleItems)
+      ? content.scheduleItems
+      : undefined;
+  const legacySchedule = apiScheduleItems?.length
+    ? ''
+    : typeof content.schedule === 'string'
+      ? content.schedule
+      : 'legacySchedule' in content
+        ? content.legacySchedule
+        : '';
+  const schedule =
+    apiScheduleItems ??
+    (Array.isArray(content.schedule) ? content.schedule : []);
+  return {
+    organizationName: content.organizationName ?? '',
+    directions: content.directions?.map((item) => ({ ...item })) ?? [],
+    groups:
+      content.groups?.map((item) => ({
+        ...item,
+        applicationQuestion: normalizeApplicationQuestion(
+          item.applicationQuestion,
+        ),
+        meetings: [...item.meetings],
+        ...(item.review ? { review: { ...item.review } } : {}),
+      })) ?? [],
+    keywords: groupKeywords(content) ?? [],
+    address: content.address ?? '',
+    customSections:
+      content.customSections?.map((section) => ({ ...section })) ?? [],
+    faq: content.faq?.map((item) => ({ ...item })) ?? [],
+    legacySchedule,
+    prices: content.prices ?? '',
+    schedule: schedule.map((item) => ({ ...item })),
+    visibleSections: content.visibleSections
+      ? [...content.visibleSections]
+      : [...informationSectionIds],
+  };
+}
+
+export function snapshotContent(content: ContentDraft): string {
+  return JSON.stringify(content);
+}
+
+export function copyContentDraft(content: ContentDraft): ContentDraft {
+  return {
+    ...content,
+    directions: content.directions.map((item) => ({ ...item })),
+    groups: content.groups.map((item) => ({
+      ...item,
+      meetings: [...item.meetings],
+      ...(item.review ? { review: { ...item.review } } : {}),
+    })),
+    keywords: content.keywords.map((item) => ({ ...item })),
+    customSections: content.customSections.map((section) => ({ ...section })),
+    faq: content.faq.map((item) => ({ ...item })),
+    schedule: content.schedule.map((item) => ({ ...item })),
+    visibleSections: [...content.visibleSections],
+  };
+}
+
+export function isSectionVisible(
+  content: ContentDraft,
+  section: InformationSectionId,
+): boolean {
+  return content.visibleSections.includes(section);
+}

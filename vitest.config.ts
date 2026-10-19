@@ -7,9 +7,12 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@core': fileURLToPath(new URL('./src/core', import.meta.url)),
       '@': fileURLToPath(new URL('./src', import.meta.url)),
+      '@core': fileURLToPath(new URL('./src/core', import.meta.url)),
       '@frontend': fileURLToPath(new URL('./frontend/src', import.meta.url)),
+      '@frontend-common': fileURLToPath(
+        new URL('./frontend/common', import.meta.url),
+      ),
       '@test': fileURLToPath(new URL('./tests', import.meta.url)),
     },
   },
@@ -18,7 +21,12 @@ export default defineConfig({
       reporter: ['text', 'json', 'html'],
     },
     environment: 'node',
-    exclude: [...configDefaults.exclude, 'tests/e2e/**'],
+    exclude: [
+      ...configDefaults.exclude,
+      'tests/e2e/**',
+      'tests/react/**',
+      'tests/react-e2e/**',
+    ],
     restoreMocks: true,
   },
 });

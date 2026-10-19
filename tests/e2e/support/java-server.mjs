@@ -50,6 +50,9 @@ const server = spawn(
       ADMIN_PASSWORD: argument('password') ?? '',
       DATABASE_PATH: join(directory, 'handoff.sqlite'),
       HOST: '127.0.0.1',
+      ...(argument('frontend-root')
+        ? { INBOXPOINT_FRONTEND_PATH: argument('frontend-root') }
+        : {}),
       INBOXPOINT_ENV: 'test',
       PORT: String(port),
       TELEGRAM_ENABLED: 'false',

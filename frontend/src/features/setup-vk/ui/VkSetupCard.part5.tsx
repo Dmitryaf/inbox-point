@@ -1,4 +1,5 @@
 import { nativeHandler as $nativeHandler } from '@frontend/shared/lib/component-events';
+
 import { unref as $unref } from '@frontend/shared/lib/model-state';
 
 import type { WithDefaults } from '@frontend/shared/lib/component-model';

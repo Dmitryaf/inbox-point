@@ -1,0 +1,15 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "paths": {
+      "@/*": ["../../src/*"],
+      "@core/*": ["../../src/core/*"],
+      "@frontend/*": ["./*"],
+      "@frontend-common/*": ["../common/*"],
+      "@frontend-styles/*": ["../src/app/styles/*"]
+    },
+    "types": ["vite/client"]
+  },
+  "include": ["**/*.ts", "**/*.tsx"]
+}
