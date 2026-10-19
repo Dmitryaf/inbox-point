@@ -3,6 +3,7 @@ import {
   templateRef as $templateRef,
 } from '@frontend/shared/lib/component-view';
 import { nativeHandler as $nativeHandler } from '@frontend/shared/lib/component-events';
+
 import { unref as $unref } from '@frontend/shared/lib/model-state';
 
 import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';

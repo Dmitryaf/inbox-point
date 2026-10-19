@@ -2,6 +2,7 @@ import {
   eventCallback as $callback,
   nativeHandler as $nativeHandler,
 } from '@frontend/shared/lib/component-events';
+
 import { unref as $unref } from '@frontend/shared/lib/model-state';
 import {
   modelSetter as $setter,

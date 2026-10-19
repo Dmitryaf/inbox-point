@@ -27,8 +27,14 @@ jobs:
       - name: Run project checks
         run: npm run check
 
+      - name: Check isolated React frontend
+        run: npm run check:react
+
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
 
       - name: Run browser end-to-end checks
         run: npm run check:e2e
+
+      - name: Check React frontend through Fastify
+        run: npx playwright test --config playwright.react.config.ts

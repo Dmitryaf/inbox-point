@@ -5,6 +5,7 @@ import {
 } from '@frontend/shared/lib/component-model';
 import { classNames as $class } from '@frontend/shared/lib/component-view';
 import { nativeHandler as $nativeHandler } from '@frontend/shared/lib/component-events';
+
 import { unref as $unref } from '@frontend/shared/lib/model-state';
 import { propertySetter as $propertySetter } from '@frontend/shared/lib/component-bindings';
 

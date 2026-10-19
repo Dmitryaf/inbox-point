@@ -3,6 +3,7 @@ import {
   eventCallback as $callback,
   nativeHandler as $nativeHandler,
 } from '@frontend/shared/lib/component-events';
+
 import { unref as $unref } from '@frontend/shared/lib/model-state';
 
 import TelegramSetupCard from '@frontend/features/setup-telegram/ui/TelegramSetupCard';

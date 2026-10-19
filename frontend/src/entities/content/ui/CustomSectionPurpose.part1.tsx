@@ -1,4 +1,5 @@
 import { renderList as $renderList } from '@frontend/shared/lib/component-view';
+import { nativeHandler as $nativeHandler } from '@frontend/shared/lib/component-events';
 
 import { unref as $unref } from '@frontend/shared/lib/model-state';
 import { setModelValue as $set } from '@frontend/shared/lib/component-bindings';
@@ -9,7 +10,6 @@ import type {
   ComponentProps,
   componentDefaults,
 } from './CustomSectionPurpose.model';
-import { controlledChange as $controlledChange } from '@frontend/shared/lib/component-input-event';
 export function renderCustomSectionPurposePart1(
   $state: ReturnType<typeof createComponentModel>,
   $props: WithDefaults<ComponentProps, typeof componentDefaults>,
@@ -30,7 +30,7 @@ export function renderCustomSectionPurposePart1(
             name={$props.name}
             value={purpose.value}
             checked={(mode ?? 'information') === purpose.value}
-            onChange={$controlledChange<HTMLInputElement>(
+            onChange={$nativeHandler(
               () => void $set($state, 'mode', purpose.value),
             )}
             data-r-fc41a8d8=""

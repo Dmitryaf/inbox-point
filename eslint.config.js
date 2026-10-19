@@ -1,4 +1,5 @@
 import tseslint from 'typescript-eslint';
+import reactHooks from 'eslint-plugin-react-hooks';
 
 const crossDirectoryImportPattern = {
   group: ['../*', '../../*', '../../../*'],
@@ -43,7 +44,31 @@ export default tseslint.config(
     },
   },
   {
-    files: ['frontend/**/*.{ts,tsx}', 'tests/frontend/**/*.{ts,tsx}'],
+    files: ['frontend/common/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': restrictedImports(
+        'vue',
+        'vue/**',
+        'vue-router',
+        'react',
+        'react/**',
+        'react-dom',
+        'react-dom/**',
+        'react-router',
+        'react-router/**',
+        '@tanstack/react-query',
+        '@frontend/**',
+        '@frontend-styles/**',
+      ),
+    },
+  },
+  {
+    files: ['frontend/react/**/*.{ts,tsx}', 'tests/react/**/*.{ts,tsx}'],
+    plugins: { 'react-hooks': reactHooks },
+    rules: reactHooks.configs.recommended.rules,
+  },
+  {
+    files: ['frontend/**/*.{ts,tsx}', 'tests/{frontend,react}/**/*.{ts,tsx}'],
     rules: {
       'max-lines': [
         'error',
@@ -62,7 +87,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['frontend/src/shared/**/*.{ts,tsx}'],
+    files: ['frontend/{src,react}/shared/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': restrictedImports(
         '@frontend/entities/**',
@@ -74,7 +99,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['frontend/src/entities/**/*.{ts,tsx}'],
+    files: ['frontend/{src,react}/entities/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': restrictedImports(
         '@frontend/features/**',
@@ -85,7 +110,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['frontend/src/features/**/*.{ts,tsx}'],
+    files: ['frontend/{src,react}/features/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': restrictedImports(
         '@frontend/widgets/**',
@@ -95,7 +120,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['frontend/src/widgets/**/*.{ts,tsx}'],
+    files: ['frontend/{src,react}/widgets/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': restrictedImports(
         '@frontend/pages/**',
@@ -104,7 +129,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['frontend/src/pages/**/*.{ts,tsx}'],
+    files: ['frontend/{src,react}/pages/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': restrictedImports('@frontend/app/**'),
     },
