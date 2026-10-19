@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import type { OperationsStatus } from '@frontend/entities/operations/model/types.js';
+import type { OperationsStatus } from '@frontend-common/entities/operations/model/types.js';
 
 for (const width of [390, 1280]) {
   test(`channel diagnostics stay readable at ${width}px`, async ({ page }) => {

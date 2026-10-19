@@ -1,4 +1,4 @@
-import type { OperationsStatus } from '@frontend/entities/operations/model/types.js';
+import type { OperationsStatus } from '@frontend-common/entities/operations/model/types.js';
 
 // Fictional owner content and conversations; no credentials or real clients.
 export const designContent = {

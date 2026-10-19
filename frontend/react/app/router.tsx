@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useLayoutEffect } from 'react';
 import {
   createBrowserRouter,
   Navigate,
@@ -13,7 +13,7 @@ import {
 } from '@frontend/entities/navigation/model/sections';
 import { AdminLoginPage } from '@frontend/pages/admin-login/ui/AdminLoginPage';
 import { NotFoundPage } from '@frontend/pages/not-found/ui/NotFoundPage';
-import { SectionPreview } from '@frontend/pages/section-preview/ui/SectionPreview';
+import { OperationsDashboardPage } from '@frontend/pages/operations-dashboard/ui/OperationsDashboardPage';
 import { AdminShell } from '@frontend/widgets/admin-shell/ui/AdminShell';
 import { ContentManagementPage } from '@frontend/pages/content-management/ui/ContentManagementPage';
 import { AnalyticsPage } from '@frontend/pages/analytics/ui/AnalyticsPage';
@@ -21,7 +21,7 @@ import { SetupPage } from '@frontend/pages/setup/ui/SetupPage';
 
 function RouteFrame() {
   const { pathname } = useLocation();
-  useEffect(() => {
+  useLayoutEffect(() => {
     document.title = documentTitle(pathname);
   }, [pathname]);
   return <Outlet />;
@@ -47,7 +47,7 @@ export const adminRoutes: RouteObject[] = [
               ) : section.path === '/setup' ? (
                 <SetupPage />
               ) : (
-                <SectionPreview />
+                <OperationsDashboardPage />
               ),
           })),
         ],

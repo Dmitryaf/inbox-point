@@ -1,0 +1,44 @@
+.status-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  min-width: 0;
+  padding: 0.9rem;
+  width: 100%;
+}
+
+.status-card-heading {
+  align-items: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: space-between;
+}
+
+.status-card h3 {
+  font-size: var(--font-size-body);
+  margin-bottom: 0.55rem;
+}
+
+.status-card p {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+  line-height: 1.5;
+  margin-bottom: 0;
+}
+
+.delivery-card {
+  grid-column: 1 / -1;
+}
+
+.technical-details summary {
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: var(--font-size-small);
+  font-weight: 600;
+}
+
+.technical-details summary:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
