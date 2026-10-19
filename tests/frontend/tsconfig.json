@@ -5,6 +5,7 @@
       "@/*": ["../../src/*"],
       "@core/*": ["../../src/core/*"],
       "@frontend/*": ["../../frontend/src/*"],
+      "@frontend-common/*": ["../../frontend/common/*"],
       "@test/*": ["../*"]
     }
   },

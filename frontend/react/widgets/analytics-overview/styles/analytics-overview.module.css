@@ -1,0 +1,206 @@
+.analytics-overview {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  display: grid;
+  gap: 1.5rem;
+  min-width: 0;
+  padding: 1.5rem;
+}
+.analytics-summary {
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 1.25rem;
+}
+.usage-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 3rem;
+  margin-block: 0 1rem;
+}
+.usage-totals > div {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 0.3rem;
+}
+.metric-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.1;
+  margin: 0;
+}
+.usage-channels {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  font-size: var(--font-size-small);
+}
+.usage-channels > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+}
+.usage-channels dt {
+  min-width: 5rem;
+  font-weight: 600;
+}
+.usage-channels dd {
+  color: var(--color-text-muted);
+  margin: 0;
+}
+.analytics-reading {
+  display: grid;
+  gap: 1.5rem;
+  min-width: 0;
+}
+.menu-usage,
+.question-context {
+  min-width: 0;
+}
+.menu-usage > .muted {
+  margin-block: 1rem 0;
+}
+.question-context,
+.analytics-activity {
+  border-top: 1px solid var(--color-border);
+  padding-top: 1.25rem;
+}
+.muted {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+}
+.analytics-table {
+  border-collapse: collapse;
+  width: 100%;
+  table-layout: fixed;
+}
+.analytics-table th,
+.analytics-table td {
+  border-bottom: 1px solid var(--color-border);
+  padding: 0.75rem 0.35rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.analytics-table th:first-child {
+  text-align: left;
+  width: 46%;
+}
+.analytics-table tbody th {
+  font-weight: 500;
+}
+.channel-name-short {
+  display: none;
+  text-decoration: none;
+}
+.question-path {
+  display: grid;
+  gap: 0.75rem;
+}
+.question-path div {
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+.question-path dd {
+  flex-shrink: 0;
+  font-weight: 700;
+  margin: 0;
+}
+.activity-chart {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.activity-chart text {
+  fill: var(--color-text-muted);
+  font-size: 14px;
+}
+.grid-line {
+  stroke: var(--color-border);
+}
+.menu-line,
+.request-line {
+  fill: none;
+  stroke-width: 3;
+  vector-effect: non-scaling-stroke;
+}
+.menu-line {
+  stroke: var(--color-primary);
+}
+.request-line {
+  stroke: var(--color-text);
+  stroke-dasharray: 6 5;
+}
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  font-size: var(--font-size-small);
+}
+.chart-legend span:first-child {
+  color: var(--color-primary);
+}
+.daily-values {
+  display: none;
+  max-height: 22rem;
+  overflow-y: auto;
+  margin-top: 1rem;
+  padding-inline: 0.25rem;
+}
+.daily-values--expanded {
+  display: block;
+}
+.daily-values th:first-child {
+  width: 34%;
+}
+.daily-values thead th {
+  background: var(--color-surface);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.daily-values:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+@media (min-width: 1000px) {
+  .analytics-reading {
+    grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  }
+  .question-context {
+    border-top: 0;
+    border-left: 1px solid var(--color-border);
+    padding: 0 0 0 1.5rem;
+  }
+}
+@media (max-width: 600px) {
+  .analytics-overview {
+    padding: 1rem;
+  }
+  .analytics-table {
+    font-size: var(--font-size-small);
+  }
+  .menu-usage .analytics-table:has(th:nth-child(4)) th:first-child {
+    width: 34%;
+  }
+  .menu-usage .analytics-table th,
+  .menu-usage .analytics-table td {
+    padding-inline: 0.15rem;
+  }
+  .channel-name-full {
+    display: none;
+  }
+  .channel-name-short {
+    display: inline;
+  }
+  .activity-chart,
+  .chart-legend,
+  .daily-toggle {
+    display: none;
+  }
+  .daily-values {
+    display: block;
+    max-height: 18rem;
+    margin-top: 0;
+  }
+}

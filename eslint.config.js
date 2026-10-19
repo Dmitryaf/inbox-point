@@ -1,5 +1,6 @@
 import tseslint from 'typescript-eslint';
 import pluginVue from 'eslint-plugin-vue';
+import reactHooks from 'eslint-plugin-react-hooks';
 
 const crossDirectoryImportPattern = {
   group: ['../*', '../../*', '../../../*'],
@@ -23,7 +24,7 @@ export default tseslint.config(
     ignores: ['.ai-rules/**', '.local/**', 'coverage/**', 'dist/**'],
   },
   {
-    files: ['src/**/*.ts', 'frontend/**/*.ts', 'tests/**/*.ts'],
+    files: ['src/**/*.ts', 'frontend/**/*.{ts,tsx}', 'tests/**/*.{ts,tsx}'],
     extends: [
       ...tseslint.configs.recommendedTypeChecked,
       ...tseslint.configs.stylisticTypeChecked,
@@ -44,6 +45,30 @@ export default tseslint.config(
     },
   },
   ...pluginVue.configs['flat/recommended'],
+  {
+    files: ['frontend/common/**/*.ts'],
+    rules: {
+      'no-restricted-imports': restrictedImports(
+        'vue',
+        'vue/**',
+        'vue-router',
+        'react',
+        'react/**',
+        'react-dom',
+        'react-dom/**',
+        'react-router',
+        'react-router/**',
+        '@tanstack/react-query',
+        '@frontend/**',
+        '@frontend-styles/**',
+      ),
+    },
+  },
+  {
+    files: ['frontend/react/**/*.{ts,tsx}', 'tests/react/**/*.{ts,tsx}'],
+    plugins: { 'react-hooks': reactHooks },
+    rules: reactHooks.configs.recommended.rules,
+  },
   {
     files: ['frontend/src/**/*.vue'],
     languageOptions: {
@@ -67,7 +92,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['frontend/**/*.ts', 'tests/frontend/**/*.ts'],
+    files: ['frontend/**/*.{ts,tsx}', 'tests/{frontend,react}/**/*.{ts,tsx}'],
     rules: {
       'max-lines': [
         'error',
@@ -86,7 +111,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['frontend/src/shared/**/*.{ts,vue}'],
+    files: ['frontend/{src,react}/shared/**/*.{ts,tsx,vue}'],
     rules: {
       'no-restricted-imports': restrictedImports(
         '@frontend/entities/**',
@@ -98,7 +123,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['frontend/src/entities/**/*.{ts,vue}'],
+    files: ['frontend/{src,react}/entities/**/*.{ts,tsx,vue}'],
     rules: {
       'no-restricted-imports': restrictedImports(
         '@frontend/features/**',
@@ -109,7 +134,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['frontend/src/features/**/*.{ts,vue}'],
+    files: ['frontend/{src,react}/features/**/*.{ts,tsx,vue}'],
     rules: {
       'no-restricted-imports': restrictedImports(
         '@frontend/widgets/**',
@@ -119,7 +144,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['frontend/src/widgets/**/*.{ts,vue}'],
+    files: ['frontend/{src,react}/widgets/**/*.{ts,tsx,vue}'],
     rules: {
       'no-restricted-imports': restrictedImports(
         '@frontend/pages/**',
@@ -128,7 +153,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['frontend/src/pages/**/*.{ts,vue}'],
+    files: ['frontend/{src,react}/pages/**/*.{ts,tsx,vue}'],
     rules: {
       'no-restricted-imports': restrictedImports('@frontend/app/**'),
     },

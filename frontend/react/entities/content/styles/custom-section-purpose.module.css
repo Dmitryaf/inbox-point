@@ -1,0 +1,36 @@
+.section-purpose {
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  margin: 1rem 0;
+  min-width: 0;
+  padding: 0.75rem;
+}
+
+.purpose-option {
+  align-items: flex-start;
+  display: flex;
+  gap: 0.65rem;
+  margin: 0.6rem 0;
+}
+
+.purpose-title {
+  font-weight: 600;
+  margin: 0 0 0.6rem;
+}
+
+.purpose-option > input {
+  flex: 0 0 auto;
+  margin-top: 0.2rem;
+  width: auto;
+}
+
+.purpose-option > span {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.purpose-option > span > span {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+}
