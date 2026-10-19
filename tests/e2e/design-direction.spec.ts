@@ -124,14 +124,12 @@ for (const width of [390, 1280]) {
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 });
-    let release!: () => void;
+    const responseGate = Promise.withResolvers<void>();
     let first = true;
     await page.route('**/api/manage/content', async (route) => {
       if (first) {
         first = false;
-        await new Promise<void>((resolve) => {
-          release = resolve;
-        });
+        await responseGate.promise;
         await route.fulfill({ status: 503, json: {} });
       } else {
         await route.fulfill({
@@ -153,7 +151,7 @@ for (const width of [390, 1280]) {
     await expect(page.getByRole('status')).toContainText(
       'Загружаем информацию',
     );
-    release();
+    responseGate.resolve();
     await expect(page.getByRole('alert')).toBeVisible();
     await expect(
       page.getByText('Редактор не открыт. Повторите загрузку.'),
@@ -178,14 +176,12 @@ for (const width of [390, 1280]) {
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 });
-    let release!: () => void;
+    const responseGate = Promise.withResolvers<void>();
     let first = true;
     await page.route('**/api/ops/status', async (route) => {
       if (first) {
         first = false;
-        await new Promise<void>((resolve) => {
-          release = resolve;
-        });
+        await responseGate.promise;
         await route.fulfill({ status: 503, json: {} });
       } else {
         await route.fulfill({ json: attentionOperations });
@@ -195,7 +191,7 @@ for (const width of [390, 1280]) {
     await expect(page.getByRole('status')).toContainText(
       'Проверяем работу каналов',
     );
-    release();
+    responseGate.resolve();
     await expect(page.getByRole('alert')).toBeVisible();
     await expect(
       page.getByText('Состояние каналов неизвестно. Повторите проверку.'),
@@ -283,14 +279,12 @@ for (const width of [390, 1280]) {
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 });
-    let release!: () => void;
+    const responseGate = Promise.withResolvers<void>();
     let first = true;
     await page.route('**/api/setup/status', async (route) => {
       if (first) {
         first = false;
-        await new Promise<void>((resolve) => {
-          release = resolve;
-        });
+        await responseGate.promise;
         await route.fulfill({ status: 503, json: {} });
       } else {
         await route.fulfill({
@@ -307,7 +301,7 @@ for (const width of [390, 1280]) {
     await expect(page.getByRole('status')).toContainText(
       'Проверяем подключения',
     );
-    release();
+    responseGate.resolve();
     await expect(page.getByRole('alert')).toBeVisible();
     await page
       .getByRole('button', { name: 'Повторить проверку подключений' })

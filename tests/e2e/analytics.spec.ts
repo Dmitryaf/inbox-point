@@ -106,14 +106,12 @@ for (const width of [1440, 390]) {
 test('analytics loading, error retry and empty period stay understandable', async ({
   page,
 }) => {
-  let release!: () => void;
+  const responseGate = Promise.withResolvers<void>();
   let first = true;
   await page.route('**/api/analytics?*', async (route) => {
     if (first) {
       first = false;
-      await new Promise<void>((resolve) => {
-        release = resolve;
-      });
+      await responseGate.promise;
       await route.fulfill({
         status: 503,
         json: { message: 'Synthetic failure' },
@@ -126,7 +124,7 @@ test('analytics loading, error retry and empty period stay understandable', asyn
   });
   await page.goto('http://127.0.0.1:4175/analytics');
   await expect(page.getByRole('status')).toContainText('Загружаем аналитику');
-  release();
+  responseGate.resolve();
   await expect(page.getByRole('alert')).toContainText(
     'Не удалось загрузить аналитику',
   );
