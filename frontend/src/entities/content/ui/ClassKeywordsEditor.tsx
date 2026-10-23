@@ -1,61 +1,102 @@
-import '@frontend/entities/content/styles/class-editor.react-data-r-7964e07c.css';
-import {
-  useComponentModel,
-  ModelScopeProvider,
-} from '@frontend/shared/lib/component-model';
-import { classNames as $class } from '@frontend/shared/lib/component-view';
+import { groupTitle, normalizeKeyword } from '@core/application/class-content';
+import type {
+  ContentEditorProps,
+  OpenClass,
+} from '@frontend/entities/content/model/editor-props';
+import styles from '@frontend/entities/content/styles/class-editor.module.css';
 
-import { requiredValue as $required } from '@frontend/shared/lib/component-bindings';
-
-import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
-
-import { renderClassKeywordsEditorPart1 } from './ClassKeywordsEditor.part1';
-import {
-  createComponentModel,
-  componentDefaults,
-  type ComponentProps,
-} from './ClassKeywordsEditor.model';
-
-export default function ClassKeywordsEditor($incomingProps: ComponentProps) {
-  const {
-    state: $state,
-    props: $props,
-    scope: $scope,
-  } = useComponentModel(
-    $incomingProps,
-    componentDefaults,
-    createComponentModel,
-  );
-  const draft = $state.draft.value;
-  const $attributes = inheritedAttributes($props);
+export function ClassKeywordsEditor({
+  draft,
+  edit,
+  targetId,
+  open,
+}: ContentEditorProps & { targetId: string; open: OpenClass }) {
+  const words = draft.keywords
+    .map((word, index) => ({ word, index }))
+    .filter(
+      ({ word }) => word.targetType === 'group' && word.targetId === targetId,
+    );
   return (
-    <ModelScopeProvider scope={$scope}>
-      <section
-        {...$attributes}
-        aria-label="Переход из объявления"
-        className={$class('class-card', $attributes.className)}
-        data-r-7964e07c=""
+    <section
+      className={styles['class-card']}
+      aria-label="Переход из объявления"
+    >
+      <h3>Переход из объявления</h3>
+      <p>По этому слову в сообщениях бот покажет эту группу.</p>
+      {words.map(({ word, index }, localIndex) => {
+        const conflict = draft.keywords.find(
+          (other) =>
+            other !== word &&
+            other.targetType === 'group' &&
+            !!word.phrase.trim() &&
+            normalizeKeyword(other.phrase) === normalizeKeyword(word.phrase),
+        );
+        const group =
+          conflict &&
+          draft.groups.find((item) => item.id === conflict.targetId);
+        return (
+          <div key={index} className={styles['class-word']}>
+            <label htmlFor={`keyword-${targetId}-${localIndex}`}>
+              Слово или фраза {localIndex + 1}
+            </label>
+            <input
+              id={`keyword-${targetId}-${localIndex}`}
+              value={word.phrase}
+              maxLength={80}
+              placeholder="Например, Бачата"
+              onChange={(event) =>
+                edit({
+                  keywords: draft.keywords.map((entry, itemIndex) =>
+                    itemIndex === index
+                      ? { ...entry, phrase: event.target.value }
+                      : entry,
+                  ),
+                })
+              }
+            />
+            {conflict && (
+              <p role="alert">
+                Слово «{word.phrase}» уже открывает «
+                {group ? groupTitle(draft, group) : ''}».{' '}
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => open(conflict.targetType, conflict.targetId)}
+                >
+                  Перейти к настройке
+                </button>
+              </p>
+            )}
+            <button
+              type="button"
+              className="danger"
+              onClick={() =>
+                edit({
+                  keywords: draft.keywords.filter(
+                    (_, itemIndex) => itemIndex !== index,
+                  ),
+                })
+              }
+            >
+              Удалить слово
+            </button>
+          </div>
+        );
+      })}
+      <button
+        type="button"
+        disabled={draft.keywords.length >= 40}
+        onClick={() =>
+          edit({
+            keywords: [
+              ...draft.keywords,
+              { phrase: '', targetType: 'group', targetId },
+            ],
+          })
+        }
       >
-        <h3 data-r-7964e07c="">{'Переход из объявления'}</h3>
-        <p data-r-7964e07c="">
-          {'По этому слову в сообщениях бот покажет эту группу.'}
-        </p>
-        {renderClassKeywordsEditorPart1($state, $props)}
-        <button
-          type="button"
-          disabled={draft.keywords.length >= 40}
-          onClick={() =>
-            void $required($state.draft.value).keywords.push({
-              phrase: '',
-              targetType: $props.targetType,
-              targetId: $props.targetId,
-            })
-          }
-          data-r-7964e07c=""
-        >
-          {' Добавить ключевое слово '}
-        </button>
-      </section>
-    </ModelScopeProvider>
+        Добавить ключевое слово
+      </button>
+    </section>
   );
 }

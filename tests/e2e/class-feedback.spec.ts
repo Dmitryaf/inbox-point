@@ -40,7 +40,7 @@ for (const width of [390, 1440]) {
     await page.goto('/login');
     await page.getByLabel('Пароль').fill('synthetic-admin-password');
     await page.getByRole('button', { name: 'Войти', exact: true }).click();
-    const direction = page.locator('.class-list-item').first();
+    const direction = page.locator('[class*="_class-list-item_"]').first();
     const before = await direction.evaluate(
       (element) => getComputedStyle(element).backgroundColor,
     );
@@ -54,7 +54,7 @@ for (const width of [390, 1440]) {
       .not.toBe(before);
     await expect.poll(() => contrast(direction)).toBeGreaterThanOrEqual(4.5);
     await direction.click();
-    await page.locator('.class-list-item').first().click();
+    await page.locator('[class*="_class-list-item_"]').first().click();
     await expect(
       page.getByLabel('Дни и время занятий', { exact: true }),
     ).toHaveCount(1);
@@ -109,32 +109,34 @@ for (const width of [390, 1440]) {
       fullPage: true,
     });
     await page.getByRole('button', { name: 'Посмотреть как клиент' }).click();
-    await expect(page.locator('.preview')).toHaveCount(1);
-    await expect(page.locator('.preview-service-message')).toContainText(
-      'Понедельник',
-    );
+    await expect(
+      page.locator('[aria-label="Предпросмотр ответов"]'),
+    ).toHaveCount(1);
+    await expect(
+      page.locator('[class*="_preview-service-message_"]'),
+    ).toContainText('Понедельник');
     await expect(
       page.getByRole('button', { name: 'Расписание группы', exact: true }),
     ).toHaveCount(0);
     await page
-      .locator('.preview')
+      .locator('[aria-label="Предпросмотр ответов"]')
       .getByRole('button', { name: 'Записаться на занятие' })
       .click();
-    await expect(page.locator('.preview-service-message')).toContainText(
-      'В какой день хотите прийти?',
-    );
+    await expect(
+      page.locator('[class*="_preview-service-message_"]'),
+    ).toContainText('В какой день хотите прийти?');
     await page.getByRole('button', { name: 'Начать с меню' }).click();
     await page
-      .locator('.preview')
+      .locator('[aria-label="Предпросмотр ответов"]')
       .getByRole('button', { name: 'Расписание', exact: true })
       .click();
     await page
-      .locator('.preview')
+      .locator('[aria-label="Предпросмотр ответов"]')
       .getByRole('button', { name: 'Расписание всех направлений', exact: true })
       .click();
-    await expect(page.locator('.preview-service-message')).toContainText(
-      'Понедельник',
-    );
+    await expect(
+      page.locator('[class*="_preview-service-message_"]'),
+    ).toContainText('Понедельник');
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,

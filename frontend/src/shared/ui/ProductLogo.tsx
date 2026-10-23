@@ -1,39 +1,22 @@
-import '@frontend/shared/styles/product-logo.react-data-r-f7705ee3.css';
-import {
-  useComponentModel,
-  ModelScopeProvider,
-} from '@frontend/shared/lib/component-model';
-import { classNames as $class } from '@frontend/shared/lib/component-view';
+import styles from '@frontend/shared/styles/product-logo.module.css';
 
-import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
-
-import { renderProductLogoPart1 } from './ProductLogo.part1';
-import {
-  createComponentModel,
-  componentDefaults,
-  type ComponentProps,
-} from './ProductLogo.model';
-
-export default function ProductLogo($incomingProps: ComponentProps) {
-  const { props: $props, scope: $scope } = useComponentModel(
-    $incomingProps,
-    componentDefaults,
-    createComponentModel,
-  );
-  const $attributes = inheritedAttributes($props);
+export function ProductLogo({
+  className = '',
+}: {
+  className?: string | undefined;
+}) {
   return (
-    <ModelScopeProvider scope={$scope}>
-      <span
-        {...$attributes}
-        className={$class('product-logo', $attributes.className)}
-        data-r-f7705ee3=""
-      >
-        {renderProductLogoPart1()}
-        <span className="product-logo__wordmark" data-r-f7705ee3="">
-          {'Inbox '}
-          <b data-r-f7705ee3="">{'Point'}</b>
-        </span>
+    <span className={`${styles['product-logo']} ${className}`}>
+      <span className={styles['product-logo__mark']} aria-hidden="true">
+        <svg viewBox="0 0 32 32" fill="none">
+          <path d="M7.5 9.5h17v13h-17z" />
+          <path d="M7.5 18h4.25l2.1 2.5h4.3l2.1-2.5h4.25" />
+          <circle cx="22.5" cy="9.5" r="3" />
+        </svg>
       </span>
-    </ModelScopeProvider>
+      <span className={styles['product-logo__wordmark']}>
+        Inbox <b>Point</b>
+      </span>
+    </span>
   );
 }

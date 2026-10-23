@@ -1,39 +1,36 @@
-import '@frontend/widgets/admin-shell/styles/admin-shell.react-data-r-2be24c3c.css';
-import {
-  useComponentModel,
-  ModelScopeProvider,
-} from '@frontend/shared/lib/component-model';
-import { classNames as $class } from '@frontend/shared/lib/component-view';
+import { useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router';
 
-import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
+import { rememberAdminLogin } from '@frontend/features/admin-auth/lib/auth-navigation';
+import { useAdminSession } from '@frontend/features/admin-auth/model/SessionProvider';
+import styles from '@frontend/widgets/admin-shell/styles/admin-shell.module.css';
+import { AdminWorkspace } from './AdminWorkspace';
 
-import { renderAdminShellPart1 } from './AdminShell.part1';
-import {
-  createComponentModel,
-  componentDefaults,
-  type ComponentProps,
-} from './AdminShell.model';
-
-export default function AdminShell($incomingProps: ComponentProps) {
-  const {
-    state: $state,
-    props: $props,
-    scope: $scope,
-  } = useComponentModel(
-    $incomingProps,
-    componentDefaults,
-    createComponentModel,
-  );
-  const $attributes = inheritedAttributes($props);
-  return (
-    <ModelScopeProvider scope={$scope}>
-      <div
-        {...$attributes}
-        className={$class('admin-shell', $attributes.className)}
-        data-r-2be24c3c=""
-      >
-        {renderAdminShellPart1($state)}
+export function AdminShell() {
+  const session = useAdminSession();
+  const location = useLocation();
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (!session.booting && !session.authenticated) {
+      rememberAdminLogin(location.pathname, session.error || undefined);
+      void navigate('/login', { replace: true });
+    }
+  }, [
+    session.booting,
+    session.authenticated,
+    session.error,
+    location.pathname,
+    navigate,
+  ]);
+  if (session.booting) {
+    return (
+      <div className={styles['admin-shell-state']} role="status">
+        Проверяем доступ…
       </div>
-    </ModelScopeProvider>
-  );
+    );
+  }
+  if (!session.authenticated) {
+    return null;
+  }
+  return <AdminWorkspace />;
 }

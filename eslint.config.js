@@ -1,4 +1,5 @@
 import tseslint from 'typescript-eslint';
+import reactHooks from 'eslint-plugin-react-hooks';
 
 const crossDirectoryImportPattern = {
   group: ['../*', '../../*', '../../../*'],
@@ -41,6 +42,30 @@ export default tseslint.config(
       ],
       'no-restricted-imports': restrictedImports(),
     },
+  },
+  {
+    files: ['frontend/common/**/*.ts'],
+    rules: {
+      'no-restricted-imports': restrictedImports(
+        'vue',
+        'vue/**',
+        'vue-router',
+        'react',
+        'react/**',
+        'react-dom',
+        'react-dom/**',
+        'react-router',
+        'react-router/**',
+        '@tanstack/react-query',
+        '@frontend/**',
+        '@frontend-styles/**',
+      ),
+    },
+  },
+  {
+    files: ['frontend/src/**/*.{ts,tsx}', 'tests/frontend/**/*.{ts,tsx}'],
+    plugins: { 'react-hooks': reactHooks },
+    rules: reactHooks.configs.recommended.rules,
   },
   {
     files: ['frontend/**/*.{ts,tsx}', 'tests/frontend/**/*.{ts,tsx}'],
@@ -148,17 +173,6 @@ export default tseslint.config(
     files: ['src/infrastructure/**/*.ts'],
     rules: {
       'no-restricted-imports': restrictedImports('@/modules/*/presentation/**'),
-    },
-  },
-
-  {
-    files: ['frontend/src/**/*.tsx'],
-    rules: {
-      curly: ['error', 'all'],
-      'max-lines': [
-        'error',
-        { max: 140, skipBlankLines: true, skipComments: true },
-      ],
     },
   },
 );

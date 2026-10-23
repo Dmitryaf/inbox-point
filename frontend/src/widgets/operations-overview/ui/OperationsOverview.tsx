@@ -1,44 +1,68 @@
-import '@frontend/widgets/operations-overview/styles/operations-overview.react-data-r-2dc401be.css';
-import {
-  useComponentModel,
-  ModelScopeProvider,
-} from '@frontend/shared/lib/component-model';
-import { classNames as $class } from '@frontend/shared/lib/component-view';
+import { formatUptime } from '@frontend-common/entities/operations/lib/status-format';
+import { formatShortDateTimeWithSeconds } from '@frontend-common/shared/lib/format-date-time';
+import type { OverviewProps } from '@frontend/widgets/operations-overview/model/overview-props';
+import styles from '@frontend/widgets/operations-overview/styles/operations-overview.module.css';
+import { ChannelStatusCard } from './ChannelStatusCard';
+import { DeliveryStatusCard } from './DeliveryStatusCard';
+import { InboundEventStatusCard } from './InboundEventStatusCard';
+import { OperationsAttentionPanel } from './OperationsAttentionPanel';
 
-import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
-
-import { renderOperationsOverviewPart1 } from './OperationsOverview.part1';
-import { renderOperationsOverviewPart2 } from './OperationsOverview.part2';
-import { renderOperationsOverviewPart3 } from './OperationsOverview.part3';
-import {
-  createComponentModel,
-  componentDefaults,
-  type ComponentProps,
-} from './OperationsOverview.model';
-
-export default function OperationsOverview($incomingProps: ComponentProps) {
-  const {
-    state: $state,
-    props: $props,
-    scope: $scope,
-  } = useComponentModel(
-    $incomingProps,
-    componentDefaults,
-    createComponentModel,
-  );
-  const $attributes = inheritedAttributes($props);
+export function OperationsOverview(props: OverviewProps) {
+  const { status, statusUnavailable } = props;
+  const observedAt = formatShortDateTimeWithSeconds(status.observedAt);
+  const label = statusUnavailable
+    ? 'Состояние неизвестно'
+    : status.state === 'healthy'
+      ? 'Всё работает'
+      : status.state === 'attention'
+        ? 'Нужно проверить'
+        : status.outbound.mode === 'paused'
+          ? 'Ответы клиентам приостановлены'
+          : 'Приём обращений приостановлен';
+  const description = statusUnavailable
+    ? `Не удалось обновить состояние. Показаны последние данные от ${observedAt}.`
+    : status.state === 'healthy'
+      ? 'Всё работает: каналы принимают сообщения, ответы отправляются.'
+      : status.state === 'attention'
+        ? 'Выше показано, что не работает и что нужно сделать.'
+        : status.outbound.mode === 'paused'
+          ? 'Ответы сохраняются и будут отправлены после возобновления.'
+          : 'Новые обращения временно не создаются, активные диалоги продолжаются.';
   return (
-    <ModelScopeProvider scope={$scope}>
-      <section
-        {...$attributes}
-        aria-labelledby="overview-title"
-        className={$class('overview', $attributes.className)}
-        data-r-2dc401be=""
+    <section className={styles.overview} aria-labelledby="overview-title">
+      <OperationsAttentionPanel {...props} />
+      <article
+        className={`${styles['service-summary']} ${statusUnavailable || status.state === 'attention' ? styles['service-summary--attention'] : ''} ${status.state === 'maintenance' ? styles['service-summary--maintenance'] : ''}`}
       >
-        {renderOperationsOverviewPart1($state, $props)}
-        {renderOperationsOverviewPart2($state, $props)}
-        {renderOperationsOverviewPart3($props)}
-      </section>
-    </ModelScopeProvider>
+        <div>
+          <h2 id="overview-title">{label}</h2>
+          <p className={styles['summary-description']}>{description}</p>
+        </div>
+        <dl className={styles['summary-facts']}>
+          <div>
+            <dt>Работает</dt>
+            <dd>{formatUptime(status.uptimeSeconds)}</dd>
+          </div>
+          <div>
+            <dt>Данные обновлены</dt>
+            <dd>{observedAt}</dd>
+          </div>
+        </dl>
+      </article>
+      <div className={styles['status-grid']}>
+        <ChannelStatusCard
+          name="Telegram"
+          channel={status.channels.telegram}
+          intake={status.intake.telegram}
+        />
+        <ChannelStatusCard
+          name="VK"
+          channel={status.channels.vk}
+          intake={status.intake.vk}
+        />
+        <DeliveryStatusCard deliveries={status.deliveries} />
+        <InboundEventStatusCard inboundEvents={status.inboundEvents} />
+      </div>
+    </section>
   );
 }

@@ -26,6 +26,7 @@
     "tests/integration/**/*.ts",
     "tests/e2e/**/*.ts",
     "eslint.config.js",
-    "vitest.config.ts"
+    "vitest.config.ts",
+    "playwright.config.ts"
   ]
 }
