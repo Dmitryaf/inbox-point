@@ -17,6 +17,7 @@ export default defineConfig({
       output: {
         assetFileNames: 'style.css',
         entryFileNames: 'app.js',
+        codeSplitting: false,
       },
     },
   },
@@ -26,6 +27,8 @@ export default defineConfig({
       '@': resolve(root, '../src'),
       '@core': resolve(root, '../src/core'),
       '@frontend': resolve(root, 'src'),
+      '@frontend-common': resolve(root, 'common'),
+      '@frontend-styles': resolve(root, 'src/app/styles'),
     },
   },
   root,

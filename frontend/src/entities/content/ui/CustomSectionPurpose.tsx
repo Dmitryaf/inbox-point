@@ -1,48 +1,53 @@
-import '@frontend/entities/content/styles/custom-section-purpose.react-data-r-fc41a8d8.css';
-import {
-  useComponentModel,
-  ModelScopeProvider,
-} from '@frontend/shared/lib/component-model';
-import { classNames as $class } from '@frontend/shared/lib/component-view';
+import type { CustomSection } from '@frontend-common/entities/content/model/types';
+import styles from '@frontend/entities/content/styles/custom-section-purpose.module.css';
 
-import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
-
-import { renderCustomSectionPurposePart1 } from './CustomSectionPurpose.part1';
-import {
-  createComponentModel,
-  componentDefaults,
-  type ComponentProps,
-} from './CustomSectionPurpose.model';
-
-export default function CustomSectionPurpose($incomingProps: ComponentProps) {
-  const {
-    state: $state,
-    props: $props,
-    scope: $scope,
-  } = useComponentModel(
-    $incomingProps,
-    componentDefaults,
-    createComponentModel,
-  );
-  const $attributes = inheritedAttributes($props);
+export function CustomSectionPurpose({
+  name,
+  mode,
+  change,
+}: {
+  name: string;
+  mode: CustomSection['mode'];
+  change: (mode: 'information' | 'application') => void;
+}) {
+  const purposes = [
+    {
+      value: 'information',
+      label: 'Показать информацию',
+      description:
+        'Например: «Цены», «Адрес», «Что взять с собой». Нажав кнопку, человек получит готовый ответ.',
+    },
+    {
+      value: 'application',
+      label: 'Принять заявку',
+      description:
+        'Например: «Заказать звонок». Бот спросит нужные детали и передаст ответ администратору.',
+    },
+  ] as const;
   return (
-    <ModelScopeProvider scope={$scope}>
-      <div
-        {...$attributes}
-        role="radiogroup"
-        aria-labelledby={`${$props.name}-label`}
-        className={$class('section-purpose', $attributes.className)}
-        data-r-fc41a8d8=""
-      >
-        <p
-          id={`${$props.name}-label`}
-          className="purpose-title"
-          data-r-fc41a8d8=""
-        >
-          {'Для чего нужна кнопка?'}
-        </p>
-        {renderCustomSectionPurposePart1($state, $props)}
-      </div>
-    </ModelScopeProvider>
+    <div
+      className={styles['section-purpose']}
+      role="radiogroup"
+      aria-labelledby={`${name}-label`}
+    >
+      <p id={`${name}-label`} className={styles['purpose-title']}>
+        Для чего нужна кнопка?
+      </p>
+      {purposes.map((purpose) => (
+        <label key={purpose.value} className={styles['purpose-option']}>
+          <input
+            type="radio"
+            name={name}
+            value={purpose.value}
+            checked={(mode ?? 'information') === purpose.value}
+            onChange={() => change(purpose.value)}
+          />
+          <span>
+            <strong>{purpose.label}</strong>
+            <span>{purpose.description}</span>
+          </span>
+        </label>
+      ))}
+    </div>
   );
 }

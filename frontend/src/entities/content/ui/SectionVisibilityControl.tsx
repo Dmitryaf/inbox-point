@@ -1,56 +1,37 @@
-import '@frontend/entities/content/styles/section-visibility-control.react-data-r-73781f5e.css';
-import {
-  useComponentModel,
-  ModelScopeProvider,
-} from '@frontend/shared/lib/component-model';
-import { classNames as $class } from '@frontend/shared/lib/component-view';
-import { nativeHandler as $nativeHandler } from '@frontend/shared/lib/component-events';
+import type {
+  ContentDraft,
+  InformationSectionId,
+} from '@frontend-common/entities/content/model/types';
+import styles from '@frontend/entities/content/styles/section-visibility-control.module.css';
 
-import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
-
-import {
-  createComponentModel,
-  componentDefaults,
-  type ComponentProps,
-} from './SectionVisibilityControl.model';
-
-export default function SectionVisibilityControl(
-  $incomingProps: ComponentProps,
-) {
-  const {
-    state: $state,
-    props: $props,
-    scope: $scope,
-  } = useComponentModel(
-    $incomingProps,
-    componentDefaults,
-    createComponentModel,
-  );
-  const { updateVisibility } = $state;
-  const visibleSections = $state.visibleSections.value;
-  const $attributes = inheritedAttributes($props);
+export function SectionVisibilityControl({
+  draft,
+  section,
+  present,
+  onChange,
+}: {
+  draft: ContentDraft;
+  section: InformationSectionId;
+  present: boolean;
+  onChange: (change: Partial<ContentDraft>) => void;
+}) {
   return (
-    <ModelScopeProvider scope={$scope}>
-      <label
-        {...$attributes}
-        className={$class('visibility-control', $attributes.className)}
-        data-r-73781f5e=""
-      >
-        <input
-          checked={visibleSections.includes($props.section)}
-          type="checkbox"
-          onChange={$nativeHandler(updateVisibility)}
-          data-r-73781f5e=""
-        />
-        <span data-r-73781f5e="">
-          {' Показывать клиентам '}
-          {!$props.contentPresent ? (
-            <small data-r-73781f5e="">
-              {' Пустой раздел всё равно не появится в меню. '}
-            </small>
-          ) : null}
-        </span>
-      </label>
-    </ModelScopeProvider>
+    <label className={styles['visibility-control']}>
+      <input
+        type="checkbox"
+        checked={draft.visibleSections.includes(section)}
+        onChange={(event) => {
+          onChange({
+            visibleSections: event.target.checked
+              ? [...draft.visibleSections, section]
+              : draft.visibleSections.filter((item) => item !== section),
+          });
+        }}
+      />
+      <span>
+        Показывать клиентам
+        {!present && <small>Пустой раздел всё равно не появится в меню.</small>}
+      </span>
+    </label>
   );
 }

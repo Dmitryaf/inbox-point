@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { HttpError, request } from '@frontend/shared/api/http-client';
+import { HttpError, request } from '@frontend-common/shared/api/http-client';
 import { response } from '@test/frontend/support/fake-response';
 
 describe('HTTP client', () => {

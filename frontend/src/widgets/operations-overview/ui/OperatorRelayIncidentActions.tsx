@@ -1,63 +1,71 @@
-import '@frontend/widgets/operations-overview/styles/incident-list.react-data-r-464ae559.css';
+import type {
+  OperatorActionResolution,
+  OperatorRelayIncident,
+} from '@frontend-common/entities/operations/model/types';
 import {
-  useComponentModel,
-  ModelScopeProvider,
-} from '@frontend/shared/lib/component-model';
-import { classNames as $class } from '@frontend/shared/lib/component-view';
+  actionButtonLabel,
+  canRetryHeldReply,
+  canUseWeb,
+  isLifecycle,
+  lifecycleResolutionLabel,
+} from '@frontend-common/entities/operations/lib/operator-action-presentation';
+import styles from '@frontend/widgets/operations-overview/styles/incident-list.module.css';
 
-import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
-
-import { renderOperatorRelayIncidentActionsPart1 } from './OperatorRelayIncidentActions.part1';
-import { renderOperatorRelayIncidentActionsPart2 } from './OperatorRelayIncidentActions.part2';
-import { renderOperatorRelayIncidentActionsPart3 } from './OperatorRelayIncidentActions.part3';
-import { renderOperatorRelayIncidentActionsPart4 } from './OperatorRelayIncidentActions.part4';
-import { renderOperatorRelayIncidentActionsPart5 } from './OperatorRelayIncidentActions.part5';
-import {
-  createComponentModel,
-  componentDefaults,
-  type ComponentProps,
-} from './OperatorRelayIncidentActions.model';
-
-export default function OperatorRelayIncidentActions(
-  $incomingProps: ComponentProps,
-) {
-  const {
-    state: $state,
-    props: $props,
-    scope: $scope,
-  } = useComponentModel(
-    $incomingProps,
-    componentDefaults,
-    createComponentModel,
+export function OperatorRelayIncidentActions({
+  incident,
+  pendingActionId,
+  onResolve,
+}: {
+  incident: OperatorRelayIncident;
+  pendingActionId: string;
+  onResolve: (id: string, resolution: OperatorActionResolution) => void;
+}) {
+  const messageDelivery =
+    incident.action === 'relay_message' ||
+    incident.action === 'mirror_operator_message';
+  const pending = pendingActionId === incident.id;
+  const button = (
+    resolution: OperatorActionResolution,
+    label: string,
+    secondary = false,
+  ) => (
+    <button
+      key={resolution}
+      className={secondary ? 'secondary-button' : undefined}
+      type="button"
+      disabled={Boolean(pendingActionId)}
+      onClick={() => onResolve(incident.id, resolution)}
+    >
+      {actionButtonLabel(pending, label)}
+    </button>
   );
-  const { isMessageDeliveryIncident } = $state;
-  const $attributes = inheritedAttributes($props);
   return (
-    <ModelScopeProvider scope={$scope}>
-      <div
-        {...$attributes}
-        className={$class('delivery-resolution-actions', $attributes.className)}
-        data-r-464ae559=""
-      >
-        {isMessageDeliveryIncident($props.incident) ? (
-          <p data-r-464ae559="">
-            {' Проверьте Telegram-тему перед выбором действия. '}
-          </p>
-        ) : null}
-        {$props.incident.action === 'relay_message' &&
-        !$props.incident.confirmable ? (
-          <p data-r-464ae559="">
-            {
-              ' Не все сообщения появились в Telegram. Откройте обращение здесь. '
-            }
-          </p>
-        ) : null}
-        {renderOperatorRelayIncidentActionsPart1($state, $props)}
-        {renderOperatorRelayIncidentActionsPart2($state, $props)}
-        {renderOperatorRelayIncidentActionsPart3($state, $props)}
-        {renderOperatorRelayIncidentActionsPart4($state, $props)}
-        {renderOperatorRelayIncidentActionsPart5($state, $props)}
-      </div>
-    </ModelScopeProvider>
+    <div className={styles['delivery-resolution-actions']}>
+      {messageDelivery && (
+        <p>Проверьте Telegram-тему перед выбором действия.</p>
+      )}
+      {incident.action === 'relay_message' && !incident.confirmable && (
+        <p>Не все сообщения появились в Telegram. Откройте обращение здесь.</p>
+      )}
+      {messageDelivery &&
+        incident.confirmable &&
+        button('received', 'Сообщение есть в Telegram', true)}
+      {isLifecycle(incident) && incident.status === 'outcome_unknown' && (
+        <>
+          {button(
+            'completed',
+            lifecycleResolutionLabel(incident, 'completed'),
+            true,
+          )}
+          {button(
+            'not_completed',
+            lifecycleResolutionLabel(incident, 'not_completed'),
+          )}
+        </>
+      )}
+      {canRetryHeldReply(incident) &&
+        button('retry', 'Повторить открытие темы')}
+      {canUseWeb(incident) && button('use_web', 'Открыть обращение здесь')}
+    </div>
   );
 }

@@ -1,74 +1,47 @@
-import '@frontend/features/admin-auth/styles/admin-login-form.react-data-r-2e9199db.css';
-import {
-  useComponentModel,
-  ModelScopeProvider,
-} from '@frontend/shared/lib/component-model';
-import { classNames as $class } from '@frontend/shared/lib/component-view';
-import { nativeHandler as $nativeHandler } from '@frontend/shared/lib/component-events';
+import { useState, type FormEvent } from 'react';
 
-import {
-  textModel as $textModel,
-  checkboxModel as $checkboxModel,
-} from '@frontend/shared/lib/component-inputs';
-import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
+import styles from '@frontend/features/admin-auth/styles/admin-login-form.module.css';
 
-import {
-  createComponentModel,
-  componentDefaults,
-  type ComponentProps,
-} from './AdminLoginForm.model';
+interface Props {
+  pending: boolean;
+  onSubmit: (password: string, remember: boolean) => Promise<boolean>;
+}
 
-export default function AdminLoginForm($incomingProps: ComponentProps) {
-  const {
-    state: $state,
-    props: $props,
-    scope: $scope,
-  } = useComponentModel(
-    $incomingProps,
-    componentDefaults,
-    createComponentModel,
-  );
-  const { submit } = $state;
-  const password = $state.password.value;
-  const rememberDevice = $state.rememberDevice.value;
-  const $attributes = inheritedAttributes($props);
+export function AdminLoginForm({ pending, onSubmit }: Props) {
+  const [password, setPassword] = useState('');
+  const [remember, setRemember] = useState(false);
+  function submit(event: FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    if (!password || pending) {
+      return;
+    }
+    void onSubmit(password, remember);
+    setPassword('');
+  }
   return (
-    <ModelScopeProvider scope={$scope}>
-      <form
-        {...$attributes}
-        onSubmit={$nativeHandler(submit, { prevent: true })}
-        className={$class('auth-card', $attributes.className)}
-        data-r-2e9199db=""
-      >
-        <h1 data-r-2e9199db="">{'Вход в управление'}</h1>
-        <p data-r-2e9199db="">{'Введите пароль администратора.'}</p>
-        <label htmlFor="admin-password" data-r-2e9199db="">
-          {'Пароль'}
-        </label>
+    <form className={styles['auth-card']} onSubmit={submit}>
+      <h1>Вход в управление</h1>
+      <p>Введите пароль администратора.</p>
+      <label htmlFor="admin-password">Пароль</label>
+      <input
+        id="admin-password"
+        value={password}
+        onChange={(event) => setPassword(event.target.value)}
+        autoComplete="current-password"
+        required
+        type="password"
+      />
+      <label className={styles['remember-device']}>
         <input
-          id="admin-password"
-          autoComplete="current-password"
-          required
-          type="password"
-          value={password ?? ''}
-          onChange={$textModel($state, 'password')}
-          data-r-2e9199db=""
+          checked={remember}
+          onChange={(event) => setRemember(event.target.checked)}
+          type="checkbox"
         />
-        <label className="remember-device" data-r-2e9199db="">
-          <input
-            type="checkbox"
-            checked={rememberDevice}
-            onChange={$checkboxModel($state, 'rememberDevice')}
-            data-r-2e9199db=""
-          />
-          <span data-r-2e9199db="">
-            {'Запомнить это устройство на 30 дней'}
-          </span>
-        </label>
-        <button disabled={$props.pending} type="submit" data-r-2e9199db="">
-          {$props.pending ? 'Проверяем…' : 'Войти'}
-        </button>
-      </form>
-    </ModelScopeProvider>
+        <span>Запомнить это устройство на 30 дней</span>
+      </label>
+      <button disabled={pending} type="submit">
+        {pending ? 'Проверяем…' : 'Войти'}
+      </button>
+    </form>
   );
 }

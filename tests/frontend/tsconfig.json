@@ -5,9 +5,10 @@
       "@/*": ["../../src/*"],
       "@core/*": ["../../src/core/*"],
       "@frontend/*": ["../../frontend/src/*"],
+      "@frontend-common/*": ["../../frontend/common/*"],
+      "@frontend-styles/*": ["../../frontend/src/app/styles/*"],
       "@test/*": ["../*"]
-    },
-    "jsx": "react-jsx"
+    }
   },
-  "include": ["**/*.ts", "../../frontend/src/**/*.d.ts", "**/*.tsx"]
+  "include": ["**/*.ts", "**/*.tsx"]
 }

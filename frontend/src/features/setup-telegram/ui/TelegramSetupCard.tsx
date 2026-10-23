@@ -1,49 +1,117 @@
-import '@frontend/entities/setup/styles/setup-card.react-data-r-44d690ea.css';
-import {
-  useComponentModel,
-  ModelScopeProvider,
-} from '@frontend/shared/lib/component-model';
-import { classNames as $class } from '@frontend/shared/lib/component-view';
+import { useState } from 'react';
+import { disconnectTelegram } from '@frontend-common/entities/setup/api/setup-api';
+import type { ChannelSetupStatus } from '@frontend-common/entities/setup/model/types';
+import { useSetupCommand } from '@frontend/features/channel-setup/model/use-setup-command';
+import styles from '@frontend/entities/setup/styles/setup-card.module.css';
+import { TelegramConnectionForm } from './TelegramConnectionForm';
 
-import { inheritedAttributes } from '@frontend/shared/lib/component-attributes';
-
-import { renderTelegramSetupCardPart1 } from './TelegramSetupCard.part1';
-import { renderTelegramSetupCardPart2 } from './TelegramSetupCard.part2';
-import { renderTelegramSetupCardPart3 } from './TelegramSetupCard.part3';
-import {
-  createComponentModel,
-  componentDefaults,
-  type ComponentProps,
-} from './TelegramSetupCard.model';
-
-export default function TelegramSetupCard($incomingProps: ComponentProps) {
-  const {
-    state: $state,
-    props: $props,
-    scope: $scope,
-  } = useComponentModel(
-    $incomingProps,
-    componentDefaults,
-    createComponentModel,
-  );
-  const expanded = $state.expanded.value;
-  const $attributes = inheritedAttributes($props);
+export function TelegramSetupCard({
+  status,
+  vkConfigured,
+  onChange,
+}: {
+  status: ChannelSetupStatus;
+  vkConfigured: boolean;
+  onChange: (connected: boolean) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const { pending, error, run } = useSetupCommand();
+  function disconnect() {
+    if (
+      vkConfigured ||
+      !window.confirm(
+        'Отключить Telegram? Приложение перестанет получать сообщения из бота и передавать обращения в группу администраторов. История обращений сохранится.',
+      )
+    ) {
+      return;
+    }
+    void run('disconnect', disconnectTelegram, () => onChange(false));
+  }
   return (
-    <ModelScopeProvider scope={$scope}>
-      <section
-        {...$attributes}
-        aria-labelledby="telegram-setup-title"
-        className={$class(
-          'setup-card card',
-          { 'setup-card--expanded': expanded },
-          $attributes.className,
-        )}
-        data-r-44d690ea=""
+    <section
+      className={`card ${styles['setup-card']}`}
+      aria-labelledby="telegram-setup-title"
+    >
+      <header className={styles['setup-card-heading']}>
+        <div>
+          <h2 id="telegram-setup-title">Telegram</h2>
+          <p>Бот для клиентов и группа, где сотрудники отвечают на вопросы.</p>
+        </div>
+        <span
+          className={`status-pill status-pill--${status.connected ? 'healthy' : 'neutral'}`}
+        >
+          {status.connected ? 'Подключён' : 'Не подключён'}
+        </span>
+      </header>
+      <button
+        className={`quiet ${styles['setup-toggle']}`}
+        type="button"
+        aria-expanded={expanded}
+        aria-controls="telegram-setup-details"
+        onClick={() => setExpanded(!expanded)}
       >
-        {renderTelegramSetupCardPart1($props)}
-        {renderTelegramSetupCardPart2($state, $props)}
-        {renderTelegramSetupCardPart3($state, $props)}
-      </section>
-    </ModelScopeProvider>
+        {expanded
+          ? 'Скрыть'
+          : status.source !== 'none'
+            ? 'Сведения'
+            : 'Подключить Telegram'}
+      </button>
+      <div
+        hidden={!expanded}
+        id="telegram-setup-details"
+        className={styles['setup-details']}
+      >
+        {expanded && (
+          <>
+            {status.connected && (
+              <p
+                className={`${styles['setup-status']} ${styles['setup-status--success']}`}
+                role="status"
+              >
+                Подключение активно.
+              </p>
+            )}
+            {status.source === 'environment' ? (
+              <p
+                className={`${styles['setup-status']} ${styles['setup-status--info']}`}
+              >
+                Управляется на сервере.
+              </p>
+            ) : status.source === 'local' ? (
+              <>
+                {vkConfigured && (
+                  <p
+                    className={`${styles['setup-status']} ${styles['setup-status--info']}`}
+                  >
+                    Чтобы отключить Telegram, сначала отключите VK.
+                  </p>
+                )}
+                <button
+                  className="danger"
+                  type="button"
+                  disabled={Boolean(pending) || vkConfigured}
+                  onClick={disconnect}
+                >
+                  {pending ? 'Отключаем…' : 'Отключить Telegram'}
+                </button>
+                {error && (
+                  <p
+                    className={`${styles['setup-status']} ${styles['setup-status--error']}`}
+                    role="alert"
+                  >
+                    {error}
+                  </p>
+                )}
+              </>
+            ) : (
+              <TelegramConnectionForm
+                locked={status.locked}
+                onConnected={() => onChange(true)}
+              />
+            )}
+          </>
+        )}
+      </div>
+    </section>
   );
 }
