@@ -1,5 +1,6 @@
 import type { useContentWorkspace } from '@frontend/widgets/content-workspace/model/use-content-workspace';
 import { ContentRevision } from '@frontend/entities/content/ui/ContentRevision';
+import styles from '@frontend/widgets/content-workspace/styles/content-history.module.css';
 
 export function ContentHistory({
   editor,
@@ -8,27 +9,34 @@ export function ContentHistory({
 }) {
   return (
     <section className="card">
-      <h2>Предыдущие версии</h2>
-      {editor.historyLoading ? (
-        <p role="status">Обновляем историю…</p>
-      ) : (
-        <button
-          className="quiet"
-          type="button"
-          onClick={() => {
-            void editor.refreshHistory();
-          }}
-        >
-          Обновить историю
-        </button>
-      )}
+      <div className={styles.header}>
+        <h2 className={styles.heading}>Предыдущие версии</h2>
+        {editor.historyLoading ? (
+          <p className={styles.loading} role="status">
+            Обновляем историю…
+          </p>
+        ) : (
+          <button
+            className="quiet"
+            type="button"
+            onClick={() => {
+              void editor.refreshHistory();
+            }}
+          >
+            Обновить историю
+          </button>
+        )}
+      </div>
       {!editor.historyLoading &&
         !editor.historyError &&
         !editor.history.length && <p>Изменений пока нет.</p>}
-      <ol>
+      <ol className={styles.list} role="list">
         {editor.history.map((change, index) => (
-          <li key={`${change.changedAt}-${change.revision ?? index}`}>
-            <span>
+          <li
+            className={styles.row}
+            key={`${change.changedAt}-${change.revision ?? index}`}
+          >
+            <span className={styles.details}>
               {new Intl.DateTimeFormat('ru-RU', {
                 dateStyle: 'medium',
                 timeStyle: 'short',
@@ -36,7 +44,9 @@ export function ContentHistory({
               · Версия {change.revision ?? 'неизвестна'}
             </span>
             {index === 0 ? (
-              <small> Текущая версия</small>
+              <small className="status-pill status-pill--neutral">
+                Текущая версия
+              </small>
             ) : (
               change.revision && (
                 <button
