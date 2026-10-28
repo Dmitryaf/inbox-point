@@ -303,7 +303,7 @@ export function renderClassAction(
     }
     if (operation === 'signup' && !group.enrollmentOpen) {
       return {
-        text: `${title}\n\nНабор в эту группу закрыт. Можно посмотреть другие направления или задать вопрос.`,
+        text: `${title}\n\nЧтобы уточнить запись на занятие, откройте группу и нажмите «Задать вопрос».`,
         buttons: [groupButton(), directionsButton(), menu()],
       };
     }
@@ -357,7 +357,7 @@ export function renderClassAction(
   return {
     actionKey: `group:${id}`,
     actionLabel: `Группа: ${title}`,
-    text: `${title}\n\n${group.description ? group.description + '\n\n' : ''}${group.meetings.join('\n')}\n\n${group.enrollmentOpen ? 'Набор открыт.' : 'Набор закрыт.'}\nВыберите нужное действие.`,
+    text: `${title}\n\n${group.description ? group.description + '\n\n' : ''}${group.meetings.join('\n')}\n\n${group.enrollmentOpen ? 'Набор открыт.\n' : ''}Выберите нужное действие.`,
     buttons: [
       ...(canEnroll
         ? [

@@ -162,7 +162,7 @@ final class ClassNavigation {
         buttons.add(MENU);
         return inline(title + "\n\n" + (group.description().isEmpty() ? "" : group.description() + "\n\n")
                 + String.join("\n", group.meetings()) + "\n\n"
-                + (group.open() ? "Набор открыт.\n" : "Набор закрыт.\n") + "Выберите нужное действие.",
+                + (group.open() ? "Набор открыт.\n" : "") + "Выберите нужное действие.",
                 buttons, null, "group:" + group.id(), "Группа: " + title);
     }
 
@@ -171,7 +171,7 @@ final class ClassNavigation {
             return inline("Сейчас мы временно не принимаем новые вопросы. Попробуйте написать позже или свяжитесь с нами по контактам в описании.", List.of(back, MENU));
         }
         if (signup && !group.open()) {
-            return inline(title + "\n\nНабор в эту группу закрыт. Можно посмотреть другие направления или задать вопрос.",
+            return inline(title + "\n\nЧтобы уточнить запись на занятие, откройте группу и нажмите «Задать вопрос».",
                     List.of(back, DIRECTIONS, MENU));
         }
         var intent = new Intent(signup ? title : null, signup ? null : title,
