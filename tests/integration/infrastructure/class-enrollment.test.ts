@@ -319,7 +319,22 @@ describe.each(['telegram', 'vk'] as const)('%s class enrollment', (channel) => {
     const content = classContent();
     content.groups![0]!.enrollmentOpen = false;
     context.catalog.replace(content);
+    const lastText = () =>
+      channel === 'telegram'
+        ? context.gateways.telegram.sendMessage.mock.calls.at(-1)?.[0].text
+        : context.gateways.vk.sendMessage.mock.calls.at(-1)?.[1];
+    await context.handle(
+      'group-without-enrollment',
+      '',
+      'classes:group:beginners',
+    );
+    expect(lastText()).toBe(
+      'Тестовый танец / Начинающие\n\nЗанятия с нуля.\n\nПонедельник, 19:00\nЧетверг, 19:00\n\nВыберите нужное действие.',
+    );
     await context.handle('closed-signup', '', 'classes:signup:beginners');
+    expect(lastText()).toBe(
+      'Тестовый танец / Начинающие\n\nЧтобы уточнить запись на занятие, откройте группу и нажмите «Задать вопрос».',
+    );
     expect(
       context.repository.isAwaitingClientQuestion(channel, '101', now),
     ).toBe(false);

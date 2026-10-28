@@ -82,6 +82,9 @@ describe('class catalog and navigation', () => {
     const content = classContent();
     const catalog = new ClientInformationCatalog(content);
     const signup = renderClassAction(catalog, 'classes:signup:beginners');
+    expect(
+      renderClassAction(catalog, 'classes:group:beginners').text,
+    ).toContain('Набор открыт.');
     expect(signup).toMatchObject({
       beginQuestion: true,
       applicationLabel: 'Тестовый танец / Начинающие',
@@ -92,6 +95,12 @@ describe('class catalog and navigation', () => {
     ).toContain('500');
     content.groups![0]!.enrollmentOpen = false;
     catalog.replace(content);
+    expect(renderClassAction(catalog, 'classes:group:beginners').text).toBe(
+      'Тестовый танец / Начинающие\n\nЗанятия с нуля.\n\nПонедельник, 19:00\nЧетверг, 19:00\n\nВыберите нужное действие.',
+    );
+    expect(renderClassAction(catalog, 'classes:signup:beginners').text).toBe(
+      'Тестовый танец / Начинающие\n\nЧтобы уточнить запись на занятие, откройте группу и нажмите «Задать вопрос».',
+    );
     expect(
       renderClassAction(catalog, 'classes:group:beginners').buttons.some(
         (item) => item.action.includes('signup'),
