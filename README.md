@@ -1,54 +1,40 @@
 # Inbox Point
 
-Inbox Point helps your team answer customer messages from Telegram and VK in one
-private Telegram group. Customers keep using their usual messenger.
+Self-hosted customer messaging for Telegram and VK. Customers stay in their messenger; staff reply in a private Telegram group with a topic for each customer. The browser interface is in Russian.
 
-You install it on your own server.
+## Available workflows
 
-![Editing customer information and previewing answers](docs/screenshots/inbox-point-content.png)
+- Prepared information: schedules, prices, addresses, FAQs and custom menu sections.
+- Directions and class groups, meeting times, enrollment availability and a question for an application. Staff can confirm a class application from Telegram.
+- Text questions and staff replies, closing requests and starting a new request in the existing customer topic.
+- React content editor with preview, revision history, restore and recovery of unsaved edits.
+- Channel setup, delivery diagnostics, pause/resume and an emergency browser inbox.
+- Usage analytics for 7, 30 or 90 days, with Telegram/VK filters.
 
-## How it works
+Closed enrollment offers a question about the group. It does not accept an enrollment application. Attachments and voice messages are not relayed as supported customer text. Answers come from prepared content or staff; AI-generated replies are not implemented.
 
-1. A customer writes to your Telegram bot or VK community.
-2. They can browse information you have prepared, such as prices or opening hours.
-3. If they need help, their question appears in your team's Telegram group,
-   in a separate topic for that customer.
-4. Your team replies there, and the customer receives the answer in the same
-   conversation where they asked.
-
-## What you can do
-
-- Answer text messages from Telegram and VK in one place.
-- Edit schedules, prices, addresses, and common answers in a browser.
-- Preview answers before saving and return to earlier versions.
-- See messages that could not be delivered and retry sending them.
-- Use a backup inbox in the browser when your team cannot use Telegram.
-
-Only text messages are supported for now. Customers who send attachments or voice
-messages are asked to write their question as text. Replies use information you
-prepare or messages from your team; there are no AI-generated answers.
-
-The interface is in Russian. The screenshot shows example data.
+![Content editor with example data](docs/screenshots/inbox-point-content.png)
 
 ## Run locally
 
 Install JDK 25 and npm 11. Use the frontend toolchain version pinned in [`.nvmrc`](.nvmrc).
 
-```bash
+```sh
 npm ci
 npm run dev
 ```
 
-Open [channel setup](http://127.0.0.1:3000/setup) to connect Telegram or VK,
-then use the menu to edit customer information or check messages.
+Open [channel setup](http://127.0.0.1:3000/setup), [content](http://127.0.0.1:3000/manage), [analytics](http://127.0.0.1:3000/analytics) or [operations](http://127.0.0.1:3000/ops). Development uses local access rules; production requires the configured administrator password and HTTPS.
 
-For server installation, passwords, and backups, follow the
-[setup guide](deploy/README.md). Server setup requires technical experience.
+## Deployment and development
 
-## Built with
+One instance serves one organization, with its own SQLite database and adjacent settings. See the [deployment guide](deploy/README.md) for isolation, backup and updates.
 
-Java 25, Spring Boot, SQLite, React, and TypeScript.
+```sh
+npm run check
+npm run check:e2e
+```
 
-## License
+The application uses Java 25, Spring Boot and SQLite on the server, with React, React Router and TanStack Query in the browser. The backend is in `backend/` and the frontend is in `frontend/src/`.
 
-[MIT](LICENSE)
+[MIT License](LICENSE)
