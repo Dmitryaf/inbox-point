@@ -17,6 +17,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 final class VkSetup {
     private final Environment environment;
+    private final Path database;
     private final Path path;
     private final URI origin;
     private final ChannelActivity activity = new ChannelActivity();
@@ -26,6 +27,7 @@ final class VkSetup {
 
     VkSetup(Environment environment, Path database) {
         this.environment = environment;
+        this.database = database;
         path = database.toAbsolutePath().resolveSibling("vk-settings.json");
         origin = URI.create(environment.getProperty("inboxpoint.vk.api-origin", "https://api.vk.com"));
     }
@@ -84,6 +86,15 @@ final class VkSetup {
         try {
             if (save) {
                 client.check(group);
+            }
+            try (var store = new TelegramStore(database)) {
+                if (!store.requireChannelIdentity("vk", "vk:" + group)) {
+                    throw new IllegalStateException("VK identity differs from the existing conversation history");
+                }
+            } catch (SQLException unavailable) {
+                throw new IOException("Could not check VK connection identity", unavailable);
+            }
+            if (save) {
                 LocalJsonFile.write(path, JsonMapper.shared().createObjectNode()
                         .put("accessToken", token).put("groupId", group).put("pollTimeoutSeconds", timeout));
             }

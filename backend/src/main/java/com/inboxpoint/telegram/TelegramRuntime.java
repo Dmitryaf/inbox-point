@@ -266,8 +266,11 @@ public final class TelegramRuntime {
                 || settings.timeout() > 50) {
             throw new IllegalArgumentException("Invalid Telegram runtime settings");
         }
-        verifyConnection(origin, settings.token(), settings.group(), proxy);
+        var bot = verifyConnection(origin, settings.token(), settings.group(), proxy);
         try (var store = new TelegramStore(database)) {
+            if (!store.requireChannelIdentity("telegram", "telegram:" + bot + ":" + settings.group())) {
+                throw new IllegalStateException("Telegram identity differs from the existing conversation history");
+            }
             if (save) {
                 LocalJsonFile.write(settingsFile, JsonMapper.shared().createObjectNode()
                         .put("botToken", settings.token()).put("operatorChatId", settings.group())
@@ -493,9 +496,9 @@ public final class TelegramRuntime {
         verifyConnection(origin, token, group, "");
     }
 
-    private static void verifyConnection(URI origin, String token, long group, String proxy) throws IOException, InterruptedException {
+    public static long verifyConnection(URI origin, String token, long group, String proxy) throws IOException, InterruptedException {
         try (var transport = TelegramHttpTransport.open(proxy, API_TIMEOUT)) {
-            new TelegramBotApi(transport, origin, token, API_TIMEOUT).verifySetup(group);
+            return new TelegramBotApi(transport, origin, token, API_TIMEOUT).verifySetup(group);
         }
     }
 

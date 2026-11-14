@@ -17,12 +17,15 @@ public final class ServiceCommands {
     private ServiceCommands() { }
 
     public static boolean handles(String command) {
-        return "healthcheck".equals(command) || "availability-monitor".equals(command)
+        return "channel-confirm".equals(command) || "healthcheck".equals(command) || "availability-monitor".equals(command)
                 || "snapshot-verify".equals(command) || "snapshot-create".equals(command) || "snapshot-restore".equals(command) || "backup-create".equals(command);
     }
 
     public static int run(String[] args, Map<String, String> environment) {
         var command = args[0];
+        if ("channel-confirm".equals(command)) {
+            return com.inboxpoint.telegram.ChannelIdentityCommand.run(args, environment);
+        }
         if (command.startsWith("snapshot-")) {
             return snapshot(args, environment);
         }

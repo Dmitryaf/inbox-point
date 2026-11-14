@@ -1,6 +1,7 @@
 export type SetupSource = 'environment' | 'local' | 'none';
 
 export interface ChannelSetupStatus {
+  expected?: boolean;
   connected: boolean;
   locked: boolean;
   source: SetupSource;

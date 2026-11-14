@@ -13,6 +13,7 @@
     "build": "npm run build:frontend && npm run build:server",
     "build:frontend": "vite build --config frontend/vite.config.ts",
     "build:server": "node scripts/run-java.mjs build",
+    "channel:confirm": "node scripts/run-java.mjs channel-confirm",
     "backup:create": "node --env-file-if-exists=.env scripts/run-java.mjs backup-create",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run test:deploy && npm run build",
     "check:e2e": "npm run build && playwright test",

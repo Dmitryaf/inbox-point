@@ -19,7 +19,8 @@ export function VkSetupCard({
   const [expanded, setExpanded] = useState(false);
   const { pending, error, run } = useSetupCommand();
   const connection = useVkConnection(() => onChange(true));
-  const locked = !telegramConnected && !status.connected;
+  const hasConfiguration = status.source !== 'none' || Boolean(status.expected);
+  const locked = !telegramConnected && !status.connected && !hasConfiguration;
   function disconnect() {
     if (
       !window.confirm(
@@ -60,7 +61,7 @@ export function VkSetupCard({
           ? 'Сначала Telegram'
           : expanded
             ? 'Скрыть'
-            : status.source !== 'none'
+            : hasConfiguration
               ? 'Сведения'
               : 'Подключить VK'}
       </button>
@@ -69,62 +70,70 @@ export function VkSetupCard({
         id="vk-setup-details"
         className={styles['setup-details']}
       >
-        {expanded && (
-          <>
-            {status.source !== 'none' ? (
-              <>
-                {status.connected && (
-                  <p
-                    className={`${styles['setup-status']} ${styles['setup-status--success']}`}
-                    role="status"
-                  >
-                    Подключение активно.
+        {expanded &&
+          (hasConfiguration ? (
+            <>
+              {status.source === 'none' && (
+                <>
+                  <p>
+                    Настройки подключения потеряны. Подключите прежнее
+                    сообщество или отключите VK.
                   </p>
-                )}
-                {status.source === 'environment' ? (
-                  <p
-                    className={`${styles['setup-status']} ${styles['setup-status--info']}`}
+                  {telegramConnected && (
+                    <VkConnectionForm connection={connection} />
+                  )}
+                </>
+              )}
+              {status.connected && (
+                <p
+                  className={`${styles['setup-status']} ${styles['setup-status--success']}`}
+                  role="status"
+                >
+                  Подключение активно.
+                </p>
+              )}
+              {status.source === 'environment' ? (
+                <p
+                  className={`${styles['setup-status']} ${styles['setup-status--info']}`}
+                >
+                  Управляется на сервере.
+                </p>
+              ) : (
+                <>
+                  <button
+                    className="danger"
+                    type="button"
+                    disabled={Boolean(pending)}
+                    onClick={disconnect}
                   >
-                    Управляется на сервере.
-                  </p>
-                ) : (
-                  <>
-                    <button
-                      className="danger"
-                      type="button"
-                      disabled={Boolean(pending)}
-                      onClick={disconnect}
+                    {pending ? 'Отключаем…' : 'Отключить VK'}
+                  </button>
+                  {error && (
+                    <p
+                      className={`${styles['setup-status']} ${styles['setup-status--error']}`}
+                      role="alert"
                     >
-                      {pending ? 'Отключаем…' : 'Отключить VK'}
-                    </button>
-                    {error && (
-                      <p
-                        className={`${styles['setup-status']} ${styles['setup-status--error']}`}
-                        role="alert"
-                      >
-                        {error}
-                      </p>
-                    )}
-                  </>
-                )}
-              </>
-            ) : (
-              <>
-                <VkSetupInstructions />
-                {status.locked ? (
-                  <p
-                    className={`${styles['setup-status']} ${styles['setup-status--info']}`}
-                  >
-                    VK подключён при установке. Если он не работает, откройте
-                    раздел «Мониторинг».
-                  </p>
-                ) : (
-                  <VkConnectionForm connection={connection} />
-                )}
-              </>
-            )}
-          </>
-        )}
+                      {error}
+                    </p>
+                  )}
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              <VkSetupInstructions />
+              {status.locked ? (
+                <p
+                  className={`${styles['setup-status']} ${styles['setup-status--info']}`}
+                >
+                  VK подключён при установке. Если он не работает, откройте
+                  раздел «Мониторинг».
+                </p>
+              ) : (
+                <VkConnectionForm connection={connection} />
+              )}
+            </>
+          ))}
       </div>
     </section>
   );

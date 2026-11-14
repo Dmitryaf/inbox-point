@@ -1,5 +1,5 @@
 import { act, fireEvent, screen } from '@testing-library/react';
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
 import {
   response,
   type FakeResponse,
@@ -11,6 +11,24 @@ import {
   none,
   token,
 } from '@test/frontend/support/mock-setup';
+
+it('lets the owner disconnect both missing channels without first reconnecting Telegram', async () => {
+  const api = mockSetup({
+    ...none,
+    expected: true,
+    vk: { ...none, expected: true },
+  });
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  renderApp('/setup');
+  const details = await screen.findAllByRole('button', { name: 'Сведения' });
+  fireEvent.click(details[1]!);
+  fireEvent.click(screen.getByRole('button', { name: 'Отключить VK' }));
+  await screen.findByRole('button', { name: 'Сначала Telegram' });
+  fireEvent.click(details[0]!);
+  fireEvent.click(screen.getByRole('button', { name: 'Отключить Telegram' }));
+  await screen.findByLabelText(/Токен бота/);
+  expect(api.effects).toEqual(['vk:disconnect', 'telegram:disconnect']);
+});
 
 it('shows server-managed and unavailable states without mutable forms or commands', async () => {
   const api = mockSetup({

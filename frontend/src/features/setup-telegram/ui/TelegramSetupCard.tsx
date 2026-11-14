@@ -52,7 +52,7 @@ export function TelegramSetupCard({
       >
         {expanded
           ? 'Скрыть'
-          : status.source !== 'none'
+          : status.source !== 'none' || status.expected
             ? 'Сведения'
             : 'Подключить Telegram'}
       </button>
@@ -77,8 +77,20 @@ export function TelegramSetupCard({
               >
                 Управляется на сервере.
               </p>
-            ) : status.source === 'local' ? (
+            ) : status.source === 'local' || status.expected ? (
               <>
+                {status.source === 'none' && (
+                  <>
+                    <p>
+                      Настройки подключения потеряны. Подключите прежнего бота и
+                      группу или отключите Telegram.
+                    </p>
+                    <TelegramConnectionForm
+                      locked={status.locked}
+                      onConnected={() => onChange(true)}
+                    />
+                  </>
+                )}
                 {vkConfigured && (
                   <p
                     className={`${styles['setup-status']} ${styles['setup-status--info']}`}

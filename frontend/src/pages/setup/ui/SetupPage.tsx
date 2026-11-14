@@ -38,6 +38,7 @@ export function SetupPage() {
   function mark(channel: 'telegram' | 'vk', connected: boolean) {
     const next = {
       connected,
+      expected: connected,
       locked: connected,
       source: connected ? ('local' as const) : ('none' as const),
     };
@@ -77,7 +78,9 @@ export function SetupPage() {
           >
             <TelegramSetupCard
               status={status}
-              vkConfigured={status.vk.source !== 'none'}
+              vkConfigured={
+                status.vk.source !== 'none' || Boolean(status.vk.expected)
+              }
               onChange={(connected) => mark('telegram', connected)}
             />
             <VkSetupCard

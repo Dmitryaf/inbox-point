@@ -268,6 +268,20 @@ final class TelegramStore implements AutoCloseable {
                 """, topic, at.toString());
     }
 
+    boolean requireChannelIdentity(String channel, String identity) throws SQLException {
+        var present = channelIdentity(channel);
+        if (present != null) {
+            return identity.equals(present);
+        }
+        try (var query = prepare("SELECT 1 FROM support_requests WHERE channel = ? LIMIT 1", channel);
+                var rows = query.executeQuery()) {
+            if (rows.next()) {
+                throw new IllegalStateException("Channel history requires a confirmed connection identity");
+            }
+        }
+        return claimChannelIdentity(channel, identity);
+    }
+
     Request operatorEventOwner(String source, String event) throws SQLException {
         return request("""
                 id = (SELECT request_id FROM operator_event_bindings WHERE source = ? AND external_event_id = ?)
