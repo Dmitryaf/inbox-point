@@ -118,3 +118,14 @@ CREATE TABLE IF NOT EXISTS inbound_event_cursors (
   source TEXT PRIMARY KEY,
   cursor TEXT NOT NULL
 ) STRICT;
+
+CREATE TABLE IF NOT EXISTS channel_connection_identities (
+    channel TEXT PRIMARY KEY CHECK (channel IN ('telegram', 'vk')),
+    identity TEXT NOT NULL
+  ) STRICT;
+  CREATE TABLE IF NOT EXISTS operator_event_bindings (
+    source TEXT NOT NULL,
+    external_event_id TEXT NOT NULL,
+    request_id TEXT NOT NULL REFERENCES support_requests(id),
+    PRIMARY KEY (source, external_event_id)
+  ) STRICT;

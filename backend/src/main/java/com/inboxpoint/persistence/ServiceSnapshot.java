@@ -34,7 +34,7 @@ public final class ServiceSnapshot {
     private static final String DATABASE = "database.sqlite";
     private static final List<String> FILES = List.of(DATABASE, "content-settings.json", "service-control.json");
     private static final Set<String> TABLES = Set.of("support_requests", "conversation_messages",
-            "processed_events", "message_links", "deliveries", "inbound_events", "usage_events", "operator_actions", "remembered_admin_sessions", "client_conversation_states", "inbound_event_cursors");
+            "processed_events", "message_links", "deliveries", "inbound_events", "usage_events", "operator_actions", "remembered_admin_sessions", "client_conversation_states", "inbound_event_cursors", "channel_connection_identities", "operator_event_bindings");
     private final Path database;
     private final Path directory;
     private final int days;
@@ -87,7 +87,7 @@ public final class ServiceSnapshot {
                 }
             }
             var manifest = new Manifest(days, created.toString(), expires.toString(),
-                    entries, 1, instance, false, 16);
+                    entries, 1, instance, false, 17);
             var path = staging.resolve(MANIFEST);
             Files.writeString(path, JSON.writerWithDefaultPrettyPrinter().writeValueAsString(manifest) + "\n");
             privateFile(path);
@@ -115,7 +115,7 @@ public final class ServiceSnapshot {
             throw new IOException("Service snapshot manifest is invalid");
         }
         var manifest = JSON.treeToValue(json, Manifest.class);
-        if (manifest.formatVersion() != 1 || manifest.secretsIncluded() || manifest.sqliteSchemaVersion() != 16 || manifest.closedRequestRetentionDays() < 1
+        if (manifest.formatVersion() != 1 || manifest.secretsIncluded() || manifest.sqliteSchemaVersion() != 17 || manifest.closedRequestRetentionDays() < 1
                 || manifest.closedRequestRetentionDays() > 365
                 || manifest.files().isEmpty() || manifest.files().getFirst() == null
                 || !DATABASE.equals(manifest.files().getFirst().name())) {
@@ -164,10 +164,10 @@ public final class ServiceSnapshot {
                 checkFingerprint(path, entry);
             }
             try (var copy = openArchive(database, false); var statement = copy.createStatement()) {
-                verifyDatabase(copy, 16);
+                verifyDatabase(copy, 17);
                 statement.execute("PRAGMA secure_delete = ON");
                 statement.executeUpdate("DELETE FROM remembered_admin_sessions");
-                verifyDatabase(copy, 16);
+                verifyDatabase(copy, 17);
             }
             return database;
         } catch (IOException | SQLException | RuntimeException failure) {

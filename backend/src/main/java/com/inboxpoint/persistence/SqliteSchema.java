@@ -17,7 +17,7 @@ public final class SqliteSchema {
             int previous;
             try (var version = statement.executeQuery("PRAGMA user_version")) {
                 previous = version.next() ? version.getInt(1) : 0;
-                if (previous > 16) {
+                if (previous > 17) {
                     throw new SQLException("Unsupported SQLite schema version");
                 }
             }
@@ -100,7 +100,22 @@ public final class SqliteSchema {
             ensureColumn(connection, "conversation_messages", "enrollment_confirmation_text", "TEXT");
             ensureColumn(connection, "conversation_messages", "enrollment_notified_at", "TEXT");
             ensureColumn(connection, "conversation_messages", "enrollment_notification_next_attempt_at", "TEXT");
-            statement.execute("PRAGMA user_version = 16");
+            if (previous < 17) {
+                statement.execute("""
+                        INSERT OR IGNORE INTO operator_event_bindings (source, external_event_id, request_id)
+                        SELECT 'operator:telegram', client_message_id, request_id FROM operator_actions
+                        WHERE kind IN ('close_request', 'reopen_request') AND client_message_id != ''
+                            AND client_message_id NOT GLOB '*[^0-9]*'
+                        ORDER BY created_at, rowid
+                        """);
+                statement.execute("""
+                        INSERT OR IGNORE INTO operator_event_bindings (source, external_event_id, request_id)
+                        SELECT 'operator:telegram', external_event_id, request_id FROM conversation_messages
+                        WHERE direction = 'operator_to_client' AND external_event_id IS NOT NULL
+                        ORDER BY created_at, rowid
+                        """);
+            }
+            statement.execute("PRAGMA user_version = 17");
         }
     }
 

@@ -249,6 +249,31 @@ final class TelegramStore implements AutoCloseable {
                 """, topic);
     }
 
+    String channelIdentity(String channel) throws SQLException {
+        try (var statement = prepare("SELECT identity FROM channel_connection_identities WHERE channel = ?", channel);
+                var rows = statement.executeQuery()) {
+            return rows.next() ? rows.getString(1) : null;
+        }
+    }
+
+    boolean claimChannelIdentity(String channel, String identity) throws SQLException {
+        update("INSERT OR IGNORE INTO channel_connection_identities (channel, identity) VALUES (?, ?)", channel, identity);
+        return identity.equals(channelIdentity(channel));
+    }
+
+    Request operatorEventOwner(String source, String event) throws SQLException {
+        return request("""
+                id = (SELECT request_id FROM operator_event_bindings WHERE source = ? AND external_event_id = ?)
+                """, source, event);
+    }
+
+    Request bindOperatorEvent(String source, String event, String request) throws SQLException {
+        update("""
+                INSERT OR IGNORE INTO operator_event_bindings (source, external_event_id, request_id) VALUES (?, ?, ?)
+                """, source, event, request);
+        return operatorEventOwner(source, event);
+    }
+
     Request byId(String id) throws SQLException {
         return request("id = ?", id);
     }
