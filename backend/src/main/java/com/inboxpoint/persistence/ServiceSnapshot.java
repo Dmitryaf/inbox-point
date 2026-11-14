@@ -71,6 +71,9 @@ public final class ServiceSnapshot {
                 }
             }
             privateFile(copy);
+            if (Files.isSameFile(database, copy)) {
+                throw new IOException("Snapshot retention requires an isolated database copy");
+            }
             var expires = retainCopy(copy, created, days);
             var entries = new ArrayList<FileEntry>();
             entries.add(fingerprint(copy, DATABASE));

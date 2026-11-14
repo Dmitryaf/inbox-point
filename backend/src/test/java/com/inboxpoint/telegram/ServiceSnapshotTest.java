@@ -37,6 +37,8 @@ class ServiceSnapshotTest {
                 statement.executeUpdate("INSERT INTO remembered_admin_sessions VALUES ('synthetic-hash', 1, 9999999999999)");
             }
             var snapshot = new ServiceSnapshot(database, 7).create(now);
+            var bytes = Files.readString(snapshot.resolve("database.sqlite"), java.nio.charset.StandardCharsets.ISO_8859_1);
+            assertThat(bytes).doesNotContain("Expired question").contains("Waiting for delivery");
             assertThat(ServiceSnapshot.verify(snapshot).files()).extracting(ServiceSnapshot.FileEntry::name)
                     .containsExactly("database.sqlite", "content-settings.json");
             var target = directory.resolve("restored");
