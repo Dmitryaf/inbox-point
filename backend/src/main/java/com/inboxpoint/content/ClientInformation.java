@@ -101,22 +101,22 @@ public final class ClientInformation {
         if (!input.path("schedule").asString("").isBlank() || !input.path("scheduleItems").isEmpty()) {
             throw new LegacyScheduleConflict();
         }
-        if (input.has("organizationName")) {
-            save(input);
-        } else {
+        var submitted = input;
+        if (!input.has("organizationName")) {
             var compatible = (tools.jackson.databind.node.ObjectNode) JsonMapper.shared().valueToTree(input);
             var current = state.content().standard().get("organizationName");
             if (current != null) {
                 compatible.put("organizationName", current);
             }
-            save(compatible);
+            submitted = compatible;
         }
-        return snapshot();
+        return snapshot(saveContent(submitted));
     }
 
     public synchronized ManagedSnapshot restore(int revision, String expected) throws IOException {
         requireVersion(expected);
-        return restore(revision) ? snapshot() : null;
+        var restored = restoreContent(revision);
+        return restored == null ? null : snapshot(restored);
     }
 
     private void requireVersion(String expected) {
@@ -146,6 +146,10 @@ public final class ClientInformation {
     }
 
     public synchronized Map<String, Object> save(JsonNode input) throws IOException {
+        return saveContent(input).jsonFields();
+    }
+
+    private Snapshot saveContent(JsonNode input) throws IOException {
         var next = normalize(input);
         for (var label : List.of(SCHEDULE, PRICES, ADDRESS)) {
             var answer = resolve(label, next);
@@ -167,7 +171,7 @@ public final class ClientInformation {
                 .distinct()
                 .toList();
         if (changed.isEmpty()) {
-            return next.jsonFields();
+            return next;
         }
         var revisions = new ArrayList<Change>();
         var newest = previous.history().stream()
@@ -190,7 +194,7 @@ public final class ClientInformation {
         preserveLegacyScheduleBackup();
         LocalJsonFile.write(file, output);
         state = new State(next, List.copyOf(revisions), historicalMenuActions(next, revisions));
-        return next.jsonFields();
+        return next;
     }
 
     private void preserveLegacyScheduleBackup() throws IOException {
@@ -408,13 +412,16 @@ public final class ClientInformation {
             @com.fasterxml.jackson.annotation.JsonIgnore Map<String, Object> content) { }
 
     public synchronized boolean restore(int revision) throws IOException {
+        return restoreContent(revision) != null;
+    }
+
+    private Snapshot restoreContent(int revision) throws IOException {
         for (var change : state.history()) {
             if (change.revision() != null && change.revision() == revision && change.content() != null) {
-                save(JsonMapper.shared().valueToTree(change.content()));
-                return true;
+                return saveContent(JsonMapper.shared().valueToTree(change.content()));
             }
         }
-        return false;
+        return null;
     }
 
     private record State(Snapshot content, List<Change> history, List<String> historicalMenuActions) { }
