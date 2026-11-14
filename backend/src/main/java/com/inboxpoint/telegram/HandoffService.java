@@ -338,17 +338,18 @@ final class HandoffService {
         if (!store.claim("operator:telegram", event, clock.instant())) {
             return;
         }
-        var request = store.byTopic(topic);
+        var request = topicOwner(topic, event, occurred);
         if (request != null) {
             queue.run(request.channel(), request.conversation(),
-                    () -> reconcileCurrentTopic(store.byId(request.id()), request.topic(), event, active, occurred));
+                    () -> reconcileCurrentTopic(store.byId(request.id()), Long.toString(topic), event, active, occurred));
         }
         store.completeEvent("operator:telegram", event, clock.instant());
     }
 
     private void reconcileCurrentTopic(TelegramStore.Request request, String expectedTopic, String event,
             boolean active, java.time.Instant occurred) throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
-        if (request != null && request.topic().equals(expectedTopic) && store.topicEventIsCurrent(request.id(), occurred)) {
+        if (request != null && request.topic().equals(expectedTopic) && store.topicEventIsCurrent(request.id(), occurred)
+                && store.canReopen(request)) {
             if (active && !store.canReopen(request)) {
                 lifecycle(request, event, false);
             } else {
@@ -364,13 +365,28 @@ final class HandoffService {
         }
     }
 
+    private TelegramStore.Request topicOwner(long topic, String event, java.time.Instant occurred) throws SQLException {
+        var request = store.operatorEventOwner("operator:telegram", event);
+        if (request != null) {
+            return request;
+        }
+        var address = Long.toString(topic);
+        request = occurred.equals(java.time.Instant.EPOCH) ? store.byTopic(topic) : store.topicAt(address, occurred);
+        return request == null ? null : store.bindOperatorEvent("operator:telegram", event, request.id());
+    }
+
     void relayReply(long topic, long message, String text, String event)
             throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
-        var request = store.byTopic(topic);
+        relayReply(topic, message, text, event, java.time.Instant.EPOCH);
+    }
+
+    void relayReply(long topic, long message, String text, String event, java.time.Instant occurred)
+            throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
+        var request = topicOwner(topic, event, occurred);
         if (request != null) {
             queue.run(request.channel(), request.conversation(), () -> {
                 var current = store.byId(request.id());
-                if (current != null && current.topic().equals(request.topic())) {
+                if (current != null && current.topic().equals(Long.toString(topic))) {
                     relayReply(current, Long.toString(message), text, event);
                 }
             });

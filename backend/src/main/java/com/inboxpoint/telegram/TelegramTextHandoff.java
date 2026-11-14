@@ -106,9 +106,10 @@ final class TelegramTextHandoff {
             return;
         }
         if (operator) {
-            processText(chat, topic, externalMessage, text, event, sender, true);
+            processText(chat, topic, externalMessage, text, event, sender, true,
+                    java.time.Instant.ofEpochSecond(message.path("date").asLong(0)));
         } else {
-            queue.run("telegram", chat, () -> processText(chat, topic, externalMessage, text, event, sender, false));
+            queue.run("telegram", chat, () -> processText(chat, topic, externalMessage, text, event, sender, false, java.time.Instant.EPOCH));
         }
     }
 
@@ -133,7 +134,7 @@ final class TelegramTextHandoff {
     }
 
     private void processText(long chat, long topic, long externalMessage, String text, String event,
-            JsonNode sender, boolean operator) throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
+            JsonNode sender, boolean operator, java.time.Instant occurred) throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
         if (!operator && menu.handle(chat, event, text, clock.instant())) {
             return;
         }
@@ -143,7 +144,7 @@ final class TelegramTextHandoff {
         }
         try {
             if (operator) {
-                handoff.relayReply(topic, externalMessage, text, event);
+                handoff.relayReply(topic, externalMessage, text, event, occurred);
             } else {
                 handoff.relayQuestion("telegram", chat, Long.toString(externalMessage), text, displayName(sender));
             }

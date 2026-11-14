@@ -261,6 +261,13 @@ final class TelegramStore implements AutoCloseable {
         return identity.equals(channelIdentity(channel));
     }
 
+    Request topicAt(String topic, Instant at) throws SQLException {
+        return request("""
+                operator_topic_id = ? AND julianday(created_at) <= julianday(?)
+                ORDER BY julianday(created_at) DESC, rowid DESC LIMIT 1
+                """, topic, at.toString());
+    }
+
     Request operatorEventOwner(String source, String event) throws SQLException {
         return request("""
                 id = (SELECT request_id FROM operator_event_bindings WHERE source = ? AND external_event_id = ?)
