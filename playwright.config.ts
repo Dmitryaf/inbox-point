@@ -26,12 +26,12 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',
   },
-  webServer: [4174, 4175, 4188, 4189, 4190, 4191, 4192, 4193, 4194].map(
-    (port) => ({
-      command: `npm run test:e2e:server -- --port=${port}${[4175, 4189].includes(port) ? '' : ' --password=synthetic-admin-password'}`,
+  webServer: [
+    ...[4174, 4175, 4188, 4189, 4190, 4191, 4192, 4193, 4194].map((port) => ({
+      command: `npm run test:e2e:server -- ${port}`,
       reuseExistingServer: false,
-      timeout: 45_000,
+      timeout: 30_000,
       url: `http://127.0.0.1:${port}/health`,
-    }),
-  ),
+    })),
+  ],
 });

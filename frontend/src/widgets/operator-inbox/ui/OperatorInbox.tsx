@@ -34,16 +34,35 @@ export function OperatorInbox({
               </p>
             </div>
             <span className="status-pill status-pill--neutral">
-              Активных: {state.requests.length}
+              Показано: {state.requests.length}
+              {state.requestsCursor ? '+' : ''}
             </span>
           </header>
           <AsyncMessage kind="success" text={state.notice} />
           <div className={styles['operator-inbox-layout']}>
-            <OperatorRequestList
-              requests={state.requests}
-              selectedId={state.selectedId}
-              onSelect={inbox.select}
-            />
+            <div>
+              <OperatorRequestList
+                requests={state.requests}
+                selectedId={state.selectedId}
+                onSelect={inbox.select}
+              />
+              <AsyncMessage kind="error" text={state.moreRequestsError} />
+              {state.requestsCursor && (
+                <button
+                  type="button"
+                  disabled={
+                    state.loading ||
+                    state.moreRequestsLoading ||
+                    state.actionPending
+                  }
+                  onClick={inbox.loadMore}
+                >
+                  {state.moreRequestsLoading
+                    ? 'Загружаем обращения…'
+                    : 'Загрузить ещё обращения'}
+                </button>
+              )}
+            </div>
             {selected && (
               <OperatorConversation
                 key={selected.id}

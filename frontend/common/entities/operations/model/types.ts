@@ -1,12 +1,12 @@
 export type {
   OperatorInboxRequest,
   OperatorInboxMessage,
-} from './operator-inbox-types';
-import type { ChannelOperationsStatus } from './channel-status-types';
+} from './operator-inbox-types.js';
+import type { ChannelOperationsStatus } from './channel-status-types.js';
 export type {
   ChannelOperationsStatus,
   ConnectionSource,
-} from './channel-status-types';
+} from './channel-status-types.js';
 
 export interface OperationsStatus {
   channels: {

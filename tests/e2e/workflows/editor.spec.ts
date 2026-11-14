@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 import type {
   ClientInformationContent,
   ScheduleItem,
-} from '@/core/application/client-information.js';
+} from '@core/application/client-information.js';
 import { login, password } from './support/auth.js';
 
 const base = 'http://127.0.0.1:4190';

@@ -22,10 +22,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-import com.inboxpoint.operations.InstanceId;
-import org.sqlite.SQLiteConfig;
 import org.sqlite.SQLiteConnection;
-import org.sqlite.SQLiteOpenMode;
 import tools.jackson.databind.json.JsonMapper;
 
 public final class ServiceSnapshot {
@@ -34,46 +31,39 @@ public final class ServiceSnapshot {
     private static final String DATABASE = "database.sqlite";
     private static final List<String> FILES = List.of(DATABASE, "content-settings.json", "service-control.json");
     private static final Set<String> TABLES = Set.of("support_requests", "conversation_messages",
-            "processed_events", "message_links", "deliveries", "inbound_events", "usage_events", "operator_actions", "remembered_admin_sessions", "client_conversation_states", "inbound_event_cursors", "channel_connection_identities", "operator_event_bindings");
+            "client_conversation_states", "processed_events", "message_links", "deliveries", "operator_actions",
+            "inbound_events", "inbound_event_cursors", "remembered_admin_sessions", "usage_events");
     private final Path database;
     private final Path directory;
-    private final int days;
     private final String instance;
-
-    public ServiceSnapshot(Path database, int days) {
-        this(database, database.toAbsolutePath().normalize().getParent().resolve("snapshots"), "default", days);
-    }
+    private final int days;
 
     public ServiceSnapshot(Path database, Path directory, String instance, int days) {
-        if (database.toString().equals(":memory:") || days < 1 || days > 365) {
+        if (database.toString().equals(":memory:") || !validInstance(instance) || days < 1 || days > 365) {
             throw new IllegalArgumentException("Invalid snapshot configuration");
         }
         this.database = database.toAbsolutePath().normalize();
-        this.directory = directory.toAbsolutePath().normalize();
+        this.directory = directory;
+        this.instance = instance;
         this.days = days;
-        this.instance = InstanceId.validate(instance);
     }
 
     public Path create(Instant created) throws IOException, SQLException {
-        var prefix = "default".equals(instance) ? "inbox-point-snapshot-"
-                : "inbox-point." + instance + ".snapshot-";
-        var name = prefix + created.toString().replace(':', '-') + "-" + UUID.randomUUID();
+        var prefix = instance.equals("default") ? "inbox-point-snapshot-" : "inbox-point." + instance + ".snapshot-";
+        var name = prefix + SqliteDatabase.timestamp(created).replace(':', '-') + "-" + UUID.randomUUID();
         Files.createDirectories(directory);
         var staging = directory.resolve(name + ".tmp");
         var result = directory.resolve(name);
         privateDirectory(staging);
         try {
             var copy = staging.resolve(DATABASE);
-            try (var source = openArchive(database, true)) {
+            try (var source = SqliteDatabase.openExisting(database, true)) {
                 var code = source.unwrap(SQLiteConnection.class).getDatabase().backup("main", copy.toString(), null);
                 if (code != 0) {
                     throw new SQLException("SQLite backup did not complete");
                 }
             }
             privateFile(copy);
-            if (Files.isSameFile(database, copy)) {
-                throw new IOException("Snapshot retention requires an isolated database copy");
-            }
             var expires = retainCopy(copy, created, days);
             var entries = new ArrayList<FileEntry>();
             entries.add(fingerprint(copy, DATABASE));
@@ -89,7 +79,7 @@ public final class ServiceSnapshot {
                     entries.add(fingerprint(target, nameToCopy));
                 }
             }
-            var manifest = new Manifest(days, created.toString(), expires.toString(),
+            var manifest = new Manifest(days, SqliteDatabase.timestamp(created), SqliteDatabase.timestamp(expires),
                     entries, 1, instance, false, 17);
             var path = staging.resolve(MANIFEST);
             Files.writeString(path, JSON.writerWithDefaultPrettyPrinter().writeValueAsString(manifest) + "\n");
@@ -118,14 +108,12 @@ public final class ServiceSnapshot {
             throw new IOException("Service snapshot manifest is invalid");
         }
         var manifest = JSON.treeToValue(json, Manifest.class);
-        if (manifest.formatVersion() != 1 || manifest.secretsIncluded() || manifest.sqliteSchemaVersion() != 17 || manifest.closedRequestRetentionDays() < 1
-                || manifest.closedRequestRetentionDays() > 365
+        if (manifest.formatVersion() != 1 || manifest.secretsIncluded() || manifest.sqliteSchemaVersion() < 11
+                || manifest.sqliteSchemaVersion() > 17 || manifest.closedRequestRetentionDays() < 1
+                || manifest.closedRequestRetentionDays() > 365 || manifest.instanceId() != null && !validInstance(manifest.instanceId())
                 || manifest.files().isEmpty() || manifest.files().getFirst() == null
                 || !DATABASE.equals(manifest.files().getFirst().name())) {
             throw new IOException("Service snapshot manifest is invalid");
-        }
-        if (manifest.instanceId() != null) {
-            InstanceId.validate(manifest.instanceId());
         }
         var created = Instant.parse(manifest.createdAt());
         Instant.parse(manifest.expiresAt());
@@ -141,7 +129,7 @@ public final class ServiceSnapshot {
                 throw new IOException("Service snapshot manifest does not match its files");
             }
         }
-        try (var copy = openArchive(directory.resolve(DATABASE), true)) {
+        try (var copy = SqliteDatabase.openArchive(directory.resolve(DATABASE), true)) {
             verifyDatabase(copy, manifest.sqliteSchemaVersion());
             var cutoff = created.minus(manifest.closedRequestRetentionDays(), ChronoUnit.DAYS);
             if (SqliteRetention.oldestRetainedContent(copy).filter(value -> !value.isAfter(cutoff)).isPresent()) {
@@ -166,8 +154,8 @@ public final class ServiceSnapshot {
                 privateFile(path);
                 checkFingerprint(path, entry);
             }
-            try (var copy = openArchive(database, false); var statement = copy.createStatement()) {
-                verifyDatabase(copy, 17);
+            try (var copy = SqliteDatabase.openArchive(database, false); var statement = copy.createStatement()) {
+                SqliteSchema.initialize(copy);
                 statement.execute("PRAGMA secure_delete = ON");
                 statement.executeUpdate("DELETE FROM remembered_admin_sessions");
                 verifyDatabase(copy, 17);
@@ -180,10 +168,11 @@ public final class ServiceSnapshot {
     }
 
     private static Instant retainCopy(Path database, Instant created, int days) throws SQLException {
-        try (var copy = openArchive(database, false); var statement = copy.createStatement()) {
+        try (var copy = SqliteDatabase.openExisting(database, false); var statement = copy.createStatement()) {
             statement.execute("PRAGMA journal_mode = DELETE");
             statement.execute("PRAGMA secure_delete = ON");
             SqliteRetention.purge(copy, created.minus(days, ChronoUnit.DAYS));
+            statement.executeUpdate("DELETE FROM remembered_admin_sessions");
             statement.execute("VACUUM");
             var max = created.plus(days, ChronoUnit.DAYS);
             var oldest = SqliteRetention.oldestRetainedContent(copy).orElse(created).plus(days, ChronoUnit.DAYS);
@@ -204,6 +193,10 @@ public final class ServiceSnapshot {
                 }
             }
             var required = new HashSet<>(TABLES);
+            if (version >= 17) {
+                required.add("channel_connection_identities");
+                required.add("operator_event_bindings");
+            }
             try (var result = statement.executeQuery("SELECT name FROM sqlite_master WHERE type = 'table'")) {
                 while (result.next()) {
                     required.remove(result.getString(1));
@@ -228,7 +221,7 @@ public final class ServiceSnapshot {
                 } catch (IOException | SQLException | RuntimeException invalid) {
                     continue;
                 }
-                if ((instance.equals(manifest.instanceId()) || manifest.instanceId() == null && "default".equals(instance))
+                if ((instance.equals(manifest.instanceId()) || manifest.instanceId() == null && instance.equals("default"))
                         && !Instant.parse(manifest.expiresAt()).isAfter(now)) {
                     for (var entry : manifest.files()) {
                         Files.delete(candidate.resolve(entry.name()));
@@ -280,12 +273,8 @@ public final class ServiceSnapshot {
         }
     }
 
-    private static Connection openArchive(Path path, boolean readOnly) throws SQLException {
-        var config = new SQLiteConfig();
-        config.setBusyTimeout(5_000);
-        config.setReadOnly(readOnly);
-        config.resetOpenMode(SQLiteOpenMode.CREATE);
-        return config.createConnection("jdbc:sqlite:" + path);
+    public static boolean validInstance(String instance) {
+        return instance.matches("[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?");
     }
 
     public record FileEntry(String name, String sha256, long size) { }

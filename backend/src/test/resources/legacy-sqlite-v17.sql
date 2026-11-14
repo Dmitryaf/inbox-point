@@ -1,0 +1,270 @@
+-- SQLite schema emitted by the TypeScript runtime at f408b47.
+-- statement
+CREATE TABLE support_requests (
+    id TEXT PRIMARY KEY,
+    channel TEXT NOT NULL CHECK (channel IN ('telegram', 'vk')),
+    external_conversation_id TEXT NOT NULL,
+    client_display_name TEXT,
+    operator_topic_id TEXT NOT NULL,
+    web_owned_at TEXT,
+    status TEXT NOT NULL CHECK (status IN ('active', 'closed')),
+    created_at TEXT NOT NULL,
+    closed_at TEXT
+  ) STRICT;
+-- statement
+CREATE UNIQUE INDEX one_active_request_per_conversation
+    ON support_requests(channel, external_conversation_id)
+    WHERE status = 'active';
+-- statement
+CREATE INDEX support_requests_by_operator_topic
+    ON support_requests(operator_topic_id, status, created_at);
+-- statement
+CREATE TRIGGER operator_topic_conversation_insert
+    BEFORE INSERT ON support_requests
+    WHEN EXISTS (
+      SELECT 1
+      FROM support_requests
+      WHERE operator_topic_id = NEW.operator_topic_id
+        AND (
+          channel <> NEW.channel
+          OR external_conversation_id <> NEW.external_conversation_id
+        )
+    )
+    BEGIN
+      SELECT RAISE(ABORT, 'operator topic belongs to another conversation');
+    END;
+-- statement
+CREATE TRIGGER operator_topic_conversation_update
+    BEFORE UPDATE OF operator_topic_id, channel, external_conversation_id
+      ON support_requests
+    WHEN EXISTS (
+      SELECT 1
+      FROM support_requests
+      WHERE operator_topic_id = NEW.operator_topic_id
+        AND id <> NEW.id
+        AND (
+          channel <> NEW.channel
+          OR external_conversation_id <> NEW.external_conversation_id
+        )
+    )
+    BEGIN
+      SELECT RAISE(ABORT, 'operator topic belongs to another conversation');
+    END;
+-- statement
+CREATE TABLE client_conversation_states (
+    channel TEXT NOT NULL CHECK (channel IN ('telegram', 'vk')),
+    external_conversation_id TEXT NOT NULL,
+    state TEXT NOT NULL CHECK (state = 'awaiting_question'),
+    updated_at TEXT NOT NULL,
+    application_label TEXT,
+    question_context TEXT,
+    class_enrollment INTEGER NOT NULL DEFAULT 0 CHECK (class_enrollment IN (0, 1)),
+    enrollment_confirmation_text TEXT,
+    PRIMARY KEY (channel, external_conversation_id)
+  ) STRICT;
+-- statement
+CREATE TRIGGER clear_client_conversation_state_on_request
+    AFTER INSERT ON support_requests
+    BEGIN
+      DELETE FROM client_conversation_states
+      WHERE channel = NEW.channel
+        AND external_conversation_id = NEW.external_conversation_id;
+    END;
+-- statement
+CREATE TABLE channel_connection_identities (
+    channel TEXT PRIMARY KEY CHECK (channel IN ('telegram', 'vk')),
+    identity TEXT NOT NULL
+  ) STRICT;
+-- statement
+CREATE TABLE operator_event_bindings (
+    source TEXT NOT NULL,
+    external_event_id TEXT NOT NULL,
+    request_id TEXT NOT NULL REFERENCES support_requests(id),
+    PRIMARY KEY (source, external_event_id)
+  ) STRICT;
+-- statement
+CREATE TABLE message_links (
+    id TEXT PRIMARY KEY,
+    request_id TEXT NOT NULL REFERENCES support_requests(id),
+    direction TEXT NOT NULL CHECK (
+      direction IN ('client_to_operator', 'operator_to_client')
+    ),
+    client_message_id TEXT NOT NULL,
+    operator_message_id TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  ) STRICT;
+-- statement
+CREATE TABLE conversation_messages (
+    id TEXT PRIMARY KEY,
+    request_id TEXT NOT NULL REFERENCES support_requests(id),
+    direction TEXT NOT NULL CHECK (
+      direction IN ('client_to_operator', 'operator_to_client')
+    ),
+    external_message_id TEXT NOT NULL,
+    sender_name TEXT,
+    application_label TEXT,
+    question_context TEXT,
+    text TEXT NOT NULL,
+    enrollment_confirmation_text TEXT,
+    enrollment_notified_at TEXT,
+    enrollment_notification_next_attempt_at TEXT,
+    created_at TEXT NOT NULL,
+    processing_state TEXT NOT NULL DEFAULT 'accepted' CHECK (
+      processing_state IN ('accepted', 'held')
+    ),
+    event_source TEXT,
+    external_event_id TEXT,
+    prerequisite_action_id TEXT,
+    held_sequence INTEGER CHECK (held_sequence >= 0),
+    UNIQUE (request_id, direction, external_message_id)
+  ) STRICT;
+-- statement
+CREATE INDEX conversation_messages_by_request
+    ON conversation_messages(request_id, created_at, id);
+-- statement
+CREATE UNIQUE INDEX conversation_messages_by_operator_event
+    ON conversation_messages(request_id, event_source, external_event_id)
+    WHERE event_source IS NOT NULL AND external_event_id IS NOT NULL;
+-- statement
+CREATE UNIQUE INDEX conversation_messages_by_held_sequence
+    ON conversation_messages(request_id, held_sequence)
+    WHERE held_sequence IS NOT NULL;
+-- statement
+CREATE INDEX conversation_messages_by_prerequisite
+    ON conversation_messages(prerequisite_action_id, processing_state);
+-- statement
+CREATE TABLE processed_events (
+    source TEXT NOT NULL,
+    external_event_id TEXT NOT NULL,
+    claimed_at TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'processing' CHECK (
+      status IN ('processing', 'completed')
+    ),
+    completed_at TEXT,
+    PRIMARY KEY (source, external_event_id)
+  ) STRICT;
+-- statement
+CREATE TABLE inbound_events (
+    source TEXT NOT NULL,
+    external_event_id TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    received_at TEXT NOT NULL,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (
+      status IN ('pending', 'quarantined')
+    ),
+    last_error TEXT,
+    next_attempt_at TEXT,
+    PRIMARY KEY (source, external_event_id)
+  ) STRICT;
+-- statement
+CREATE INDEX inbound_events_by_status
+    ON inbound_events(source, status, received_at);
+-- statement
+CREATE TABLE inbound_event_cursors (
+    source TEXT PRIMARY KEY,
+    cursor TEXT NOT NULL
+  ) STRICT;
+-- statement
+CREATE TABLE usage_events (
+    id TEXT PRIMARY KEY,
+    event_type TEXT NOT NULL CHECK (event_type IN (
+      'new_request', 'information_section', 'menu_action',
+      'first_reply', 'delivery_failure', 'web_takeover'
+    )),
+    channel TEXT NOT NULL CHECK (channel IN ('telegram', 'vk')),
+    request_id TEXT,
+    action_key TEXT,
+    action_label TEXT,
+    occurred_at TEXT NOT NULL,
+    CHECK (event_type != 'menu_action' OR (
+      action_key IS NOT NULL AND length(action_key) > 0 AND
+      action_label IS NOT NULL AND length(action_label) > 0
+    ))
+  ) STRICT;
+-- statement
+CREATE INDEX usage_events_by_time
+    ON usage_events(occurred_at, event_type);
+-- statement
+CREATE TABLE deliveries (
+    id TEXT PRIMARY KEY,
+    request_id TEXT NOT NULL REFERENCES support_requests(id),
+    idempotency_key TEXT NOT NULL UNIQUE,
+    operator_message_id TEXT,
+    channel TEXT NOT NULL CHECK (channel IN ('telegram', 'vk')),
+    external_conversation_id TEXT NOT NULL,
+    text TEXT NOT NULL,
+    reply_to_external_message_id TEXT,
+    status TEXT NOT NULL CHECK (
+      status IN ('pending', 'sent', 'failed')
+    ),
+    attempts INTEGER NOT NULL DEFAULT 0,
+    external_message_id TEXT,
+    last_error TEXT,
+    created_at TEXT NOT NULL,
+    next_attempt_at TEXT,
+    outcome_unknown INTEGER NOT NULL DEFAULT 0 CHECK (
+      outcome_unknown IN (0, 1)
+    ),
+    manual_resolution TEXT CHECK (
+      manual_resolution IN ('confirmed_received', 'confirmed_not_received')
+    ),
+    resolved_at TEXT,
+    operator_notified_at TEXT,
+    notification_next_attempt_at TEXT,
+    attempt_started_at TEXT,
+    sent_at TEXT
+  ) STRICT;
+-- statement
+CREATE TABLE operator_actions (
+    id TEXT PRIMARY KEY,
+    request_id TEXT NOT NULL REFERENCES support_requests(id),
+    kind TEXT NOT NULL CHECK (kind IN (
+      'close_request',
+      'mirror_operator_message',
+      'open_request',
+      'relay_message',
+      'reopen_request'
+    )),
+    client_message_id TEXT NOT NULL,
+    operator_topic_id TEXT NOT NULL,
+    sequence INTEGER NOT NULL,
+    initial INTEGER NOT NULL CHECK (initial IN (0, 1)),
+    status TEXT NOT NULL CHECK (status IN (
+      'pending',
+      'sending',
+      'sent',
+      'failed',
+      'outcome_unknown',
+      'abandoned',
+      'superseded'
+    )),
+    external_result_id TEXT,
+    last_error TEXT,
+    created_at TEXT NOT NULL,
+    attempt_started_at TEXT,
+    completed_at TEXT,
+    manual_resolution TEXT CHECK (
+      manual_resolution IN (
+        'confirmed_completed',
+        'confirmed_not_completed',
+        'confirmed_received',
+        'use_web'
+      )
+    ),
+    resolved_at TEXT
+  ) STRICT;
+-- statement
+CREATE INDEX operator_actions_by_status
+    ON operator_actions(status, created_at, id);
+-- statement
+CREATE TABLE remembered_admin_sessions (
+    token_hash TEXT PRIMARY KEY,
+    created_at INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL CHECK (expires_at > created_at)
+  ) STRICT;
+-- statement
+CREATE INDEX remembered_admin_sessions_by_expiry
+    ON remembered_admin_sessions(expires_at);
+-- statement
+PRAGMA user_version = 17;

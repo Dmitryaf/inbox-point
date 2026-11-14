@@ -6,12 +6,13 @@ import java.util.Optional;
 import java.util.function.IntFunction;
 import java.util.regex.Pattern;
 
-import com.inboxpoint.content.ClassMenu.Button;
-import com.inboxpoint.content.ClassMenu.Intent;
-import com.inboxpoint.content.ClassMenu.Keyboard;
-import com.inboxpoint.content.ClassMenu.Response;
-import com.inboxpoint.content.ClassMenu.Stage;
-import com.inboxpoint.content.ClassMenu.State;
+import com.inboxpoint.content.ClientMenu.Button;
+import com.inboxpoint.content.ClientMenu.Intent;
+import com.inboxpoint.content.ClientMenu.Keyboard;
+import com.inboxpoint.content.ClientMenu.Response;
+import com.inboxpoint.content.ClientMenu.Stage;
+import com.inboxpoint.content.ClientMenu.State;
+import com.inboxpoint.handoff.ClientMessages;
 
 final class ClassNavigation {
     private static final Button MENU = button("Меню", "main");
@@ -36,10 +37,9 @@ final class ClassNavigation {
             return Optional.empty();
         }
         var word = normalize(label);
-        var keyword = catalog.keywords().stream().filter(item -> "group".equals(item.targetType()) && normalize(item.phrase()).equals(word)).findFirst();
+        var keyword = catalog.keywords().stream().filter(item -> normalize(item.phrase()).equals(word)).findFirst();
         if (keyword.isPresent()) {
-            var item = keyword.get();
-            return Optional.of(render("classes:group:" + item.targetId(), state));
+            return Optional.of(render("classes:group:" + keyword.get().groupId(), state));
         }
         if (state.stage() == Stage.ACTIVE && !label.contains(":")) {
             return Optional.empty();
@@ -54,8 +54,9 @@ final class ClassNavigation {
         return switch (operation) {
             case "directions" -> directions(id);
             case "direction" -> direction(id, parts.length > 3 ? parts[3] : "");
-            case "legacy" -> inline(catalog.scheduleText(), List.of(DIRECTIONS, MENU));
             case "review", "all" -> schedule(operation, id);
+            case "legacy" -> catalog.groups().isEmpty()
+                    ? inline(catalog.scheduleText(), List.of(DIRECTIONS, MENU)) : directions("0");
             default -> renderGroup(operation, id, state);
         };
     }
@@ -73,8 +74,6 @@ final class ClassNavigation {
                 next -> "Направления: " + (next + 1));
         if (!catalog.groups().isEmpty()) {
             buttons.add(button("Расписание всех направлений", "classes:all:0"));
-        } else if (catalog.hasLegacySchedule()) {
-            buttons.add(new Button("Другие занятия", "classes:legacy", "Занятия: общие"));
         }
         buttons.add(MENU);
         return inline("Расписание\n\nВыберите направление." + pageLabel(all.size(), page, "\n"), buttons);
@@ -102,7 +101,7 @@ final class ClassNavigation {
 
     private Response schedule(String operation, String pageText) {
         var all = "all".equals(operation);
-        var source = all ? catalog.allGroupsSchedule().replaceFirst("^Расписание\n\n", "")
+        var source = all ? catalog.scheduleText().replaceFirst("^Расписание\n\n", "")
                 : String.join("\n\n", catalog.groups().stream().map(ClientCatalog.Group::review)
                         .filter(java.util.Objects::nonNull).toList());
         var pages = new ArrayList<String>();
@@ -168,18 +167,18 @@ final class ClassNavigation {
 
     private Response prompt(ClientCatalog.Group group, String title, Button back, boolean signup, boolean intakeAllowed) {
         if (!intakeAllowed) {
-            return inline("Сейчас мы временно не принимаем новые вопросы. Попробуйте написать позже или свяжитесь с нами по контактам в описании.", List.of(back, MENU));
+            return inline(ClientMessages.PAUSED_INTAKE, List.of(back, MENU));
         }
         if (signup && !group.open()) {
             return inline(title + "\n\nЧтобы уточнить запись на занятие, откройте группу и нажмите «Задать вопрос».",
                     List.of(back, DIRECTIONS, MENU));
         }
-        var intent = new Intent(signup ? title : null, signup ? null : title,
-                !signup ? null : group.confirmation().isBlank() ? "Ваша запись подтверждена. Ждём вас на занятии!" : group.confirmation());
+        var intent = signup ? new Intent(title, null, group.confirmation().isBlank()
+                ? ClientMessages.DEFAULT_ENROLLMENT_CONFIRMATION : group.confirmation()) : new Intent(null, title, null);
         var question = group.question().isBlank()
                 || "Как к вам обращаться и на какое занятие планируете прийти?".equals(group.question().strip())
                 ? DEFAULT_QUESTION : group.question();
-        return inline(title + "\n\n" + (signup ? question + "\n" : "Напишите свой вопрос. Мы ответим здесь.")
+        return inline(title + "\n\n" + (signup ? question + "\n" : ClientMessages.QUESTION_PROMPT)
                 + "\nЧтобы отменить, напишите «Меню».", List.of(MENU), intent,
                 (signup ? "signup:" : "group_question:") + group.id(),
                 (signup ? "Начало записи: " : "Вопрос о группе: ") + title);
@@ -270,7 +269,7 @@ final class ClassNavigation {
     }
 
     private static Response updated() {
-        return inline("Эта кнопка больше не используется. Выберите другое действие ниже.", List.of(MENU));
+        return inline(ClientMessages.MENU_UPDATED, List.of(MENU));
     }
 
     private static Response inline(String text, List<Button> buttons) {

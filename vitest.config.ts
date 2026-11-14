@@ -5,8 +5,9 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url)),
-      '@core': fileURLToPath(new URL('./src/core', import.meta.url)),
+      '@core': fileURLToPath(
+        new URL('./frontend/common/domain', import.meta.url),
+      ),
       '@frontend': fileURLToPath(new URL('./frontend/src', import.meta.url)),
       '@frontend-common': fileURLToPath(
         new URL('./frontend/common', import.meta.url),
@@ -24,11 +25,8 @@ export default defineConfig({
       {
         extends: true,
         test: {
-          name: 'server',
-          include: [
-            'tests/unit/**/*.test.ts',
-            'tests/integration/**/*.test.ts',
-          ],
+          name: 'frontend-build',
+          include: ['tests/frontend/frontend-build.test.ts'],
           environment: 'node',
         },
       },
@@ -37,6 +35,7 @@ export default defineConfig({
         test: {
           name: 'frontend',
           include: ['tests/frontend/**/*.test.{ts,tsx}'],
+          exclude: ['tests/frontend/frontend-build.test.ts'],
           environment: 'jsdom',
           setupFiles: ['tests/frontend/setup.ts'],
         },

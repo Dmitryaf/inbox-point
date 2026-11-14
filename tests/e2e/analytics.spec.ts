@@ -28,6 +28,14 @@ for (const width of [1440, 390]) {
       }),
     ).toBeVisible();
     await expect(page.locator('main')).not.toContainText('synthetic-id');
+    const { observedAt } = (await (
+      await page.request.get('http://127.0.0.1:4175/api/analytics')
+    ).json()) as { observedAt: string };
+    const latestDay = new Intl.DateTimeFormat('ru-RU', {
+      day: 'numeric',
+      month: 'short',
+      timeZone: 'UTC',
+    }).format(new Date(observedAt));
     for (const [label, rows] of [
       ['7 дней', 7],
       ['90 дней', 90],
@@ -54,7 +62,7 @@ for (const width of [1440, 390]) {
       const dates = await page
         .locator('[class*="_daily-values_"] tbody th')
         .allTextContents();
-      expect(dates[0]).toBe('4 окт.');
+      expect(dates[0]).toBe(latestDay);
       expect(new Set(dates).size).toBe(rows);
     }
     await page.getByRole('button', { name: 'Telegram', exact: true }).click();

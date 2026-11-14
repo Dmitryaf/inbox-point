@@ -7,8 +7,8 @@ Self-hosted customer messaging for Telegram and VK. Customers stay in their mess
 - Prepared information: schedules, prices, addresses, FAQs and custom menu sections.
 - Directions and class groups, meeting times, enrollment availability and a question for an application. Staff can confirm a class application from Telegram.
 - Text questions and staff replies, closing requests and starting a new request in the existing customer topic.
-- React content editor with preview, revision history, restore and recovery of unsaved edits.
-- Channel setup, delivery diagnostics, pause/resume and an emergency browser inbox.
+- Edit customer answers from the conversation preview, view revision history and recover unsaved edits.
+- Channel setup, pause/resume and delivery alerts. The fallback browser inbox loads active requests and earlier messages in pages.
 - Usage analytics for 7, 30 or 90 days, with Telegram/VK filters.
 
 Closed enrollment offers a question about the group. It does not accept an enrollment application. Attachments and voice messages are not relayed as supported customer text. Answers come from prepared content or staff; AI-generated replies are not implemented.
@@ -17,7 +17,7 @@ Closed enrollment offers a question about the group. It does not accept an enrol
 
 ## Run locally
 
-Install JDK 25 and npm 11. Use the frontend toolchain version pinned in [`.nvmrc`](.nvmrc).
+Install JDK 25 and npm 11. Use the frontend toolchain version pinned in [`.nvmrc`](.nvmrc). The Maven Wrapper builds the Spring Boot application.
 
 ```sh
 npm ci

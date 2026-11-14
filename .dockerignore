@@ -1,4 +1,6 @@
 .ai-rules/
+.agents/
+.tmp/
 .env
 .env.*
 .git/
@@ -9,5 +11,5 @@ coverage/
 data/
 dist/
 node_modules/
-
+openspec/
 backend/target/

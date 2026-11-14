@@ -5,8 +5,7 @@
     "moduleResolution": "Bundler",
     "jsx": "react-jsx",
     "paths": {
-      "@/*": ["../src/*"],
-      "@core/*": ["../src/core/*"],
+      "@core/*": ["./common/domain/*"],
       "@frontend/*": ["./src/*"],
       "@frontend-common/*": ["./common/*"],
       "@frontend-styles/*": ["./src/app/styles/*"]

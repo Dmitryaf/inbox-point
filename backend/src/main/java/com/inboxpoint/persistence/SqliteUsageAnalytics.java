@@ -1,5 +1,6 @@
 package com.inboxpoint.persistence;
 
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -11,52 +12,64 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.core.env.Environment;
+import org.springframework.stereotype.Repository;
+
+@Repository
 public final class SqliteUsageAnalytics {
     private static final Totals ZERO = new Totals(0, 0);
     private static final String FILTERED = """
             WITH filtered AS (
                 SELECT id, event_type, channel, occurred_at, action_key, action_label
                 FROM usage_events
-                WHERE julianday(occurred_at) >= julianday(?) AND julianday(occurred_at) <= julianday(?) AND (? IS NULL OR channel = ?)
+                WHERE occurred_at >= ? AND occurred_at <= ? AND (? IS NULL OR channel = ?)
                     AND event_type IN ('new_request', 'menu_action')
             )
             """;
-    private SqliteUsageAnalytics() { }
+    private final Path database;
 
-    public static Report report(Connection connection, int days, String channel, Instant observedAt) throws SQLException {
+    public SqliteUsageAnalytics(Environment environment) {
+        database = Path.of(environment.getProperty("DATABASE_PATH", "./data/inbox-point.sqlite"));
+    }
+
+    public Report report(int days, String channel, Instant observedAt) throws SQLException {
         var firstDay = LocalDate.ofInstant(observedAt, ZoneOffset.UTC).minusDays(days - 1);
-        var since = timestamp(firstDay.atStartOfDay().toInstant(ZoneOffset.UTC));
-        var until = timestamp(observedAt);
+        var since = SqliteDatabase.timestamp(firstDay.atStartOfDay().toInstant(ZoneOffset.UTC));
+        var until = SqliteDatabase.timestamp(observedAt);
         var filter = "all".equals(channel) ? null : channel;
         var byDate = new HashMap<String, Totals>();
         var byChannel = new HashMap<>(Map.of("telegram", ZERO, "vk", ZERO));
         String lastRequestAt = null;
-        try (var statement = filtered(connection, since, until, filter, """
-                SELECT substr(occurred_at, 1, 10) AS day, channel,
-                    SUM(event_type = 'new_request') AS requests, SUM(event_type = 'menu_action') AS menu_actions,
-                    MAX(CASE WHEN event_type = 'new_request' THEN occurred_at END) AS last_request
-                FROM filtered GROUP BY day, channel
-                """); var rows = statement.executeQuery()) {
-            while (rows.next()) {
-                var totals = new Totals(rows.getLong("requests"), rows.getLong("menu_actions"));
-                byDate.merge(rows.getString("day"), totals, Totals::add);
-                byChannel.merge(rows.getString("channel"), totals, Totals::add);
-                var candidate = rows.getString("last_request");
-                if (candidate != null && (lastRequestAt == null || candidate.compareTo(lastRequestAt) > 0)) {
-                    lastRequestAt = candidate;
+        try (var connection = SqliteDatabase.openExisting(database, true)) {
+            connection.setAutoCommit(false);
+            try (var statement = filtered(connection, since, until, filter, """
+                    SELECT substr(occurred_at, 1, 10) AS day, channel,
+                        SUM(event_type = 'new_request') AS requests, SUM(event_type = 'menu_action') AS menu_actions,
+                        MAX(CASE WHEN event_type = 'new_request' THEN occurred_at END) AS last_request
+                    FROM filtered GROUP BY day, channel
+                    """); var rows = statement.executeQuery()) {
+                while (rows.next()) {
+                    var totals = new Totals(rows.getLong("requests"), rows.getLong("menu_actions"));
+                    byDate.merge(rows.getString("day"), totals, Totals::add);
+                    byChannel.merge(rows.getString("channel"), totals, Totals::add);
+                    var candidate = rows.getString("last_request");
+                    if (candidate != null && (lastRequestAt == null || candidate.compareTo(lastRequestAt) > 0)) {
+                        lastRequestAt = candidate;
+                    }
                 }
             }
+            var actions = actions(connection, since, until, filter);
+            connection.commit();
+            var daily = new ArrayList<Day>(days);
+            for (int index = 0; index < days; index++) {
+                var date = firstDay.plusDays(index).toString();
+                var totals = byDate.getOrDefault(date, ZERO);
+                daily.add(new Day(date, totals.requests(), totals.menuActions()));
+            }
+            var summary = byChannel.get("telegram").add(byChannel.get("vk"));
+            return new Report(Map.copyOf(byChannel), List.copyOf(actions), List.copyOf(daily), lastRequestAt,
+                    summary, days + "d", channel, since, until, "UTC");
         }
-        var actions = actions(connection, since, until, filter);
-        var daily = new ArrayList<Day>(days);
-        for (int index = 0; index < days; index++) {
-            var date = firstDay.plusDays(index).toString();
-            var totals = byDate.getOrDefault(date, ZERO);
-            daily.add(new Day(date, totals.requests(), totals.menuActions()));
-        }
-        var summary = byChannel.get("telegram").add(byChannel.get("vk"));
-        return new Report(Map.copyOf(byChannel), List.copyOf(actions), List.copyOf(daily), lastRequestAt,
-                summary, days + "d", channel, since, until, "UTC");
     }
 
     private static List<Action> actions(Connection connection, String since, String until, String channel) throws SQLException {
@@ -87,10 +100,6 @@ public final class SqliteUsageAnalytics {
         statement.setString(3, channel);
         statement.setString(4, channel);
         return statement;
-    }
-
-    private static String timestamp(Instant time) {
-        return new java.time.format.DateTimeFormatterBuilder().appendInstant(3).toFormatter().format(time);
     }
 
     public record Report(Map<String, Totals> channels, List<Action> actions, List<Day> daily, String lastRequestAt,

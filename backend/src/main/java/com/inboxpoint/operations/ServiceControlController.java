@@ -3,11 +3,8 @@ package com.inboxpoint.operations;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.Map;
+import java.util.Set;
 
-import com.inboxpoint.admin.AdminSessions;
-import com.inboxpoint.telegram.TelegramRuntime;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -17,54 +14,42 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/ops/service-control")
-final class ServiceControlController {
-    private final AdminSessions operations;
+class ServiceControlController {
+    private static final Set<String> TARGETS = Set.of("telegram", "vk", "delivery");
     private final LocalServiceControl control;
 
-    ServiceControlController(AdminSessions operations, TelegramRuntime runtime) {
-        this.operations = operations;
-        control = runtime.serviceControl();
+    ServiceControlController(ChannelRuntime runtime) {
+        control = runtime.control();
     }
 
     @GetMapping
-    ResponseEntity<?> current(HttpServletRequest request, HttpServletResponse response) {
-        var error = access(request, response);
-        return error == null ? ResponseEntity.ok(control.current()) : error;
+    ResponseEntity<?> status() {
+        try {
+            return ResponseEntity.ok(control.state());
+        } catch (IOException failure) {
+            return error(500, "Не удалось загрузить состояние службы.");
+        }
     }
 
-    @PostMapping("/{channel}/{command:pause|resume}")
-    ResponseEntity<?> set(@PathVariable String channel, @PathVariable String command,
-            HttpServletRequest request, HttpServletResponse response) {
-        var error = access(request, response);
-        if (error != null) {
-            return error;
-        }
-        if (!operations.sameOrigin(request)) {
-            return error(403, "Запрос отклонён.");
+    @PostMapping("/{target}/pause")
+    ResponseEntity<?> pause(@PathVariable String target) {
+        return change(target, true, "Не удалось приостановить новые обращения.", "Не удалось остановить исходящую доставку.");
+    }
+
+    @PostMapping("/{target}/resume")
+    ResponseEntity<?> resume(@PathVariable String target) {
+        return change(target, false, "Не удалось возобновить новые обращения.", "Не удалось возобновить исходящую доставку.");
+    }
+
+    private ResponseEntity<?> change(String target, boolean paused, String intakeError, String deliveryError) {
+        if (!TARGETS.contains(target)) {
+            return error(404, "Канал не найден.");
         }
         try {
-            var paused = "pause".equals(command);
-            if ("delivery".equals(channel) && request.getRequestURI().startsWith("/api/ops/")) {
-                return ResponseEntity.ok(control.setDelivery(paused, Instant.now()));
-            }
-            return ResponseEntity.ok(control.set(channel, paused, Instant.now()));
-        } catch (IllegalArgumentException unknown) {
-            return error(404, "Канал не найден.");
+            return ResponseEntity.ok(control.setMode(target, paused, Instant.now()));
         } catch (IOException failure) {
-            if ("delivery".equals(channel)) {
-                return error(500, "pause".equals(command) ? "Не удалось остановить исходящую доставку."
-                        : "Не удалось возобновить исходящую доставку.");
-            }
-            return error(500, "Не удалось изменить приём новых обращений.");
+            return error(500, "delivery".equals(target) ? deliveryError : intakeError);
         }
-    }
-
-    private ResponseEntity<?> access(HttpServletRequest request, HttpServletResponse response) {
-        var admin = operations;
-        if (!admin.available(request, response)) {
-            return error(404, "Not found");
-        }
-        return admin.authorized(request, response) ? null : error(401, "Введите пароль управления.");
     }
 
     private static ResponseEntity<Map<String, String>> error(int status, String message) {

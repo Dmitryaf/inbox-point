@@ -45,7 +45,7 @@ final class ContentShape {
         }
     }
 
-    static final class InvalidContent extends IllegalArgumentException {
+    static final class InvalidContent extends RuntimeException {
         InvalidContent() {
             super("The content does not match the editor contract");
         }

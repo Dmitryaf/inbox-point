@@ -4,10 +4,9 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "paths": {
-      "@/*": ["./src/*"],
-      "@test/*": ["./tests/*"],
-      "@frontend/*": ["./frontend/src/*"],
-      "@frontend-common/*": ["./frontend/common/*"]
+      "@core/*": ["./frontend/common/domain/*"],
+      "@frontend-common/*": ["./frontend/common/*"],
+      "@test/*": ["./tests/*"]
     },
     "strict": true,
     "noUncheckedIndexedAccess": true,
@@ -23,9 +22,6 @@
     "noEmit": true
   },
   "include": [
-    "src/**/*.ts",
-    "tests/unit/**/*.ts",
-    "tests/integration/**/*.ts",
     "tests/e2e/**/*.ts",
     "eslint.config.js",
     "vitest.config.ts",

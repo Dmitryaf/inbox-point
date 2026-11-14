@@ -8,9 +8,12 @@ PROJECT_PLAN.md
 .env.*
 !.env.example
 !.env.monitor.example
+deploy/wireguard/*.conf
+!deploy/wireguard/*.conf.example
 
 node_modules/
 dist/
+/backend/target/
 coverage/
 playwright-report/
 test-results/
@@ -21,9 +24,5 @@ data/
 *.sqlite
 *.sqlite3
 
-.env.production
-.env.staging
 logs/
 *.log
-
-/backend/target/

@@ -278,7 +278,7 @@ test_successful_update() {
     'cp -a "$source_path" "$temporary_path"' \
     'mv "$temporary_path" "$final_path"' \
     'snapshot copy is atomically renamed after copying'
-  assert_contains "$fixture/commands.log" 'snapshot-verify' \
+  assert_contains "$fixture/commands.log" 'java -jar /app/inbox-point.jar snapshot-verify' \
     'copied snapshot uses the application manifest verifier'
   assert_before "$fixture/commands.log" \
     "run -T --no-deps --name $container_name --entrypoint /bin/sh backup" \

@@ -4,9 +4,8 @@
 AGENTS.md
 coverage/
 dist/
+/backend/target/
+frontend/public/favicon.svg
 node_modules/
 .tmp/
 package-lock.json
-
-/backend/target/
-**/*.react-data-*.css

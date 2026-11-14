@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAdminSession } from '@frontend/features/admin-auth/model/SessionProvider';
 import { executeInboxAction } from './inbox-actions';
 import { refreshInbox, refreshMessages } from './inbox-reads';
+import { loadMoreRequests, loadOlderMessages } from './inbox-more';
 import {
   initialInbox,
   messagesReady,
@@ -23,6 +24,7 @@ export function useOperatorInbox() {
     messagesVersion: 0,
     command: false,
     failedReplies: {},
+    pageReads: new Set(),
   });
   const context = useCallback(
     (): InboxContext => ({
@@ -56,6 +58,8 @@ export function useOperatorInbox() {
   return {
     state,
     refresh,
+    loadMore: () => void loadMoreRequests(context()),
+    loadOlder: () => void loadOlderMessages(context()),
     ready: messagesReady(state),
     select: (id: string) => {
       const current = context();

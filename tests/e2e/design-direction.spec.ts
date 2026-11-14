@@ -312,7 +312,8 @@ for (const width of [390, 1280]) {
     await enlargeText(page);
     const vkToggle = page.locator('[aria-controls="vk-setup-details"]');
     await expect(vkToggle).toBeEnabled();
-    await vkToggle.press('Enter');
+    await vkToggle.focus();
+    await page.keyboard.press('Enter');
     await expect(vkToggle).toHaveAttribute('aria-expanded', 'true');
     await expect(vkToggle).toBeFocused();
     await expect(vkToggle).toHaveCSS('outline-width', '3px');

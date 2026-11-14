@@ -7,14 +7,17 @@ import java.util.Optional;
 
 public final class SqliteRetention {
     private static final String EXPIRED = """
-            request.status = 'closed' AND julianday(request.closed_at) <= julianday(?)
+            request.status = 'closed' AND request.closed_at <= ?
             """;
 
     private static final String BLOCKED = """
-            EXISTS (
+            (EXISTS (
                 SELECT 1 FROM deliveries AS unfinished
                 WHERE unfinished.request_id = request.id AND unfinished.status != 'sent'
-            )
+            ) OR EXISTS (
+                SELECT 1 FROM conversation_messages AS held
+                WHERE held.request_id = request.id AND held.processing_state = 'held'
+            ))
             """;
 
     private SqliteRetention() {
@@ -24,35 +27,24 @@ public final class SqliteRetention {
             int deliveriesRedacted, int requestsAnonymized) {
     }
 
-    public static Result purge(Connection connection, Instant closedBefore) throws SQLException {
-        var cutoff = closedBefore.toString();
+    static Result purge(Connection connection, Instant closedBefore) throws SQLException {
+        var cutoff = SqliteDatabase.timestamp(closedBefore);
         var eligible = EXPIRED + " AND NOT " + BLOCKED;
         var eligibleIds = "SELECT request.id FROM support_requests AS request WHERE " + eligible;
-        try (var transaction = connection.createStatement()) {
-            transaction.execute("BEGIN IMMEDIATE");
-            try {
-                var eligibleRequests = count(connection, eligible, cutoff);
-                var skippedRequests = count(connection, EXPIRED + " AND " + BLOCKED, cutoff);
-                var messagesDeleted = update(connection,
-                        "DELETE FROM conversation_messages WHERE request_id IN (" + eligibleIds + ")", cutoff);
-                var deliveriesRedacted = update(connection, """
-                        UPDATE deliveries SET text = '' WHERE status = 'sent' AND text != '' AND request_id IN (
-                        """ + eligibleIds + ")", cutoff);
-                var requestsAnonymized = update(connection, """
-                        UPDATE support_requests AS request SET client_display_name = NULL
-                        WHERE client_display_name IS NOT NULL AND
-                        """ + eligible, cutoff);
-                transaction.execute("COMMIT");
-                return new Result(eligibleRequests, skippedRequests, messagesDeleted, deliveriesRedacted, requestsAnonymized);
-            } catch (SQLException | RuntimeException failure) {
-                try {
-                    transaction.execute("ROLLBACK");
-                } catch (SQLException rollback) {
-                    failure.addSuppressed(rollback);
-                }
-                throw failure;
-            }
-        }
+        return SqliteDatabase.writeReturning(connection, () -> {
+            var eligibleRequests = count(connection, eligible, cutoff);
+            var skippedRequests = count(connection, EXPIRED + " AND " + BLOCKED, cutoff);
+            var messagesDeleted = update(connection,
+                    "DELETE FROM conversation_messages WHERE request_id IN (" + eligibleIds + ")", cutoff);
+            var deliveriesRedacted = update(connection, """
+                    UPDATE deliveries SET text = '' WHERE status = 'sent' AND text != '' AND request_id IN (
+                    """ + eligibleIds + ")", cutoff);
+            var requestsAnonymized = update(connection, """
+                    UPDATE support_requests AS request SET client_display_name = NULL
+                    WHERE client_display_name IS NOT NULL AND
+                    """ + eligible, cutoff);
+            return new Result(eligibleRequests, skippedRequests, messagesDeleted, deliveriesRedacted, requestsAnonymized);
+        });
     }
 
     static Optional<Instant> oldestRetainedContent(Connection connection) throws SQLException {

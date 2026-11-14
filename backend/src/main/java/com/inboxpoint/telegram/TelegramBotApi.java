@@ -116,23 +116,6 @@ final class TelegramBotApi {
         return List.copyOf(updates);
     }
 
-    void answerCallback(String callbackId, String text) throws RequestFailed, InterruptedException {
-        var payload = JSON.createObjectNode().put("callback_query_id", callbackId);
-        if (text != null) {
-            payload.put("text", text);
-        }
-        try {
-            var result = call("answerCallbackQuery", payload, requestTimeout, false);
-            if (!result.isBoolean() || !result.booleanValue()) {
-                throw invalidResponse("answerCallbackQuery", false);
-            }
-        } catch (RequestFailed failure) {
-            if (!failure.expiredCallback()) {
-                throw failure;
-            }
-        }
-    }
-
     long createForumTopic(long chatId, String name) throws RequestFailed, InterruptedException {
         var payload = JSON.createObjectNode().put("chat_id", chatId).put("name", name);
         return sideEffectResultId("createForumTopic", payload, "message_thread_id");
@@ -152,6 +135,23 @@ final class TelegramBotApi {
             payload.set("reply_markup", replyMarkup);
         }
         return sideEffectResultId("sendMessage", payload, "message_id");
+    }
+
+    void answerCallback(String callbackId, String text) throws RequestFailed, InterruptedException {
+        var payload = JSON.createObjectNode().put("callback_query_id", callbackId);
+        if (text != null) {
+            payload.put("text", text);
+        }
+        try {
+            var result = call("answerCallbackQuery", payload, requestTimeout, false);
+            if (!result.isBoolean() || !result.booleanValue()) {
+                throw invalidResponse("answerCallbackQuery", false);
+            }
+        } catch (RequestFailed failure) {
+            if (!failure.expiredCallback()) {
+                throw failure;
+            }
+        }
     }
 
     void editMessageReplyMarkup(long chatId, long messageId, JsonNode replyMarkup)
@@ -228,9 +228,6 @@ final class TelegramBotApi {
             var definitive = status < 500 && status != 408 && errorCode < 500 && errorCode != 408;
             var description = definitive && errorCode == 400
                     ? envelope.path("description").asString("").toLowerCase(java.util.Locale.ROOT) : "";
-            if ("editMessageReplyMarkup".equals(method) && description.contains("message is not modified")) {
-                return JSON.getNodeFactory().booleanNode(true);
-            }
             if ("editMessageReplyMarkup".equals(method) && description.contains("message is not modified")) {
                 return JSON.getNodeFactory().booleanNode(true);
             }

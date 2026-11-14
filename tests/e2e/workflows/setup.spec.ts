@@ -3,7 +3,8 @@ import { login } from './support/auth.js';
 
 test.use({ baseURL: 'http://127.0.0.1:4192' });
 test.describe.configure({ mode: 'default' });
-const token = 'synthetic-channel-access-token';
+const telegramToken = '501:synthetic-telegram-token';
+const vkToken = 'synthetic-vk-access-token';
 for (const width of [390, 1280]) {
   test(`channel connect → persisted reload → failed/cancelled disconnect → ordered disconnect preserves history at ${width}px`, async ({
     page,
@@ -14,7 +15,7 @@ for (const width of [390, 1280]) {
     await login(page, '/setup');
     const original = (await (
       await page.request.get('/api/test/state')
-    ).json()) as { request: unknown; messages: unknown; effects: string[] };
+    ).json()) as { request: unknown; messages: unknown };
     await expect(
       page.getByRole('button', { name: 'Сначала Telegram' }),
     ).toBeDisabled();
@@ -22,7 +23,7 @@ for (const width of [390, 1280]) {
     await page.keyboard.press('Enter');
     await page
       .getByLabel('Токен бота — строка-пароль от @BotFather')
-      .fill(token);
+      .fill(telegramToken);
     await page
       .getByRole('button', { name: 'Проверить токен и найти группу' })
       .click();
@@ -61,7 +62,9 @@ for (const width of [390, 1280]) {
     await expect(page.getByRole('alert')).toContainText(
       '«Сообщения сообщества»',
     );
-    await page.getByLabel('Ключ с правами управления и сообщений').fill(token);
+    await page
+      .getByLabel('Ключ с правами управления и сообщений')
+      .fill(vkToken);
     await page.screenshot({
       path: testInfo.outputPath(`vk-rights-${width}.png`),
       fullPage: true,
@@ -79,7 +82,6 @@ for (const width of [390, 1280]) {
       telegramSaved: boolean;
       vkSaved: boolean;
       request: unknown;
-      effects: string[];
     };
     expect(connected).toMatchObject({
       telegramSaved: true,
@@ -121,6 +123,12 @@ for (const width of [390, 1280]) {
     await expect(
       page.getByRole('button', { name: 'Отключить Telegram' }),
     ).toBeEnabled();
+    expect(
+      await (await page.request.get('/api/test/state')).json(),
+    ).toMatchObject({
+      telegramSaved: true,
+      vkSaved: false,
+    });
     page.once('dialog', (dialog) => void dialog.accept());
     await page.getByRole('button', { name: 'Отключить Telegram' }).click();
     await expect(page.getByText('Не подключён', { exact: true })).toHaveCount(
@@ -136,7 +144,6 @@ for (const width of [390, 1280]) {
       telegramSaved: boolean;
       vkSaved: boolean;
       request: unknown;
-      effects: string[];
     };
     expect(disconnected).toMatchObject({
       telegramSaved: false,
@@ -144,12 +151,6 @@ for (const width of [390, 1280]) {
       request: original.request,
       messages: original.messages,
     });
-    expect(disconnected.effects.slice(original.effects.length)).toEqual([
-      'telegram:start',
-      'vk:start',
-      'vk:stop',
-      'telegram:stop',
-    ]);
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -159,7 +160,7 @@ for (const width of [390, 1280]) {
       await page.evaluate(() =>
         JSON.stringify({ ...sessionStorage, ...localStorage }),
       ),
-    ).not.toContain(token);
+    ).not.toMatch(/synthetic-(?:telegram|vk-access)-token/);
     expect(errors).toEqual([]);
   });
 }

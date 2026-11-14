@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 for (const width of [390, 1280]) {
-  test(`serves the isolated React entry through Spring Boot at ${width}px`, async ({
+  test(`serves the isolated React entry through Spring at ${width}px`, async ({
     page,
     request,
   }, testInfo) => {

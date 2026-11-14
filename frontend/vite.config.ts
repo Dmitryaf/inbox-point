@@ -24,8 +24,7 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@': resolve(root, '../src'),
-      '@core': resolve(root, '../src/core'),
+      '@core': resolve(root, 'common/domain'),
       '@frontend': resolve(root, 'src'),
       '@frontend-common': resolve(root, 'common'),
       '@frontend-styles': resolve(root, 'src/app/styles'),

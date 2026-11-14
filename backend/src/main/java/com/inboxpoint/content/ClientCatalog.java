@@ -32,7 +32,7 @@ public final class ClientCatalog {
     record Group(String id, String directionId, String name, List<String> meetings, String description,
             boolean open, String question, String confirmation, String review) { }
 
-    record Keyword(String phrase, String targetType, String targetId) { }
+    record Keyword(String phrase, String groupId) { }
 
     record ScheduleEntry(String title, String time, String description) { }
 
@@ -43,8 +43,6 @@ public final class ClientCatalog {
     private final List<Keyword> keywords;
     private final List<Custom> custom;
     private final List<Faq> faq;
-    private final String legacySchedule;
-    private final List<ScheduleEntry> schedule;
     private final String prices;
     private final String address;
     private final List<Section> informationButtons;
@@ -57,16 +55,16 @@ public final class ClientCatalog {
         var storedDirections = list(content, "directions",
                 item -> new Direction(required(item, "id"), required(item, "name")));
         var storedGroups = list(content, "groups", ClientCatalog::group);
-        keywords = list(content, "keywords", item -> new Keyword(required(item, "phrase"),
-                required(item, "targetType"), required(item, "targetId")));
+        keywords = list(content, "keywords", item -> "group".equals(required(item, "targetType"))
+                ? new Keyword(required(item, "phrase"), required(item, "targetId")) : null);
         custom = list(content, "customSections", ClientCatalog::custom);
-        var entries = content.path("schedule").isArray() ? content : JSON.createObjectNode();
-        schedule = list(entries, "schedule",
+        var schedule = list(content, "scheduleItems",
                 item -> new ScheduleEntry(required(item, "title"), required(item, "dayTime"), text(item, "description")));
         faq = list(content, "faq", item -> new Faq(required(item, "question"), required(item, "answer")));
-        legacySchedule = text(content, "legacySchedule");
-        directions = storedDirections;
-        groups = storedGroups;
+        var classes = LegacySchedule.migrate(storedDirections, storedGroups, schedule,
+                content.has("scheduleItems") ? "" : text(content, "schedule"));
+        directions = classes.directions();
+        groups = classes.groups();
         prices = text(content, "prices");
         address = text(content, "address");
         var visibility = content.path("visibleSections");
@@ -76,6 +74,40 @@ public final class ClientCatalog {
                 .filter(section -> visible.contains(section.id()) && hasSection(section.id()))
                 .toList();
         this.history = Set.copyOf(history);
+    }
+
+    public static ClientCatalog load(Path path) throws IOException {
+        try {
+            return parse(Files.readString(path, StandardCharsets.UTF_8));
+        } catch (NoSuchFileException missing) {
+            return new ClientCatalog(JSON.createObjectNode(), Set.of());
+        }
+    }
+
+    public static ClientCatalog parse(String document) {
+        JsonNode root;
+        try {
+            root = JSON.readTree(document);
+        } catch (JacksonException failure) {
+            throw invalidDocument();
+        }
+        if (root == null || !root.isObject()) {
+            throw invalidDocument();
+        }
+        var version = root.path("formatVersion");
+        if (!version.isMissingNode() && (!version.isIntegralNumber()
+                || (version.asInt() != 2 && version.asInt() != 3))) {
+            throw invalidDocument();
+        }
+        var history = new HashSet<String>();
+        if (root.has("previousMenuActions")) {
+            history.addAll(strings(root.path("previousMenuActions")));
+        }
+        for (var revision : list(root, "history", item -> new ClientCatalog(item.path("content"), Set.of()))) {
+            revision.informationButtons.forEach(section -> history.add(section.label()));
+            revision.custom.forEach(section -> history.add(section.label()));
+        }
+        return new ClientCatalog(root.path("content"), history);
     }
 
     List<Direction> directions() {
@@ -124,26 +156,7 @@ public final class ClientCatalog {
         return label.strip().replaceAll("(?U)\\s+", " ").toLowerCase(Locale.ROOT);
     }
 
-    LegacySchedule.Classes migratedClasses() {
-        return LegacySchedule.migrate(directions, groups, schedule, legacySchedule);
-    }
-
-    boolean hasLegacySchedule() {
-        return !schedule.isEmpty() || !legacySchedule.isBlank();
-    }
-
     String scheduleText() {
-        if (!schedule.isEmpty()) {
-            return "Расписание\n\n" + String.join("\n\n", schedule.stream()
-                    .map(entry -> entry.title() + "\n" + entry.time() + withPrefix("\n", entry.description())).toList());
-        }
-        if (!legacySchedule.isBlank()) {
-            return listText("Расписание", legacySchedule);
-        }
-        return "Расписание пока не указано.";
-    }
-
-    String allGroupsSchedule() {
         if (!groups.isEmpty()) {
             return "Расписание\n\n" + String.join("\n\n", groups.stream().map(group -> group.review() != null
                     ? group.review()

@@ -3,7 +3,7 @@ import { expect, type Page } from '@playwright/test';
 import type {
   ClientInformationContent,
   ScheduleItem,
-} from '@/core/application/client-information.js';
+} from '@core/application/client-information.js';
 export const contentBase = 'http://127.0.0.1:4191';
 export interface ContentSnapshot {
   content: Omit<ClientInformationContent, 'schedule'> & {

@@ -1,9 +1,9 @@
 package com.inboxpoint.admin;
 
+import java.sql.SQLException;
 import java.util.Map;
 
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,88 +15,87 @@ import tools.jackson.databind.JsonNode;
 
 @RestController
 @RequestMapping("/api/admin")
-final class AdminSessionController {
-    private final AdminSessions admin;
+class AdminSessionController {
+    private final AdminSessions sessions;
+    private final AdminAccess access;
 
-    AdminSessionController(AdminSessions admin) {
-        this.admin = admin;
+    AdminSessionController(AdminSessions sessions, AdminAccess access) {
+        this.sessions = sessions;
+        this.access = access;
     }
 
     @GetMapping("/session")
-    ResponseEntity<?> session(HttpServletRequest request, HttpServletResponse response) {
-        return admin.available(request, response)
-                ? ResponseEntity.ok(Map.of("authenticated", admin.authorized(request, response), "mode", mode(request, response)))
-                : error(404, "Not found");
+    @AdminAccess.AvailableWithoutSession(reportAuthentication = true)
+    Map<String, Object> session(HttpServletRequest request) {
+        var context = AdminAccess.context(request);
+        return view(context.authenticated(), context.bypass());
     }
 
     @PostMapping("/login")
-    ResponseEntity<?> login(@RequestBody(required = false) JsonNode input, HttpServletRequest request, HttpServletResponse response) {
-        if (!admin.available(request, response)) {
-            return error(404, "Not found");
+    @AdminAccess.AvailableWithoutSession
+    ResponseEntity<?> login(HttpServletRequest request, @RequestBody(required = false) JsonNode body) {
+        var context = AdminAccess.context(request);
+        if (context.bypass()) {
+            return ResponseEntity.ok(view(true, true));
         }
-        if (!admin.sameOrigin(request)) {
-            return error(403, "Запрос отклонён.");
+        var password = body == null ? "" : body.path("password").asString("");
+        if (body == null || !body.path("password").isString() || password.isEmpty() || password.length() > 200
+                || (body.has("rememberDevice") && !body.path("rememberDevice").isBoolean())) {
+            return invalidPassword();
         }
-        if (admin.local(request, response)) {
-            return ResponseEntity.ok(Map.of("authenticated", true, "mode", mode(request, response)));
-        }
-        var password = input == null ? "" : input.path("password").asString("");
-        if (password.isEmpty() || password.length() > 200) {
-            return error(401, "Неверный пароль.");
-        }
-        var remember = input.path("rememberDevice");
-        if (!remember.isMissingNode() && !remember.isBoolean()) {
-            return error(401, "Неверный пароль.");
-        }
-        var result = admin.login(password, admin.clientAddress(request), remember.asBoolean(false), request);
-        if (result.retryAfter() > 0) {
-            return ResponseEntity.status(429).header(HttpHeaders.RETRY_AFTER, Long.toString(result.retryAfter()))
+        try {
+            var remember = body.has("rememberDevice") && body.path("rememberDevice").booleanValue();
+            var result = sessions.login(password, context.client(), remember, context.token());
+            if (result.authenticated()) {
+                return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, access.cookie(result.token(), result.seconds()))
+                        .body(view(true, false));
+            }
+            return result.seconds() == 0 ? invalidPassword() : ResponseEntity.status(429)
+                    .header(HttpHeaders.RETRY_AFTER, Long.toString(result.seconds()))
                     .body(Map.of("message", "Слишком много попыток. Попробуйте позже."));
+        } catch (SQLException unavailable) {
+            return unavailable();
         }
-        if (result.token() == null) {
-            return error(401, "Неверный пароль.");
-        }
-        return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, admin.cookie(result.token(), java.time.Duration.ofSeconds(result.maxAgeSeconds())))
-                .body(Map.of("authenticated", true, "mode", "password"));
-    }
-
-    @PostMapping("/sessions/revoke-all")
-    ResponseEntity<?> revokeAll(HttpServletRequest request, HttpServletResponse response) {
-        if (!admin.available(request, response)) {
-            return error(404, "Not found");
-        }
-        if (!admin.authorized(request, response)) {
-            return error(401, "Войдите, чтобы продолжить.");
-        }
-        if (!admin.sameOrigin(request)) {
-            return error(403, "Запрос отклонён.");
-        }
-        if (admin.local(request, response)) {
-            return ResponseEntity.ok(Map.of("authenticated", true, "mode", "bypass"));
-        }
-        admin.revokeAll();
-        return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, admin.cookie("", false))
-                .body(Map.of("authenticated", false, "mode", "password"));
     }
 
     @PostMapping("/logout")
-    ResponseEntity<?> logout(HttpServletRequest request, HttpServletResponse response) {
-        if (!admin.available(request, response)) {
-            return error(404, "Not found");
+    @AdminAccess.AvailableWithoutSession
+    ResponseEntity<?> logout(HttpServletRequest request) {
+        var context = AdminAccess.context(request);
+        try {
+            sessions.logout(context.token());
+            return clearCookie(context.bypass());
+        } catch (SQLException unavailable) {
+            return unavailable();
         }
-        if (!admin.sameOrigin(request)) {
-            return error(403, "Запрос отклонён.");
-        }
-        admin.logout(request);
-        return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, admin.cookie("", false))
-                .body(Map.of("authenticated", admin.local(request, response), "mode", mode(request, response)));
     }
 
-    private String mode(HttpServletRequest request, HttpServletResponse response) {
-        return admin.local(request, response) ? "bypass" : "password";
+    @PostMapping("/sessions/revoke-all")
+    ResponseEntity<?> revokeAll(HttpServletRequest request) {
+        if (AdminAccess.context(request).bypass()) {
+            return ResponseEntity.ok(view(true, true));
+        }
+        try {
+            sessions.revokeAll();
+            return clearCookie(false);
+        } catch (SQLException unavailable) {
+            return unavailable();
+        }
     }
 
-    private static ResponseEntity<Map<String, String>> error(int status, String text) {
-        return ResponseEntity.status(status).body(Map.of("message", text));
+    private ResponseEntity<?> clearCookie(boolean bypass) {
+        return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, access.cookie("", 0)).body(view(bypass, bypass));
+    }
+
+    private static ResponseEntity<?> invalidPassword() {
+        return ResponseEntity.status(401).body(Map.of("message", "Неверный пароль."));
+    }
+
+    private static ResponseEntity<?> unavailable() {
+        return ResponseEntity.status(503).body(Map.of("message", "Не удалось изменить сессию. Попробуйте позже."));
+    }
+
+    private static Map<String, Object> view(boolean authenticated, boolean bypass) {
+        return Map.of("authenticated", authenticated, "mode", bypass ? "bypass" : "password");
     }
 }

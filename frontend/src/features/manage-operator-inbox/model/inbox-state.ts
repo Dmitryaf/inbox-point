@@ -17,6 +17,12 @@ export interface InboxState {
   actionError: string;
   notice: string;
   drafts: Record<string, string>;
+  requestsCursor: string | undefined;
+  messagesCursor: string | undefined;
+  moreRequestsLoading: boolean;
+  moreMessagesLoading: boolean;
+  moreRequestsError: string;
+  moreMessagesError: string;
 }
 export interface ReplyAttempt {
   requestId: string;
@@ -30,6 +36,7 @@ export interface InboxLifetime {
   messagesVersion: number;
   command: boolean;
   failedReplies: Record<string, ReplyAttempt>;
+  pageReads: Set<Promise<void>>;
 }
 export interface InboxContext {
   get: () => InboxState;
@@ -53,6 +60,12 @@ export function initialInbox(): InboxState {
     actionError: '',
     notice: '',
     drafts: {},
+    requestsCursor: undefined,
+    messagesCursor: undefined,
+    moreRequestsLoading: false,
+    moreMessagesLoading: false,
+    moreRequestsError: '',
+    moreMessagesError: '',
   };
 }
 export function messagesReady(state: InboxState): boolean {

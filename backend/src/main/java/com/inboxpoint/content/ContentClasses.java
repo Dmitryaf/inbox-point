@@ -53,15 +53,13 @@ final class ContentClasses {
             var forbidden = new HashSet<String>();
             ContentShape.RESERVED_LABELS.forEach(label -> forbidden.add(ClientCatalog.normalizeLabel(label)));
             ACTION_LABELS.forEach(label -> forbidden.add(ClientCatalog.normalizeLabel(label)));
-            for (var section : result.path("customSections")) {
-                forbidden.add(ClientCatalog.normalizeLabel(section.path("label").asString("")));
-            }
             var phrases = new HashSet<String>();
             for (var keyword : array(keywords, 40)) {
                 object(keyword, true, "phrase", "targetType", "targetId");
                 var type = text(keyword.path("targetType"), 1, 9, false);
                 require(Set.of("direction", "group").contains(type));
-                if ("direction".equals(type)) {
+                if (submitted && "direction".equals(type)) {
+                    require(!input.has("keywords"));
                     continue;
                 }
                 var id = identifier(keyword.path("targetId"), false);
@@ -75,7 +73,8 @@ final class ContentClasses {
     }
 
     private static ObjectNode group(JsonNode group, Set<String> directions, Set<String> ids, Set<String> names) {
-        object(group, true, "id", "directionId", "name", "review", "meetings", "description", "enrollmentOpen", "applicationQuestion", "confirmationText");
+        object(group, true, "id", "directionId", "name", "review", "meetings", "description", "enrollmentOpen",
+                "applicationQuestion", "confirmationText");
         var id = identifier(group.path("id"), false);
         var direction = identifier(group.path("directionId"), true);
         var review = group.has("review");

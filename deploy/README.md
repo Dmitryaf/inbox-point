@@ -4,7 +4,7 @@ This guide describes the current single-organization deployment. Use a separate 
 
 ## Prepare an instance
 
-Install Docker Compose and an HTTPS reverse proxy. Copy [.env.example](../.env.example) into a private instance environment file and configure:
+Install Docker Compose and an HTTPS reverse proxy. The container runs Inbox Point on Java 25. Copy [.env.example](../.env.example) into a private instance environment file and configure:
 
 | Setting                                     | Purpose                                              |
 | ------------------------------------------- | ---------------------------------------------------- |
@@ -46,7 +46,7 @@ Replace placeholders and protect keys. Keep the proxy reachable only from the ap
 
 Check local and public `/health` and `/ready`. Readiness includes channel expectations, delivery worker, queue and inbound/operator incidents. A process health response alone does not establish channel delivery.
 
-Use an independent HTTPS monitor and an alert destination that does not depend solely on Telegram. The optional availability monitor uses [.env.monitor.example](../.env.monitor.example) and [the service template](systemd/inbox-point-availability-monitor.service.example).
+Use an independent HTTPS monitor and alert destination. Install Java 25 and place the packaged application at `/opt/inbox-point-monitor/inbox-point.jar` for the systemd template. Configure it with [.env.monitor.example](../.env.monitor.example) and [the service template](systemd/inbox-point-availability-monitor.service.example).
 
 For failed or uncertain messages, inspect `/ops` before retrying. An uncertain external send may already have reached its recipient. Use the specific resolution action rather than replaying a whole request.
 
@@ -62,7 +62,7 @@ Backup requires the configured HTTPS alert webhook. Export goes outside applicat
 
 The [instance timer](systemd/inbox-point-backup@.timer) and [service](systemd/inbox-point-backup@.service) provide scheduled execution templates. Review their paths and instance environment before installation. Copying to another directory on the same host does not protect against host loss.
 
-For a drill, restore a snapshot to a new isolated directory with the same build's `npm run snapshot:restore -- <snapshot-path> <new-target-directory>`. Verify the manifest, database, content and required channel reconfiguration. Do not overwrite a running instance. Restored channel expectations remain set even though credentials are excluded.
+The application JAR supports `snapshot-create`, `snapshot-verify <snapshot-path>` and `snapshot-restore <snapshot-path> <new-target-directory>`. For a drill, verify the snapshot and restore it to a new isolated directory. Restored channel expectations remain set, and signing in requires a fresh session.
 
 ## Update
 
@@ -75,6 +75,6 @@ Run the supplied updater from the repository with the intended target branch/rem
   --public-url https://messages.example.com
 ```
 
-The updater validates the checkout, creates a pre-deploy snapshot, updates the instance and checks container/public health. It reports the failure stage and snapshot on failure; it does not attempt automatic rollback. Inspect the reported state before choosing recovery. Never run an older schema-incompatible binary on a newer database.
+The updater validates the checkout, creates and verifies a pre-deploy snapshot, updates the instance and checks container and public health. It reports the failure stage and snapshot on failure. For a runtime migration, keep the previous image, stop the current application before starting another version on the same volume, and check that the previous version can read any new data before rolling back.
 
 Validate the source change with `npm run check` and `npm run check:e2e`. Before accepting a deployment, verify real test-channel messages, staff replies, closing/reopening, enrollment confirmation, content editing and backup recovery as applicable. Record the deployed revision and observations for that instance.

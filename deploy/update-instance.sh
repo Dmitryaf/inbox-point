@@ -209,8 +209,8 @@ if [[ "$previous_commit" != "$target_commit" ]]; then
         test ! -e "$temporary_path"
         test ! -e "$final_path"
         cp -a "$source_path" "$temporary_path"
+        java -jar /app/inbox-point.jar snapshot-verify "$temporary_path"
         mv "$temporary_path" "$final_path"
-        java -jar /app/inbox-point.jar snapshot-verify "$final_path"
       ' updater "$internal_snapshot_path" "$snapshot_name"; then
     abort 'snapshot copy or manifest verification failed'
   fi

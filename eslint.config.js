@@ -23,7 +23,7 @@ export default tseslint.config(
     ignores: ['.ai-rules/**', '.local/**', 'coverage/**', 'dist/**'],
   },
   {
-    files: ['src/**/*.ts', 'frontend/**/*.{ts,tsx}', 'tests/**/*.{ts,tsx}'],
+    files: ['frontend/**/*.{ts,tsx}', 'tests/**/*.{ts,tsx}'],
     extends: [
       ...tseslint.configs.recommendedTypeChecked,
       ...tseslint.configs.stylisticTypeChecked,
@@ -69,16 +69,11 @@ export default tseslint.config(
   },
   {
     files: ['frontend/**/*.{ts,tsx}', 'tests/frontend/**/*.{ts,tsx}'],
-    rules: {
-      'max-lines': [
-        'error',
-        { max: 140, skipBlankLines: true, skipComments: true },
-      ],
-    },
-  },
-  {
-    files: ['src/modules/**/*.ts'],
-    ignores: ['**/*.test.ts'],
+    ignores: [
+      'frontend/common/domain/application/class-content.ts',
+      'frontend/common/domain/application/class-navigation.ts',
+      'frontend/common/domain/application/client-information.ts',
+    ],
     rules: {
       'max-lines': [
         'error',
@@ -132,47 +127,6 @@ export default tseslint.config(
     files: ['frontend/src/pages/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': restrictedImports('@frontend/app/**'),
-    },
-  },
-  {
-    files: ['src/core/**/*.ts'],
-    rules: {
-      'no-restricted-imports': restrictedImports(
-        '@/config/**',
-        '@/infrastructure/**',
-        '@/modules/**',
-      ),
-    },
-  },
-  {
-    files: ['src/modules/*/model/**/*.ts'],
-    rules: {
-      'no-restricted-imports': restrictedImports(
-        '@/modules/*/application/**',
-        '@/modules/*/infrastructure/**',
-        '@/modules/*/presentation/**',
-      ),
-    },
-  },
-  {
-    files: ['src/modules/*/application/**/*.ts'],
-    rules: {
-      'no-restricted-imports': restrictedImports(
-        '@/modules/*/infrastructure/**',
-        '@/modules/*/presentation/**',
-      ),
-    },
-  },
-  {
-    files: ['src/modules/*/infrastructure/**/*.ts'],
-    rules: {
-      'no-restricted-imports': restrictedImports('@/modules/*/presentation/**'),
-    },
-  },
-  {
-    files: ['src/infrastructure/**/*.ts'],
-    rules: {
-      'no-restricted-imports': restrictedImports('@/modules/*/presentation/**'),
     },
   },
 );

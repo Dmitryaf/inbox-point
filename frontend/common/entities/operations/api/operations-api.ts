@@ -59,20 +59,29 @@ export function resolveInboundEvent(
   );
 }
 
-export function readOperatorInboxRequests(signal?: AbortSignal): Promise<{
+export function readOperatorInboxRequests(
+  signal?: AbortSignal,
+  cursor?: string,
+): Promise<{
   requests: readonly OperatorInboxRequest[];
+  nextCursor?: string;
 }> {
-  return request('/api/ops/inbox/requests', signal ? { signal } : {});
+  return request(
+    `/api/ops/inbox/requests${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`,
+    signal ? { signal } : {},
+  );
 }
 
 export function readOperatorInboxMessages(
   requestId: string,
   signal?: AbortSignal,
+  cursor?: string,
 ): Promise<{
   messages: readonly OperatorInboxMessage[];
+  nextCursor?: string;
 }> {
   return request(
-    `/api/ops/inbox/requests/${encodeURIComponent(requestId)}/messages`,
+    `/api/ops/inbox/requests/${encodeURIComponent(requestId)}/messages${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`,
     signal ? { signal } : {},
   );
 }

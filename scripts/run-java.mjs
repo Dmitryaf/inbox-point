@@ -16,8 +16,12 @@ if (command === 'build' || command === 'package') {
     stdio: 'inherit',
   });
 } else {
-  if (command === 'availability-monitor' && existsSync('.env.monitor')) {
-    process.loadEnvFile('.env.monitor');
+  const config = command === 'availability-monitor' ? '.env.monitor' : '.env';
+  if (
+    !['snapshot-restore', 'snapshot-verify'].includes(command) &&
+    existsSync(config)
+  ) {
+    process.loadEnvFile(config);
   }
   const java = process.env.JAVA_HOME
     ? join(process.env.JAVA_HOME, 'bin', windows ? 'java.exe' : 'java')
