@@ -14,6 +14,15 @@ import { initialSession, sessionReducer } from './session-state';
 export function useSessionController() {
   const [state, dispatch] = useReducer(sessionReducer, initialSession);
   const current = useRef({ sequence: 0, epoch: 0, pending: false });
+  const beforeExpiry = useRef<(() => void) | undefined>(undefined);
+  const registerBeforeExpiry = useCallback((guard: () => void) => {
+    beforeExpiry.current = guard;
+    return () => {
+      if (beforeExpiry.current === guard) {
+        beforeExpiry.current = undefined;
+      }
+    };
+  }, []);
   const cache = useQueryClient();
   const clearProtectedState = useCallback(() => {
     void cache.cancelQueries();
@@ -90,6 +99,16 @@ export function useSessionController() {
       if (expectedEpoch !== current.current.epoch) {
         return;
       }
+      try {
+        beforeExpiry.current?.();
+      } catch {
+        dispatch({
+          type: 'failure',
+          error:
+            'Не удалось сохранить черновик для повторного входа. Скопируйте изменения с этой страницы перед выходом.',
+        });
+        return;
+      }
       current.current.sequence++;
       current.current.pending = false;
       const epoch = ++current.current.epoch;
@@ -99,5 +118,12 @@ export function useSessionController() {
     [clearProtectedState],
   );
 
-  return { ...state, authenticate, endSession, endAllSessions, expireSession };
+  return {
+    ...state,
+    authenticate,
+    endSession,
+    endAllSessions,
+    expireSession,
+    registerBeforeExpiry,
+  };
 }

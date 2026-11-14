@@ -28,29 +28,31 @@ export function useContentWorkspace() {
     previewSequence: 0,
   });
   const cache = useQueryClient();
-  const { epoch, expireSession } = useAdminSession();
+  const { epoch, expireSession, registerBeforeExpiry } = useAdminSession();
   const patch = useCallback((change: Partial<EditorState>) => {
     if (lifetime.current.active) {
       lifetime.current.state = { ...lifetime.current.state, ...change };
       setState(lifetime.current.state);
     }
   }, []);
+  useEffect(
+    () =>
+      registerBeforeExpiry(() => {
+        const current = lifetime.current;
+        if (current.state.draft && isDirty(current.state)) {
+          preserveDraft({
+            draft: current.state.draft,
+            savedSnapshot: current.state.savedSnapshot,
+            version: current.state.version,
+          });
+        }
+        current.released = true;
+      }),
+    [registerBeforeExpiry],
+  );
   const report = useCallback(
     (cause: unknown) => {
       if (cause instanceof HttpError && cause.status === 401) {
-        const current = lifetime.current;
-        try {
-          if (current.state.draft && isDirty(current.state)) {
-            preserveDraft({
-              draft: current.state.draft,
-              savedSnapshot: current.state.savedSnapshot,
-              version: current.state.version,
-            });
-          }
-        } catch {
-          return 'Не удалось сохранить черновик для повторного входа. Скопируйте изменения с этой страницы перед выходом.';
-        }
-        current.released = true;
         expireSession(epoch);
         return '';
       }
