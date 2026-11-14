@@ -498,6 +498,17 @@ final class TelegramStore implements AutoCloseable {
     }
 
     void saveVkBatch(List<VkChannel.Inbound> batch, Instant now) throws SQLException {
+        saveVkBatch(batch, null, now);
+    }
+
+    String vkOffset() throws SQLException {
+        try (var query = prepare("SELECT cursor FROM inbound_event_cursors WHERE source = 'vk:long-poll'");
+                var rows = query.executeQuery()) {
+            return rows.next() ? rows.getString(1) : null;
+        }
+    }
+
+    void saveVkBatch(List<VkChannel.Inbound> batch, String cursor, Instant now) throws SQLException {
         connection.setAutoCommit(false);
         try {
             for (var item : batch) {
@@ -505,6 +516,12 @@ final class TelegramStore implements AutoCloseable {
                         INSERT OR IGNORE INTO inbound_events (source, external_event_id, payload, received_at)
                         VALUES ('vk:long-poll', ?, ?, ?)
                         """, item.event(), item.payload(), now.toString());
+            }
+            if (cursor != null) {
+                update("""
+                        INSERT INTO inbound_event_cursors (source, cursor) VALUES ('vk:long-poll', ?)
+                        ON CONFLICT(source) DO UPDATE SET cursor = excluded.cursor
+                        """, cursor);
             }
             connection.commit();
         } catch (SQLException | RuntimeException failure) {

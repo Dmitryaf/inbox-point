@@ -135,9 +135,16 @@ public final class TelegramRuntime {
     private VkChannel.Incoming incomingVk() {
         return new VkChannel.Incoming() {
             @Override
-            public void save(List<VkChannel.Inbound> batch) throws IOException, SQLException {
+            public String cursor() throws IOException, SQLException {
                 try (var store = new TelegramStore(database)) {
-                    store.saveVkBatch(batch, Instant.now());
+                    return store.vkOffset();
+                }
+            }
+
+            @Override
+            public void save(List<VkChannel.Inbound> batch, String nextCursor) throws IOException, SQLException {
+                try (var store = new TelegramStore(database)) {
+                    store.saveVkBatch(batch, nextCursor, Instant.now());
                 }
             }
 

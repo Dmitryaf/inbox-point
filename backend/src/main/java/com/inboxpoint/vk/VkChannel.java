@@ -42,12 +42,17 @@ public final class VkChannel implements AutoCloseable {
 
     public void poll(long group, int timeout, Incoming sink, ChannelActivity activity) throws IOException, SQLException, InterruptedException {
         var server = initial;
-        var cursor = server == null ? null : server.initialCursor();
+        var cursor = sink.cursor();
+        if (cursor == null && server != null) {
+            cursor = server.initialCursor();
+        }
         while (!Thread.currentThread().isInterrupted()) {
             try {
                 if (server == null) {
                     server = api.open(group);
-                    cursor = server.initialCursor();
+                    if (cursor == null) {
+                        cursor = server.initialCursor();
+                    }
                 }
                 if (!sink.drain()) {
                     Thread.sleep(Duration.ofMillis(250));
@@ -61,16 +66,18 @@ public final class VkChannel implements AutoCloseable {
                                 events.add(new Inbound(eventId(update), update.toString()));
                             }
                         }
-                        sink.save(events);
+                        sink.save(events, batch.cursor());
                         cursor = batch.cursor();
                         activity.succeeded();
                     }
                     case VkApiClient.Recovery recovery -> {
                         if (recovery.code() == 1 && recovery.cursor() != null) {
                             cursor = recovery.cursor();
+                            sink.save(List.of(), cursor);
+                            org.slf4j.LoggerFactory.getLogger(VkChannel.class)
+                                    .warn("VK no longer accepts the previous event cursor");
                         } else if (recovery.code() == 2 || recovery.code() == 3) {
                             server = api.open(group);
-                            cursor = server.initialCursor();
                         } else {
                             throw new IOException("VK Long Poll could not recover");
                         }
@@ -181,7 +188,9 @@ public final class VkChannel implements AutoCloseable {
     public record Inbound(String event, String payload) { }
 
     public interface Incoming {
-        void save(List<Inbound> batch) throws SQLException, IOException;
+        String cursor() throws SQLException, IOException;
+
+        void save(List<Inbound> batch, String nextCursor) throws SQLException, IOException;
 
         boolean drain() throws IOException, SQLException, InterruptedException;
     }
