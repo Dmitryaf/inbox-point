@@ -437,7 +437,11 @@ public final class TelegramRuntime {
                 } else {
                     var event = "web:" + (close ? "close:" : "reply:") + id + ":" + key;
                     var service = new HandoffService(store, handoff.routingInbox(), Clock.systemUTC(), queue);
-                    service.relayReply(current, event, close ? "/close" : text, event);
+                    if (close) {
+                        service.closeWebRequest(current, event);
+                    } else {
+                        service.relayWebReply(current, event, text);
+                    }
                     result.set("ok");
                 }
             });

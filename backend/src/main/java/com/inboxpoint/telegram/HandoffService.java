@@ -428,6 +428,17 @@ final class HandoffService {
         }
     }
 
+    void closeWebRequest(TelegramStore.Request request, String event)
+            throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
+        lifecycle(request, event, false);
+    }
+
+    void relayWebReply(TelegramStore.Request request, String event, String text) throws SQLException {
+        var now = clock.instant();
+        store.usageEvent("first-reply:" + request.id(), "first_reply", request.channel(), request.id(), now);
+        store.queue(request, event, event, text, now);
+    }
+
     boolean retryHeldReply(TelegramStore.Request request, String event)
             throws SQLException, InterruptedException, TelegramBotApi.RequestFailed {
         try {
