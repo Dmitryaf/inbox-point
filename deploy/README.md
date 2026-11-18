@@ -4,7 +4,7 @@ This guide describes the current single-organization deployment. Use a separate 
 
 ## Prepare an instance
 
-Install Docker Compose and an HTTPS reverse proxy. The container runs Inbox Point on Java 25. Copy [.env.example](../.env.example) into a private instance environment file and configure:
+Install Docker Compose and an HTTPS reverse proxy. The container runs Inbox Point on Java 25. For a standalone JAR behind HTTPS, set `INBOXPOINT_ENV=production` to enable production access rules and secure cookies. Compose sets it automatically. Copy [.env.example](../.env.example) into a private instance environment file and configure:
 
 | Setting                                     | Purpose                                              |
 | ------------------------------------------- | ---------------------------------------------------- |
@@ -75,6 +75,8 @@ Run the supplied updater from the repository with the intended target branch/rem
   --public-url https://messages.example.com
 ```
 
-The updater validates the checkout, creates and verifies a pre-deploy snapshot, updates the instance and checks container and public health. It reports the failure stage and snapshot on failure. For a runtime migration, keep the previous image, stop the current application before starting another version on the same volume, and check that the previous version can read any new data before rolling back.
+The updater requires a running Inbox Point Java container and a fast-forward target. It creates and verifies a pre-deploy snapshot, updates the instance, and checks container and public health. It reports the failure stage and the snapshot location on failure.
+
+For an installation whose checkout cannot fast-forward, use a separate checkout of the target revision. Save a verified snapshot and keep the previous image before switching. Stop the current application before starting another version on the same volume. Before rolling back, verify that the previous version can read any data written since the update.
 
 Validate the source change with `npm run check` and `npm run check:e2e`. Before accepting a deployment, verify real test-channel messages, staff replies, closing/reopening, enrollment confirmation, content editing and backup recovery as applicable. Record the deployed revision and observations for that instance.

@@ -21,7 +21,6 @@ export function InformationEditor({
   issues,
   revision = 0,
 }: InformationProps) {
-  const lengths = getCoreResponseLengths(draft);
   return (
     <div className={layout.editor}>
       <h2>Информация</h2>
@@ -38,20 +37,12 @@ export function InformationEditor({
                 />
               </span>
             </summary>
-            <ContentField
-              id={id}
-              label="Текст ответа"
-              value={draft[id]}
-              onChange={(value) => edit({ [id]: value })}
-              multiline
-              maxLength={4000}
+            <ShortAnswerField
+              draft={draft}
+              edit={edit}
               issues={issues}
+              field={id}
             />
-            <p
-              className={`${styles.counter} ${lengths[id] > 4000 ? styles['counter--error'] : ''}`}
-            >
-              Итоговый ответ: {lengths[id]} / 4000
-            </p>
             <SectionVisibilityControl
               draft={draft}
               section={id}
@@ -63,5 +54,39 @@ export function InformationEditor({
       </section>
       <FaqEditor key={revision} draft={draft} edit={edit} issues={issues} />
     </div>
+  );
+}
+
+export function ShortAnswerField({
+  draft,
+  edit,
+  issues,
+  field,
+  inputId = field,
+  label = 'Текст ответа',
+}: InformationProps & {
+  field: 'prices' | 'address';
+  inputId?: string;
+  label?: string;
+}) {
+  const length = getCoreResponseLengths(draft)[field];
+  return (
+    <>
+      <ContentField
+        id={inputId}
+        validationId={field}
+        label={label}
+        value={draft[field]}
+        onChange={(value) => edit({ [field]: value })}
+        multiline
+        maxLength={4000}
+        issues={issues}
+      />
+      <p
+        className={`${styles.counter} ${length > 4000 ? styles['counter--error'] : ''}`}
+      >
+        Итоговый ответ: {length} / 4000
+      </p>
+    </>
   );
 }

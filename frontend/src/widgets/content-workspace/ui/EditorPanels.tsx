@@ -4,6 +4,7 @@ import { ClassScheduleEditor } from '@frontend/entities/content/ui/ClassSchedule
 import { CustomSectionsEditor } from '@frontend/entities/content/ui/CustomSectionsEditor';
 import { InformationEditor } from '@frontend/entities/content/ui/InformationEditor';
 import { OrganizationNameField } from '@frontend/entities/content/ui/OrganizationNameField';
+import type { OpenClass } from '@frontend/entities/content/model/editor-props';
 import { ContentSummary } from '@frontend/entities/content/ui/ContentSummary';
 import { SaveBar } from '@frontend/features/save-content/ui/SaveBar';
 import type { useContentWorkspace } from '@frontend/widgets/content-workspace/model/use-content-workspace';
@@ -24,6 +25,11 @@ export function EditorPanels({
   const [section, setSection] = useState<EditorSection>('core');
   const [view, setView] = useState<WorkspaceView>('edit');
   const [preview, setPreview] = useState({ action: 'main', sequence: 0 });
+  const [classJump, setClassJump] = useState<{
+    type: Parameters<OpenClass>[0];
+    id: string;
+    sequence: number;
+  }>({ type: 'direction', id: '', sequence: 0 });
   const focus = useRef<string | undefined>(undefined);
   useLayoutEffect(() => {
     if (focus.current) {
@@ -71,6 +77,8 @@ export function EditorPanels({
             <OrganizationNameField {...props} />
             <div hidden={section !== 'core'}>
               <ClassScheduleEditor
+                key={classJump.sequence}
+                initialTarget={classJump}
                 {...props}
                 preview={(action) => {
                   setPreview((value) => ({
@@ -93,6 +101,17 @@ export function EditorPanels({
               key={preview.sequence}
               draft={draft}
               start={preview}
+              editing={props}
+              onEditClass={(type, id) => {
+                focus.current = 'class-directions';
+                setClassJump((previous) => ({
+                  type,
+                  id,
+                  sequence: previous.sequence + 1,
+                }));
+                setSection('core');
+                setView('edit');
+              }}
             />
           )}
           {view === 'history' && <ContentHistory editor={editor} />}

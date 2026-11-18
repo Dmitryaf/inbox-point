@@ -9,10 +9,15 @@ import { ClassGroupEditor } from './ClassGroupEditor';
 import styles from '@frontend/entities/content/styles/class-editor.module.css';
 
 export function ClassScheduleEditor(
-  props: ContentEditorProps & { preview: (action: string) => void },
+  props: ContentEditorProps & {
+    preview: (action: string) => void;
+    initialTarget?: { type: Parameters<OpenClass>[0]; id: string };
+  },
 ) {
   const { draft } = props;
-  const [target, setTarget] = useState({ type: 'direction', id: '' });
+  const [target, setTarget] = useState(
+    props.initialTarget ?? { type: 'direction', id: '' },
+  );
   const [reviewing, setReviewing] = useState(false);
   const focus = useRef(false);
   useLayoutEffect(() => {

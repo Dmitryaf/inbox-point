@@ -21,6 +21,34 @@ function changeName(value: string) {
 const save = () =>
   fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
 
+it('edits and saves the price reached through the customer menu', async () => {
+  const initial = contentFixture();
+  initial.content.visibleSections?.push('address');
+  const api = mockContent(initial);
+  await openEditor();
+  const click = (name: string) =>
+    fireEvent.click(screen.getByRole('button', { name }));
+  click('Предпросмотр');
+  click('Цены');
+  const price = screen.getByRole('textbox', { name: 'Текст ответа «Цены»' });
+  fireEvent.change(price, { target: { value: 'Пробное занятие — 750 ₽.' } });
+  expect(screen.getByLabelText('Пример переписки').textContent).toContain(
+    '750 ₽',
+  );
+  click('Меню');
+  click('Адрес');
+  click('Меню');
+  click('Цены');
+  expect(
+    screen.getByRole<HTMLTextAreaElement>('textbox', {
+      name: 'Текст ответа «Цены»',
+    }).value,
+  ).toContain('750 ₽');
+  save();
+  await screen.findByText('Все изменения сохранены');
+  expect(api.submissions[0]?.content.prices).toBe('Пробное занятие — 750 ₽.');
+});
+
 it('writes the whole original document and reads it again after reopening', async () => {
   const api = mockContent();
   const { router } = await openEditor();
@@ -41,6 +69,24 @@ it('writes the whole original document and reads it again after reopening', asyn
     (await screen.findByLabelText<HTMLInputElement>('Название организации'))
       .value,
   ).toBe('Новое название');
+});
+
+it('opens a group editor directly from the group answer preview', async () => {
+  mockContent();
+  await openEditor();
+  for (const name of [
+    'Предпросмотр',
+    'Расписание',
+    'Танец',
+    'Старое расписание',
+    'Изменить группу',
+  ]) {
+    fireEvent.click(screen.getByRole('button', { name }));
+  }
+  const heading = screen.getByRole('heading', {
+    name: 'Танец → Старое расписание',
+  });
+  expect(document.activeElement).toBe(heading);
 });
 
 it('keeps initial failure distinct from empty content and retries', async () => {

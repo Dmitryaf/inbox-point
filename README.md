@@ -2,6 +2,8 @@
 
 Self-hosted customer messaging for Telegram and VK. Customers stay in their messenger; staff reply in a private Telegram group with a topic for each customer. The browser interface is in Russian.
 
+Java 25 · Spring Boot · SQLite · React · TypeScript
+
 ## Available workflows
 
 - Prepared information: schedules, prices, addresses, FAQs and custom menu sections.
@@ -14,6 +16,8 @@ Self-hosted customer messaging for Telegram and VK. Customers stay in their mess
 Closed enrollment offers a question about the group. It does not accept an enrollment application. Attachments and voice messages are not relayed as supported customer text. Answers come from prepared content or staff; AI-generated replies are not implemented.
 
 ![Content editor with example data](docs/screenshots/inbox-point-content.png)
+
+[View the operations dashboard](docs/screenshots/inbox-point-operations.png)
 
 ## Run locally
 
@@ -32,9 +36,10 @@ One instance serves one organization, with its own SQLite database and adjacent 
 
 ```sh
 npm run check
+npx playwright install chromium
 npm run check:e2e
 ```
 
-The application uses Java 25, Spring Boot and SQLite on the server, with React, React Router and TanStack Query in the browser. The backend is in `backend/` and the frontend is in `frontend/src/`.
+The Spring Boot application and Java tests are in `backend/`. The React interface is in `frontend/src/`, and Playwright exercises it against the packaged Java application.
 
 [MIT License](LICENSE)

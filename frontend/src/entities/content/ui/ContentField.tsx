@@ -2,6 +2,7 @@ import type { ContentValidationIssue } from '@frontend-common/entities/content/m
 
 export function ContentField({
   id,
+  validationId = id,
   label,
   value,
   onChange,
@@ -10,6 +11,7 @@ export function ContentField({
   issues,
 }: {
   id: string;
+  validationId?: string;
   label: string;
   value: string;
   onChange: (value: string) => void;
@@ -17,7 +19,7 @@ export function ContentField({
   maxLength: number;
   issues: readonly ContentValidationIssue[];
 }) {
-  const error = issues.find((issue) => issue.fieldId === id)?.message;
+  const error = issues.find((issue) => issue.fieldId === validationId)?.message;
   const props = {
     id,
     value,
