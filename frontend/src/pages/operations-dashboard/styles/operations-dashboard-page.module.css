@@ -45,6 +45,25 @@
   margin: 0;
 }
 
+.delivery-notice {
+  align-items: baseline;
+  background: var(--color-attention-soft);
+  border: 1px solid var(--color-attention-border);
+  border-radius: var(--radius-control);
+  color: var(--color-attention);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  justify-content: space-between;
+  padding: 0.6rem 0.85rem;
+}
+
+.delivery-notice a {
+  color: inherit;
+  font-weight: 600;
+  text-underline-offset: 0.18em;
+}
+
 @media (max-width: 520px) {
   .ops-refresh-error {
     align-items: stretch;

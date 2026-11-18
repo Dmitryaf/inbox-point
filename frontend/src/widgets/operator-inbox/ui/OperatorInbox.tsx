@@ -23,7 +23,7 @@ export function OperatorInbox({
           <header className={styles['operator-inbox-heading']}>
             <div>
               <p>
-                <span className="status-pill status-pill--attention">
+                <span className="status-pill status-pill--neutral">
                   Ответы через приложение
                 </span>
               </p>

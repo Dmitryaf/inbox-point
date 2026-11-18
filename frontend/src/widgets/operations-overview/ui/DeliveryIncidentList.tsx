@@ -22,7 +22,9 @@ export function DeliveryIncidentList({
       className={styles['delivery-incidents']}
       aria-labelledby="delivery-incidents-title"
     >
-      <h3 id="delivery-incidents-title">Ответы клиентам</h3>
+      <h3 id="delivery-incidents-title" tabIndex={-1}>
+        Сбои доставки ответов
+      </h3>
       <p>Эти ответы не дошли или требуют ручной проверки.</p>
       <ol>
         {incidents.map((incident) => (

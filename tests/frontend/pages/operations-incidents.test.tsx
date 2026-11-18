@@ -6,6 +6,24 @@ import { renderApp } from '@test/frontend/support/render-app';
 import { relayIncident } from '@test/frontend/support/incident-fixtures';
 import { mockOperations } from '@test/frontend/support/mock-operations';
 
+it('shows the delivery shortcut before the reserve inbox and focuses details', async () => {
+  mockOperations(true);
+  renderApp('/ops');
+  const shortcut = await screen.findByRole('link', {
+    name: 'К сбоям доставки',
+  });
+  const inbox = await screen.findByRole('heading', {
+    name: 'Входящие обращения',
+  });
+  expect(
+    shortcut.compareDocumentPosition(inbox) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+  fireEvent.click(shortcut);
+  expect(document.activeElement).toBe(
+    screen.getByRole('heading', { name: 'Сбои доставки ответов' }),
+  );
+});
+
 it.each([
   ['relay_message', 'Сообщение есть в Telegram', 'received'],
   ['mirror_operator_message', 'Сообщение есть в Telegram', 'received'],

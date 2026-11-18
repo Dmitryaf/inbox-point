@@ -19,6 +19,7 @@ it('recovers an initial failed read and retains stale status as unknown after a 
   );
   fireEvent.click(screen.getByRole('button', { name: 'Повторить проверку' }));
   await screen.findByText('Всё работает');
+  expect(screen.getByRole('link', { name: 'К сбоям доставки' })).toBeDefined();
   api.overrides.set('/api/ops/status', () =>
     Promise.resolve(
       response({ message: 'Не удалось обновить состояние.' }, 503),
@@ -28,6 +29,7 @@ it('recovers an initial failed read and retains stale status as unknown after a 
   await screen.findByText('Состояние неизвестно');
   expect(screen.getByText(/Показаны последние данные от/)).toBeDefined();
   expect(screen.queryByText('Всё работает')).toBeNull();
+  expect(screen.queryByRole('link', { name: 'К сбоям доставки' })).toBeNull();
   expect(screen.getAllByRole('alert')).toHaveLength(1);
 });
 

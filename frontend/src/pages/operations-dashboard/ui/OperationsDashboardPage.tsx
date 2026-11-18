@@ -8,6 +8,12 @@ import styles from '@frontend/pages/operations-dashboard/styles/operations-dashb
 export function OperationsDashboardPage() {
   const { status, control, inbox, actions, refresh, readError } =
     useOperationsDashboard();
+  const statusUnavailable =
+    status.isError || status.errorUpdatedAt > status.dataUpdatedAt;
+  const deliveryIncidents = statusUnavailable
+    ? []
+    : (status.data?.deliveries.incidents ?? []);
+  const firstIncident = deliveryIncidents[0];
   return (
     <section className={styles['ops-workspace']}>
       {readError && (
@@ -37,13 +43,30 @@ export function OperationsDashboardPage() {
           {status.isFetching ? 'Обновляем…' : 'Обновить'}
         </button>
       </div>
+      {firstIncident && (
+        <aside className={styles['delivery-notice']} aria-label="Сбой доставки">
+          <strong>
+            {deliveryIncidents.length > 1
+              ? `Сбои доставки: ${deliveryIncidents.length}`
+              : firstIncident.retryAllowed
+                ? `Ответ в ${firstIncident.channel} не дошёл`
+                : `Доставка ответа в ${firstIncident.channel} не подтверждена`}
+          </strong>
+          <a
+            href="#delivery-incidents-title"
+            onClick={() =>
+              document.getElementById('delivery-incidents-title')?.focus()
+            }
+          >
+            К сбоям доставки
+          </a>
+        </aside>
+      )}
       <OperatorInbox inbox={inbox} />
       {status.data ? (
         <OperationsOverview
           status={status.data}
-          statusUnavailable={
-            status.isError || status.errorUpdatedAt > status.dataUpdatedAt
-          }
+          statusUnavailable={statusUnavailable}
           pendingDeliveryId={actions.delivery.pending}
           pendingOperatorActionId={actions.operator.pending}
           pendingInboundEventId={actions.inbound.pending}
