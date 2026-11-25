@@ -11,8 +11,7 @@ import {
   emergencyOperations,
 } from './support/design-fixtures.js';
 
-// Review these synthetic captures manually for hierarchy, wrapping and overlap.
-// Passing the geometry assertions does not establish visual quality or usability.
+// Capture screenshots for manual review of layout, text wrapping, and overlap.
 test.afterEach(async ({ page }, testInfo) => {
   if (testInfo.status === 'passed') {
     await page.screenshot({

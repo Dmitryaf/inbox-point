@@ -1,6 +1,6 @@
 # Inbox Point
 
-Self-hosted customer messaging for Telegram and VK. Customers stay in their messenger; staff reply in a private Telegram group with a topic for each customer. The browser interface is in Russian.
+Self-hosted customer messaging for Telegram and VK. Customers stay in their messenger; staff reply in a private Telegram group with a topic for each customer.
 
 Java 25 · Spring Boot · SQLite · React · TypeScript
 
@@ -13,7 +13,7 @@ Java 25 · Spring Boot · SQLite · React · TypeScript
 - Channel setup, pause/resume and delivery alerts. The fallback browser inbox loads active requests and earlier messages in pages.
 - Usage analytics for 7, 30 or 90 days, with Telegram/VK filters.
 
-Closed enrollment offers a question about the group. It does not accept an enrollment application. Attachments and voice messages are not relayed as supported customer text. Answers come from prepared content or staff; AI-generated replies are not implemented.
+Closed enrollment offers a question about the group. It does not accept an enrollment application. Attachments and voice messages are not relayed as supported customer text. Answers come from prepared content or staff.
 
 ![Content editor with example data](docs/screenshots/inbox-point-content.png)
 
